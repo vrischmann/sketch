@@ -369,7 +369,13 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 
 	start := time.Now()
 	cmd := exec.CommandContext(ctx, "go", "install", "sketch.dev/cmd/sketch@latest")
-	cmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0", "GOPATH="+tmpGopath)
+	cmd.Env = append(
+		os.Environ(),
+		"GOOS=linux",
+		"CGO_ENABLED=0",
+		"GOTOOLCHAIN=auto",
+		"GOPATH="+tmpGopath,
+	)
 
 	fmt.Printf("building linux agent binary...\n")
 	out, err := cmd.CombinedOutput()
