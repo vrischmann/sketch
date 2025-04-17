@@ -326,7 +326,8 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, imgName string, config ContainerConfig) error {
 	//, config.SessionID, config.GitUsername, config.GitEmail, config.SkabandAddr
 	// sessionID, gitUsername, gitEmail, skabandAddr string
-	cmdArgs := []string{"create",
+	cmdArgs := []string{
+		"create",
 		"-it",
 		"--name", cntrName,
 		"-p", hostPort + ":80", // forward container port 80 to a host port
@@ -360,10 +361,14 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 }
 
 func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
+	tmpGopath, err := os.MkdirTemp("", "sketch-linux-build")
+	if err != nil {
+		return "", err
+	}
+
 	start := time.Now()
-	linuxSketchBin := filepath.Join(path, "tmp-sketch-binary-linux")
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", linuxSketchBin, "sketch.dev/cmd/sketch")
-	cmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
+	cmd := exec.CommandContext(ctx, "go", "install", "sketch.dev/cmd/sketch@latest")
+	cmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0", "GOPATH="+tmpGopath)
 
 	fmt.Printf("building linux agent binary...\n")
 	out, err := cmd.CombinedOutput()
@@ -374,9 +379,15 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 		slog.DebugContext(ctx, "go", slog.Duration("elapsed", time.Now().Sub(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	}
 
+	src := filepath.Join(tmpGopath, "bin", "linux_"+runtime.GOARCH, "sketch")
+	dst := filepath.Join(path, "tmp-sketch-binary-linux")
+	if err := os.Rename(src, dst); err != nil {
+		return "", err
+	}
+
 	fmt.Printf("built linux agent binary in %s\n", time.Since(start).Round(100*time.Millisecond))
 
-	return linuxSketchBin, nil
+	return dst, nil
 }
 
 func getContainerPort(ctx context.Context, cntrName string) (string, error) {
