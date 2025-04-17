@@ -365,6 +365,7 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer os.RemoveAll(tmpGopath)
 
 	start := time.Now()
 	cmd := exec.CommandContext(ctx, "go", "install", "sketch.dev/cmd/sketch@latest")
