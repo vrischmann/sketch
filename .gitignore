@@ -1,0 +1,4 @@
+node_modules
+
+# Generated Tailwind CSS file
+loop/webui/src/tailwind.css

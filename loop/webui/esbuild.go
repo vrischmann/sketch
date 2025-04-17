@@ -1,0 +1,239 @@
+// Package webui provides the web interface for the sketch loop.
+// It bundles typescript files into JavaScript using esbuild.
+//
+// This is substantially the same mechanism as /esbuild.go in this repo as well.
+package webui
+
+import (
+	"crypto/sha256"
+	"embed"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	esbuildcli "github.com/evanw/esbuild/pkg/cli"
+)
+
+//go:embed package.json package-lock.json src tsconfig.json postcss.config.js tailwind.config.js
+var embedded embed.FS
+
+func embeddedHash() (string, error) {
+	h := sha256.New()
+	err := fs.WalkDir(embedded, ".", func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+		f, err := embedded.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := io.Copy(h, f); err != nil {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("embedded hash: %w", err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func cleanBuildDir(buildDir string) error {
+	err := fs.WalkDir(os.DirFS(buildDir), ".", func(path string, d fs.DirEntry, err error) error {
+		if d.Name() == "." {
+			return nil
+		}
+		if d.Name() == "node_modules" {
+			return fs.SkipDir
+		}
+		osPath := filepath.Join(buildDir, path)
+		fmt.Printf("removing %s\n", osPath)
+		os.RemoveAll(osPath)
+		if d.IsDir() {
+			return fs.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("clean build dir: %w", err)
+	}
+	return nil
+}
+
+func unpackFS(out string, srcFS fs.FS) error {
+	err := fs.WalkDir(srcFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if d.Name() == "." {
+			return nil
+		}
+		if d.IsDir() {
+			if err := os.Mkdir(filepath.Join(out, path), 0o777); err != nil {
+				return err
+			}
+			return nil
+		}
+		f, err := srcFS.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		dst, err := os.Create(filepath.Join(out, path))
+		if err != nil {
+			return err
+		}
+		defer dst.Close()
+		if _, err := io.Copy(dst, f); err != nil {
+			return err
+		}
+		if err := dst.Close(); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("unpack fs into out dir %s: %w", out, err)
+	}
+	return nil
+}
+
+// Build unpacks and esbuild's all bundleTs typescript files
+func Build() (fs.FS, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	cacheDir := filepath.Join(homeDir, ".cache", "sketch", "webui")
+	buildDir := filepath.Join(cacheDir, "build")
+	if err := os.MkdirAll(buildDir, 0o777); err != nil { // make sure .cache/sketch/build exists
+		return nil, err
+	}
+	hash, err := embeddedHash()
+	if err != nil {
+		return nil, err
+	}
+	finalHashDir := filepath.Join(cacheDir, hash)
+	if _, err := os.Stat(finalHashDir); err == nil {
+		// Build already done, serve it out.
+		return os.DirFS(finalHashDir), nil
+	}
+
+	// We need to do a build.
+
+	// Clear everything out of the build directory except node_modules.
+	if err := cleanBuildDir(buildDir); err != nil {
+		return nil, err
+	}
+	tmpHashDir := filepath.Join(buildDir, "out")
+	if err := os.Mkdir(tmpHashDir, 0o777); err != nil {
+		return nil, err
+	}
+
+	// Unpack everything from embedded into build dir.
+	if err := unpackFS(buildDir, embedded); err != nil {
+		return nil, err
+	}
+
+	// Do the build.
+	cmd := exec.Command("npm", "ci")
+	cmd.Dir = buildDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("npm ci: %s: %v", out, err)
+	}
+	cmd = exec.Command("npx", "postcss", filepath.Join(buildDir, "./src/input.css"), "-o", filepath.Join(tmpHashDir, "tailwind.css"))
+	cmd.Dir = buildDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("npm postcss: %s: %v", out, err)
+	}
+	bundleTs := []string{"src/timeline.ts"}
+	for _, tsName := range bundleTs {
+		if err := esbuildBundle(tmpHashDir, filepath.Join(buildDir, tsName)); err != nil {
+			return nil, fmt.Errorf("esbuild: %s: %w", tsName, err)
+		}
+	}
+
+	// Copy src files used directly into the new hash output dir.
+	err = fs.WalkDir(embedded, "src", func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js") {
+			b, err := embedded.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			dstPath := filepath.Join(tmpHashDir, strings.TrimPrefix(path, "src/"))
+			if err := os.WriteFile(dstPath, b, 0o777); err != nil {
+				return err
+			}
+			return nil
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy xterm.css from node_modules
+	const xtermCssPath = "node_modules/@xterm/xterm/css/xterm.css"
+	xtermCss, err := os.ReadFile(filepath.Join(buildDir, xtermCssPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read xterm.css: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpHashDir, "xterm.css"), xtermCss, 0o666); err != nil {
+		return nil, fmt.Errorf("failed to write xterm.css: %w", err)
+	}
+
+	// Everything succeeded, so we move tmpHashDir to finalHashDir
+	if err := os.Rename(tmpHashDir, finalHashDir); err != nil {
+		return nil, err
+	}
+	return os.DirFS(finalHashDir), nil
+}
+
+// unpackTS unpacks all the typescript-relevant files from the embedded filesystem into tmpDir.
+func unpackTS(outDir string, embedded fs.FS) error {
+	return fs.WalkDir(embedded, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		tgt := filepath.Join(outDir, path)
+		if d.IsDir() {
+			if err := os.MkdirAll(tgt, 0o777); err != nil {
+				return err
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".md") || strings.HasSuffix(path, ".css") {
+			return nil
+		}
+		data, err := fs.ReadFile(embedded, path)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(tgt, data, 0o666); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func esbuildBundle(outDir, src string) error {
+	ret := esbuildcli.Run([]string{
+		src,
+		"--bundle",
+		"--sourcemap",
+		"--log-level=error",
+		// Disable minification for now
+		// "--minify",
+		"--outdir=" + outDir,
+	})
+	if ret != 0 {
+		return fmt.Errorf("esbuild %s failed: %d", filepath.Base(src), ret)
+	}
+	return nil
+}

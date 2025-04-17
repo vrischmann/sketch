@@ -1,0 +1,39 @@
+name: go_tests
+on:
+  workflow_call:
+  push:
+    branches-ignore:
+      - "queue-main-**"
+  pull_request:
+jobs:
+  test:
+    runs-on: "linux-x64-ubuntu-latest-64-core"
+    steps:
+      - uses: actions/checkout@master
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Cache Go 1.24.2
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go1.24.2-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go1.24.2-
+
+      - name: Install tools
+        run: |
+          go install golang.org/x/tools/gopls@latest
+
+      - name: Go generate
+        run: |
+          go generate ./...
+
+      - name: Run tests
+        run: |
+          go test -v ./...
+          go test -v -race ./...
