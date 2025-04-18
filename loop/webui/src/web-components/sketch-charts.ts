@@ -77,7 +77,7 @@ export class SketchCharts extends LitElement {
   }
 
   private calculateCumulativeCostData(
-    messages: TimelineMessage[]
+    messages: TimelineMessage[],
   ): { timestamp: Date; cost: number }[] {
     if (!messages || messages.length === 0) {
       return [];
@@ -124,14 +124,14 @@ export class SketchCharts extends LitElement {
       // Create unique indexes for all messages
       const messageIndexMap = new Map<string, number>();
       let messageIdx = 0;
-      
+
       // First pass: Process parent messages
       allMessages.forEach((msg, index) => {
         // Create a unique ID for each message to track its position
         const msgId = msg.timestamp ? msg.timestamp.toString() : `msg-${index}`;
         messageIndexMap.set(msgId, messageIdx++);
       });
-      
+
       // Process tool calls from messages to account for filtered out tool messages
       const toolCallData: any[] = [];
       allMessages.forEach((msg) => {
@@ -140,35 +140,35 @@ export class SketchCharts extends LitElement {
             if (toolCall.result_message) {
               // Add this tool result message to our data
               const resultMsg = toolCall.result_message;
-              
+
               // Important: use the original message's idx to maintain the correct order
               // The original message idx value is what we want to show in the chart
               if (resultMsg.idx !== undefined) {
                 // If the tool call has start/end times, add it to bar data, otherwise to point data
                 if (resultMsg.start_time && resultMsg.end_time) {
                   toolCallData.push({
-                    type: 'bar',
-                    index: resultMsg.idx,  // Use actual idx from message
-                    message_type: 'tool',
-                    content: resultMsg.content || '',
-                    tool_name: resultMsg.tool_name || toolCall.name || '',
-                    tool_input: toolCall.input || '',
-                    tool_result: resultMsg.tool_result || '',
+                    type: "bar",
+                    index: resultMsg.idx, // Use actual idx from message
+                    message_type: "tool",
+                    content: resultMsg.content || "",
+                    tool_name: resultMsg.tool_name || toolCall.name || "",
+                    tool_input: toolCall.input || "",
+                    tool_result: resultMsg.tool_result || "",
                     start_time: new Date(resultMsg.start_time).toISOString(),
                     end_time: new Date(resultMsg.end_time).toISOString(),
-                    message: JSON.stringify(resultMsg, null, 2)
+                    message: JSON.stringify(resultMsg, null, 2),
                   });
                 } else if (resultMsg.timestamp) {
                   toolCallData.push({
-                    type: 'point',
-                    index: resultMsg.idx,  // Use actual idx from message
-                    message_type: 'tool',
-                    content: resultMsg.content || '',
-                    tool_name: resultMsg.tool_name || toolCall.name || '',
-                    tool_input: toolCall.input || '',
-                    tool_result: resultMsg.tool_result || '',
+                    type: "point",
+                    index: resultMsg.idx, // Use actual idx from message
+                    message_type: "tool",
+                    content: resultMsg.content || "",
+                    tool_name: resultMsg.tool_name || toolCall.name || "",
+                    tool_input: toolCall.input || "",
+                    tool_result: resultMsg.tool_result || "",
                     time: new Date(resultMsg.timestamp).toISOString(),
-                    message: JSON.stringify(resultMsg, null, 2)
+                    message: JSON.stringify(resultMsg, null, 2),
                   });
                 }
               }
@@ -262,21 +262,29 @@ export class SketchCharts extends LitElement {
             message: JSON.stringify(msg, null, 2), // Full message for detailed inspection
           };
         });
-        
+
       // Add tool call data to the appropriate arrays
-      const toolBarData = toolCallData.filter(d => d.type === 'bar').map(d => {
-        delete d.type;
-        return d;
-      });
-      
-      const toolPointData = toolCallData.filter(d => d.type === 'point').map(d => {
-        delete d.type;
-        return d;
-      });
+      const toolBarData = toolCallData
+        .filter((d) => d.type === "bar")
+        .map((d) => {
+          delete d.type;
+          return d;
+        });
+
+      const toolPointData = toolCallData
+        .filter((d) => d.type === "point")
+        .map((d) => {
+          delete d.type;
+          return d;
+        });
 
       // Check if we have any data to display
-      if (barData.length === 0 && pointData.length === 0 && 
-          toolBarData.length === 0 && toolPointData.length === 0) {
+      if (
+        barData.length === 0 &&
+        pointData.length === 0 &&
+        toolBarData.length === 0 &&
+        toolPointData.length === 0
+      ) {
         return null;
       }
 
@@ -412,16 +420,16 @@ export class SketchCharts extends LitElement {
         <div class="chart-section">
           <h3>Dollar Usage Over Time</h3>
           <div class="chart-content">
-          ${this.chartData.length > 0 ? 
-            html`<vega-embed .spec=${costSpec}></vega-embed>` 
-            : html`<p>No cost data available to display.</p>`}
+            ${this.chartData.length > 0
+              ? html`<vega-embed .spec=${costSpec}></vega-embed>`
+              : html`<p>No cost data available to display.</p>`}
           </div>
         </div>
         <div class="chart-section">
           <h3>Message Timeline</h3>
           <div class="chart-content">
-          ${messagesSpec?.data ? 
-              html`<vega-embed .spec=${messagesSpec}></vega-embed>`
+            ${messagesSpec?.data
+              ? html`<vega-embed .spec=${messagesSpec}></vega-embed>`
               : html`<p>No messages available to display.</p>`}
           </div>
         </div>

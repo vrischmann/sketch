@@ -1,4 +1,11 @@
-import { html, fixture, expect, oneEvent, elementUpdated, fixtureCleanup } from "@open-wc/testing";
+import {
+  html,
+  fixture,
+  expect,
+  oneEvent,
+  elementUpdated,
+  fixtureCleanup,
+} from "@open-wc/testing";
 import "./sketch-view-mode-select";
 import type { SketchViewModeSelect } from "./sketch-view-mode-select";
 
@@ -46,12 +53,14 @@ describe("SketchViewModeSelect", () => {
       <sketch-view-mode-select></sketch-view-mode-select>
     `);
 
-    const diffButton = el.shadowRoot!.querySelector("#showDiffButton") as HTMLButtonElement;
-    
+    const diffButton = el.shadowRoot!.querySelector(
+      "#showDiffButton",
+    ) as HTMLButtonElement;
+
     // Setup listener for the view-mode-select event
     setTimeout(() => diffButton.click());
     const { detail } = await oneEvent(el, "view-mode-select");
-    
+
     expect(detail.mode).to.equal("diff");
   });
 
@@ -62,17 +71,17 @@ describe("SketchViewModeSelect", () => {
 
     // Initially should be in chat mode
     expect(el.activeMode).to.equal("chat");
-    
+
     // Dispatch the update-active-mode event to change to diff mode
     const updateEvent = new CustomEvent("update-active-mode", {
       detail: { mode: "diff" },
-      bubbles: true
+      bubbles: true,
     });
     el.dispatchEvent(updateEvent);
-    
+
     // Wait for the component to update
     await elementUpdated(el);
-    
+
     expect(el.activeMode).to.equal("diff");
     const diffButton = el.shadowRoot!.querySelector("#showDiffButton");
     expect(diffButton!.classList.contains("active")).to.be.true;
@@ -88,12 +97,10 @@ describe("SketchViewModeSelect", () => {
     const chatButton = el.shadowRoot!.querySelector("#showConversationButton");
     const diffButton = el.shadowRoot!.querySelector("#showDiffButton");
     const chartsButton = el.shadowRoot!.querySelector("#showChartsButton");
-    
+
     expect(terminalButton!.classList.contains("active")).to.be.true;
     expect(chatButton!.classList.contains("active")).to.be.false;
     expect(diffButton!.classList.contains("active")).to.be.false;
     expect(chartsButton!.classList.contains("active")).to.be.false;
   });
-
-
 });

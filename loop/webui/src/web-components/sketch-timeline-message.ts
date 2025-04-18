@@ -248,7 +248,7 @@ export class SketchTimelineMessage extends LitElement {
       display: flex;
       flex-direction: column;
     }
-    
+
     .commit-preview {
       padding: 8px 12px;
       cursor: pointer;
@@ -256,38 +256,38 @@ export class SketchTimelineMessage extends LitElement {
       background-color: #f6f8fa;
       border-bottom: 1px dashed #d1d5da;
     }
-    
+
     .commit-preview:hover {
       background-color: #eef2f6;
     }
-    
+
     .commit-hash {
       color: #0366d6;
       font-weight: bold;
     }
-    
+
     .commit-details {
       padding: 8px 12px;
       max-height: 200px;
       overflow-y: auto;
     }
-    
+
     .commit-details pre {
       margin: 0;
       white-space: pre-wrap;
       word-break: break-word;
     }
-    
+
     .commit-details.is-hidden {
       display: none;
     }
-    
+
     .pushed-branch {
       color: #28a745;
       font-weight: 500;
       margin-left: 6px;
     }
-    
+
     .commit-diff-button {
       padding: 6px 12px;
       border: 1px solid #ccc;
@@ -300,12 +300,12 @@ export class SketchTimelineMessage extends LitElement {
       margin: 8px 12px;
       display: block;
     }
-    
+
     .commit-diff-button:hover {
       background-color: #e7e7e7;
       border-color: #aaa;
     }
-    
+
     /* Tool call cards */
     .tool-call-cards-container {
       display: flex;
@@ -446,7 +446,13 @@ export class SketchTimelineMessage extends LitElement {
   }
 
   showCommit(commitHash: string) {
-    this.dispatchEvent(new CustomEvent("show-commit-diff", {bubbles: true, composed: true, detail: {commitHash}}))
+    this.dispatchEvent(
+      new CustomEvent("show-commit-diff", {
+        bubbles: true,
+        composed: true,
+        detail: { commitHash },
+      }),
+    );
   }
 
   render() {
@@ -464,14 +470,35 @@ export class SketchTimelineMessage extends LitElement {
         <div class="message-content">
           <div class="message-header">
             <span class="message-type">${this.message?.type}</span>
-            <span class="message-timestamp">${this.formatTimestamp(this.message?.timestamp)} ${this.message?.elapsed ? html`(${(this.message?.elapsed / 1e9).toFixed(2)}s)` : ''}</span>
-            ${this.message?.usage ? html`
-            <span class="message-usage">
-              <span title="Input tokens">In: ${this.message?.usage?.input_tokens}</span>
-              ${this.message?.usage?.cache_read_input_tokens > 0 ? html`<span title="Cache tokens">[Cache: ${this.formatNumber(this.message?.usage?.cache_read_input_tokens)}]</span>` : ""}
-              <span title="Output tokens">Out: ${this.message?.usage?.output_tokens}</span>
-              <span title="Message cost">(${this.formatCurrency(this.message?.usage?.cost_usd)})</span>
-            </span>` : ''}
+            <span class="message-timestamp"
+              >${this.formatTimestamp(this.message?.timestamp)}
+              ${this.message?.elapsed
+                ? html`(${(this.message?.elapsed / 1e9).toFixed(2)}s)`
+                : ""}</span
+            >
+            ${this.message?.usage
+              ? html` <span class="message-usage">
+                  <span title="Input tokens"
+                    >In: ${this.message?.usage?.input_tokens}</span
+                  >
+                  ${this.message?.usage?.cache_read_input_tokens > 0
+                    ? html`<span title="Cache tokens"
+                        >[Cache:
+                        ${this.formatNumber(
+                          this.message?.usage?.cache_read_input_tokens,
+                        )}]</span
+                      >`
+                    : ""}
+                  <span title="Output tokens"
+                    >Out: ${this.message?.usage?.output_tokens}</span
+                  >
+                  <span title="Message cost"
+                    >(${this.formatCurrency(
+                      this.message?.usage?.cost_usd,
+                    )})</span
+                  >
+                </span>`
+              : ""}
           </div>
           <div class="message-text-container">
             <div class="message-actions">
@@ -492,22 +519,31 @@ export class SketchTimelineMessage extends LitElement {
             ? html`
                 <div class="commits-container">
                   <div class="commits-header">
-                    ${this.message.commits.length} new commit${this.message.commits.length > 1 ? "s" : ""} detected
+                    ${this.message.commits.length} new
+                    commit${this.message.commits.length > 1 ? "s" : ""} detected
                   </div>
                   ${this.message.commits.map((commit) => {
                     return html`
                       <div class="commit-boxes-row">
                         <div class="commit-box">
                           <div class="commit-preview">
-                            <span class="commit-hash">${commit.hash.substring(0, 8)}</span> 
+                            <span class="commit-hash"
+                              >${commit.hash.substring(0, 8)}</span
+                            >
                             ${commit.subject}
                             <span class="pushed-branch"
-                              >→ pushed to ${commit.pushed_branch}</span>
+                              >→ pushed to ${commit.pushed_branch}</span
+                            >
                           </div>
                           <div class="commit-details is-hidden">
                             <pre>${commit.body}</pre>
                           </div>
-                          <button class="commit-diff-button" @click=${() => this.showCommit(commit.hash)}>View Changes</button>
+                          <button
+                            class="commit-diff-button"
+                            @click=${() => this.showCommit(commit.hash)}
+                          >
+                            View Changes
+                          </button>
                         </div>
                       </div>
                     `;
@@ -521,9 +557,11 @@ export class SketchTimelineMessage extends LitElement {
   }
 }
 
-function copyButton(textToCopy: string) {  
+function copyButton(textToCopy: string) {
   // Add click event listener to handle copying
-  const ret = html`<button class="copy-button" title="Copy text to clipboard" @click=${(e: Event) => {
+  const ret = html`<button class="copy-button" title="Copy text to clipboard" @click=${(
+    e: Event,
+  ) => {
     e.stopPropagation();
     const copyButton = e.currentTarget as HTMLButtonElement;
     navigator.clipboard
@@ -543,7 +581,7 @@ function copyButton(textToCopy: string) {
       });
   }}>Copy</button`;
 
-  return ret
+  return ret;
 }
 
 declare global {

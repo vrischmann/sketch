@@ -4,12 +4,12 @@ import { formatNumber } from "./utils";
 /**
  * Event types for data manager
  */
-export type DataManagerEventType = 'dataChanged' | 'connectionStatusChanged';
+export type DataManagerEventType = "dataChanged" | "connectionStatusChanged";
 
 /**
  * Connection status types
  */
-export type ConnectionStatus = 'connected' | 'disconnected' | 'disabled';
+export type ConnectionStatus = "connected" | "disconnected" | "disabled";
 
 /**
  * State interface
@@ -44,14 +44,17 @@ export class DataManager {
   private connectionStatus: ConnectionStatus = "disabled";
   private messages: TimelineMessage[] = [];
   private timelineState: TimelineState | null = null;
-  
+
   // Event listeners
-  private eventListeners: Map<DataManagerEventType, Array<(...args: any[]) => void>> = new Map();
+  private eventListeners: Map<
+    DataManagerEventType,
+    Array<(...args: any[]) => void>
+  > = new Map();
 
   constructor() {
     // Initialize empty arrays for each event type
-    this.eventListeners.set('dataChanged', []);
-    this.eventListeners.set('connectionStatusChanged', []);
+    this.eventListeners.set("dataChanged", []);
+    this.eventListeners.set("connectionStatusChanged", []);
   }
 
   /**
@@ -108,7 +111,10 @@ export class DataManager {
   /**
    * Add an event listener
    */
-  public addEventListener(event: DataManagerEventType, callback: (...args: any[]) => void): void {
+  public addEventListener(
+    event: DataManagerEventType,
+    callback: (...args: any[]) => void,
+  ): void {
     const listeners = this.eventListeners.get(event) || [];
     listeners.push(callback);
     this.eventListeners.set(event, listeners);
@@ -117,7 +123,10 @@ export class DataManager {
   /**
    * Remove an event listener
    */
-  public removeEventListener(event: DataManagerEventType, callback: (...args: any[]) => void): void {
+  public removeEventListener(
+    event: DataManagerEventType,
+    callback: (...args: any[]) => void,
+  ): void {
     const listeners = this.eventListeners.get(event) || [];
     const index = listeners.indexOf(callback);
     if (index !== -1) {
@@ -131,7 +140,7 @@ export class DataManager {
    */
   private emitEvent(event: DataManagerEventType, ...args: any[]): void {
     const listeners = this.eventListeners.get(event) || [];
-    listeners.forEach(callback => callback(...args));
+    listeners.forEach((callback) => callback(...args));
   }
 
   /**
@@ -139,7 +148,7 @@ export class DataManager {
    */
   public setPollingEnabled(enabled: boolean): void {
     this.isPollingEnabled = enabled;
-    
+
     if (enabled) {
       this.startPolling();
     } else {
@@ -152,7 +161,7 @@ export class DataManager {
    */
   public startPolling(): void {
     this.stopPolling(); // Stop any existing polling
-    
+
     // Start long polling
     this.longPoll();
   }
@@ -166,7 +175,7 @@ export class DataManager {
       this.currentPollController.abort();
       this.currentPollController = null;
     }
-    
+
     // If polling is disabled by user, set connection status to disabled
     if (!this.isPollingEnabled) {
       this.updateConnectionStatus("disabled");
@@ -179,7 +188,7 @@ export class DataManager {
   private updateConnectionStatus(status: ConnectionStatus): void {
     if (this.connectionStatus !== status) {
       this.connectionStatus = status;
-      this.emitEvent('connectionStatusChanged', status);
+      this.emitEvent("connectionStatusChanged", status);
     }
   }
 
@@ -297,14 +306,18 @@ export class DataManager {
       this.updateConnectionStatus("disconnected");
 
       // Emit an event that we're disconnected with the error message
-      this.emitEvent('connectionStatusChanged', this.connectionStatus, errorMessage);
+      this.emitEvent(
+        "connectionStatusChanged",
+        this.connectionStatus,
+        errorMessage,
+      );
     }
   }
 
   /**
    * Fetch timeline data
    */
-  public async fetchData(): Promise<void> {    
+  public async fetchData(): Promise<void> {
     // If we're already fetching messages, don't start another fetch
     if (this.isFetchingMessages) {
       console.log("Already fetching messages, skipping request");
@@ -326,7 +339,7 @@ export class DataManager {
       ) {
         // No new messages, early return
         this.isFetchingMessages = false;
-        this.emitEvent('dataChanged', { state, newMessages: [] });
+        this.emitEvent("dataChanged", { state, newMessages: [] });
         return;
       }
 
@@ -335,7 +348,7 @@ export class DataManager {
       const messagesResponse = await fetch(
         `messages?start=${this.nextFetchIndex}`,
       );
-      const newMessages = await messagesResponse.json() || [];
+      const newMessages = (await messagesResponse.json()) || [];
 
       // Store messages in our array
       if (this.nextFetchIndex === 0) {
@@ -363,7 +376,11 @@ export class DataManager {
       }
 
       // Emit an event that data has changed
-      this.emitEvent('dataChanged', { state, newMessages, isFirstFetch: this.nextFetchIndex === newMessages.length });
+      this.emitEvent("dataChanged", {
+        state,
+        newMessages,
+        isFirstFetch: this.nextFetchIndex === newMessages.length,
+      });
     } catch (error) {
       console.error("Error fetching data:", error);
 
@@ -371,7 +388,11 @@ export class DataManager {
       this.updateConnectionStatus("disconnected");
 
       // Emit an event that we're disconnected
-      this.emitEvent('connectionStatusChanged', this.connectionStatus, "Not connected");
+      this.emitEvent(
+        "connectionStatusChanged",
+        this.connectionStatus,
+        "Not connected",
+      );
     } finally {
       this.isFetchingMessages = false;
     }

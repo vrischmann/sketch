@@ -53,10 +53,9 @@
           messageEl.message = msg;
           document.body.appendChild(messageEl);
         });
-        window.addEventListener(
-          "show-commit-diff",
-          (evt) => {console.log("show-commit-diff", evt)}
-        );
+        window.addEventListener("show-commit-diff", (evt) => {
+          console.log("show-commit-diff", evt);
+        });
       });
     </script>
   </head>

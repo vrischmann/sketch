@@ -42,7 +42,7 @@ export function generateColorFromId(id: string | null | undefined): string {
   for (let i = 0; i < 3; i++) {
     // Generate more muted colors by using only part of the range
     // and adding a base value to avoid very dark colors
-    const value = ((hash >> (i * 8)) & 0xff);
+    const value = (hash >> (i * 8)) & 0xff;
     const scaledValue = Math.floor(100 + (value * 100) / 255); // Range 100-200 for more muted colors
     color += scaledValue.toString(16).padStart(2, "0");
   }

@@ -1,13 +1,13 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 
-import {css, html, LitElement} from 'lit';
-import {customElement, property, state} from 'lit/decorators.js';
-import {DataManager, ConnectionStatus} from '../data';
-import {State, TimelineMessage} from '../types';
-import './sketch-container-status';
+import { css, html, LitElement } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { DataManager, ConnectionStatus } from "../data";
+import { State, TimelineMessage } from "../types";
+import "./sketch-container-status";
 
-@customElement('sketch-terminal')
+@customElement("sketch-terminal")
 export class SketchTerminal extends LitElement {
   // Terminal instance
   private terminal: Terminal | null = null;
@@ -23,24 +23,24 @@ export class SketchTerminal extends LitElement {
   private processingTerminalInput: boolean = false;
 
   static styles = css`
-/* Terminal View Styles */
-.terminal-view {
-  width: 100%;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 15px;
-  height: 70vh;
-}
+    /* Terminal View Styles */
+    .terminal-view {
+      width: 100%;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 15px;
+      height: 70vh;
+    }
 
-.terminal-container {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-`;
+    .terminal-container {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+  `;
 
   constructor() {
     super();
@@ -84,30 +84,32 @@ export class SketchTerminal extends LitElement {
   private async loadXtermlCSS() {
     try {
       // Check if diff2html styles are already loaded
-      const styleId = 'xterm-styles';
+      const styleId = "xterm-styles";
       if (this.shadowRoot?.getElementById(styleId)) {
         return; // Already loaded
       }
 
       // Fetch the diff2html CSS
-      const response = await fetch('static/xterm.css');
+      const response = await fetch("static/xterm.css");
 
       if (!response.ok) {
-        console.error(`Failed to load xterm CSS: ${response.status} ${response.statusText}`);
+        console.error(
+          `Failed to load xterm CSS: ${response.status} ${response.statusText}`,
+        );
         return;
       }
 
       const cssText = await response.text();
 
       // Create a style element and append to shadow DOM
-      const style = document.createElement('style');
+      const style = document.createElement("style");
       style.id = styleId;
       style.textContent = cssText;
       this.renderRoot?.appendChild(style);
 
-      console.log('xterm CSS loaded into shadow DOM');
+      console.log("xterm CSS loaded into shadow DOM");
     } catch (error) {
-      console.error('Error loading xterm CSS:', error);
+      console.error("Error loading xterm CSS:", error);
     }
   }
 
@@ -116,7 +118,9 @@ export class SketchTerminal extends LitElement {
    * @param terminalContainer The DOM element to contain the terminal
    */
   public async initializeTerminal(): Promise<void> {
-    const terminalContainer = this.renderRoot.querySelector("#terminalContainer") as HTMLElement;
+    const terminalContainer = this.renderRoot.querySelector(
+      "#terminalContainer",
+    ) as HTMLElement;
 
     if (!terminalContainer) {
       console.error("Terminal container not found");
@@ -177,7 +181,7 @@ export class SketchTerminal extends LitElement {
     try {
       // Connect directly to the SSE endpoint for terminal 1
       // Use relative URL based on current location
-      const baseUrl = window.location.pathname.endsWith('/') ? '.' : '.';
+      const baseUrl = window.location.pathname.endsWith("/") ? "." : ".";
       const eventsUrl = `${baseUrl}/terminal/events/${this.terminalId}`;
       this.terminalEventSource = new EventSource(eventsUrl);
 
@@ -194,7 +198,7 @@ export class SketchTerminal extends LitElement {
             const decoded = atob(event.data);
             this.terminal.write(decoded);
           } catch (e) {
-            console.error('Error decoding terminal data:', e);
+            console.error("Error decoding terminal data:", e);
             // Fallback to raw data if decoding fails
             this.terminal.write(event.data);
           }
@@ -221,7 +225,9 @@ export class SketchTerminal extends LitElement {
     } catch (error) {
       console.error("Failed to connect to terminal:", error);
       if (this.terminal) {
-        this.terminal.write(`\r\n\x1b[1;31mFailed to connect: ${error}\x1b[0m\r\n`);
+        this.terminal.write(
+          `\r\n\x1b[1;31mFailed to connect: ${error}\x1b[0m\r\n`,
+        );
       }
     }
   }
@@ -262,7 +268,7 @@ export class SketchTerminal extends LitElement {
     this.processingTerminalInput = true;
 
     // Concatenate all available inputs from the queue into a single request
-    let combinedData = '';
+    let combinedData = "";
 
     // Take all currently available items from the queue
     while (this.terminalInputQueue.length > 0) {
@@ -271,17 +277,22 @@ export class SketchTerminal extends LitElement {
 
     try {
       // Use relative URL based on current location
-      const baseUrl = window.location.pathname.endsWith('/') ? '.' : '.';
-      const response = await fetch(`${baseUrl}/terminal/input/${this.terminalId}`, {
-        method: 'POST',
-        body: combinedData,
-        headers: {
-          'Content-Type': 'text/plain'
-        }
-      });
+      const baseUrl = window.location.pathname.endsWith("/") ? "." : ".";
+      const response = await fetch(
+        `${baseUrl}/terminal/input/${this.terminalId}`,
+        {
+          method: "POST",
+          body: combinedData,
+          headers: {
+            "Content-Type": "text/plain",
+          },
+        },
+      );
 
       if (!response.ok) {
-        console.error(`Failed to send terminal input: ${response.status} ${response.statusText}`);
+        console.error(
+          `Failed to send terminal input: ${response.status} ${response.statusText}`,
+        );
       }
     } catch (error) {
       console.error("Error sending terminal input:", error);
@@ -303,32 +314,36 @@ export class SketchTerminal extends LitElement {
     try {
       // Send resize message in a format the server can understand
       // Use relative URL based on current location
-      const baseUrl = window.location.pathname.endsWith('/') ? '.' : '.';
-      const response = await fetch(`${baseUrl}/terminal/input/${this.terminalId}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          type: "resize",
-          cols: this.terminal.cols || 80, // Default to 80 if undefined
-          rows: this.terminal.rows || 24, // Default to 24 if undefined
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const baseUrl = window.location.pathname.endsWith("/") ? "." : ".";
+      const response = await fetch(
+        `${baseUrl}/terminal/input/${this.terminalId}`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            type: "resize",
+            cols: this.terminal.cols || 80, // Default to 80 if undefined
+            rows: this.terminal.rows || 24, // Default to 24 if undefined
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
       if (!response.ok) {
-        console.error(`Failed to send terminal resize: ${response.status} ${response.statusText}`);
+        console.error(
+          `Failed to send terminal resize: ${response.status} ${response.statusText}`,
+        );
       }
     } catch (error) {
       console.error("Error sending terminal resize:", error);
     }
   }
 
-
   render() {
     return html`
       <div id="terminalView" class="terminal-view">
-         <div id="terminalContainer" class="terminal-container"></div>
+        <div id="terminalContainer" class="terminal-container"></div>
       </div>
     `;
   }

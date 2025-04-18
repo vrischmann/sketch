@@ -34,7 +34,6 @@ describe("SketchNetworkStatus", () => {
     expect(indicator!.classList.contains("error")).to.be.true;
   });
 
-
   it("displays the correct connection status when disabled", async () => {
     const el: SketchNetworkStatus = await fixture(html`
       <sketch-network-status

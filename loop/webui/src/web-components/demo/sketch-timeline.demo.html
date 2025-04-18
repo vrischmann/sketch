@@ -2,7 +2,10 @@
   <head>
     <title>sketch-timeline demo</title>
     <link rel="stylesheet" href="demo.css" />
-    <script src="/dist/web-components/sketch-timeline.js" type="module"></script>
+    <script
+      src="/dist/web-components/sketch-timeline.js"
+      type="module"
+    ></script>
 
     <script>
       const messages = [
@@ -32,16 +35,14 @@
         },
       ];
       document.addEventListener("DOMContentLoaded", () => {
-        const timelineEl = document.querySelector('sketch-timeline');
+        const timelineEl = document.querySelector("sketch-timeline");
         timelineEl.messages = messages;
       });
     </script>
-
   </head>
   <body>
     <h1>sketch-timeline demo</h1>
 
     <sketch-timeline></sketch-timeline>
-
   </body>
 </html>

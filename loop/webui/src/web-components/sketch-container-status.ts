@@ -136,7 +136,9 @@ export class SketchContainerStatus extends LitElement {
         </div>
         <div class="info-item">
           <span class="info-label">Cost:</span>
-          <span id="totalCost" class="info-value cost">$${(this.state?.total_usage?.total_cost_usd || 0).toFixed(2)}</span>
+          <span id="totalCost" class="info-value cost"
+            >$${(this.state?.total_usage?.total_cost_usd || 0).toFixed(2)}</span
+          >
         </div>
       </div>
     `;

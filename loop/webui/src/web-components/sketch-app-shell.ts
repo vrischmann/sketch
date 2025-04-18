@@ -36,8 +36,13 @@ export class SketchAppShell extends LitElement {
   static styles = css`
     :host {
       display: block;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        Roboto, sans-serif;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
       color: #333;
       line-height: 1.4;
       min-height: 100vh;
@@ -216,32 +221,30 @@ export class SketchAppShell extends LitElement {
 
     this.toggleViewMode(mode as ViewMode, false);
     // Add popstate event listener to handle browser back/forward navigation
-    window.addEventListener(
-      "popstate",
-      this._handlePopState as EventListener);
+    window.addEventListener("popstate", this._handlePopState as EventListener);
 
     // Add event listeners
     window.addEventListener(
       "view-mode-select",
-      this._handleViewModeSelect as EventListener
+      this._handleViewModeSelect as EventListener,
     );
     window.addEventListener(
       "diff-comment",
-      this._handleDiffComment as EventListener
+      this._handleDiffComment as EventListener,
     );
     window.addEventListener(
       "show-commit-diff",
-      this._handleShowCommitDiff as EventListener
+      this._handleShowCommitDiff as EventListener,
     );
 
     // register event listeners
     this.dataManager.addEventListener(
       "dataChanged",
-      this.handleDataChanged.bind(this)
+      this.handleDataChanged.bind(this),
     );
     this.dataManager.addEventListener(
       "connectionStatusChanged",
-      this.handleConnectionStatusChanged.bind(this)
+      this.handleConnectionStatusChanged.bind(this),
     );
 
     // Initialize the data manager
@@ -253,30 +256,31 @@ export class SketchAppShell extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener(
       "popstate",
-      this._handlePopState as EventListener);
+      this._handlePopState as EventListener,
+    );
 
     // Remove event listeners
     window.removeEventListener(
       "view-mode-select",
-      this._handleViewModeSelect as EventListener
+      this._handleViewModeSelect as EventListener,
     );
     window.removeEventListener(
       "diff-comment",
-      this._handleDiffComment as EventListener
+      this._handleDiffComment as EventListener,
     );
     window.removeEventListener(
       "show-commit-diff",
-      this._handleShowCommitDiff as EventListener
+      this._handleShowCommitDiff as EventListener,
     );
 
     // unregister data manager event listeners
     this.dataManager.removeEventListener(
       "dataChanged",
-      this.handleDataChanged.bind(this)
+      this.handleDataChanged.bind(this),
     );
     this.dataManager.removeEventListener(
       "connectionStatusChanged",
-      this.handleConnectionStatusChanged.bind(this)
+      this.handleConnectionStatusChanged.bind(this),
     );
 
     // Disconnect mutation observer if it exists
@@ -287,9 +291,7 @@ export class SketchAppShell extends LitElement {
     }
   }
 
-  updateUrlForViewMode(
-    mode: "chat" | "diff" | "charts" | "terminal"
-  ): void {
+  updateUrlForViewMode(mode: "chat" | "diff" | "charts" | "terminal"): void {
     // Get the current URL without search parameters
     const url = new URL(window.location.href);
 
@@ -299,7 +301,9 @@ export class SketchAppShell extends LitElement {
     // Only add view parameter if not in default chat view
     if (mode !== "chat") {
       url.searchParams.set("view", mode);
-      const diffView = this.shadowRoot?.querySelector(".diff-view") as SketchDiffView;
+      const diffView = this.shadowRoot?.querySelector(
+        ".diff-view",
+      ) as SketchDiffView;
 
       // If in diff view and there's a commit hash, include that too
       if (mode === "diff" && diffView.commitHash) {
@@ -376,7 +380,7 @@ export class SketchAppShell extends LitElement {
     this.currentCommitHash = commitHash;
 
     // Switch to diff view
-    this.toggleViewMode("diff",  true);
+    this.toggleViewMode("diff", true);
 
     // Wait for DOM update to complete
     this.updateComplete.then(() => {
@@ -452,7 +456,7 @@ export class SketchAppShell extends LitElement {
 
       // Update view mode buttons
       const viewModeSelect = this.shadowRoot?.querySelector(
-        "sketch-view-mode-select"
+        "sketch-view-mode-select",
       );
       if (viewModeSelect) {
         const event = new CustomEvent("update-active-mode", {
@@ -473,7 +477,7 @@ export class SketchAppShell extends LitElement {
 
   mergeAndDedupe(
     arr1: TimelineMessage[],
-    arr2: TimelineMessage[]
+    arr2: TimelineMessage[],
   ): TimelineMessage[] {
     const mergedArray = [...arr1, ...arr2];
     const seenIds = new Set<number>();
@@ -542,14 +546,14 @@ export class SketchAppShell extends LitElement {
     // Log information about the message update
     if (this.messages.length > oldMessageCount) {
       console.log(
-        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}, shouldScroll=${this.shouldScrollToBottom}`
+        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}, shouldScroll=${this.shouldScrollToBottom}`,
       );
     }
   }
 
   private handleConnectionStatusChanged(
     status: ConnectionStatus,
-    errorMessage?: string
+    errorMessage?: string,
   ): void {
     this.connectionStatus = status;
     this.connectionErrorMessage = errorMessage || "";
@@ -604,7 +608,7 @@ export class SketchAppShell extends LitElement {
 
         // Update the timeline component's scroll state
         const timeline = this.shadowRoot?.querySelector(
-          "sketch-timeline"
+          "sketch-timeline",
         ) as any;
         if (timeline && timeline.setShouldScrollToLatest) {
           timeline.setShouldScrollToLatest(true);
@@ -746,10 +750,12 @@ export class SketchAppShell extends LitElement {
     // Initial scroll to bottom when component is first rendered
     setTimeout(
       () => this.scrollTo({ top: this.scrollHeight, behavior: "smooth" }),
-      50
+      50,
     );
 
-    const pollToggleCheckbox = this.renderRoot?.querySelector("#pollToggle") as HTMLInputElement;
+    const pollToggleCheckbox = this.renderRoot?.querySelector(
+      "#pollToggle",
+    ) as HTMLInputElement;
     pollToggleCheckbox?.addEventListener("change", () => {
       this.dataManager.setPollingEnabled(pollToggleCheckbox.checked);
       if (!pollToggleCheckbox.checked) {

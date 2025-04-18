@@ -400,7 +400,7 @@ export class SketchToolCalls extends LitElement {
       max-width: 30%;
       white-space: pre;
     }
-    
+
     .thought-bubble .preview {
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -408,7 +408,7 @@ export class SketchToolCalls extends LitElement {
     }
 
     .thought-bubble:before {
-      content: '';
+      content: "";
       position: absolute;
       top: -8px;
       left: -8px;
@@ -418,9 +418,9 @@ export class SketchToolCalls extends LitElement {
       border-radius: 50%;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    
+
     .thought-bubble:after {
-      content: '';
+      content: "";
       position: absolute;
       top: -16px;
       left: -16px;
@@ -430,7 +430,6 @@ export class SketchToolCalls extends LitElement {
       border-radius: 50%;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    
 
     .patch-input-preview {
       color: #555;
@@ -537,68 +536,75 @@ export class SketchToolCalls extends LitElement {
     switch (toolCall.name) {
       case "title":
         const titleInput = JSON.parse(toolCall.input);
-        return html`
-        <div class="tool-call-compact-view">
+        return html` <div class="tool-call-compact-view">
           I've set the title of this sketch to <b>"${titleInput.title}"</b>
         </div>`;
       case "bash":
         const bashInput = JSON.parse(toolCall.input);
-        return html`
-        <div class="tool-call-compact-view">
+        return html` <div class="tool-call-compact-view">
           ${status}
           <span class="tool-call-name">${toolCall.name}</span>
           <pre class="tool-call-input-preview">${bashInput.command}</pre>
           ${toolCall.result_message
-            ? html`
-                ${toolCall.result_message.tool_result
-                  ? html`
-                      <pre class="tool-call-result-preview">
-${toolCall.result_message.tool_result}</pre>`
-                  : ""}`
+            ? html` ${toolCall.result_message.tool_result
+                ? html` <pre class="tool-call-result-preview">
+${toolCall.result_message.tool_result}</pre
+                  >`
+                : ""}`
             : cancelButton}
         </div>`;
       case "codereview":
-        return html`
-        <div class="tool-call-compact-view">
+        return html` <div class="tool-call-compact-view">
           ${status}
           <span class="tool-call-name">${toolCall.name}</span>
           ${cancelButton}
-          <code class="codereview-preview codereview-${toolCall.result_message?.tool_result}">${toolCall.result_message?.tool_result == 'OK' ? '✔️': '⛔ ' + toolCall.result_message?.tool_result}</code>
+          <code
+            class="codereview-preview codereview-${toolCall.result_message
+              ?.tool_result}"
+            >${toolCall.result_message?.tool_result == "OK"
+              ? "✔️"
+              : "⛔ " + toolCall.result_message?.tool_result}</code
+          >
         </div>`;
       case "think":
         const thinkInput = JSON.parse(toolCall.input);
-        return html`
-        <div class="tool-call-compact-view">
+        return html` <div class="tool-call-compact-view">
           ${status}
           <span class="tool-call-name">${toolCall.name}</span>
-          <div class="thought-bubble"><div class="preview">${thinkInput.thoughts}</div></div>
+          <div class="thought-bubble">
+            <div class="preview">${thinkInput.thoughts}</div>
+          </div>
           ${cancelButton}
         </div>`;
       case "patch":
         const patchInput = JSON.parse(toolCall.input);
-        return html`
-        <div class="tool-call-compact-view">
+        return html` <div class="tool-call-compact-view">
           ${status}
           <span class="tool-call-name">${toolCall.name}</span>
-          <div class="patch-input-preview"><span class="patch-path">${patchInput.path}</span>: ${patchInput.patches.length} edit${patchInput.patches.length > 1 ? 's': ''}</div>
+          <div class="patch-input-preview">
+            <span class="patch-path">${patchInput.path}</span>:
+            ${patchInput.patches.length}
+            edit${patchInput.patches.length > 1 ? "s" : ""}
+          </div>
           ${cancelButton}
         </div>`;
       case "done":
         const doneInput = JSON.parse(toolCall.input);
-        return html`
-        <div class="tool-call-compact-view">
+        return html` <div class="tool-call-compact-view">
           ${status}
           <span class="tool-call-name">${toolCall.name}</span>
           <div class="done-input-preview">
             ${Object.keys(doneInput.checklist_items).map((key) => {
               const item = doneInput.checklist_items[key];
-              let statusIcon = '⛔';
-              if (item.status == 'yes') {
-                statusIcon = '👍';
-              } else if (item.status =='not applicable') {
-                statusIcon = '🤷‍♂️';
+              let statusIcon = "⛔";
+              if (item.status == "yes") {
+                statusIcon = "👍";
+              } else if (item.status == "not applicable") {
+                statusIcon = "🤷‍♂️";
               }
-              return html`<div><span>${statusIcon}</span> ${key}:${item.status}</div>`;
+              return html`<div>
+                <span>${statusIcon}</span> ${key}:${item.status}
+              </div>`;
             })}
           </div>
           ${cancelButton}
@@ -606,20 +612,21 @@ ${toolCall.result_message.tool_result}</pre>`
 
       default: // Generic tool card:
         return html`
-      <div class="tool-call-compact-view">
-        ${status}
-        <span class="tool-call-name">${toolCall.name}</span>
-        <code class="tool-call-input-preview">${toolCall.input}</code>
-        ${cancelButton}
-        <code class="tool-call-result-preview">${toolCall.result_message?.tool_result}</code>
-      </div>
-      ${toolCall.result_message?.tool_result}
-    `;
+          <div class="tool-call-compact-view">
+            ${status}
+            <span class="tool-call-name">${toolCall.name}</span>
+            <code class="tool-call-input-preview">${toolCall.input}</code>
+            ${cancelButton}
+            <code class="tool-call-result-preview"
+              >${toolCall.result_message?.tool_result}</code
+            >
+          </div>
+          ${toolCall.result_message?.tool_result}
+        `;
     }
   }
   render() {
-    return html`
-    <div class="tool-calls-container">
+    return html` <div class="tool-calls-container">
       <div class="tool-calls-header"></div>
       <div class="tool-call-cards-container">
         ${this.toolCalls?.map((toolCall) => {

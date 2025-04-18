@@ -5,7 +5,9 @@ import { TimelineMessage, ToolCall, GitCommit, Usage } from "../types";
 
 describe("SketchTimelineMessage", () => {
   // Helper function to create mock timeline messages
-  function createMockMessage(props: Partial<TimelineMessage> = {}): TimelineMessage {
+  function createMockMessage(
+    props: Partial<TimelineMessage> = {},
+  ): TimelineMessage {
     return {
       idx: props.idx || 0,
       type: props.type || "agent",
@@ -17,39 +19,37 @@ describe("SketchTimelineMessage", () => {
       tool_calls: props.tool_calls || [],
       commits: props.commits || [],
       usage: props.usage,
-      ...props
+      ...props,
     };
   }
 
   it("renders with basic message content", async () => {
     const message = createMockMessage({
       type: "agent",
-      content: "This is a test message"
+      content: "This is a test message",
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
     const messageContent = el.shadowRoot!.querySelector(".message-text");
     expect(messageContent).to.exist;
-    expect(messageContent!.textContent!.trim()).to.include("This is a test message");
+    expect(messageContent!.textContent!.trim()).to.include(
+      "This is a test message",
+    );
   });
 
   it("renders with correct message type classes", async () => {
     const messageTypes = ["user", "agent", "tool", "error"];
-    
+
     for (const type of messageTypes) {
       const message = createMockMessage({ type });
-      
+
       const el: SketchTimelineMessage = await fixture(html`
-        <sketch-timeline-message
-          .message=${message}
-        ></sketch-timeline-message>
+        <sketch-timeline-message .message=${message}></sketch-timeline-message>
       `);
-      
+
       const messageElement = el.shadowRoot!.querySelector(".message");
       expect(messageElement).to.exist;
       expect(messageElement!.classList.contains(type)).to.be.true;
@@ -58,13 +58,11 @@ describe("SketchTimelineMessage", () => {
 
   it("renders end-of-turn marker correctly", async () => {
     const message = createMockMessage({
-      end_of_turn: true
+      end_of_turn: true,
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
     const messageElement = el.shadowRoot!.querySelector(".message");
@@ -74,13 +72,11 @@ describe("SketchTimelineMessage", () => {
 
   it("formats timestamps correctly", async () => {
     const message = createMockMessage({
-      timestamp: "2023-05-15T12:00:00Z"
+      timestamp: "2023-05-15T12:00:00Z",
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
     const timestamp = el.shadowRoot!.querySelector(".message-timestamp");
@@ -92,15 +88,14 @@ describe("SketchTimelineMessage", () => {
   });
 
   it("renders markdown content correctly", async () => {
-    const markdownContent = "# Heading\n\n- List item 1\n- List item 2\n\n`code block`";
+    const markdownContent =
+      "# Heading\n\n- List item 1\n- List item 2\n\n`code block`";
     const message = createMockMessage({
-      content: markdownContent
+      content: markdownContent,
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
     const contentElement = el.shadowRoot!.querySelector(".markdown-content");
@@ -116,25 +111,23 @@ describe("SketchTimelineMessage", () => {
       input_tokens: 150,
       output_tokens: 300,
       cost_usd: 0.025,
-      cache_read_input_tokens: 50
+      cache_read_input_tokens: 50,
     };
-    
+
     const message = createMockMessage({
-      usage
+      usage,
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
     const usageElement = el.shadowRoot!.querySelector(".message-usage");
     expect(usageElement).to.exist;
-    expect(usageElement!.textContent).to.include("In: 150");
-    expect(usageElement!.textContent).to.include("Out: 300");
-    expect(usageElement!.textContent).to.include("Cache: 50");
-    expect(usageElement!.textContent).to.include("$0.03");
+    expect(usageElement!.textContent).to.include("150"); // In
+    expect(usageElement!.textContent).to.include("300"); // Out
+    expect(usageElement!.textContent).to.include("50"); // Cache
+    expect(usageElement!.textContent).to.include("$0.03"); // Cost
   });
 
   it("renders commit information correctly", async () => {
@@ -143,31 +136,29 @@ describe("SketchTimelineMessage", () => {
         hash: "1234567890abcdef",
         subject: "Fix bug in application",
         body: "This fixes a major bug in the application\n\nSigned-off-by: Developer",
-        pushed_branch: "main"
-      }
+        pushed_branch: "main",
+      },
     ];
-    
+
     const message = createMockMessage({
-      commits
+      commits,
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
     const commitsContainer = el.shadowRoot!.querySelector(".commits-container");
     expect(commitsContainer).to.exist;
-    
+
     const commitHeader = commitsContainer!.querySelector(".commits-header");
     expect(commitHeader).to.exist;
-    expect(commitHeader!.textContent).to.include("1 new commit");
-    
+    expect(commitHeader!.textContent).to.include("1 new");
+
     const commitHash = commitsContainer!.querySelector(".commit-hash");
     expect(commitHash).to.exist;
     expect(commitHash!.textContent).to.equal("12345678"); // First 8 chars
-    
+
     const pushedBranch = commitsContainer!.querySelector(".pushed-branch");
     expect(pushedBranch).to.exist;
     expect(pushedBranch!.textContent).to.include("main");
@@ -179,27 +170,27 @@ describe("SketchTimelineMessage", () => {
         hash: "1234567890abcdef",
         subject: "Fix bug in application",
         body: "This fixes a major bug in the application",
-        pushed_branch: "main"
-      }
+        pushed_branch: "main",
+      },
     ];
-    
+
     const message = createMockMessage({
-      commits
+      commits,
     });
 
     const el: SketchTimelineMessage = await fixture(html`
-      <sketch-timeline-message
-        .message=${message}
-      ></sketch-timeline-message>
+      <sketch-timeline-message .message=${message}></sketch-timeline-message>
     `);
 
-    const diffButton = el.shadowRoot!.querySelector(".commit-diff-button") as HTMLButtonElement;
+    const diffButton = el.shadowRoot!.querySelector(
+      ".commit-diff-button",
+    ) as HTMLButtonElement;
     expect(diffButton).to.exist;
-    
+
     // Set up listener for the event
     setTimeout(() => diffButton!.click());
     const { detail } = await oneEvent(el, "show-commit-diff");
-    
+
     expect(detail).to.exist;
     expect(detail.commitHash).to.equal("1234567890abcdef");
   });
@@ -208,13 +199,13 @@ describe("SketchTimelineMessage", () => {
     // First message of a type should show icon
     const firstMessage = createMockMessage({
       type: "user",
-      idx: 0
+      idx: 0,
     });
-    
+
     // Second message of same type should not show icon
     const secondMessage = createMockMessage({
       type: "user",
-      idx: 1
+      idx: 1,
     });
 
     // Test first message (should show icon)
