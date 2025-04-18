@@ -14,7 +14,8 @@
           {
             name: "bash",
             input: JSON.stringify({
-              command: "ls -a",
+              command:
+                "docker ps -a --format '{{.ID}} {{.Image }} {{.Names}}' | grep sketch | awk '{print $1 }' | xargs -I {} docker rm {} && docker image prune -af",
             }),
           },
         ],
@@ -171,10 +172,6 @@
       ];
       document.addEventListener("DOMContentLoaded", () => {
         toolCalls.forEach((calls) => {
-          const jsonEl = document.createElement("pre");
-          jsonEl.innerText = `.toolCalls property: ${JSON.stringify(calls)}`;
-          document.body.append(jsonEl);
-
           const toolCallsEl = document.createElement("sketch-tool-calls");
           toolCallsEl.toolCalls = calls;
           document.body.append(toolCallsEl);

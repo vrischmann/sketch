@@ -12,3 +12,7 @@ body {
   color: #333;
   line-height: 1.4; /* Reduced line height for more compact text */
 }
+
+pre {
+  white-space: normal;
+}

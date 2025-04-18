@@ -559,27 +559,31 @@ export class SketchTimelineMessage extends LitElement {
 
 function copyButton(textToCopy: string) {
   // Add click event listener to handle copying
-  const ret = html`<button class="copy-button" title="Copy text to clipboard" @click=${(
-    e: Event,
-  ) => {
-    e.stopPropagation();
-    const copyButton = e.currentTarget as HTMLButtonElement;
-    navigator.clipboard
-      .writeText(textToCopy)
-      .then(() => {
-        copyButton.textContent = "Copied!";
-        setTimeout(() => {
-          copyButton.textContent = "Copy";
-        }, 2000);
-      })
-      .catch((err) => {
-        console.error("Failed to copy text: ", err);
-        copyButton.textContent = "Failed";
-        setTimeout(() => {
-          copyButton.textContent = "Copy";
-        }, 2000);
-      });
-  }}>Copy</button`;
+  const ret = html`<button
+    class="copy-button"
+    title="Copy text to clipboard"
+    @click=${(e: Event) => {
+      e.stopPropagation();
+      const copyButton = e.currentTarget as HTMLButtonElement;
+      navigator.clipboard
+        .writeText(textToCopy)
+        .then(() => {
+          copyButton.textContent = "Copied!";
+          setTimeout(() => {
+            copyButton.textContent = "Copy";
+          }, 2000);
+        })
+        .catch((err) => {
+          console.error("Failed to copy text: ", err);
+          copyButton.textContent = "Failed";
+          setTimeout(() => {
+            copyButton.textContent = "Copy";
+          }, 2000);
+        });
+    }}
+  >
+    Copy
+  </button>`;
 
   return ret;
 }
