@@ -369,20 +369,33 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 }
 
 func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
-	tmpGopath, err := os.MkdirTemp("", "sketch-linux-build")
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(tmpGopath)
+	linuxGopath := filepath.Join(homeDir, ".cache", "sketch", "linuxgo")
+	if err := os.MkdirAll(linuxGopath, 0o777); err != nil {
+		return "", err
+	}
+
+	verToInstall := "@latest"
+	if out, err := exec.Command("go", "list", "-m").CombinedOutput(); err != nil {
+		return "", fmt.Errorf("failed to run go list -m: %s: %v", out, err)
+	} else {
+		if strings.TrimSpace(string(out)) == "sketch.dev" {
+			fmt.Printf("building linux agent from currently checked out module\n")
+			verToInstall = ""
+		}
+	}
 
 	start := time.Now()
-	cmd := exec.CommandContext(ctx, "go", "install", "sketch.dev/cmd/sketch@latest")
+	cmd := exec.CommandContext(ctx, "go", "install", "sketch.dev/cmd/sketch"+verToInstall)
 	cmd.Env = append(
 		os.Environ(),
 		"GOOS=linux",
 		"CGO_ENABLED=0",
 		"GOTOOLCHAIN=auto",
-		"GOPATH="+tmpGopath,
+		"GOPATH="+linuxGopath,
 	)
 
 	fmt.Printf("building linux agent binary...\n")
@@ -394,7 +407,7 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 		slog.DebugContext(ctx, "go", slog.Duration("elapsed", time.Now().Sub(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	}
 
-	src := filepath.Join(tmpGopath, "bin", "linux_"+runtime.GOARCH, "sketch")
+	src := filepath.Join(linuxGopath, "bin", "linux_"+runtime.GOARCH, "sketch")
 	dst := filepath.Join(path, "tmp-sketch-binary-linux")
 	if err := os.Rename(src, dst); err != nil {
 		return "", err
