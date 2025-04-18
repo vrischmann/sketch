@@ -160,6 +160,13 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 	if out, err := combinedOutput(ctx, "docker", "cp", linuxSketchBin, cntrName+":/bin/sketch"); err != nil {
 		return fmt.Errorf("docker cp: %s, %w", out, err)
 	}
+
+	// Make sure that the webui is built so we can copy the results to the container.
+	_, err = webui.Build()
+	if err != nil {
+		return fmt.Errorf("failed to build webui: %w", err)
+	}
+
 	webuiZipPath, err := webui.ZipPath()
 	if err != nil {
 		return err
