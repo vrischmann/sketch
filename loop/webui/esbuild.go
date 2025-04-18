@@ -21,7 +21,7 @@ import (
 	esbuildcli "github.com/evanw/esbuild/pkg/cli"
 )
 
-//go:embed package.json package-lock.json src tsconfig.json postcss.config.js tailwind.config.js
+//go:embed package.json package-lock.json src tsconfig.json
 var embedded embed.FS
 
 func embeddedHash() (string, error) {
@@ -153,20 +153,18 @@ func Build() (fs.FS, error) {
 		return nil, err
 	}
 
-	// Do the build.
-	cmd := exec.Command("npm", "ci")
+	// Do the build. Don't install dev dependencies, because they can be large
+	// and slow enough to install that the /init requests from the host process
+	// will run out of retries and the whole thing exits. We do need better health
+	// checking in general, but that's a separate issue. Don't do slow stuff here:
+	cmd := exec.Command("npm", "ci", "--omit", "dev")
 	cmd.Dir = buildDir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("npm ci: %s: %v", out, err)
 	}
-	cmd = exec.Command("npx", "postcss", filepath.Join(buildDir, "./src/input.css"), "-o", filepath.Join(tmpHashDir, "tailwind.css"))
-	cmd.Dir = buildDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("npm postcss: %s: %v", out, err)
-	}
-	bundleTs := []string{"src/timeline.ts"}
+	bundleTs := []string{"src/web-components/sketch-app-shell.ts"}
 	for _, tsName := range bundleTs {
-		if err := esbuildBundle(tmpHashDir, filepath.Join(buildDir, tsName)); err != nil {
+		if err := esbuildBundle(tmpHashDir, filepath.Join(buildDir, tsName), ""); err != nil {
 			return nil, fmt.Errorf("esbuild: %s: %w", tsName, err)
 		}
 	}
@@ -174,6 +172,9 @@ func Build() (fs.FS, error) {
 	// Copy src files used directly into the new hash output dir.
 	err = fs.WalkDir(embedded, "src", func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
+			if path == "src/web-components/demo" {
+				return fs.SkipDir
+			}
 			return nil
 		}
 		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js") {
@@ -218,8 +219,8 @@ func Build() (fs.FS, error) {
 	return zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 }
 
-func esbuildBundle(outDir, src string) error {
-	ret := esbuildcli.Run([]string{
+func esbuildBundle(outDir, src, metafilePath string) error {
+	args := []string{
 		src,
 		"--bundle",
 		"--sourcemap",
@@ -227,9 +228,102 @@ func esbuildBundle(outDir, src string) error {
 		// Disable minification for now
 		// "--minify",
 		"--outdir=" + outDir,
-	})
+	}
+
+	// Add metafile option if path is provided
+	if metafilePath != "" {
+		args = append(args, "--metafile="+metafilePath)
+	}
+
+	ret := esbuildcli.Run(args)
 	if ret != 0 {
 		return fmt.Errorf("esbuild %s failed: %d", filepath.Base(src), ret)
 	}
 	return nil
+}
+
+// unpackTS unpacks all the typescript-relevant files from the embedded filesystem into tmpDir.
+func unpackTS(outDir string, embedded fs.FS) error {
+	return fs.WalkDir(embedded, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		tgt := filepath.Join(outDir, path)
+		if d.IsDir() {
+			if err := os.MkdirAll(tgt, 0o777); err != nil {
+				return err
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".md") || strings.HasSuffix(path, ".css") {
+			return nil
+		}
+		data, err := fs.ReadFile(embedded, path)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(tgt, data, 0o666); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// GenerateBundleMetafile creates metafiles for bundle analysis with esbuild.
+//
+// The metafiles contain information about bundle size and dependencies
+// that can be visualized at https://esbuild.github.io/analyze/
+//
+// It takes the output directory where the metafiles will be written.
+// Returns the file path of the generated metafiles.
+func GenerateBundleMetafile(outputDir string) (string, error) {
+	tmpDir, err := os.MkdirTemp("", "bundle-analysis-")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return "", err
+	}
+
+	cacheDir, _, err := zipPath()
+	if err != nil {
+		return "", err
+	}
+	buildDir := filepath.Join(cacheDir, "build")
+	if err := os.MkdirAll(buildDir, 0o777); err != nil { // make sure .cache/sketch/build exists
+		return "", err
+	}
+
+	// Ensure we have a source to bundle
+	if err := unpackTS(tmpDir, embedded); err != nil {
+		return "", err
+	}
+
+	// All bundles to analyze
+	bundleTs := []string{"src/web-components/sketch-app-shell.ts"}
+	metafiles := make([]string, len(bundleTs))
+
+	for i, tsName := range bundleTs {
+		// Create a metafile path for this bundle
+		baseFileName := filepath.Base(tsName)
+		metaFileName := strings.TrimSuffix(baseFileName, ".ts") + ".meta.json"
+		metafilePath := filepath.Join(outputDir, metaFileName)
+		metafiles[i] = metafilePath
+
+		// Bundle with metafile generation
+		outTmpDir, err := os.MkdirTemp("", "metafile-bundle-")
+		if err != nil {
+			return "", err
+		}
+		defer os.RemoveAll(outTmpDir)
+
+		if err := esbuildBundle(outTmpDir, filepath.Join(buildDir, tsName), metafilePath); err != nil {
+			return "", fmt.Errorf("failed to generate metafile for %s: %w", tsName, err)
+		}
+	}
+
+	return outputDir, nil
 }
