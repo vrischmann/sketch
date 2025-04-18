@@ -10,13 +10,15 @@ RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN go install golang.org/x/tools/gopls@latest
 RUN go install mvdan.cc/gofumpt@latest
 
+RUN mkdir -p /root/.cache/sketch/webui
+
 RUN apk add go || true
 
-# Install DVC (Data Version Control)
+# Install Python requirements and DVC
 RUN uv pip install --system dvc || true
 
-# Additional Python setup
-RUN uv pip install --system pytest pytest-cov || true
+# Install any additional Python dependencies if present
+RUN if [ -f requirements.txt ]; then uv pip install --system -r requirements.txt || true; fi
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -24,7 +26,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="5908dbf564085457e184c617549809359247c4f6e45aa8789e94122cecd538fb"
+LABEL sketch_context="cae736ee4f2f50e5bdf62697f39cba09beb8ae47c241c3db73df424f6fc03625"
 COPY . /app
 
 WORKDIR /app

@@ -22,8 +22,41 @@ func hashInitFiles(initFiles map[string]string) string {
 	for _, path := range slices.Sorted(maps.Keys(initFiles)) {
 		fmt.Fprintf(h, "%s\n%s\n\n", path, initFiles[path])
 	}
+	fmt.Fprintf(h, "docker template\n%s\n", dockerfileBase)
 	return hex.EncodeToString(h.Sum(nil))
 }
+
+// TODO: add semgrep, prettier -- they require node/npm/etc which is more complicated than apk
+// If/when we do this, add them into the list of available tools in bash.go.
+const dockerfileBase = `FROM {{.From}}
+
+RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf
+
+ENV GOTOOLCHAIN=auto
+ENV GOPATH=/go
+ENV PATH="$GOPATH/bin:$PATH"
+
+RUN go install golang.org/x/tools/cmd/goimports@latest
+RUN go install golang.org/x/tools/gopls@latest
+RUN go install mvdan.cc/gofumpt@latest
+
+RUN mkdir -p /root/.cache/sketch/webui
+
+{{.ExtraCmds}}
+
+ARG GIT_USER_EMAIL
+ARG GIT_USER_NAME
+
+RUN git config --global user.email "$GIT_USER_EMAIL" && \
+    git config --global user.name "$GIT_USER_NAME"
+
+LABEL sketch_context="{{.InitFilesHash}}"
+COPY . /app
+
+WORKDIR /app{{.SubDir}}
+RUN if [ -f go.mod ]; then go mod download; fi
+
+CMD ["/bin/sketch"]`
 
 // createDockerfile creates a Dockerfile for a git repo.
 // It expects the relevant initFiles to have been provided.
@@ -81,36 +114,6 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
   }
 }`),
 	}}
-
-	// TODO: add semgrep, prettier -- they require node/npm/etc which is more complicated than apk
-	// If/when we do this, add them into the list of available tools in bash.go.
-	const dockerfileBase = `FROM {{.From}}
-
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf
-
-ENV GOTOOLCHAIN=auto
-ENV GOPATH=/go
-ENV PATH="$GOPATH/bin:$PATH"
-
-RUN go install golang.org/x/tools/cmd/goimports@latest
-RUN go install golang.org/x/tools/gopls@latest
-RUN go install mvdan.cc/gofumpt@latest
-
-{{.ExtraCmds}}
-
-ARG GIT_USER_EMAIL
-ARG GIT_USER_NAME
-
-RUN git config --global user.email "$GIT_USER_EMAIL" && \
-    git config --global user.name "$GIT_USER_NAME"
-
-LABEL sketch_context="{{.InitFilesHash}}"
-COPY . /app
-
-WORKDIR /app{{.SubDir}}
-RUN if [ -f go.mod ]; then go mod download; fi
-
-CMD ["/bin/sketch"]`
 
 	// TODO: it's basically impossible to one-shot a python env. We need an agent loop for that.
 	// Right now the prompt contains a set of half-baked workarounds.

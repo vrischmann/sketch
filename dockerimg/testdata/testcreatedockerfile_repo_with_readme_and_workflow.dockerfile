@@ -10,8 +10,10 @@ RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN go install golang.org/x/tools/gopls@latest
 RUN go install mvdan.cc/gofumpt@latest
 
+RUN mkdir -p /root/.cache/sketch/webui
+
 RUN npm install -g corepack && \
-    corepack enable || true
+    corepack enable
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -19,7 +21,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="b38624baa0989968c26bf1a8b3f1c322e80ae65fa51c57743bd34eac2d5e0529"
+LABEL sketch_context="beda6d9a10a25814de4143e9ebeebd975b1813e7e0474da5b39a41cd7b38e97f"
 COPY . /app
 
 WORKDIR /app

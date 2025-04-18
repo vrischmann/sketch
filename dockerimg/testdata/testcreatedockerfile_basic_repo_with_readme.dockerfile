@@ -10,7 +10,9 @@ RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN go install golang.org/x/tools/gopls@latest
 RUN go install mvdan.cc/gofumpt@latest
 
-RUN apk add --no-cache curl || true
+RUN mkdir -p /root/.cache/sketch/webui
+
+RUN apk add --no-cache curl vim nano || true
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -18,7 +20,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="72646c3fcb61b4bb1017a3b5b76d5b2126e9f563ce7da5d58a379539595f0344"
+LABEL sketch_context="b68650fb5536cd5049bcf01e464d6c2078d232ab2bb6b42cac5ad86a09363e9b"
 COPY . /app
 
 WORKDIR /app
