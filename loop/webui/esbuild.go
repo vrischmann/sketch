@@ -5,6 +5,8 @@
 package webui
 
 import (
+	"archive/zip"
+	"bytes"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -41,7 +43,7 @@ func embeddedHash() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("embedded hash: %w", err)
 	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil))[:32], nil
 }
 
 func cleanBuildDir(buildDir string) error {
@@ -53,7 +55,6 @@ func cleanBuildDir(buildDir string) error {
 			return fs.SkipDir
 		}
 		osPath := filepath.Join(buildDir, path)
-		fmt.Printf("removing %s\n", osPath)
 		os.RemoveAll(osPath)
 		if d.IsDir() {
 			return fs.SkipDir
@@ -101,26 +102,40 @@ func unpackFS(out string, srcFS fs.FS) error {
 	return nil
 }
 
+func ZipPath() (string, error) {
+	_, hashZip, err := zipPath()
+	return hashZip, err
+}
+
+func zipPath() (cacheDir, hashZip string, err error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", err
+	}
+	hash, err := embeddedHash()
+	if err != nil {
+		return "", "", err
+	}
+	cacheDir = filepath.Join(homeDir, ".cache", "sketch", "webui")
+	return cacheDir, filepath.Join(cacheDir, "skui-"+hash+".zip"), nil
+}
+
 // Build unpacks and esbuild's all bundleTs typescript files
 func Build() (fs.FS, error) {
-	homeDir, err := os.UserHomeDir()
+	cacheDir, hashZip, err := zipPath()
 	if err != nil {
 		return nil, err
 	}
-	cacheDir := filepath.Join(homeDir, ".cache", "sketch", "webui")
 	buildDir := filepath.Join(cacheDir, "build")
 	if err := os.MkdirAll(buildDir, 0o777); err != nil { // make sure .cache/sketch/build exists
 		return nil, err
 	}
-	hash, err := embeddedHash()
-	if err != nil {
-		return nil, err
-	}
-	finalHashDir := filepath.Join(cacheDir, hash)
-	if _, err := os.Stat(finalHashDir); err == nil {
+	if b, err := os.ReadFile(hashZip); err == nil {
 		// Build already done, serve it out.
-		return os.DirFS(finalHashDir), nil
+		return zip.NewReader(bytes.NewReader(b), int64(len(b)))
 	}
+
+	// TODO: try downloading "https://sketch.dev/webui/"+filepath.Base(hashZip)
 
 	// We need to do a build.
 
@@ -188,38 +203,19 @@ func Build() (fs.FS, error) {
 		return nil, fmt.Errorf("failed to write xterm.css: %w", err)
 	}
 
-	// Everything succeeded, so we move tmpHashDir to finalHashDir
-	if err := os.Rename(tmpHashDir, finalHashDir); err != nil {
+	// Everything succeeded, so we write tmpHashDir to hashZip
+	buf := new(bytes.Buffer)
+	w := zip.NewWriter(buf)
+	if err := w.AddFS(os.DirFS(tmpHashDir)); err != nil {
 		return nil, err
 	}
-	return os.DirFS(finalHashDir), nil
-}
-
-// unpackTS unpacks all the typescript-relevant files from the embedded filesystem into tmpDir.
-func unpackTS(outDir string, embedded fs.FS) error {
-	return fs.WalkDir(embedded, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		tgt := filepath.Join(outDir, path)
-		if d.IsDir() {
-			if err := os.MkdirAll(tgt, 0o777); err != nil {
-				return err
-			}
-			return nil
-		}
-		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".md") || strings.HasSuffix(path, ".css") {
-			return nil
-		}
-		data, err := fs.ReadFile(embedded, path)
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(tgt, data, 0o666); err != nil {
-			return err
-		}
-		return nil
-	})
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(hashZip, buf.Bytes(), 0o666); err != nil {
+		return nil, err
+	}
+	return zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 }
 
 func esbuildBundle(outDir, src string) error {

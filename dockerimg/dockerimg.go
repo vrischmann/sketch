@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"sketch.dev/loop/webui"
 	"sketch.dev/skribe"
 )
 
@@ -157,6 +158,13 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 
 	// Copy the sketch linux binary into the container
 	if out, err := combinedOutput(ctx, "docker", "cp", linuxSketchBin, cntrName+":/bin/sketch"); err != nil {
+		return fmt.Errorf("docker cp: %s, %w", out, err)
+	}
+	webuiZipPath, err := webui.ZipPath()
+	if err != nil {
+		return err
+	}
+	if out, err := combinedOutput(ctx, "docker", "cp", webuiZipPath, cntrName+":/root/.cache/sketch/webui/"+filepath.Base(webuiZipPath)); err != nil {
 		return fmt.Errorf("docker cp: %s, %w", out, err)
 	}
 
