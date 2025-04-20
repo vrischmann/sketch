@@ -1,8 +1,5 @@
 import { css, html, LitElement, PropertyValues } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
-import { DataManager, ConnectionStatus } from "../data";
-import { State, TimelineMessage } from "../types";
-import "./sketch-container-status";
 
 @customElement("sketch-chat-input")
 export class SketchChatInput extends LitElement {

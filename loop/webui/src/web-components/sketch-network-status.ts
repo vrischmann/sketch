@@ -2,16 +2,16 @@ import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { DataManager, ConnectionStatus } from "../data";
 import { State, TimelineMessage } from "../types";
-import "./sketch-container-status";
+import { SketchContainerStatus } from "./sketch-container-status";
 
 @customElement("sketch-network-status")
 export class SketchNetworkStatus extends LitElement {
-  // Header bar: view mode buttons
-
   @property()
   connection: string;
+
   @property()
   message: string;
+
   @property()
   error: string;
 

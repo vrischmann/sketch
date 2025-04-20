@@ -1,6 +1,6 @@
-import { css, html, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
 import { State } from "../types";
+import { LitElement, css, html } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
 @customElement("sketch-container-status")
 export class SketchContainerStatus extends LitElement {
