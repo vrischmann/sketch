@@ -158,7 +158,7 @@ func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
 			// Display each commit in the terminal
 			for _, commit := range resp.Commits {
 				if commit.PushedBranch != "" {
-					ui.AppendSystemMessage("🔄 new commit: [%s] %s pushed to %s", commit.Hash[:8], commit.Subject, bold(commit.PushedBranch))
+					ui.AppendSystemMessage("🔄 new commit: [%s] %s\npushed to: %s", commit.Hash[:8], commit.Subject, bold(commit.PushedBranch))
 
 					// Track the pushed branch in our map
 					ui.mu.Lock()
