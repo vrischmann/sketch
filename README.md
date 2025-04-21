@@ -1,7 +1,7 @@
 # Sketch
 
 Sketch is an agentic coding tool focused on the Go programming language.
-Sketch runs in your terminal, has a web UI  understands your code, and helps you get work done.
+Sketch runs in your terminal, has a web UI, understands your code, and helps you get work done.
 To keep your environment pristine, sketch starts a docker container and outputs
 its work onto a branch in your host git repository.
 
