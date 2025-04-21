@@ -36,12 +36,15 @@ export class SketchChatInput extends LitElement {
       padding: 12px;
       border: 1px solid #ddd;
       border-radius: 4px;
-      resize: none;
+      resize: vertical;
       font-family: monospace;
       font-size: 12px;
       min-height: 40px;
-      max-height: 120px;
+      max-height: 300px;
       background: #f7f7f7;
+      overflow-y:  auto;
+      box-sizing: border-box; /* Ensure padding is included in height calculation */
+      line-height: 1.4; /* Consistent line height for better height calculation */
     }
 
     #sendChatButton {
@@ -80,6 +83,8 @@ export class SketchChatInput extends LitElement {
       ) as HTMLTextAreaElement;
       if (textarea) {
         textarea.value = content;
+        // Adjust height after content is updated programmatically
+        requestAnimationFrame(() => this.adjustChatSpacing());
       }
     }
   }
@@ -117,12 +122,23 @@ export class SketchChatInput extends LitElement {
   }
 
   adjustChatSpacing() {
-    console.log("TODO: adjustChatSpacing");
+    if (!this.chatInput) return;
+    
+    // Reset height to minimal value to correctly calculate scrollHeight
+    this.chatInput.style.height = 'auto';
+    
+    // Get the scroll height (content height)
+    const scrollHeight = this.chatInput.scrollHeight;
+    
+    // Set the height to match content (up to max-height which is handled by CSS)
+    this.chatInput.style.height = `${scrollHeight}px`;
   }
 
   _sendChatClicked() {
     this.sendChatMessage();
     this.chatInput.focus(); // Refocus the input after sending
+    // Reset height after sending a message
+    requestAnimationFrame(() => this.adjustChatSpacing());
   }
 
   _chatInputKeyDown(event: KeyboardEvent) {
@@ -135,15 +151,18 @@ export class SketchChatInput extends LitElement {
 
   _chatInputChanged(event) {
     this.content = event.target.value;
+    // Use requestAnimationFrame to ensure DOM updates have completed
     requestAnimationFrame(() => this.adjustChatSpacing());
   }
 
   @query("#chatInput")
-  private chatInput: HTMLTextAreaElement;
+  chatInput: HTMLTextAreaElement;
 
   protected firstUpdated(): void {
     if (this.chatInput) {
       this.chatInput.focus();
+      // Initialize the input height
+      this.adjustChatSpacing();
     }
   }
 
