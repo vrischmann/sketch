@@ -403,6 +403,7 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 		"CGO_ENABLED=0",
 		"GOTOOLCHAIN=auto",
 		"GOPATH="+linuxGopath,
+		"GOBIN=",
 	)
 
 	fmt.Printf("building linux agent binary...\n")
