@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"sketch.dev/loop/server/gzhandler"
+
 	"github.com/creack/pty"
 	"sketch.dev/ant"
 	"sketch.dev/loop"
@@ -340,7 +342,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 	})
 
-	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServerFS(webBundle)))
+	s.mux.Handle("/static/", http.StripPrefix("/static/", gzhandler.New(webBundle)))
 
 	// Terminal WebSocket handler
 	// Terminal endpoints - predefined terminals 1-9

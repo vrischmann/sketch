@@ -1,12 +1,11 @@
 // Package webui provides the web interface for the sketch loop.
 // It bundles typescript files into JavaScript using esbuild.
-//
-// This is substantially the same mechanism as /esbuild.go in this repo as well.
 package webui
 
 import (
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -202,6 +201,57 @@ func Build() (fs.FS, error) {
 	}
 	if err := os.WriteFile(filepath.Join(tmpHashDir, "xterm.css"), xtermCss, 0o666); err != nil {
 		return nil, fmt.Errorf("failed to write xterm.css: %w", err)
+	}
+
+	// Compress all .js, .js.map, and .css files with gzip, leaving the originals in place
+	err = filepath.Walk(tmpHashDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		// Check if file is a .js or .js.map file
+		if !strings.HasSuffix(path, ".js") && !strings.HasSuffix(path, ".js.map") && !strings.HasSuffix(path, ".css") {
+			return nil
+		}
+
+		// Read the original file
+		origData, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		// Create a gzipped file
+		gzipPath := path + ".gz"
+		gzipFile, err := os.Create(gzipPath)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip file %s: %w", gzipPath, err)
+		}
+		defer gzipFile.Close()
+
+		// Create a gzip writer
+		gzWriter := gzip.NewWriter(gzipFile)
+		defer gzWriter.Close()
+
+		// Write the original file content to the gzip writer
+		_, err = gzWriter.Write(origData)
+		if err != nil {
+			return fmt.Errorf("failed to write to gzip file %s: %w", gzipPath, err)
+		}
+
+		// Ensure we flush and close properly
+		if err := gzWriter.Close(); err != nil {
+			return fmt.Errorf("failed to close gzip writer for %s: %w", gzipPath, err)
+		}
+		if err := gzipFile.Close(); err != nil {
+			return fmt.Errorf("failed to close gzip file %s: %w", gzipPath, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to compress .js/.js.map/.css files: %w", err)
 	}
 
 	// Everything succeeded, so we write tmpHashDir to hashZip
