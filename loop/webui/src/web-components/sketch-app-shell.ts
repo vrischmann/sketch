@@ -1,6 +1,5 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { PropertyValues } from "lit";
 import { DataManager, ConnectionStatus } from "../data";
 import { State, TimelineMessage, ToolCall } from "../types";
 import "./sketch-container-status";
@@ -192,10 +191,6 @@ export class SketchAppShell extends LitElement {
   // Track if this is the first load of messages
   @state()
   private isFirstLoad: boolean = true;
-
-  // Track if we should scroll to the bottom
-  @state()
-  private shouldScrollToBottom: boolean = true;
 
   // Mutation observer to detect when new messages are added
   private mutationObserver: MutationObserver | null = null;
@@ -520,13 +515,10 @@ export class SketchAppShell extends LitElement {
     if (isFirstFetch) {
       console.log("Auto-scroll: First data fetch, will scroll to bottom");
       this.isFirstLoad = true;
-      this.shouldScrollToBottom = true;
       this.messageStatus = "Initial messages loaded";
     } else if (newMessages && newMessages.length > 0) {
       console.log(`Auto-scroll: Received ${newMessages.length} new messages`);
       this.messageStatus = "Updated just now";
-      // Check if we should scroll before updating messages
-      this.shouldScrollToBottom = this.checkShouldScroll();
     } else {
       this.messageStatus = "No new messages";
     }
@@ -546,7 +538,7 @@ export class SketchAppShell extends LitElement {
     // Log information about the message update
     if (this.messages.length > oldMessageCount) {
       console.log(
-        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}, shouldScroll=${this.shouldScrollToBottom}`,
+        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}`,
       );
     }
   }
@@ -588,10 +580,6 @@ export class SketchAppShell extends LitElement {
       (this.dataManager as any).nextFetchIndex = 0;
       (this.dataManager as any).currentFetchStartIndex = 0;
 
-      // Always scroll to bottom after sending a message
-      console.log("Auto-scroll: User sent a message, forcing scroll to bottom");
-      this.shouldScrollToBottom = true;
-
       // // If in diff view, switch to conversation view
       // if (this.viewMode === "diff") {
       //   await this.toggleViewMode("chat");
@@ -599,30 +587,6 @@ export class SketchAppShell extends LitElement {
 
       // Refresh the timeline data to show the new message
       await this.dataManager.fetchData();
-
-      // Force multiple scroll attempts to ensure the user message is visible
-      // This addresses potential timing issues with DOM updates
-      const forceScrollAttempts = () => {
-        console.log("Auto-scroll: Forcing scroll after user message");
-        this.shouldScrollToBottom = true;
-
-        // Update the timeline component's scroll state
-        const timeline = this.shadowRoot?.querySelector(
-          "sketch-timeline",
-        ) as any;
-        if (timeline && timeline.setShouldScrollToLatest) {
-          timeline.setShouldScrollToLatest(true);
-          timeline.scrollToLatest();
-        } else {
-          this.scrollToBottom();
-        }
-      };
-
-      // Make multiple scroll attempts with different timings
-      // This ensures we catch the DOM after various update stages
-      setTimeout(forceScrollAttempts, 100);
-      setTimeout(forceScrollAttempts, 300);
-      setTimeout(forceScrollAttempts, 600);
     } catch (error) {
       console.error("Error sending chat message:", error);
       const statusText = document.getElementById("statusText");
@@ -666,7 +630,10 @@ export class SketchAppShell extends LitElement {
 
       <div class="view-container">
         <div class="chat-view ${this.viewMode === "chat" ? "view-active" : ""}">
-          <sketch-timeline .messages=${this.messages}></sketch-timeline>
+          <sketch-timeline
+            .messages=${this.messages}
+            .scrollContainer=${this}
+          ></sketch-timeline>
         </div>
 
         <div class="diff-view ${this.viewMode === "diff" ? "view-active" : ""}">
@@ -695,48 +662,6 @@ export class SketchAppShell extends LitElement {
         @send-chat="${this._sendChat}"
       ></sketch-chat-input>
     `;
-  }
-
-  /**
-   * Check if the page should scroll to the bottom based on current view position
-   * @returns Boolean indicating if we should scroll to the bottom
-   */
-  private checkShouldScroll(): boolean {
-    // If we're not in chat view, don't auto-scroll
-    if (this.viewMode !== "chat") {
-      return false;
-    }
-
-    // More generous threshold - if we're within 500px of the bottom, auto-scroll
-    // This ensures we start scrolling sooner when new messages appear
-    const scrollPosition = window.scrollY;
-    const windowHeight = window.innerHeight;
-    const documentHeight = document.body.scrollHeight;
-    const distanceFromBottom = documentHeight - (scrollPosition + windowHeight);
-    const threshold = 500; // Increased threshold to be more responsive
-
-    return distanceFromBottom <= threshold;
-  }
-
-  /**
-   * Scroll to the bottom of the timeline
-   */
-  private scrollToBottom(): void {
-    if (!this.checkShouldScroll()) {
-      return;
-    }
-
-    this.scrollTo({ top: this.scrollHeight, behavior: "smooth" });
-  }
-
-  /**
-   * Called after the component's properties have been updated
-   */
-  updated(changedProperties: PropertyValues): void {
-    // If messages have changed, scroll to bottom if needed
-    if (changedProperties.has("messages") && this.messages.length > 0) {
-      setTimeout(() => this.scrollToBottom(), 50);
-    }
   }
 
   /**

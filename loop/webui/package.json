@@ -29,6 +29,7 @@
     "vega-lite": "^5.23.0"
   },
   "devDependencies": {
+    "@open-wc/dev-server-hmr": "^0.1.2-next.0",
     "@sand4rt/experimental-ct-web": "^1.51.1",
     "@types/marked": "^5.0.2",
     "@types/mocha": "^10.0.7",

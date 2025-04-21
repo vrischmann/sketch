@@ -1,6 +1,7 @@
 import { css, html, LitElement } from "lit";
+import { PropertyValues } from "lit";
 import { repeat } from "lit/directives/repeat.js";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { State, TimelineMessage } from "../types";
 import "./sketch-timeline-message";
 
@@ -9,10 +10,13 @@ export class SketchTimeline extends LitElement {
   @property()
   messages: TimelineMessage[] = [];
 
-  // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
-  // Note that these styles only apply to the scope of this web component's
-  // shadow DOM node, so they won't leak out or collide with CSS declared in
-  // other components or the containing web page (...unless you want it to do that).
+  // Track if we should scroll to the bottom
+  @state()
+  private scrollingState: "pinToLatest" | "floating" = "pinToLatest";
+
+  @property()
+  scrollContainer: HTMLDivElement;
+
   static styles = css`
     /* Hide views initially to prevent flash of content */
     .timeline-container .timeline,
@@ -57,6 +61,31 @@ export class SketchTimeline extends LitElement {
     .timeline.empty::before {
       display: none;
     }
+
+    #scroll-container {
+      overflow: auto;
+      padding-left: 1em;
+    }
+    #jump-to-latest {
+      display: none;
+      position: fixed;
+      bottom: 100px;
+      right: 0;
+      background: rgb(33, 150, 243);
+      color: white;
+      border-radius: 8px;
+      padding: 0.5em;
+      margin: 0.5em;
+      font-size: x-large;
+      opacity: 0.5;
+      cursor: pointer;
+    }
+    #jump-to-latest:hover {
+      opacity: 1;
+    }
+    #jump-to-latest.floating {
+      display: block;
+    }
   `;
 
   constructor() {
@@ -64,6 +93,32 @@ export class SketchTimeline extends LitElement {
 
     // Binding methods
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
+    this._handleScroll = this._handleScroll.bind(this);
+  }
+
+  /**
+   * Scroll to the bottom of the timeline
+   */
+  private scrollToBottom(): void {
+    this.scrollContainer?.scrollTo({
+      top: this.scrollContainer?.scrollHeight,
+      behavior: "smooth",
+    });
+  }
+
+  /**
+   * Called after the component's properties have been updated
+   */
+  updated(changedProperties: PropertyValues): void {
+    // If messages have changed, scroll to bottom if needed
+    if (changedProperties.has("messages") && this.messages.length > 0) {
+      if (this.scrollingState == "pinToLatest") {
+        setTimeout(() => this.scrollToBottom(), 50);
+      }
+    }
+    if (changedProperties.has("scrollContainer")) {
+      this.scrollContainer?.addEventListener("scroll", this._handleScroll);
+    }
   }
 
   /**
@@ -82,6 +137,21 @@ export class SketchTimeline extends LitElement {
     }
   }
 
+  private _handleScroll(event) {
+    const isAtBottom =
+      Math.abs(
+        this.scrollContainer.scrollHeight -
+          this.scrollContainer.clientHeight -
+          this.scrollContainer.scrollTop,
+      ) <= 1;
+    if (isAtBottom) {
+      this.scrollingState = "pinToLatest";
+    } else {
+      // TODO: does scroll direction matter here?
+      this.scrollingState = "floating";
+    }
+  }
+
   // See https://lit.dev/docs/components/lifecycle/
   connectedCallback() {
     super.connectedCallback();
@@ -91,6 +161,7 @@ export class SketchTimeline extends LitElement {
       "showCommitDiff",
       this._handleShowCommitDiff as EventListener,
     );
+    this.scrollContainer?.addEventListener("scroll", this._handleScroll);
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -102,8 +173,12 @@ export class SketchTimeline extends LitElement {
       "showCommitDiff",
       this._handleShowCommitDiff as EventListener,
     );
+
+    this.scrollContainer?.removeEventListener("scroll", this._handleScroll);
   }
 
+  // messageKey uniquely identifes a TimelineMessage based on its ID and tool_calls, so
+  // that we only re-render <sketch-message> elements that we need to re-render.
   messageKey(message: TimelineMessage): string {
     // If the message has tool calls, and any of the tool_calls get a response, we need to
     // re-render that message.
@@ -116,17 +191,26 @@ export class SketchTimeline extends LitElement {
 
   render() {
     return html`
-      <div class="timeline-container">
-        ${repeat(this.messages, this.messageKey, (message, index) => {
-          let previousMessage: TimelineMessage;
-          if (index > 0) {
-            previousMessage = this.messages[index - 1];
-          }
-          return html`<sketch-timeline-message
-            .message=${message}
-            .previousMessage=${previousMessage}
-          ></sketch-timeline-message>`;
-        })}
+      <div id="scroll-container">
+        <div class="timeline-container">
+          ${repeat(this.messages, this.messageKey, (message, index) => {
+            let previousMessage: TimelineMessage;
+            if (index > 0) {
+              previousMessage = this.messages[index - 1];
+            }
+            return html`<sketch-timeline-message
+              .message=${message}
+              .previousMessage=${previousMessage}
+            ></sketch-timeline-message>`;
+          })}
+        </div>
+      </div>
+      <div
+        id="jump-to-latest"
+        class="${this.scrollingState}"
+        @click=${this.scrollToBottom}
+      >
+        ⇩
       </div>
     `;
   }
