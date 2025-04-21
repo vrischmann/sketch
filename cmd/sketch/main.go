@@ -74,7 +74,7 @@ func run() error {
 	var slogHandler slog.Handler
 	var err error
 	var logFile *os.File
-	if !*one {
+	if !*one && !*verbose {
 		// Log to a file
 		logFile, err = os.CreateTemp("", "sketch-cli-log-*")
 		if err != nil {

@@ -1,16 +1,19 @@
 package dockerimg
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/cgi"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
 type gitHTTP struct {
 	gitRepoRoot string
+	pass        string
 }
 
 func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -22,10 +25,39 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("panic: %v\n", err), http.StatusInternalServerError)
 		}
 	}()
-	if !strings.HasPrefix(r.RemoteAddr, "127.0.0.1:") {
-		slog.InfoContext(r.Context(), "githttp: denied", "remote addr", r.RemoteAddr)
-		http.Error(w, "no", http.StatusUnauthorized)
+
+	// Get the Authorization header
+	username, password, ok := r.BasicAuth()
+
+	// Check if credentials were provided
+	if !ok {
+		// No credentials provided, return 401 Unauthorized
+		w.Header().Set("WWW-Authenticate", `Basic realm="Sketch Git Repository"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		slog.InfoContext(r.Context(), "githttp: denied (basic auth)", "remote addr", r.RemoteAddr)
 		return
+	}
+
+	// Perform constant-time comparison to prevent timing attacks
+	usernameMatch := subtle.ConstantTimeCompare([]byte(username), []byte("sketch")) == 1
+	passwordMatch := subtle.ConstantTimeCompare([]byte(password), []byte(g.pass)) == 1
+
+	// Check if credentials are valid
+	if !usernameMatch || !passwordMatch {
+		w.Header().Set("WWW-Authenticate", `Basic realm="Git Repository"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		slog.InfoContext(r.Context(), "githttp: denied (basic auth)", "remote addr", r.RemoteAddr)
+		return
+	}
+
+	if runtime.GOOS == "darwin" {
+		// On the Mac, Docker connections show up from localhost. On Linux, the docker
+		// network is more arbitrary, so we don't do this additional check there.
+		if !strings.HasPrefix(r.RemoteAddr, "127.0.0.1:") {
+			slog.InfoContext(r.Context(), "githttp: denied", "remote addr", r.RemoteAddr)
+			http.Error(w, "no", http.StatusUnauthorized)
+			return
+		}
 	}
 	gitBin, err := exec.LookPath("git")
 	if err != nil {

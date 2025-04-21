@@ -4,6 +4,7 @@ package dockerimg
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -72,7 +73,11 @@ type ContainerConfig struct {
 // It writes status to stdout.
 func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config ContainerConfig) error {
 	if _, err := exec.LookPath("docker"); err != nil {
-		return fmt.Errorf("cannot find `docker` binary; run: brew install docker colima && colima start")
+		if runtime.GOOS == "darwin" {
+			return fmt.Errorf("cannot find `docker` binary; run: brew install docker colima && colima start")
+		} else {
+			return fmt.Errorf("cannot find `docker` binary; install docker (e.g., apt-get install docker.io)")
+		}
 	}
 
 	if out, err := combinedOutput(ctx, "docker", "ps"); err != nil {
@@ -241,7 +246,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		// the scrollback (which is not good, but also not fatal).  I can't see why it does this
 		// though, since none of the calls in postContainerInitConfig obviously write to stdout
 		// or stderr.
-		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort); err != nil {
+		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass); err != nil {
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
@@ -304,6 +309,7 @@ type gitServer struct {
 	gitLn   net.Listener
 	gitPort string
 	srv     *http.Server
+	pass    string
 }
 
 func (gs *gitServer) shutdown(ctx context.Context) {
@@ -317,8 +323,18 @@ func (gs *gitServer) serve(ctx context.Context) error {
 	return gs.srv.Serve(gs.gitLn)
 }
 
+func mkRandToken() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b[:])
+}
+
 func newGitServer(gitRoot string) (*gitServer, error) {
 	ret := &gitServer{}
+	ret.pass = mkRandToken()
+
 	gitLn, err := net.Listen("tcp4", ":0")
 	if err != nil {
 		return nil, fmt.Errorf("git listen: %w", err)
@@ -326,7 +342,7 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 	ret.gitLn = gitLn
 
 	srv := http.Server{
-		Handler: &gitHTTP{gitRepoRoot: gitRoot},
+		Handler: &gitHTTP{gitRepoRoot: gitRoot, pass: ret.pass},
 	}
 	ret.srv = &srv
 
@@ -357,6 +373,8 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if relPath != "." {
 		cmdArgs = append(cmdArgs, "-w", "/app/"+relPath)
 	}
+	// colima does this by default, but Linux docker seems to need this set explicitly
+	cmdArgs = append(cmdArgs, "--add-host", "host.docker.internal:host-gateway")
 	cmdArgs = append(
 		cmdArgs,
 		imgName,
@@ -415,9 +433,16 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 		slog.DebugContext(ctx, "go", slog.Duration("elapsed", time.Now().Sub(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	}
 
-	src := filepath.Join(linuxGopath, "bin", "linux_"+runtime.GOARCH, "sketch")
+	var src string
+	if runtime.GOOS != "linux" {
+		src = filepath.Join(linuxGopath, "bin", "linux_"+runtime.GOARCH, "sketch")
+	} else {
+		// If we are already on Linux, there's no extra platform name in the path
+		src = filepath.Join(linuxGopath, "bin", "sketch")
+	}
+
 	dst := filepath.Join(path, "tmp-sketch-binary-linux")
-	if err := os.Rename(src, dst); err != nil {
+	if err := moveFile(src, dst); err != nil {
 		return "", err
 	}
 
@@ -444,11 +469,11 @@ func getContainerPort(ctx context.Context, cntrName string) (string, error) {
 }
 
 // Contact the container and configure it.
-func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort string) error {
+func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort string, gitPass string) error {
 	localURL := "http://" + localAddr
 	initMsg, err := json.Marshal(map[string]string{
 		"commit":          commit,
-		"git_remote_addr": "http://host.docker.internal:" + gitPort + "/.git",
+		"git_remote_addr": fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitPass, gitPort),
 		"host_addr":       localAddr,
 	})
 	if err != nil {
@@ -670,4 +695,41 @@ func OpenBrowser(ctx context.Context, url string) {
 	if b, err := cmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open browser: %v: %s\n", err, b)
 	}
+}
+
+// moveFile is like Python's shutil.move, in that it tries a rename, and, if that fails,
+// copies and deletes
+func moveFile(src, dst string) error {
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+
+	stat, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	sourceFile.Close()
+	destFile.Close()
+
+	os.Chmod(dst, stat.Mode())
+
+	return os.Remove(src)
 }

@@ -16,7 +16,11 @@ import (
 func checkDocker() (string, error) {
 	path, err := exec.LookPath("docker")
 	if err != nil {
-		return "", fmt.Errorf("cannot find `docker` binary; run: brew install docker colima && colima start")
+		if runtime.GOOS == "darwin" {
+			return "", fmt.Errorf("cannot find `docker` binary; run: brew install docker colima && colima start")
+		} else {
+			return "", fmt.Errorf("cannot find `docker` binary; install docker (e.g., apt-get install docker.io)")
+		}
 	}
 	cmd := exec.Command(path, "-v")
 	output, err := cmd.CombinedOutput()
