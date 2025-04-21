@@ -2,7 +2,7 @@ import "./vega-embed";
 import { css, html, LitElement, PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { TopLevelSpec } from "vega-lite";
-import type { TimelineMessage } from "../types";
+import type { AgentMessage } from "../types";
 import "vega-embed";
 import { VisualizationSpec } from "vega-embed";
 
@@ -13,7 +13,7 @@ import { VisualizationSpec } from "vega-embed";
 @customElement("sketch-charts")
 export class SketchCharts extends LitElement {
   @property({ type: Array })
-  messages: TimelineMessage[] = [];
+  messages: AgentMessage[] = [];
 
   @state()
   private chartData: { timestamp: Date; cost: number }[] = [];
@@ -77,7 +77,7 @@ export class SketchCharts extends LitElement {
   }
 
   private calculateCumulativeCostData(
-    messages: TimelineMessage[],
+    messages: AgentMessage[],
   ): { timestamp: Date; cost: number }[] {
     if (!messages || messages.length === 0) {
       return [];

@@ -46,6 +46,16 @@ type TerminalResponse struct {
 	SessionID string `json:"sessionId"`
 }
 
+type State struct {
+	MessageCount  int                  `json:"message_count"`
+	TotalUsage    *ant.CumulativeUsage `json:"total_usage,omitempty"`
+	Hostname      string               `json:"hostname"`
+	WorkingDir    string               `json:"working_dir"`
+	InitialCommit string               `json:"initial_commit"`
+	Title         string               `json:"title"`
+	OS            string               `json:"os"`
+}
+
 // Server serves sketch HTTP. Server implements http.Handler.
 type Server struct {
 	mux      *http.ServeMux
@@ -310,17 +320,9 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		state := struct {
-			MessageCount  int                 `json:"message_count"`
-			TotalUsage    ant.CumulativeUsage `json:"total_usage"`
-			Hostname      string              `json:"hostname"`
-			WorkingDir    string              `json:"working_dir"`
-			InitialCommit string              `json:"initial_commit"`
-			Title         string              `json:"title"`
-			OS            string              `json:"os"`
-		}{
+		state := State{
 			MessageCount:  serverMessageCount,
-			TotalUsage:    totalUsage,
+			TotalUsage:    &totalUsage,
 			Hostname:      s.hostname,
 			WorkingDir:    getWorkingDir(),
 			InitialCommit: agent.InitialCommit(),

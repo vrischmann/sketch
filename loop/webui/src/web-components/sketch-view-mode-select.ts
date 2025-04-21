@@ -1,7 +1,5 @@
 import { css, html, LitElement } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { DataManager, ConnectionStatus } from "../data";
-import { State, TimelineMessage } from "../types";
+import { customElement, property } from "lit/decorators.js";
 import "./sketch-container-status";
 
 @customElement("sketch-view-mode-select")
@@ -10,11 +8,6 @@ export class SketchViewModeSelect extends LitElement {
   @property()
   activeMode: "chat" | "diff" | "charts" | "terminal" = "chat";
   // Header bar: view mode buttons
-
-  // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
-  // Note that these styles only apply to the scope of this web component's
-  // shadow DOM node, so they won't leak out or collide with CSS declared in
-  // other components or the containing web page (...unless you want it to do that).
 
   static styles = css`
     /* View Mode Button Styles */

@@ -21,6 +21,7 @@
           console.log("view mode change event: ", evt);
           const msgDiv = document.querySelector("#selected-mode");
           msgDiv.innerText = `selected mode: ${evt.detail.mode}`;
+          viewModeSelect.activeMode = evt.detail.mode;
         });
       });
     </script>

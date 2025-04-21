@@ -16,6 +16,9 @@ const mockCompleteState: State = {
     cache_read_input_tokens: 300,
     cache_creation_input_tokens: 400,
     total_cost_usd: 0.25,
+    start_time: "",
+    messages: 0,
+    tool_uses: {},
   },
 };
 
@@ -78,6 +81,13 @@ test("renders with partial state data", async ({ mount }) => {
     title: "Partial Test",
     total_usage: {
       input_tokens: 500,
+      start_time: "",
+      messages: 0,
+      output_tokens: 0,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+      total_cost_usd: 0,
+      tool_uses: {},
     },
   };
 

@@ -13,7 +13,8 @@
     "check": "tsc --noEmit",
     "demo": "web-dev-server -config ./web-dev-server.config.mjs --node-resolve --open /src/web-components/demo/",
     "format": "prettier ./src --write",
-    "build": "tsc",
+    "gentypes": "go run ../../cmd/go2ts -o src/types.ts",
+    "build": "go run ../../cmd/go2ts -o src/types.ts && tsc",
     "watch": "tsc --watch",
     "test": "tsc && playwright test -c playwright-ct.config.ts"
   },

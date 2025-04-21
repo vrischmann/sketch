@@ -2,9 +2,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 
 import { css, html, LitElement } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { DataManager, ConnectionStatus } from "../data";
-import { State, TimelineMessage } from "../types";
+import { customElement } from "lit/decorators.js";
 import "./sketch-container-status";
 
 @customElement("sketch-terminal")

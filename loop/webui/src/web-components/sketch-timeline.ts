@@ -2,13 +2,13 @@ import { css, html, LitElement } from "lit";
 import { PropertyValues } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { customElement, property, state } from "lit/decorators.js";
-import { State, TimelineMessage } from "../types";
+import { AgentMessage } from "../types";
 import "./sketch-timeline-message";
 
 @customElement("sketch-timeline")
 export class SketchTimeline extends LitElement {
   @property()
-  messages: TimelineMessage[] = [];
+  messages: AgentMessage[] = [];
 
   // Track if we should scroll to the bottom
   @state()
@@ -177,9 +177,9 @@ export class SketchTimeline extends LitElement {
     this.scrollContainer?.removeEventListener("scroll", this._handleScroll);
   }
 
-  // messageKey uniquely identifes a TimelineMessage based on its ID and tool_calls, so
+  // messageKey uniquely identifes a AgentMessage based on its ID and tool_calls, so
   // that we only re-render <sketch-message> elements that we need to re-render.
-  messageKey(message: TimelineMessage): string {
+  messageKey(message: AgentMessage): string {
     // If the message has tool calls, and any of the tool_calls get a response, we need to
     // re-render that message.
     const toolCallResponses = message.tool_calls
@@ -194,7 +194,7 @@ export class SketchTimeline extends LitElement {
       <div id="scroll-container">
         <div class="timeline-container">
           ${repeat(this.messages, this.messageKey, (message, index) => {
-            let previousMessage: TimelineMessage;
+            let previousMessage: AgentMessage;
             if (index > 0) {
               previousMessage = this.messages[index - 1];
             }

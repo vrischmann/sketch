@@ -1,7 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DataManager, ConnectionStatus } from "../data";
-import { State, TimelineMessage, ToolCall } from "../types";
+import { State, AgentMessage } from "../types";
 import "./sketch-container-status";
 import "./sketch-view-mode-select";
 import "./sketch-network-status";
@@ -11,7 +11,6 @@ import "./sketch-diff-view";
 import "./sketch-charts";
 import "./sketch-terminal";
 import { SketchDiffView } from "./sketch-diff-view";
-import { View } from "vega";
 
 type ViewMode = "chat" | "diff" | "charts" | "terminal";
 
@@ -175,7 +174,7 @@ export class SketchAppShell extends LitElement {
 
   // Chat messages
   @property()
-  messages: TimelineMessage[] = [];
+  messages: AgentMessage[] = [];
 
   @property()
   chatMessageText: string = "";
@@ -186,7 +185,14 @@ export class SketchAppShell extends LitElement {
   private dataManager = new DataManager();
 
   @property()
-  containerState: State = { title: "", os: "", total_usage: {} };
+  containerState: State = {
+    title: "",
+    os: "",
+    message_count: 0,
+    hostname: "",
+    working_dir: "",
+    initial_commit: "",
+  };
 
   // Track if this is the first load of messages
   @state()
@@ -470,15 +476,12 @@ export class SketchAppShell extends LitElement {
     });
   }
 
-  mergeAndDedupe(
-    arr1: TimelineMessage[],
-    arr2: TimelineMessage[],
-  ): TimelineMessage[] {
+  mergeAndDedupe(arr1: AgentMessage[], arr2: AgentMessage[]): AgentMessage[] {
     const mergedArray = [...arr1, ...arr2];
     const seenIds = new Set<number>();
-    const toolCallResults = new Map<string, TimelineMessage>();
+    const toolCallResults = new Map<string, AgentMessage>();
 
-    let ret: TimelineMessage[] = mergedArray
+    let ret: AgentMessage[] = mergedArray
       .filter((msg) => {
         if (msg.type == "tool") {
           toolCallResults.set(msg.tool_call_id, msg);
@@ -491,7 +494,7 @@ export class SketchAppShell extends LitElement {
         seenIds.add(msg.idx);
         return true;
       })
-      .sort((a: TimelineMessage, b: TimelineMessage) => a.idx - b.idx);
+      .sort((a: AgentMessage, b: AgentMessage) => a.idx - b.idx);
 
     // Attach any tool_call result messages to the original message's tool_call object.
     ret.forEach((msg) => {
@@ -506,7 +509,7 @@ export class SketchAppShell extends LitElement {
 
   private handleDataChanged(eventData: {
     state: State;
-    newMessages: TimelineMessage[];
+    newMessages: AgentMessage[];
     isFirstFetch?: boolean;
   }): void {
     const { state, newMessages, isFirstFetch } = eventData;

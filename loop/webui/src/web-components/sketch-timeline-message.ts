@@ -1,16 +1,16 @@
 import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
-import { State, TimelineMessage } from "../types";
+import { AgentMessage } from "../types";
 import { marked, MarkedOptions } from "marked";
 import "./sketch-tool-calls";
 @customElement("sketch-timeline-message")
 export class SketchTimelineMessage extends LitElement {
   @property()
-  message: TimelineMessage;
+  message: AgentMessage;
 
   @property()
-  previousMessage: TimelineMessage;
+  previousMessage: AgentMessage;
 
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's

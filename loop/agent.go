@@ -104,6 +104,9 @@ type AgentMessage struct {
 	// ToolCalls is a list of all tool calls requested in this message (name and input pairs)
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 
+	// ToolResponses is a list of all responses to tool calls requested in this message (name and input pairs)
+	ToolResponses []AgentMessage `json:"toolResponses,omitempty"`
+
 	// Commits is a list of git commits for a commit message
 	Commits []*GitCommit `json:"commits,omitempty"`
 
@@ -133,9 +136,12 @@ type GitCommit struct {
 
 // ToolCall represents a single tool call within an agent message
 type ToolCall struct {
-	Name       string `json:"name"`
-	Input      string `json:"input"`
-	ToolCallId string `json:"tool_call_id"`
+	Name          string        `json:"name"`
+	Input         string        `json:"input"`
+	ToolCallId    string        `json:"tool_call_id"`
+	ResultMessage *AgentMessage `json:"result_message,omitempty"`
+	Args          string        `json:"args,omitempty"`
+	Result        string        `json:"result,omitempty"`
 }
 
 func (a *AgentMessage) Attr() slog.Attr {

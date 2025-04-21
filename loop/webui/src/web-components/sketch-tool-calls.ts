@@ -1,8 +1,6 @@
 import { css, html, LitElement } from "lit";
-import { repeat } from "lit/directives/repeat.js";
 import { customElement, property } from "lit/decorators.js";
-import { State, ToolCall } from "../types";
-import { marked, MarkedOptions } from "marked";
+import { ToolCall } from "../types";
 import "./sketch-tool-card";
 
 @customElement("sketch-tool-calls")

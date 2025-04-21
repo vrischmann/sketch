@@ -1,4 +1,4 @@
-import { TimelineMessage } from "./types";
+import { AgentMessage } from "./types";
 import { formatNumber } from "./utils";
 
 /**
@@ -42,7 +42,7 @@ export class DataManager {
   private isPollingEnabled: boolean = true;
   private isFirstLoad: boolean = true;
   private connectionStatus: ConnectionStatus = "disabled";
-  private messages: TimelineMessage[] = [];
+  private messages: AgentMessage[] = [];
   private timelineState: TimelineState | null = null;
 
   // Event listeners
@@ -76,7 +76,7 @@ export class DataManager {
   /**
    * Get all messages
    */
-  public getMessages(): TimelineMessage[] {
+  public getMessages(): AgentMessage[] {
     return this.messages;
   }
 

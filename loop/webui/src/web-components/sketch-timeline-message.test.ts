@@ -1,11 +1,14 @@
 import { test, expect } from "@sand4rt/experimental-ct-web";
 import { SketchTimelineMessage } from "./sketch-timeline-message";
-import { TimelineMessage, ToolCall, GitCommit, Usage } from "../types";
+import {
+  AgentMessage,
+  CodingAgentMessageType,
+  GitCommit,
+  Usage,
+} from "../types";
 
 // Helper function to create mock timeline messages
-function createMockMessage(
-  props: Partial<TimelineMessage> = {},
-): TimelineMessage {
+function createMockMessage(props: Partial<AgentMessage> = {}): AgentMessage {
   return {
     idx: props.idx || 0,
     type: props.type || "agent",
@@ -40,7 +43,15 @@ test("renders with basic message content", async ({ mount }) => {
 });
 
 test.skip("renders with correct message type classes", async ({ mount }) => {
-  const messageTypes = ["user", "agent", "tool", "error"];
+  const messageTypes: CodingAgentMessageType[] = [
+    "user",
+    "agent",
+    "error",
+    "budget",
+    "tool",
+    "commit",
+    "auto",
+  ];
 
   for (const type of messageTypes) {
     const message = createMockMessage({ type });
@@ -124,6 +135,7 @@ test("displays usage information when available", async ({ mount }) => {
     output_tokens: 300,
     cost_usd: 0.025,
     cache_read_input_tokens: 50,
+    cache_creation_input_tokens: 0,
   };
 
   const message = createMockMessage({

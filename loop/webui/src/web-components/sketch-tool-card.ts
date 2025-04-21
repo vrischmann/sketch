@@ -1,8 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import { repeat } from "lit/directives/repeat.js";
 import { customElement, property } from "lit/decorators.js";
-import { State, ToolCall } from "../types";
+import { ToolCall } from "../types";
 import { marked, MarkedOptions } from "marked";
 
 function renderMarkdown(markdownContent: string): string {
