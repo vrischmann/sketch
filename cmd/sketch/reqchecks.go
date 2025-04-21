@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -53,11 +54,25 @@ func checkNPM() (string, error) {
 
 type reqCheckFunc func() (string, error)
 
-func hostReqsCheck() ([]string, error) {
+func hostReqsCheck(isUnsafe bool) ([]string, error) {
 	var mu sync.Mutex
 	ret := []string{}
 	eg := errgroup.Group{}
-	cfs := []reqCheckFunc{checkDocker, checkColima, checkNPM}
+	cfs := []reqCheckFunc{}
+
+	// Only check for Docker if we're not in unsafe mode
+	if !isUnsafe {
+		cfs = append(cfs, checkDocker)
+	}
+
+	// Only check for Colima on macOS and in safe mode
+	if runtime.GOOS == "darwin" && !isUnsafe {
+		cfs = append(cfs, checkColima)
+	}
+
+	// Always check for NPM
+	cfs = append(cfs, checkNPM)
+
 	eg.SetLimit(len(cfs))
 	for _, f := range cfs {
 		eg.Go(func() error {

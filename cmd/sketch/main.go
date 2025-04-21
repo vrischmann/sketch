@@ -111,7 +111,7 @@ func run() error {
 	}
 
 	if !inDocker {
-		msgs, err := hostReqsCheck()
+		msgs, err := hostReqsCheck(*unsafe)
 		if *verbose {
 			fmt.Println("Host requirement checks:")
 			for _, m := range msgs {
