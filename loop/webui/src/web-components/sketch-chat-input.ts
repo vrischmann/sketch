@@ -42,7 +42,7 @@ export class SketchChatInput extends LitElement {
       min-height: 40px;
       max-height: 300px;
       background: #f7f7f7;
-      overflow-y:  auto;
+      overflow-y: auto;
       box-sizing: border-box; /* Ensure padding is included in height calculation */
       line-height: 1.4; /* Consistent line height for better height calculation */
     }
@@ -123,13 +123,13 @@ export class SketchChatInput extends LitElement {
 
   adjustChatSpacing() {
     if (!this.chatInput) return;
-    
+
     // Reset height to minimal value to correctly calculate scrollHeight
-    this.chatInput.style.height = 'auto';
-    
+    this.chatInput.style.height = "auto";
+
     // Get the scroll height (content height)
     const scrollHeight = this.chatInput.scrollHeight;
-    
+
     // Set the height to match content (up to max-height which is handled by CSS)
     this.chatInput.style.height = `${scrollHeight}px`;
   }

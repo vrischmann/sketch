@@ -140,23 +140,27 @@ test.skip("does not send message when pressing Shift+Enter", async ({
   expect(content).toBe(testContent);
 });
 
-test("resizes when user enters more text than will fit", async ({
-  mount,
-}) => {
+test("resizes when user enters more text than will fit", async ({ mount }) => {
   const testContent = "Test message\n\n\n\n\n\n\n\n\n\n\n\n\nends here.";
   const component = await mount(SketchChatInput, {
     props: {
-      content: '',
+      content: "",
     },
   });
-  const origHeight = await component.evaluate((el: SketchChatInput) => el.chatInput.style.height);
+  const origHeight = await component.evaluate(
+    (el: SketchChatInput) => el.chatInput.style.height,
+  );
 
   // Enter very tall text in the textarea
   await component.locator("#chatInput").fill(testContent);
 
   // Check that textarea resized
-  const newHeight = await component.evaluate((el: SketchChatInput) => el.chatInput.style.height);
-  expect(Number.parseInt(newHeight)).toBeGreaterThan(Number.parseInt(origHeight));
+  const newHeight = await component.evaluate(
+    (el: SketchChatInput) => el.chatInput.style.height,
+  );
+  expect(Number.parseInt(newHeight)).toBeGreaterThan(
+    Number.parseInt(origHeight),
+  );
 });
 
 test("updates content when receiving update-content event", async ({
