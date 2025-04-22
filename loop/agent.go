@@ -446,7 +446,12 @@ func (a *Agent) Init(ini AgentInit) error {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git stash: %s: %v", out, err)
 		}
-		cmd = exec.CommandContext(ctx, "git", "fetch", ini.GitRemoteAddr)
+		cmd = exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", ini.GitRemoteAddr)
+		cmd.Dir = ini.WorkingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git remote add: %s: %v", out, err)
+		}
+		cmd = exec.CommandContext(ctx, "git", "fetch", "sketch-host")
 		cmd.Dir = ini.WorkingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git fetch: %s: %w", out, err)
