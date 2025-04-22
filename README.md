@@ -14,8 +14,11 @@ sketch
 
 ## Requirements
 
-Currently sketch only runs on macOS.
-It uses docker/colima (installable via homebrew) for containers.
+Currently sketch runs on macOS and linux.
+It uses docker/colima for containers.
+
+macOS: `brew install colima`
+linux: `apt install docker.io` (or equivalent for your distro)
 
 The [sketch.dev](https://sketch.dev) service is used to provide access
 to an LLM service and give you a way to access the web UI from anywhere.
