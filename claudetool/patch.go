@@ -13,16 +13,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sketch.dev/ant"
 	"sketch.dev/claudetool/editbuf"
 	"sketch.dev/claudetool/patchkit"
+	"sketch.dev/llm"
 )
 
 // Patch is a tool for precise text modifications in files.
-var Patch = &ant.Tool{
+var Patch = &llm.Tool{
 	Name:        PatchName,
 	Description: strings.TrimSpace(PatchDescription),
-	InputSchema: ant.MustSchema(PatchInputSchema),
+	InputSchema: llm.MustSchema(PatchInputSchema),
 	Run:         PatchRun,
 }
 

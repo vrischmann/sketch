@@ -11,8 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"sketch.dev/ant"
 	"sketch.dev/httprr"
+	"sketch.dev/llm"
+	"sketch.dev/llm/ant"
+	"sketch.dev/llm/conversation"
 )
 
 // TestAgentLoop tests that the Agent loop functionality works correctly.
@@ -58,7 +60,7 @@ func TestAgentLoop(t *testing.T) {
 	if err := os.Chdir("/"); err != nil {
 		t.Fatal(err)
 	}
-	budget := ant.Budget{MaxResponses: 100}
+	budget := conversation.Budget{MaxResponses: 100}
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -66,9 +68,11 @@ func TestAgentLoop(t *testing.T) {
 
 	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
 	cfg := AgentConfig{
-		Context:      ctx,
-		APIKey:       apiKey,
-		HTTPC:        client,
+		Context: ctx,
+		Service: &ant.Service{
+			APIKey: apiKey,
+			HTTPC:  client,
+		},
 		Budget:       budget,
 		GitUsername:  "Test Agent",
 		GitEmail:     "totallyhuman@sketch.dev",
@@ -206,7 +210,7 @@ func TestAgentTracksOutstandingCalls(t *testing.T) {
 func TestAgentProcessTurnWithNilResponse(t *testing.T) {
 	// Create a mock conversation that will return nil and error
 	mockConvo := &MockConvoInterface{
-		sendMessageFunc: func(message ant.Message) (*ant.MessageResponse, error) {
+		sendMessageFunc: func(message llm.Message) (*llm.Response, error) {
 			return nil, fmt.Errorf("test error: simulating nil response")
 		},
 	}
@@ -250,40 +254,40 @@ func TestAgentProcessTurnWithNilResponse(t *testing.T) {
 
 // MockConvoInterface implements the ConvoInterface for testing
 type MockConvoInterface struct {
-	sendMessageFunc              func(message ant.Message) (*ant.MessageResponse, error)
-	sendUserTextMessageFunc      func(s string, otherContents ...ant.Content) (*ant.MessageResponse, error)
-	toolResultContentsFunc       func(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error)
-	toolResultCancelContentsFunc func(resp *ant.MessageResponse) ([]ant.Content, error)
+	sendMessageFunc              func(message llm.Message) (*llm.Response, error)
+	sendUserTextMessageFunc      func(s string, otherContents ...llm.Content) (*llm.Response, error)
+	toolResultContentsFunc       func(ctx context.Context, resp *llm.Response) ([]llm.Content, error)
+	toolResultCancelContentsFunc func(resp *llm.Response) ([]llm.Content, error)
 	cancelToolUseFunc            func(toolUseID string, cause error) error
-	cumulativeUsageFunc          func() ant.CumulativeUsage
-	resetBudgetFunc              func(ant.Budget)
+	cumulativeUsageFunc          func() conversation.CumulativeUsage
+	resetBudgetFunc              func(conversation.Budget)
 	overBudgetFunc               func() error
 	getIDFunc                    func() string
-	subConvoWithHistoryFunc      func() *ant.Convo
+	subConvoWithHistoryFunc      func() *conversation.Convo
 }
 
-func (m *MockConvoInterface) SendMessage(message ant.Message) (*ant.MessageResponse, error) {
+func (m *MockConvoInterface) SendMessage(message llm.Message) (*llm.Response, error) {
 	if m.sendMessageFunc != nil {
 		return m.sendMessageFunc(message)
 	}
 	return nil, nil
 }
 
-func (m *MockConvoInterface) SendUserTextMessage(s string, otherContents ...ant.Content) (*ant.MessageResponse, error) {
+func (m *MockConvoInterface) SendUserTextMessage(s string, otherContents ...llm.Content) (*llm.Response, error) {
 	if m.sendUserTextMessageFunc != nil {
 		return m.sendUserTextMessageFunc(s, otherContents...)
 	}
 	return nil, nil
 }
 
-func (m *MockConvoInterface) ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
+func (m *MockConvoInterface) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
 	if m.toolResultContentsFunc != nil {
 		return m.toolResultContentsFunc(ctx, resp)
 	}
 	return nil, nil
 }
 
-func (m *MockConvoInterface) ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error) {
+func (m *MockConvoInterface) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error) {
 	if m.toolResultCancelContentsFunc != nil {
 		return m.toolResultCancelContentsFunc(resp)
 	}
@@ -297,14 +301,14 @@ func (m *MockConvoInterface) CancelToolUse(toolUseID string, cause error) error 
 	return nil
 }
 
-func (m *MockConvoInterface) CumulativeUsage() ant.CumulativeUsage {
+func (m *MockConvoInterface) CumulativeUsage() conversation.CumulativeUsage {
 	if m.cumulativeUsageFunc != nil {
 		return m.cumulativeUsageFunc()
 	}
-	return ant.CumulativeUsage{}
+	return conversation.CumulativeUsage{}
 }
 
-func (m *MockConvoInterface) ResetBudget(budget ant.Budget) {
+func (m *MockConvoInterface) ResetBudget(budget conversation.Budget) {
 	if m.resetBudgetFunc != nil {
 		m.resetBudgetFunc(budget)
 	}
@@ -324,7 +328,7 @@ func (m *MockConvoInterface) GetID() string {
 	return "mock-convo-id"
 }
 
-func (m *MockConvoInterface) SubConvoWithHistory() *ant.Convo {
+func (m *MockConvoInterface) SubConvoWithHistory() *conversation.Convo {
 	if m.subConvoWithHistoryFunc != nil {
 		return m.subConvoWithHistoryFunc()
 	}
@@ -337,7 +341,7 @@ func (m *MockConvoInterface) SubConvoWithHistory() *ant.Convo {
 func TestAgentProcessTurnWithNilResponseNilError(t *testing.T) {
 	// Create a mock conversation that will return nil response and nil error
 	mockConvo := &MockConvoInterface{
-		sendMessageFunc: func(message ant.Message) (*ant.MessageResponse, error) {
+		sendMessageFunc: func(message llm.Message) (*llm.Response, error) {
 			return nil, nil // This is unusual but now handled gracefully
 		},
 	}
@@ -464,48 +468,48 @@ func TestAgentStateMachine(t *testing.T) {
 
 // mockConvoInterface is a mock implementation of ConvoInterface for testing
 type mockConvoInterface struct {
-	SendMessageFunc        func(message ant.Message) (*ant.MessageResponse, error)
-	ToolResultContentsFunc func(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error)
+	SendMessageFunc        func(message llm.Message) (*llm.Response, error)
+	ToolResultContentsFunc func(ctx context.Context, resp *llm.Response) ([]llm.Content, error)
 }
 
 func (c *mockConvoInterface) GetID() string {
 	return "mockConvoInterface-id"
 }
 
-func (c *mockConvoInterface) SubConvoWithHistory() *ant.Convo {
+func (c *mockConvoInterface) SubConvoWithHistory() *conversation.Convo {
 	return nil
 }
 
-func (m *mockConvoInterface) CumulativeUsage() ant.CumulativeUsage {
-	return ant.CumulativeUsage{}
+func (m *mockConvoInterface) CumulativeUsage() conversation.CumulativeUsage {
+	return conversation.CumulativeUsage{}
 }
 
-func (m *mockConvoInterface) ResetBudget(ant.Budget) {}
+func (m *mockConvoInterface) ResetBudget(conversation.Budget) {}
 
 func (m *mockConvoInterface) OverBudget() error {
 	return nil
 }
 
-func (m *mockConvoInterface) SendMessage(message ant.Message) (*ant.MessageResponse, error) {
+func (m *mockConvoInterface) SendMessage(message llm.Message) (*llm.Response, error) {
 	if m.SendMessageFunc != nil {
 		return m.SendMessageFunc(message)
 	}
-	return &ant.MessageResponse{StopReason: ant.StopReasonEndTurn}, nil
+	return &llm.Response{StopReason: llm.StopReasonEndTurn}, nil
 }
 
-func (m *mockConvoInterface) SendUserTextMessage(s string, otherContents ...ant.Content) (*ant.MessageResponse, error) {
-	return m.SendMessage(ant.UserStringMessage(s))
+func (m *mockConvoInterface) SendUserTextMessage(s string, otherContents ...llm.Content) (*llm.Response, error) {
+	return m.SendMessage(llm.UserStringMessage(s))
 }
 
-func (m *mockConvoInterface) ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
+func (m *mockConvoInterface) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
 	if m.ToolResultContentsFunc != nil {
 		return m.ToolResultContentsFunc(ctx, resp)
 	}
-	return []ant.Content{}, nil
+	return []llm.Content{}, nil
 }
 
-func (m *mockConvoInterface) ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error) {
-	return []ant.Content{ant.StringContent("Tool use cancelled")}, nil
+func (m *mockConvoInterface) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error) {
+	return []llm.Content{llm.StringContent("Tool use cancelled")}, nil
 }
 
 func (m *mockConvoInterface) CancelToolUse(toolUseID string, cause error) error {
@@ -542,11 +546,11 @@ func TestAgentProcessTurnStateTransitions(t *testing.T) {
 	agent.inbox <- "Test message"
 
 	// Setup the mock to simulate a model response with end of turn
-	mockConvo.SendMessageFunc = func(message ant.Message) (*ant.MessageResponse, error) {
-		return &ant.MessageResponse{
-			StopReason: ant.StopReasonEndTurn,
-			Content: []ant.Content{
-				ant.StringContent("This is a test response"),
+	mockConvo.SendMessageFunc = func(message llm.Message) (*llm.Response, error) {
+		return &llm.Response{
+			StopReason: llm.StopReasonEndTurn,
+			Content: []llm.Content{
+				llm.StringContent("This is a test response"),
 			},
 		}, nil
 	}
@@ -615,29 +619,29 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 
 	// First response requests a tool
 	firstResponseDone := false
-	mockConvo.SendMessageFunc = func(message ant.Message) (*ant.MessageResponse, error) {
+	mockConvo.SendMessageFunc = func(message llm.Message) (*llm.Response, error) {
 		if !firstResponseDone {
 			firstResponseDone = true
-			return &ant.MessageResponse{
-				StopReason: ant.StopReasonToolUse,
-				Content: []ant.Content{
-					ant.StringContent("I'll use a tool"),
-					{Type: ant.ContentTypeToolUse, ToolName: "test_tool", ToolInput: []byte("{}"), ID: "test_id"},
+			return &llm.Response{
+				StopReason: llm.StopReasonToolUse,
+				Content: []llm.Content{
+					llm.StringContent("I'll use a tool"),
+					{Type: llm.ContentTypeToolUse, ToolName: "test_tool", ToolInput: []byte("{}"), ID: "test_id"},
 				},
 			}, nil
 		}
 		// Second response ends the turn
-		return &ant.MessageResponse{
-			StopReason: ant.StopReasonEndTurn,
-			Content: []ant.Content{
-				ant.StringContent("Finished using the tool"),
+		return &llm.Response{
+			StopReason: llm.StopReasonEndTurn,
+			Content: []llm.Content{
+				llm.StringContent("Finished using the tool"),
 			},
 		}, nil
 	}
 
 	// Tool result content handler
-	mockConvo.ToolResultContentsFunc = func(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
-		return []ant.Content{ant.StringContent("Tool executed successfully")}, nil
+	mockConvo.ToolResultContentsFunc = func(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
+		return []llm.Content{llm.StringContent("Tool executed successfully")}, nil
 	}
 
 	// Track state transitions

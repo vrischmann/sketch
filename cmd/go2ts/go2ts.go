@@ -12,7 +12,7 @@ import (
 	"os"
 
 	"go.skia.org/infra/go/go2ts"
-	"sketch.dev/ant"
+	"sketch.dev/llm"
 	"sketch.dev/loop"
 	"sketch.dev/loop/server"
 )
@@ -54,7 +54,7 @@ func TS() *go2ts.Go2TS {
 		loop.AgentMessage{},
 		loop.GitCommit{},
 		loop.ToolCall{},
-		ant.Usage{},
+		llm.Usage{},
 		server.State{},
 	)
 

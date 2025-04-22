@@ -17,10 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"sketch.dev/ant"
 	"sketch.dev/browser"
 	"sketch.dev/claudetool"
 	"sketch.dev/claudetool/bashkit"
+	"sketch.dev/llm"
+	"sketch.dev/llm/conversation"
 )
 
 const (
@@ -64,8 +65,8 @@ type CodingAgent interface {
 	// Returns the current number of messages in the history
 	MessageCount() int
 
-	TotalUsage() ant.CumulativeUsage
-	OriginalBudget() ant.Budget
+	TotalUsage() conversation.CumulativeUsage
+	OriginalBudget() conversation.Budget
 
 	WorkingDir() string
 
@@ -150,7 +151,7 @@ type AgentMessage struct {
 	Timestamp            time.Time  `json:"timestamp"`
 	ConversationID       string     `json:"conversation_id"`
 	ParentConversationID *string    `json:"parent_conversation_id,omitempty"`
-	Usage                *ant.Usage `json:"usage,omitempty"`
+	Usage                *llm.Usage `json:"usage,omitempty"`
 
 	// Message timing information
 	StartTime *time.Time     `json:"start_time,omitempty"`
@@ -164,7 +165,7 @@ type AgentMessage struct {
 }
 
 // SetConvo sets m.ConversationID and m.ParentConversationID based on convo.
-func (m *AgentMessage) SetConvo(convo *ant.Convo) {
+func (m *AgentMessage) SetConvo(convo *conversation.Convo) {
 	if convo == nil {
 		m.ConversationID = ""
 		m.ParentConversationID = nil
@@ -262,16 +263,16 @@ func budgetMessage(err error) AgentMessage {
 
 // ConvoInterface defines the interface for conversation interactions
 type ConvoInterface interface {
-	CumulativeUsage() ant.CumulativeUsage
-	ResetBudget(ant.Budget)
+	CumulativeUsage() conversation.CumulativeUsage
+	ResetBudget(conversation.Budget)
 	OverBudget() error
-	SendMessage(message ant.Message) (*ant.MessageResponse, error)
-	SendUserTextMessage(s string, otherContents ...ant.Content) (*ant.MessageResponse, error)
+	SendMessage(message llm.Message) (*llm.Response, error)
+	SendUserTextMessage(s string, otherContents ...llm.Content) (*llm.Response, error)
 	GetID() string
-	ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error)
-	ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error)
+	ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error)
+	ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error)
 	CancelToolUse(toolUseID string, cause error) error
-	SubConvoWithHistory() *ant.Convo
+	SubConvoWithHistory() *conversation.Convo
 }
 
 type Agent struct {
@@ -287,7 +288,7 @@ type Agent struct {
 	outsideHTTP       string        // base address of the outside webserver (only when under docker)
 	ready             chan struct{} // closed when the agent is initialized (only when under docker)
 	startedAt         time.Time
-	originalBudget    ant.Budget
+	originalBudget    conversation.Budget
 	title             string
 	branchName        string
 	codereview        *claudetool.CodeReviewer
@@ -531,7 +532,7 @@ func (a *Agent) SetTitleBranch(title, branchName string) {
 }
 
 // OnToolCall implements ant.Listener and tracks the start of a tool call.
-func (a *Agent) OnToolCall(ctx context.Context, convo *ant.Convo, id string, toolName string, toolInput json.RawMessage, content ant.Content) {
+func (a *Agent) OnToolCall(ctx context.Context, convo *conversation.Convo, id string, toolName string, toolInput json.RawMessage, content llm.Content) {
 	// Track the tool call
 	a.mu.Lock()
 	a.outstandingToolCalls[id] = toolName
@@ -539,7 +540,7 @@ func (a *Agent) OnToolCall(ctx context.Context, convo *ant.Convo, id string, too
 }
 
 // OnToolResult implements ant.Listener.
-func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolID string, toolName string, toolInput json.RawMessage, content ant.Content, result *string, err error) {
+func (a *Agent) OnToolResult(ctx context.Context, convo *conversation.Convo, toolID string, toolName string, toolInput json.RawMessage, content llm.Content, result *string, err error) {
 	// Remove the tool call from outstanding calls
 	a.mu.Lock()
 	delete(a.outstandingToolCalls, toolID)
@@ -553,13 +554,13 @@ func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolID strin
 		ToolName:   toolName,
 		ToolInput:  string(toolInput),
 		ToolCallId: content.ToolUseID,
-		StartTime:  content.StartTime,
-		EndTime:    content.EndTime,
+		StartTime:  content.ToolUseStartTime,
+		EndTime:    content.ToolUseEndTime,
 	}
 
 	// Calculate the elapsed time if both start and end times are set
-	if content.StartTime != nil && content.EndTime != nil {
-		elapsed := content.EndTime.Sub(*content.StartTime)
+	if content.ToolUseStartTime != nil && content.ToolUseEndTime != nil {
+		elapsed := content.ToolUseEndTime.Sub(*content.ToolUseStartTime)
 		m.Elapsed = &elapsed
 	}
 
@@ -568,18 +569,18 @@ func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolID strin
 }
 
 // OnRequest implements ant.Listener.
-func (a *Agent) OnRequest(ctx context.Context, convo *ant.Convo, id string, msg *ant.Message) {
+func (a *Agent) OnRequest(ctx context.Context, convo *conversation.Convo, id string, msg *llm.Message) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.outstandingLLMCalls[id] = struct{}{}
 	// We already get tool results from the above. We send user messages to the outbox in the agent loop.
 }
 
-// OnResponse implements ant.Listener. Responses contain messages from the LLM
+// OnResponse implements conversation.Listener. Responses contain messages from the LLM
 // that need to be displayed (as well as tool calls that we send along when
 // they're done). (It would be reasonable to also mention tool calls when they're
 // started, but we don't do that yet.)
-func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, resp *ant.MessageResponse) {
+func (a *Agent) OnResponse(ctx context.Context, convo *conversation.Convo, id string, resp *llm.Response) {
 	// Remove the LLM call from outstanding calls
 	a.mu.Lock()
 	delete(a.outstandingLLMCalls, id)
@@ -597,7 +598,7 @@ func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, res
 	}
 
 	endOfTurn := false
-	if resp.StopReason != ant.StopReasonToolUse && convo.Parent == nil {
+	if resp.StopReason != llm.StopReasonToolUse && convo.Parent == nil {
 		endOfTurn = true
 	}
 	m := AgentMessage{
@@ -610,10 +611,10 @@ func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, res
 	}
 
 	// Extract any tool calls from the response
-	if resp.StopReason == ant.StopReasonToolUse {
+	if resp.StopReason == llm.StopReasonToolUse {
 		var toolCalls []ToolCall
 		for _, part := range resp.Content {
-			if part.Type == ant.ContentTypeToolUse {
+			if part.Type == llm.ContentTypeToolUse {
 				toolCalls = append(toolCalls, ToolCall{
 					Name:       part.ToolName,
 					Input:      string(part.ToolInput),
@@ -653,17 +654,15 @@ func (a *Agent) Messages(start int, end int) []AgentMessage {
 	return slices.Clone(a.history[start:end])
 }
 
-func (a *Agent) OriginalBudget() ant.Budget {
+func (a *Agent) OriginalBudget() conversation.Budget {
 	return a.originalBudget
 }
 
 // AgentConfig contains configuration for creating a new Agent.
 type AgentConfig struct {
 	Context          context.Context
-	AntURL           string
-	APIKey           string
-	HTTPC            *http.Client
-	Budget           ant.Budget
+	Service          llm.Service
+	Budget           conversation.Budget
 	GitUsername      string
 	GitEmail         string
 	SessionID        string
@@ -778,15 +777,9 @@ var agentSystemPrompt string
 // initConvo initializes the conversation.
 // It must not be called until all agent fields are initialized,
 // particularly workingDir and git.
-func (a *Agent) initConvo() *ant.Convo {
+func (a *Agent) initConvo() *conversation.Convo {
 	ctx := a.config.Context
-	convo := ant.NewConvo(ctx, a.config.APIKey)
-	if a.config.HTTPC != nil {
-		convo.HTTPC = a.config.HTTPC
-	}
-	if a.config.AntURL != "" {
-		convo.URL = a.config.AntURL
-	}
+	convo := conversation.New(ctx, a.config.Service)
 	convo.PromptCaching = true
 	convo.Budget = a.config.Budget
 
@@ -832,7 +825,7 @@ func (a *Agent) initConvo() *ant.Convo {
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display
 	// template in termui/termui.go has pretty-printing support for all tools.
-	convo.Tools = []*ant.Tool{
+	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
 		claudetool.Think, a.titleTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
 		a.codereview.Tool(),
@@ -863,8 +856,8 @@ func branchExists(dir, branchName string) bool {
 	return false
 }
 
-func (a *Agent) titleTool() *ant.Tool {
-	title := &ant.Tool{
+func (a *Agent) titleTool() *llm.Tool {
+	title := &llm.Tool{
 		Name:        "title",
 		Description: `Sets the conversation title and creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`,
 		InputSchema: json.RawMessage(`{
@@ -990,20 +983,20 @@ func (a *Agent) pushToOutbox(ctx context.Context, m AgentMessage) {
 	}
 }
 
-func (a *Agent) GatherMessages(ctx context.Context, block bool) ([]ant.Content, error) {
-	var m []ant.Content
+func (a *Agent) GatherMessages(ctx context.Context, block bool) ([]llm.Content, error) {
+	var m []llm.Content
 	if block {
 		select {
 		case <-ctx.Done():
 			return m, ctx.Err()
 		case msg := <-a.inbox:
-			m = append(m, ant.StringContent(msg))
+			m = append(m, llm.StringContent(msg))
 		}
 	}
 	for {
 		select {
 		case msg := <-a.inbox:
-			m = append(m, ant.StringContent(msg))
+			m = append(m, llm.StringContent(msg))
 		default:
 			return m, nil
 		}
@@ -1052,7 +1045,7 @@ func (a *Agent) processTurn(ctx context.Context) error {
 		}
 
 		// If the model is not requesting to use a tool, we're done
-		if resp.StopReason != ant.StopReasonToolUse {
+		if resp.StopReason != llm.StopReasonToolUse {
 			a.stateMachine.Transition(ctx, StateEndOfTurn, "LLM completed response, ending turn")
 			break
 		}
@@ -1078,7 +1071,7 @@ func (a *Agent) processTurn(ctx context.Context) error {
 }
 
 // processUserMessage waits for user messages and sends them to the model
-func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, error) {
+func (a *Agent) processUserMessage(ctx context.Context) (*llm.Response, error) {
 	// Wait for at least one message from the user
 	msgs, err := a.GatherMessages(ctx, true)
 	if err != nil { // e.g. the context was canceled while blocking in GatherMessages
@@ -1086,8 +1079,8 @@ func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, e
 		return nil, err
 	}
 
-	userMessage := ant.Message{
-		Role:    ant.MessageRoleUser,
+	userMessage := llm.Message{
+		Role:    llm.MessageRoleUser,
 		Content: msgs,
 	}
 
@@ -1109,8 +1102,8 @@ func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, e
 }
 
 // handleToolExecution processes a tool use request from the model
-func (a *Agent) handleToolExecution(ctx context.Context, resp *ant.MessageResponse) (bool, *ant.MessageResponse) {
-	var results []ant.Content
+func (a *Agent) handleToolExecution(ctx context.Context, resp *llm.Response) (bool, *llm.Response) {
+	var results []llm.Content
 	cancelled := false
 
 	// Transition to checking for cancellation state
@@ -1200,7 +1193,7 @@ Please amend your latest git commit with these changes and then continue with wh
 }
 
 // continueTurnWithToolResults continues the conversation with tool results
-func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.Content, autoqualityMessages []string, cancelled bool) (bool, *ant.MessageResponse) {
+func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []llm.Content, autoqualityMessages []string, cancelled bool) (bool, *llm.Response) {
 	// Get any messages the user sent while tools were executing
 	a.stateMachine.Transition(ctx, StateGatheringAdditionalMessages, "Gathering additional user messages")
 	msgs, err := a.GatherMessages(ctx, false)
@@ -1211,19 +1204,19 @@ func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.C
 
 	// Inject any auto-generated messages from quality checks
 	for _, msg := range autoqualityMessages {
-		msgs = append(msgs, ant.StringContent(msg))
+		msgs = append(msgs, llm.StringContent(msg))
 	}
 
 	// Handle cancellation by appending a message about it
 	if cancelled {
-		msgs = append(msgs, ant.StringContent(cancelToolUseMessage))
+		msgs = append(msgs, llm.StringContent(cancelToolUseMessage))
 		// EndOfTurn is false here so that the client of this agent keeps processing
 		// further messages; the conversation is not over.
 		a.pushToOutbox(ctx, AgentMessage{Type: ErrorMessageType, Content: userCancelMessage, EndOfTurn: false})
 	} else if err := a.convo.OverBudget(); err != nil {
 		// Handle budget issues by appending a message about it
 		budgetMsg := "We've exceeded our budget. Please ask the user to confirm before continuing by ending the turn."
-		msgs = append(msgs, ant.StringContent(budgetMsg))
+		msgs = append(msgs, llm.StringContent(budgetMsg))
 		a.pushToOutbox(ctx, budgetMessage(fmt.Errorf("warning: %w (ask to keep trying, if you'd like)", err)))
 	}
 
@@ -1232,8 +1225,8 @@ func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.C
 
 	// Send the combined message to continue the conversation
 	a.stateMachine.Transition(ctx, StateSendingToolResults, "Sending tool results back to LLM")
-	resp, err := a.convo.SendMessage(ant.Message{
-		Role:    ant.MessageRoleUser,
+	resp, err := a.convo.SendMessage(llm.Message{
+		Role:    llm.MessageRoleUser,
 		Content: results,
 	})
 	if err != nil {
@@ -1264,11 +1257,11 @@ func (a *Agent) overBudget(ctx context.Context) error {
 	return nil
 }
 
-func collectTextContent(msg *ant.MessageResponse) string {
+func collectTextContent(msg *llm.Response) string {
 	// Collect all text content
 	var allText strings.Builder
 	for _, content := range msg.Content {
-		if content.Type == ant.ContentTypeText && content.Text != "" {
+		if content.Type == llm.ContentTypeText && content.Text != "" {
 			if allText.Len() > 0 {
 				allText.WriteString("\n\n")
 			}
@@ -1278,7 +1271,7 @@ func collectTextContent(msg *ant.MessageResponse) string {
 	return allText.String()
 }
 
-func (a *Agent) TotalUsage() ant.CumulativeUsage {
+func (a *Agent) TotalUsage() conversation.CumulativeUsage {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.convo.CumulativeUsage()
@@ -1604,7 +1597,7 @@ func (a *Agent) SuggestReprompt(ctx context.Context) (string, error) {
 
 	Reply with ONLY the reprompt text.
 	`
-	userMessage := ant.UserStringMessage(msg)
+	userMessage := llm.UserStringMessage(msg)
 	// By doing this in a subconversation, the agent doesn't call tools (because
 	// there aren't any), and there's not a concurrency risk with on-going other
 	// outstanding conversations.

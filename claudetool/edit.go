@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sketch.dev/ant"
+	"sketch.dev/llm"
 )
 
 // Constants for the AnthropicEditTool
@@ -59,7 +59,7 @@ type editInput struct {
 var fileHistory = make(map[string][]string)
 
 // AnthropicEditTool is a tool for viewing, creating, and editing files
-var AnthropicEditTool = &ant.Tool{
+var AnthropicEditTool = &llm.Tool{
 	// Note that Type is model-dependent, and would be different for Claude 3.5, for example.
 	Type: "text_editor_20250124",
 	Name: editName,

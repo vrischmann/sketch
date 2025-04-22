@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json"
 
-	"sketch.dev/ant"
+	"sketch.dev/llm"
 )
 
 // The Think tool provides space to think.
-var Think = &ant.Tool{
+var Think = &llm.Tool{
 	Name:        thinkName,
 	Description: thinkDescription,
-	InputSchema: ant.MustSchema(thinkInputSchema),
+	InputSchema: llm.MustSchema(thinkInputSchema),
 	Run:         thinkRun,
 }
 

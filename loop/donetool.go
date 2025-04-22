@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"sketch.dev/ant"
 	"sketch.dev/claudetool"
+	"sketch.dev/llm"
 )
 
 // makeDoneTool creates a tool that provides a checklist to the agent. There
@@ -14,8 +14,8 @@ import (
 // not as reliable as it could be. Historically, we've found that Claude ignores
 // the tool results here, so we don't tell the tool to say "hey, really check this"
 // at the moment, though we've tried.
-func makeDoneTool(codereview *claudetool.CodeReviewer, gitUsername, gitEmail string) *ant.Tool {
-	return &ant.Tool{
+func makeDoneTool(codereview *claudetool.CodeReviewer, gitUsername, gitEmail string) *llm.Tool {
+	return &llm.Tool{
 		Name:        "done",
 		Description: `Use this tool when you have achieved the user's goal. The parameters form a checklist which you should evaluate.`,
 		InputSchema: json.RawMessage(doneChecklistJSONSchema(gitUsername, gitEmail)),

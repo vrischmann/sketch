@@ -13,6 +13,7 @@ import (
 
 	gcmp "github.com/google/go-cmp/cmp"
 	"sketch.dev/httprr"
+	"sketch.dev/llm/ant"
 )
 
 var flagRewriteWant = flag.Bool("rewritewant", false, "rewrite the dockerfiles we want from the model")
@@ -89,7 +90,11 @@ jobs:
 				t.Fatal(err)
 			}
 			apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
-			result, err := createDockerfile(ctx, rr.Client(), "", apiKey, initFiles, "")
+			srv := &ant.Service{
+				APIKey: apiKey,
+				HTTPC:  rr.Client(),
+			}
+			result, err := createDockerfile(ctx, srv, initFiles, "")
 			if err != nil {
 				t.Fatal(err)
 			}

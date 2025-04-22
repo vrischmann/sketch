@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"sketch.dev/browser"
+	"sketch.dev/llm/ant"
 	"sketch.dev/loop/server"
 	"sketch.dev/skribe"
 	"sketch.dev/webui"
@@ -654,7 +655,12 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 		}
 
 		start := time.Now()
-		dockerfile, err := createDockerfile(ctx, http.DefaultClient, antURL, antAPIKey, initFiles, subPathWorkingDir)
+		srv := &ant.Service{
+			URL:    antURL,
+			APIKey: antAPIKey,
+			HTTPC:  http.DefaultClient,
+		}
+		dockerfile, err := createDockerfile(ctx, srv, initFiles, subPathWorkingDir)
 		if err != nil {
 			return "", fmt.Errorf("create dockerfile: %w", err)
 		}

@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"sketch.dev/ant"
 	"sketch.dev/claudetool/bashkit"
+	"sketch.dev/llm"
 )
 
 // PermissionCallback is a function type for checking if a command is allowed to run
@@ -27,15 +27,15 @@ type BashTool struct {
 }
 
 // NewBashTool creates a new Bash tool with optional permission callback
-func NewBashTool(checkPermission PermissionCallback) *ant.Tool {
+func NewBashTool(checkPermission PermissionCallback) *llm.Tool {
 	tool := &BashTool{
 		CheckPermission: checkPermission,
 	}
 
-	return &ant.Tool{
+	return &llm.Tool{
 		Name:        bashName,
 		Description: strings.TrimSpace(bashDescription),
-		InputSchema: ant.MustSchema(bashInputSchema),
+		InputSchema: llm.MustSchema(bashInputSchema),
 		Run:         tool.Run,
 	}
 }

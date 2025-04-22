@@ -6,10 +6,11 @@ import (
 	"sync"
 	"testing"
 
-	"sketch.dev/ant"
+	"sketch.dev/llm"
+	"sketch.dev/llm/conversation"
 )
 
-// MockConvo is a custom mock for ant.Convo interface
+// MockConvo is a custom mock for conversation.Convo interface
 type MockConvo struct {
 	mu sync.Mutex
 	t  *testing.T
@@ -21,23 +22,23 @@ type MockConvo struct {
 }
 
 type mockCall struct {
-	args   []interface{}
-	result []interface{}
+	args   []any
+	result []any
 }
 
 type mockExpectation struct {
 	until  chan any
-	args   []interface{}
-	result []interface{}
+	args   []any
+	result []any
 }
 
 // Return sets up return values for an expectation
-func (e *mockExpectation) Return(values ...interface{}) {
+func (e *mockExpectation) Return(values ...any) {
 	e.result = values
 }
 
 // Return sets up return values for an expectation
-func (e *mockExpectation) BlockAndReturn(until chan any, values ...interface{}) {
+func (e *mockExpectation) BlockAndReturn(until chan any, values ...any) {
 	e.until = until
 	e.result = values
 }
@@ -53,7 +54,7 @@ func NewMockConvo(t *testing.T) *MockConvo {
 }
 
 // ExpectCall sets up an expectation for a method call
-func (m *MockConvo) ExpectCall(method string, args ...interface{}) *mockExpectation {
+func (m *MockConvo) ExpectCall(method string, args ...any) *mockExpectation {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	expectation := &mockExpectation{args: args}
@@ -65,7 +66,7 @@ func (m *MockConvo) ExpectCall(method string, args ...interface{}) *mockExpectat
 }
 
 // findMatchingExpectation finds a matching expectation for a method call
-func (m *MockConvo) findMatchingExpectation(method string, args ...interface{}) (*mockExpectation, bool) {
+func (m *MockConvo) findMatchingExpectation(method string, args ...any) (*mockExpectation, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	expectations, ok := m.expectations[method]
@@ -87,7 +88,7 @@ func (m *MockConvo) findMatchingExpectation(method string, args ...interface{}) 
 }
 
 // matchArgs checks if call arguments match expectation arguments
-func matchArgs(expected, actual []interface{}) bool {
+func matchArgs(expected, actual []any) bool {
 	if len(expected) != len(actual) {
 		return false
 	}
@@ -107,7 +108,7 @@ func matchArgs(expected, actual []interface{}) bool {
 }
 
 // recordCall records a method call
-func (m *MockConvo) recordCall(method string, args ...interface{}) {
+func (m *MockConvo) recordCall(method string, args ...any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.calls[method]; !ok {
@@ -116,7 +117,7 @@ func (m *MockConvo) recordCall(method string, args ...interface{}) {
 	m.calls[method] = append(m.calls[method], &mockCall{args: args})
 }
 
-func (m *MockConvo) SendMessage(message ant.Message) (*ant.MessageResponse, error) {
+func (m *MockConvo) SendMessage(message llm.Message) (*llm.Response, error) {
 	m.recordCall("SendMessage", message)
 	exp, ok := m.findMatchingExpectation("SendMessage", message)
 	if !ok {
@@ -129,10 +130,10 @@ func (m *MockConvo) SendMessage(message ant.Message) (*ant.MessageResponse, erro
 	if err, ok := exp.result[1].(error); ok {
 		retErr = err
 	}
-	return exp.result[0].(*ant.MessageResponse), retErr
+	return exp.result[0].(*llm.Response), retErr
 }
 
-func (m *MockConvo) SendUserTextMessage(message string, otherContents ...ant.Content) (*ant.MessageResponse, error) {
+func (m *MockConvo) SendUserTextMessage(message string, otherContents ...llm.Content) (*llm.Response, error) {
 	m.recordCall("SendUserTextMessage", message, otherContents)
 	exp, ok := m.findMatchingExpectation("SendUserTextMessage", message, otherContents)
 	if !ok {
@@ -145,10 +146,10 @@ func (m *MockConvo) SendUserTextMessage(message string, otherContents ...ant.Con
 	if err, ok := exp.result[1].(error); ok {
 		retErr = err
 	}
-	return exp.result[0].(*ant.MessageResponse), retErr
+	return exp.result[0].(*llm.Response), retErr
 }
 
-func (m *MockConvo) ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
+func (m *MockConvo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
 	m.recordCall("ToolResultContents", resp)
 	exp, ok := m.findMatchingExpectation("ToolResultContents", resp)
 	if !ok {
@@ -162,10 +163,10 @@ func (m *MockConvo) ToolResultContents(ctx context.Context, resp *ant.MessageRes
 		retErr = err
 	}
 
-	return exp.result[0].([]ant.Content), retErr
+	return exp.result[0].([]llm.Content), retErr
 }
 
-func (m *MockConvo) ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error) {
+func (m *MockConvo) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error) {
 	m.recordCall("ToolResultCancelContents", resp)
 	exp, ok := m.findMatchingExpectation("ToolResultCancelContents", resp)
 	if !ok {
@@ -179,12 +180,12 @@ func (m *MockConvo) ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.C
 		retErr = err
 	}
 
-	return exp.result[0].([]ant.Content), retErr
+	return exp.result[0].([]llm.Content), retErr
 }
 
-func (m *MockConvo) CumulativeUsage() ant.CumulativeUsage {
+func (m *MockConvo) CumulativeUsage() conversation.CumulativeUsage {
 	m.recordCall("CumulativeUsage")
-	return ant.CumulativeUsage{}
+	return conversation.CumulativeUsage{}
 }
 
 func (m *MockConvo) OverBudget() error {
@@ -197,12 +198,12 @@ func (m *MockConvo) GetID() string {
 	return "mock-conversation-id"
 }
 
-func (m *MockConvo) SubConvoWithHistory() *ant.Convo {
+func (m *MockConvo) SubConvoWithHistory() *conversation.Convo {
 	m.recordCall("SubConvoWithHistory")
 	return nil
 }
 
-func (m *MockConvo) ResetBudget(_ ant.Budget) {
+func (m *MockConvo) ResetBudget(_ conversation.Budget) {
 	m.recordCall("ResetBudget")
 }
 

@@ -15,7 +15,8 @@ import (
 	"strings"
 	"text/template"
 
-	"sketch.dev/ant"
+	"sketch.dev/llm"
+	"sketch.dev/llm/conversation"
 )
 
 func hashInitFiles(initFiles map[string]string) string {
@@ -166,7 +167,7 @@ func checkTagExists(tag string) error {
 // It expects the relevant initFiles to have been provided.
 // If the sketch binary is being executed in a sub-directory of the repository,
 // the relative path is provided on subPathWorkingDir.
-func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey string, initFiles map[string]string, subPathWorkingDir string) (string, error) {
+func createDockerfile(ctx context.Context, srv llm.Service, initFiles map[string]string, subPathWorkingDir string) (string, error) {
 	if subPathWorkingDir == "." {
 		subPathWorkingDir = ""
 	} else if subPathWorkingDir != "" && subPathWorkingDir[0] != '/' {
@@ -188,18 +189,14 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
 		toolCalled = true
 		return "OK", nil
 	}
-	convo := ant.NewConvo(ctx, antAPIKey)
-	if httpc != nil {
-		convo.HTTPC = httpc
-	}
-	if antURL != "" {
-		convo.URL = antURL
-	}
-	convo.Tools = []*ant.Tool{{
+
+	convo := conversation.New(ctx, srv)
+
+	convo.Tools = []*llm.Tool{{
 		Name:        "dockerfile",
 		Description: "Helps define a Dockerfile that sets up a dev environment for this project.",
 		Run:         runDockerfile,
-		InputSchema: ant.MustSchema(`{
+		InputSchema: llm.MustSchema(`{
   "type": "object",
   "required": ["extra_cmds"],
   "properties": {
@@ -223,10 +220,10 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
 	//	git diff dockerimg/testdata/*.dockerfile
 	//
 	// If the dockerfile changes are a strict improvement, commit all the changes.
-	msg := ant.Message{
-		Role: ant.MessageRoleUser,
-		Content: []ant.Content{{
-			Type: ant.ContentTypeText,
+	msg := llm.Message{
+		Role: llm.MessageRoleUser,
+		Content: []llm.Content{{
+			Type: llm.ContentTypeText,
 			Text: `
 Call the dockerfile tool to create a Dockerfile.
 The parameters to dockerfile fill out the From and ExtraCmds
@@ -250,15 +247,15 @@ In particular:
 	}
 
 	for _, name := range slices.Sorted(maps.Keys(initFiles)) {
-		msg.Content = append(msg.Content, ant.StringContent(fmt.Sprintf("Here is the contents %s:\n<file>\n%s\n</file>\n\n", name, initFiles[name])))
+		msg.Content = append(msg.Content, llm.StringContent(fmt.Sprintf("Here is the contents %s:\n<file>\n%s\n</file>\n\n", name, initFiles[name])))
 	}
-	msg.Content = append(msg.Content, ant.StringContent("Now call the dockerfile tool."))
+	msg.Content = append(msg.Content, llm.StringContent("Now call the dockerfile tool."))
 	res, err := convo.SendMessage(msg)
 	if err != nil {
 		return "", err
 	}
-	if res.StopReason != ant.StopReasonToolUse {
-		return "", fmt.Errorf("expected stop reason %q, got %q", ant.StopReasonToolUse, res.StopReason)
+	if res.StopReason != llm.StopReasonToolUse {
+		return "", fmt.Errorf("expected stop reason %q, got %q", llm.StopReasonToolUse, res.StopReason)
 	}
 	if _, err := convo.ToolResultContents(context.TODO(), res); err != nil {
 		return "", err

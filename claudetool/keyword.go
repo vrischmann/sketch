@@ -9,16 +9,17 @@ import (
 	"os/exec"
 	"strings"
 
-	"sketch.dev/ant"
+	"sketch.dev/llm"
+	"sketch.dev/llm/conversation"
 )
 
 // The Keyword tool provides keyword search.
 // TODO: use an embedding model + re-ranker or otherwise do something nicer than this kludge.
 // TODO: if we can get this fast enough, do it on the fly while the user is typing their prompt.
-var Keyword = &ant.Tool{
+var Keyword = &llm.Tool{
 	Name:        keywordName,
 	Description: keywordDescription,
-	InputSchema: ant.MustSchema(keywordInputSchema),
+	InputSchema: llm.MustSchema(keywordInputSchema),
 	Run:         keywordRun,
 }
 
@@ -122,16 +123,16 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 		keep = keep[:len(keep)-1]
 	}
 
-	info := ant.ToolCallInfoFromContext(ctx)
+	info := conversation.ToolCallInfoFromContext(ctx)
 	convo := info.Convo.SubConvo()
 	convo.SystemPrompt = strings.TrimSpace(keywordSystemPrompt)
 
-	initialMessage := ant.Message{
-		Role: ant.MessageRoleUser,
-		Content: []ant.Content{
-			ant.StringContent("<pwd>\n" + wd + "\n</pwd>"),
-			ant.StringContent("<ripgrep_results>\n" + out + "\n</ripgrep_results>"),
-			ant.StringContent("<query>\n" + input.Query + "\n</query>"),
+	initialMessage := llm.Message{
+		Role: llm.MessageRoleUser,
+		Content: []llm.Content{
+			llm.StringContent("<pwd>\n" + wd + "\n</pwd>"),
+			llm.StringContent("<ripgrep_results>\n" + out + "\n</ripgrep_results>"),
+			llm.StringContent("<query>\n" + input.Query + "\n</query>"),
 		},
 	}
 

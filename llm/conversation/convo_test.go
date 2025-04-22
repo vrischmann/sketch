@@ -1,15 +1,15 @@
-package ant
+package conversation
 
 import (
 	"cmp"
 	"context"
-	"math"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
 
 	"sketch.dev/httprr"
+	"sketch.dev/llm/ant"
 )
 
 func TestBasicConvo(t *testing.T) {
@@ -24,8 +24,11 @@ func TestBasicConvo(t *testing.T) {
 	})
 
 	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
-	convo := NewConvo(ctx, apiKey)
-	convo.HTTPC = rr.Client()
+	srv := &ant.Service{
+		APIKey: apiKey,
+		HTTPC:  rr.Client(),
+	}
+	convo := New(ctx, srv)
 
 	const name = "Cornelius"
 	res, err := convo.SendUserTextMessage("Hi, my name is " + name)
@@ -45,93 +48,6 @@ func TestBasicConvo(t *testing.T) {
 	}
 	if !strings.Contains(got, name) {
 		t.Errorf("model does not know the given name %s: %q", name, got)
-	}
-}
-
-// TestCalculateCostFromTokens tests the calculateCostFromTokens function
-func TestCalculateCostFromTokens(t *testing.T) {
-	tests := []struct {
-		name                     string
-		model                    string
-		inputTokens              uint64
-		outputTokens             uint64
-		cacheReadInputTokens     uint64
-		cacheCreationInputTokens uint64
-		want                     float64
-	}{
-		{
-			name:                     "Zero tokens",
-			model:                    Claude37Sonnet,
-			inputTokens:              0,
-			outputTokens:             0,
-			cacheReadInputTokens:     0,
-			cacheCreationInputTokens: 0,
-			want:                     0,
-		},
-		{
-			name:                     "1000 input tokens, 500 output tokens",
-			model:                    Claude37Sonnet,
-			inputTokens:              1000,
-			outputTokens:             500,
-			cacheReadInputTokens:     0,
-			cacheCreationInputTokens: 0,
-			want:                     0.0105,
-		},
-		{
-			name:                     "10000 input tokens, 5000 output tokens",
-			model:                    Claude37Sonnet,
-			inputTokens:              10000,
-			outputTokens:             5000,
-			cacheReadInputTokens:     0,
-			cacheCreationInputTokens: 0,
-			want:                     0.105,
-		},
-		{
-			name:                     "With cache read tokens",
-			model:                    Claude37Sonnet,
-			inputTokens:              1000,
-			outputTokens:             500,
-			cacheReadInputTokens:     2000,
-			cacheCreationInputTokens: 0,
-			want:                     0.0111,
-		},
-		{
-			name:                     "With cache creation tokens",
-			model:                    Claude37Sonnet,
-			inputTokens:              1000,
-			outputTokens:             500,
-			cacheReadInputTokens:     0,
-			cacheCreationInputTokens: 1500,
-			want:                     0.016125,
-		},
-		{
-			name:                     "With all token types",
-			model:                    Claude37Sonnet,
-			inputTokens:              1000,
-			outputTokens:             500,
-			cacheReadInputTokens:     2000,
-			cacheCreationInputTokens: 1500,
-			want:                     0.016725,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			usage := Usage{
-				InputTokens:              tt.inputTokens,
-				OutputTokens:             tt.outputTokens,
-				CacheReadInputTokens:     tt.cacheReadInputTokens,
-				CacheCreationInputTokens: tt.cacheCreationInputTokens,
-			}
-			mr := MessageResponse{
-				Model: tt.model,
-				Usage: usage,
-			}
-			totalCost := mr.TotalDollars()
-			if math.Abs(totalCost-tt.want) > 0.0001 {
-				t.Errorf("totalCost = %v, want %v", totalCost, tt.want)
-			}
-		})
 	}
 }
 
@@ -171,9 +87,10 @@ func TestCancelToolUse(t *testing.T) {
 		},
 	}
 
+	srv := &ant.Service{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			convo := NewConvo(context.Background(), "")
+			convo := New(context.Background(), srv)
 
 			var cancelCalled bool
 			var cancelledWithErr error

@@ -20,18 +20,18 @@ import (
 	"time"
 
 	"golang.org/x/tools/go/packages"
-	"sketch.dev/ant"
+	"sketch.dev/llm"
 )
 
 // This file does differential quality analysis of a commit relative to a base commit.
 
 // Tool returns a tool spec for a CodeReview tool backed by r.
-func (r *CodeReviewer) Tool() *ant.Tool {
-	spec := &ant.Tool{
+func (r *CodeReviewer) Tool() *llm.Tool {
+	spec := &llm.Tool{
 		Name:        "codereview",
 		Description: `Run an automated code review.`,
 		// If you modify this, update the termui template for prettier rendering.
-		InputSchema: ant.MustSchema(`{"type": "object", "properties": {}}`),
+		InputSchema: llm.MustSchema(`{"type": "object", "properties": {}}`),
 		Run:         r.Run,
 	}
 	return spec
@@ -663,7 +663,7 @@ func parseTestResults(testOutput []byte) ([]testJSON, error) {
 // testStatus represents the status of a test in a given commit
 type testStatus int
 
-//go:generate go tool stringer -type=testStatus -trimprefix=testStatus
+//go:generate go tool golang.org/x/tools/cmd/stringer -type=testStatus -trimprefix=testStatus
 const (
 	testStatusUnknown testStatus = iota
 	testStatusPass

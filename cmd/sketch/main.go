@@ -17,11 +17,15 @@ import (
 	"strings"
 	"time"
 
+	"sketch.dev/llm"
+	"sketch.dev/llm/oai"
+
 	"github.com/richardlehane/crock32"
-	"sketch.dev/ant"
 	"sketch.dev/browser"
 	"sketch.dev/dockerimg"
 	"sketch.dev/httprr"
+	"sketch.dev/llm/ant"
+	"sketch.dev/llm/conversation"
 	"sketch.dev/loop"
 	"sketch.dev/loop/server"
 	"sketch.dev/skabandclient"
@@ -40,16 +44,34 @@ func main() {
 // run is the main entry point that parses flags and dispatches to the appropriate
 // execution path based on whether we're running in a container or not.
 func run() error {
-	// Parse command-line flags
 	flagArgs := parseCLIFlags()
 
-	// Handle version flag early
 	if flagArgs.version {
 		bi, ok := debug.ReadBuildInfo()
 		if ok {
 			fmt.Printf("%s@%v\n", bi.Path, bi.Main.Version)
 		}
 		return nil
+	}
+
+	if flagArgs.listModels {
+		fmt.Println("Available models:")
+		fmt.Println("- claude (default, uses Anthropic service)")
+		for _, name := range oai.ListModels() {
+			note := ""
+			if name != "gpt4.1" {
+				note = " (not recommended)"
+			}
+			fmt.Printf("- %s%s\n", name, note)
+		}
+		return nil
+	}
+
+	// For now, only Claude is supported in container mode.
+	// TODO: finish support--thread through API keys, add server support
+	isClaude := flagArgs.modelName == "claude" || flagArgs.modelName == ""
+	if !isClaude && (!flagArgs.unsafe || flagArgs.skabandAddr != "") {
+		return fmt.Errorf("only -model=claude is supported in safe mode right now, use -unsafe -skaband-addr=''")
 	}
 
 	// Add a global "session_id" to all logs using this context.
@@ -120,6 +142,8 @@ type CLIFlags struct {
 	maxDollars        float64
 	oneShot           bool
 	prompt            string
+	modelName         string
+	listModels        bool
 	verbose           bool
 	version           bool
 	workingDir        string
@@ -152,6 +176,8 @@ func parseCLIFlags() CLIFlags {
 	flag.Float64Var(&flags.maxDollars, "max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
 	flag.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
 	flag.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
+	flag.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
+	flag.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
 	flag.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
 	flag.BoolVar(&flags.version, "version", false, "print the version and exit")
 	flag.StringVar(&flags.workingDir, "C", "", "when set, change to this directory before running")
@@ -318,19 +344,25 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, antURL, apiKey, pubKe
 		client = rr.Client()
 	}
 
-	// Get current working directory
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	// Create and configure the agent
+	llmService, err := selectLLMService(client, flags.modelName, antURL, apiKey)
+	if err != nil {
+		return fmt.Errorf("failed to initialize LLM service: %w", err)
+	}
+	budget := conversation.Budget{
+		MaxResponses: flags.maxIterations,
+		MaxWallTime:  flags.maxWallTime,
+		MaxDollars:   flags.maxDollars,
+	}
+
 	agentConfig := loop.AgentConfig{
 		Context:           ctx,
-		AntURL:            antURL,
-		APIKey:            apiKey,
-		HTTPC:             client,
-		Budget:            ant.Budget{MaxResponses: flags.maxIterations, MaxWallTime: flags.maxWallTime, MaxDollars: flags.maxDollars},
+		Service:           llmService,
+		Budget:            budget,
 		GitUsername:       flags.gitUsername,
 		GitEmail:          flags.gitEmail,
 		SessionID:         flags.sessionID,
@@ -506,4 +538,38 @@ func defaultGitEmail() string {
 		return "skallywag@sketch.dev" // TODO: what should this be?
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// selectLLMService creates an LLM service based on the specified model name.
+// If modelName is empty or "claude", it uses the Anthropic service.
+// Otherwise, it tries to use the OpenAI service with the specified model.
+// Returns an error if the model name is not recognized or if required configuration is missing.
+func selectLLMService(client *http.Client, modelName string, antURL, apiKey string) (llm.Service, error) {
+	if modelName == "" || modelName == "claude" {
+		if apiKey == "" {
+			return nil, fmt.Errorf("missing ANTHROPIC_API_KEY")
+		}
+		return &ant.Service{
+			HTTPC:  client,
+			URL:    antURL,
+			APIKey: apiKey,
+		}, nil
+	}
+
+	model := oai.ModelByUserName(modelName)
+	if model == nil {
+		return nil, fmt.Errorf("unknown model '%s', use -list-models to see available models", modelName)
+	}
+
+	// Verify we have an API key, if necessary.
+	apiKey = os.Getenv(model.APIKeyEnv)
+	if model.APIKeyEnv != "" && apiKey == "" {
+		return nil, fmt.Errorf("missing API key for %s model, set %s environment variable", model.UserName, model.APIKeyEnv)
+	}
+
+	return &oai.Service{
+		HTTPC:  client,
+		Model:  *model,
+		APIKey: apiKey,
+	}, nil
 }

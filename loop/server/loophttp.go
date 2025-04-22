@@ -23,7 +23,7 @@ import (
 	"sketch.dev/loop/server/gzhandler"
 
 	"github.com/creack/pty"
-	"sketch.dev/ant"
+	"sketch.dev/llm/conversation"
 	"sketch.dev/loop"
 	"sketch.dev/webui"
 )
@@ -50,29 +50,29 @@ type TerminalResponse struct {
 }
 
 type State struct {
-	MessageCount         int                  `json:"message_count"`
-	TotalUsage           *ant.CumulativeUsage `json:"total_usage,omitempty"`
-	InitialCommit        string               `json:"initial_commit"`
-	Title                string               `json:"title"`
-	BranchName           string               `json:"branch_name,omitempty"`
-	Hostname             string               `json:"hostname"`    // deprecated
-	WorkingDir           string               `json:"working_dir"` // deprecated
-	OS                   string               `json:"os"`          // deprecated
-	GitOrigin            string               `json:"git_origin,omitempty"`
-	OutstandingLLMCalls  int                  `json:"outstanding_llm_calls"`
-	OutstandingToolCalls []string             `json:"outstanding_tool_calls"`
-	SessionID            string               `json:"session_id"`
-	SSHAvailable         bool                 `json:"ssh_available"`
-	SSHError             string               `json:"ssh_error,omitempty"`
-	InContainer          bool                 `json:"in_container"`
-	FirstMessageIndex    int                  `json:"first_message_index"`
-	AgentState           string               `json:"agent_state,omitempty"`
-	OutsideHostname      string               `json:"outside_hostname,omitempty"`
-	InsideHostname       string               `json:"inside_hostname,omitempty"`
-	OutsideOS            string               `json:"outside_os,omitempty"`
-	InsideOS             string               `json:"inside_os,omitempty"`
-	OutsideWorkingDir    string               `json:"outside_working_dir,omitempty"`
-	InsideWorkingDir     string               `json:"inside_working_dir,omitempty"`
+	MessageCount         int                           `json:"message_count"`
+	TotalUsage           *conversation.CumulativeUsage `json:"total_usage,omitempty"`
+	InitialCommit        string                        `json:"initial_commit"`
+	Title                string                        `json:"title"`
+	BranchName           string                        `json:"branch_name,omitempty"`
+	Hostname             string                        `json:"hostname"`    // deprecated
+	WorkingDir           string                        `json:"working_dir"` // deprecated
+	OS                   string                        `json:"os"`          // deprecated
+	GitOrigin            string                        `json:"git_origin,omitempty"`
+	OutstandingLLMCalls  int                           `json:"outstanding_llm_calls"`
+	OutstandingToolCalls []string                      `json:"outstanding_tool_calls"`
+	SessionID            string                        `json:"session_id"`
+	SSHAvailable         bool                          `json:"ssh_available"`
+	SSHError             string                        `json:"ssh_error,omitempty"`
+	InContainer          bool                          `json:"in_container"`
+	FirstMessageIndex    int                           `json:"first_message_index"`
+	AgentState           string                        `json:"agent_state,omitempty"`
+	OutsideHostname      string                        `json:"outside_hostname,omitempty"`
+	InsideHostname       string                        `json:"inside_hostname,omitempty"`
+	OutsideOS            string                        `json:"outside_os,omitempty"`
+	InsideOS             string                        `json:"inside_os,omitempty"`
+	OutsideWorkingDir    string                        `json:"outside_working_dir,omitempty"`
+	InsideWorkingDir     string                        `json:"inside_working_dir,omitempty"`
 }
 
 type InitRequest struct {
@@ -298,12 +298,12 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		// Create a combined structure with all information
 		downloadData := struct {
-			Messages     []loop.AgentMessage `json:"messages"`
-			MessageCount int                 `json:"message_count"`
-			TotalUsage   ant.CumulativeUsage `json:"total_usage"`
-			Hostname     string              `json:"hostname"`
-			WorkingDir   string              `json:"working_dir"`
-			DownloadTime string              `json:"download_time"`
+			Messages     []loop.AgentMessage          `json:"messages"`
+			MessageCount int                          `json:"message_count"`
+			TotalUsage   conversation.CumulativeUsage `json:"total_usage"`
+			Hostname     string                       `json:"hostname"`
+			WorkingDir   string                       `json:"working_dir"`
+			DownloadTime string                       `json:"download_time"`
 		}{
 			Messages:     messages,
 			MessageCount: messageCount,
