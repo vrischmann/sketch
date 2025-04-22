@@ -92,7 +92,7 @@ export class SketchTerminal extends LitElement {
 
       if (!response.ok) {
         console.error(
-          `Failed to load xterm CSS: ${response.status} ${response.statusText}`,
+          `Failed to load xterm CSS: ${response.status} ${response.statusText}`
         );
         return;
       }
@@ -117,7 +117,7 @@ export class SketchTerminal extends LitElement {
    */
   public async initializeTerminal(): Promise<void> {
     const terminalContainer = this.renderRoot.querySelector(
-      "#terminalContainer",
+      "#terminalContainer"
     ) as HTMLElement;
 
     if (!terminalContainer) {
@@ -193,12 +193,11 @@ export class SketchTerminal extends LitElement {
         if (this.terminal) {
           // Decode base64 data before writing to terminal
           try {
-            const decoded = atob(event.data);
+            // @ts-ignore This isn't in the type definitions yet; it's pretty new?!?
+            const decoded = base64ToUint8Array(event.data);
             this.terminal.write(decoded);
           } catch (e) {
             console.error("Error decoding terminal data:", e);
-            // Fallback to raw data if decoding fails
-            this.terminal.write(event.data);
           }
         }
       };
@@ -224,7 +223,7 @@ export class SketchTerminal extends LitElement {
       console.error("Failed to connect to terminal:", error);
       if (this.terminal) {
         this.terminal.write(
-          `\r\n\x1b[1;31mFailed to connect: ${error}\x1b[0m\r\n`,
+          `\r\n\x1b[1;31mFailed to connect: ${error}\x1b[0m\r\n`
         );
       }
     }
@@ -284,12 +283,12 @@ export class SketchTerminal extends LitElement {
           headers: {
             "Content-Type": "text/plain",
           },
-        },
+        }
       );
 
       if (!response.ok) {
         console.error(
-          `Failed to send terminal input: ${response.status} ${response.statusText}`,
+          `Failed to send terminal input: ${response.status} ${response.statusText}`
         );
       }
     } catch (error) {
@@ -325,12 +324,12 @@ export class SketchTerminal extends LitElement {
           headers: {
             "Content-Type": "application/json",
           },
-        },
+        }
       );
 
       if (!response.ok) {
         console.error(
-          `Failed to send terminal resize: ${response.status} ${response.statusText}`,
+          `Failed to send terminal resize: ${response.status} ${response.statusText}`
         );
       }
     } catch (error) {
@@ -345,6 +344,18 @@ export class SketchTerminal extends LitElement {
       </div>
     `;
   }
+}
+
+function base64ToUint8Array(base64String) {
+  // This isn't yet available in Chrome, but Safari has it!
+  // @ts-ignore
+  if (Uint8Array.fromBase64) {
+    // @ts-ignore
+    return Uint8Array.fromBase64(base64String);
+  }
+
+  const binaryString = atob(base64String);
+  return Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
 }
 
 declare global {
