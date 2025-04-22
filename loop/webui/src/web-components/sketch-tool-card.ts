@@ -147,6 +147,13 @@ export class SketchToolCard extends LitElement {
       font-style: italic;
       color: #aa0909;
     }
+
+    .elapsed {
+      font-size: 10px;
+      color: #888;
+      font-style: italic;
+      margin-left: 3px;
+    }
   `;
 
   constructor() {
@@ -193,7 +200,7 @@ export class SketchToolCard extends LitElement {
       ? this.toolCall?.result_message.tool_error
         ? html`❌
             <span class="tool-error-message"
-              >${this.toolCall?.result_message.tool_error}</span
+              >${this.toolCall?.result_message.tool_result}</span
             >`
         : ""
       : "⏳";
@@ -217,12 +224,19 @@ export class SketchToolCard extends LitElement {
       >${toolCallStatus}</span
     >`;
 
+    const elapsed = html`${this.toolCall?.result_message?.elapsed
+      ? html`<span class="elapsed"
+          >${(this.toolCall?.result_message?.elapsed / 1e9).toFixed(2)}s
+          elapsed</span
+        >`
+      : ""}`;
+
     const ret = html`<div class="tool-call">
       <details ?open=${this.open}>
         <summary>
           <span class="tool-name">${this.toolCall?.name}</span>
           <span class="summary-text"><slot name="summary"></slot></span>
-          ${status} ${cancelButton}
+          ${status} ${cancelButton} ${elapsed}
         </summary>
         <slot name="input"></slot>
         <slot name="result"></slot>

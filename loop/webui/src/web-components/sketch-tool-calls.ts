@@ -1,5 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { repeat } from "lit/directives/repeat.js";
 import { ToolCall } from "../types";
 import "./sketch-tool-card";
 
@@ -7,6 +8,9 @@ import "./sketch-tool-card";
 export class SketchToolCalls extends LitElement {
   @property()
   toolCalls: ToolCall[] = [];
+
+  @property()
+  open: boolean = false;
 
   static styles = css`
     /* Tool calls container styles */
@@ -101,22 +105,37 @@ export class SketchToolCalls extends LitElement {
     ></sketch-tool-card-generic>`;
   }
 
+  // toolUseKey return value should change, if the toolCall gets a response.
+  toolUseKey(toolCall: ToolCall): string {
+    console.log(
+      "toolUseKey",
+      toolCall.tool_call_id,
+      toolCall.result_message?.idx,
+    );
+    if (!toolCall.result_message) {
+      return toolCall.tool_call_id;
+    }
+    return `${toolCall.tool_call_id}-${toolCall.result_message.idx}`;
+  }
+
   render() {
     return html`<div class="tool-calls-container">
       <div class="tool-calls-header"></div>
       <div class="tool-call-cards-container">
-        ${this.toolCalls?.map((toolCall, idx) => {
-          let lastCall = false;
-          if (idx == this.toolCalls?.length - 1) {
-            lastCall = true;
-          }
-          return html`<div
-            id="${toolCall.tool_call_id}"
-            class="tool-call-card ${toolCall.name}"
-          >
-            ${this.cardForToolCall(toolCall, lastCall)}
-          </div>`;
-        })}
+        ${this.toolCalls
+          ? repeat(this.toolCalls, this.toolUseKey, (toolCall, idx) => {
+              let lastCall = false;
+              if (idx == this.toolCalls?.length - 1) {
+                lastCall = true;
+              }
+              return html`<div
+                id="${toolCall.tool_call_id}"
+                class="tool-call-card ${toolCall.name}"
+              >
+                ${this.cardForToolCall(toolCall, lastCall && this.open)}
+              </div>`;
+            })
+          : ""}
       </div>
     </div>`;
   }

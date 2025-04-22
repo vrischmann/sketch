@@ -12,6 +12,9 @@ export class SketchTimelineMessage extends LitElement {
   @property()
   previousMessage: AgentMessage;
 
+  @property()
+  open: boolean = false;
+
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
@@ -514,6 +517,7 @@ export class SketchTimelineMessage extends LitElement {
           </div>
           <sketch-tool-calls
             .toolCalls=${this.message?.tool_calls}
+            .open=${this.open}
           ></sketch-tool-calls>
           ${this.message?.commits
             ? html`
