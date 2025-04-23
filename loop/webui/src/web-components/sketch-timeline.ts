@@ -142,7 +142,7 @@ export class SketchTimeline extends LitElement {
       Math.abs(
         this.scrollContainer.scrollHeight -
           this.scrollContainer.clientHeight -
-          this.scrollContainer.scrollTop
+          this.scrollContainer.scrollTop,
       ) <= 1;
     if (isAtBottom) {
       this.scrollingState = "pinToLatest";
@@ -159,7 +159,7 @@ export class SketchTimeline extends LitElement {
     // Listen for showCommitDiff events from the renderer
     document.addEventListener(
       "showCommitDiff",
-      this._handleShowCommitDiff as EventListener
+      this._handleShowCommitDiff as EventListener,
     );
     this.scrollContainer?.addEventListener("scroll", this._handleScroll);
   }
@@ -171,7 +171,7 @@ export class SketchTimeline extends LitElement {
     // Remove event listeners
     document.removeEventListener(
       "showCommitDiff",
-      this._handleShowCommitDiff as EventListener
+      this._handleShowCommitDiff as EventListener,
     );
 
     this.scrollContainer?.removeEventListener("scroll", this._handleScroll);

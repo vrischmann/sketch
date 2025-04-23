@@ -227,11 +227,11 @@ export class SketchAppShell extends LitElement {
     // register event listeners
     this.dataManager.addEventListener(
       "dataChanged",
-      this.handleDataChanged.bind(this)
+      this.handleDataChanged.bind(this),
     );
     this.dataManager.addEventListener(
       "connectionStatusChanged",
-      this.handleConnectionStatusChanged.bind(this)
+      this.handleConnectionStatusChanged.bind(this),
     );
 
     // Initialize the data manager
@@ -251,11 +251,11 @@ export class SketchAppShell extends LitElement {
     // unregister data manager event listeners
     this.dataManager.removeEventListener(
       "dataChanged",
-      this.handleDataChanged.bind(this)
+      this.handleDataChanged.bind(this),
     );
     this.dataManager.removeEventListener(
       "connectionStatusChanged",
-      this.handleConnectionStatusChanged.bind(this)
+      this.handleConnectionStatusChanged.bind(this),
     );
 
     // Disconnect mutation observer if it exists
@@ -277,7 +277,7 @@ export class SketchAppShell extends LitElement {
     if (mode !== "chat") {
       url.searchParams.set("view", mode);
       const diffView = this.shadowRoot?.querySelector(
-        ".diff-view"
+        ".diff-view",
       ) as SketchDiffView;
 
       // If in diff view and there's a commit hash, include that too
@@ -414,7 +414,7 @@ export class SketchAppShell extends LitElement {
 
       // Update view mode buttons
       const viewModeSelect = this.shadowRoot?.querySelector(
-        "sketch-view-mode-select"
+        "sketch-view-mode-select",
       );
       if (viewModeSelect) {
         const event = new CustomEvent("update-active-mode", {
@@ -464,14 +464,14 @@ export class SketchAppShell extends LitElement {
     // Log information about the message update
     if (this.messages.length > oldMessageCount) {
       console.log(
-        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}`
+        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}`,
       );
     }
   }
 
   private handleConnectionStatusChanged(
     status: ConnectionStatus,
-    errorMessage?: string
+    errorMessage?: string,
   ): void {
     this.connectionStatus = status;
     this.connectionErrorMessage = errorMessage || "";
@@ -601,11 +601,11 @@ export class SketchAppShell extends LitElement {
     // Initial scroll to bottom when component is first rendered
     setTimeout(
       () => this.scrollTo({ top: this.scrollHeight, behavior: "smooth" }),
-      50
+      50,
     );
 
     const pollToggleCheckbox = this.renderRoot?.querySelector(
-      "#pollToggle"
+      "#pollToggle",
     ) as HTMLInputElement;
     pollToggleCheckbox?.addEventListener("change", () => {
       this.dataManager.setPollingEnabled(pollToggleCheckbox.checked);

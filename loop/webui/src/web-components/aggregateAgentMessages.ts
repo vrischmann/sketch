@@ -2,7 +2,8 @@ import { AgentMessage } from "../types";
 
 export function aggregateAgentMessages(
   arr1: AgentMessage[],
-  arr2: AgentMessage[]): AgentMessage[] {
+  arr2: AgentMessage[],
+): AgentMessage[] {
   const mergedArray = [...arr1, ...arr2];
   const seenIds = new Set<number>();
   const toolCallResults = new Map<string, AgentMessage>();

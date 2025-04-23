@@ -92,7 +92,7 @@ export class SketchTerminal extends LitElement {
 
       if (!response.ok) {
         console.error(
-          `Failed to load xterm CSS: ${response.status} ${response.statusText}`
+          `Failed to load xterm CSS: ${response.status} ${response.statusText}`,
         );
         return;
       }
@@ -117,7 +117,7 @@ export class SketchTerminal extends LitElement {
    */
   public async initializeTerminal(): Promise<void> {
     const terminalContainer = this.renderRoot.querySelector(
-      "#terminalContainer"
+      "#terminalContainer",
     ) as HTMLElement;
 
     if (!terminalContainer) {
@@ -223,7 +223,7 @@ export class SketchTerminal extends LitElement {
       console.error("Failed to connect to terminal:", error);
       if (this.terminal) {
         this.terminal.write(
-          `\r\n\x1b[1;31mFailed to connect: ${error}\x1b[0m\r\n`
+          `\r\n\x1b[1;31mFailed to connect: ${error}\x1b[0m\r\n`,
         );
       }
     }
@@ -283,12 +283,12 @@ export class SketchTerminal extends LitElement {
           headers: {
             "Content-Type": "text/plain",
           },
-        }
+        },
       );
 
       if (!response.ok) {
         console.error(
-          `Failed to send terminal input: ${response.status} ${response.statusText}`
+          `Failed to send terminal input: ${response.status} ${response.statusText}`,
         );
       }
     } catch (error) {
@@ -324,12 +324,12 @@ export class SketchTerminal extends LitElement {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
         console.error(
-          `Failed to send terminal resize: ${response.status} ${response.statusText}`
+          `Failed to send terminal resize: ${response.status} ${response.statusText}`,
         );
       }
     } catch (error) {

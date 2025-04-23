@@ -644,7 +644,15 @@ export class SketchTimelineMessage extends LitElement {
                       <div class="commit-boxes-row">
                         <div class="commit-box">
                           <div class="commit-preview">
-                            <span class="commit-hash" title="Click to copy: ${commit.hash}" @click=${(e) => this.copyToClipboard(commit.hash.substring(0, 8), e)}>
+                            <span
+                              class="commit-hash"
+                              title="Click to copy: ${commit.hash}"
+                              @click=${(e) =>
+                                this.copyToClipboard(
+                                  commit.hash.substring(0, 8),
+                                  e,
+                                )}
+                            >
                               ${commit.hash.substring(0, 8)}
                             </span>
                             ${commit.pushed_branch

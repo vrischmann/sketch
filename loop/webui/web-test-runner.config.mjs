@@ -1,4 +1,4 @@
-import { puppeteerLauncher } from '@web/test-runner-puppeteer';
+import { puppeteerLauncher } from "@web/test-runner-puppeteer";
 
 const filteredLogs = ["Running in dev mode", "Lit is in dev mode"];
 

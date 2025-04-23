@@ -56,7 +56,7 @@ test("sends message when clicking the send button", async ({ mount }) => {
         (event) => {
           resolve((event as CustomEvent).detail);
         },
-        { once: true }
+        { once: true },
       );
     });
   });
@@ -87,7 +87,7 @@ test.skip("sends message when pressing Enter (without shift)", async ({
         (event) => {
           resolve((event as CustomEvent).detail);
         },
-        { once: true }
+        { once: true },
       );
     });
   });
@@ -144,7 +144,7 @@ test("resizes when user enters more text than will fit", async ({ mount }) => {
     },
   });
   const origHeight = await component.evaluate(
-    (el: SketchChatInput) => el.chatInput.style.height
+    (el: SketchChatInput) => el.chatInput.style.height,
   );
 
   // Enter very tall text in the textarea
@@ -155,9 +155,9 @@ test("resizes when user enters more text than will fit", async ({ mount }) => {
 
   // Check that textarea resized
   const newHeight = await component.evaluate(
-    (el: SketchChatInput) => el.chatInput.style.height
+    (el: SketchChatInput) => el.chatInput.style.height,
   );
   expect(Number.parseInt(newHeight)).toBeGreaterThan(
-    Number.parseInt(origHeight)
+    Number.parseInt(origHeight),
   );
 });
