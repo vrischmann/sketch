@@ -175,9 +175,6 @@ export class SketchAppShell extends LitElement {
   messages: AgentMessage[] = [];
 
   @property()
-  chatMessageText: string = "";
-
-  @property()
   title: string = "";
 
   private dataManager = new DataManager();
@@ -201,7 +198,6 @@ export class SketchAppShell extends LitElement {
 
     // Binding methods to this
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
-    this._handleDiffComment = this._handleDiffComment.bind(this);
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handlePopState = this._handlePopState.bind(this);
   }
@@ -221,7 +217,6 @@ export class SketchAppShell extends LitElement {
 
     // Add event listeners
     window.addEventListener("view-mode-select", this._handleViewModeSelect);
-    window.addEventListener("diff-comment", this._handleDiffComment);
     window.addEventListener("show-commit-diff", this._handleShowCommitDiff);
 
     // register event listeners
@@ -245,7 +240,6 @@ export class SketchAppShell extends LitElement {
 
     // Remove event listeners
     window.removeEventListener("view-mode-select", this._handleViewModeSelect);
-    window.removeEventListener("diff-comment", this._handleDiffComment);
     window.removeEventListener("show-commit-diff", this._handleShowCommitDiff);
 
     // unregister data manager event listeners
@@ -314,19 +308,6 @@ export class SketchAppShell extends LitElement {
     if (commitHash) {
       this.showCommitDiff(commitHash);
     }
-  }
-
-  /**
-   * Handle diff comment event
-   */
-  private _handleDiffComment(event: CustomEvent) {
-    const { comment } = event.detail;
-    if (!comment) return;
-
-    if (this.chatMessageText.length > 0) {
-      this.chatMessageText += "\n\n";
-    }
-    this.chatMessageText += comment;
   }
 
   /**
@@ -497,9 +478,8 @@ export class SketchAppShell extends LitElement {
         const errorData = await response.text();
         throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
-      // Clear the input after successfully sending the message.
-      this.chatMessageText = "";
 
+      // TOOD(philip): If the data manager is getting messages out of order, there's a bug?
       // Reset data manager state to force a full refresh after sending a message
       // This ensures we get all messages in the correct order
       // Use private API for now - TODO: add a resetState() method to DataManager
@@ -583,10 +563,7 @@ export class SketchAppShell extends LitElement {
         </div>
       </div>
 
-      <sketch-chat-input
-        .content=${this.chatMessageText}
-        @send-chat="${this._sendChat}"
-      ></sketch-chat-input>
+      <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
     `;
   }
 

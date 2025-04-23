@@ -1,9 +1,9 @@
 import { css, html, LitElement, PropertyValues } from "lit";
-import { customElement, property, query } from "lit/decorators.js";
+import { customElement, property, state, query } from "lit/decorators.js";
 
 @customElement("sketch-chat-input")
 export class SketchChatInput extends LitElement {
-  @property()
+  @state()
   content: string = "";
 
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
@@ -66,15 +66,29 @@ export class SketchChatInput extends LitElement {
 
   constructor() {
     super();
+    this._handleDiffComment = this._handleDiffComment.bind(this);
   }
 
   connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("diff-comment", this._handleDiffComment);
+  }
+
+  private _handleDiffComment(event: CustomEvent) {
+    const { comment } = event.detail;
+    if (!comment) return;
+
+    if (this.content != "") {
+      this.content += "\n\n";
+    }
+    this.content += comment;
+    requestAnimationFrame(() => this.adjustChatSpacing());
   }
 
   // See https://lit.dev/docs/components/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
+    window.removeEventListener("diff-comment", this._handleDiffComment);
   }
 
   sendChatMessage() {
@@ -84,6 +98,9 @@ export class SketchChatInput extends LitElement {
       composed: true,
     });
     this.dispatchEvent(event);
+
+    // TODO(philip?): Ideally we only clear the content if the send is successful.
+    this.content = ""; // Clear content after sending
   }
 
   adjustChatSpacing() {
@@ -99,7 +116,7 @@ export class SketchChatInput extends LitElement {
     this.chatInput.style.height = `${scrollHeight}px`;
   }
 
-  _sendChatClicked() {
+  async _sendChatClicked() {
     this.sendChatMessage();
     this.chatInput.focus(); // Refocus the input after sending
     // Reset height after sending a message
