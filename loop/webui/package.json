@@ -11,7 +11,8 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "demo": "web-dev-server -config ./web-dev-server.config.mjs --node-resolve --open /src/web-components/demo/",
+    "demo": "vite --open src/web-components/demo/index.html",
+    "dev": "vite",
     "format": "prettier ./src --write",
     "gentypes": "go run ../../cmd/go2ts -o src/types.ts",
     "build": "go run ../../cmd/go2ts -o src/types.ts && tsc",
@@ -30,18 +31,18 @@
     "vega-lite": "^5.23.0"
   },
   "devDependencies": {
-    "@open-wc/dev-server-hmr": "^0.1.2-next.0",
     "@sand4rt/experimental-ct-web": "^1.51.1",
     "@types/marked": "^5.0.2",
     "@types/mocha": "^10.0.7",
     "@types/node": "^22.13.14",
-    "@web/dev-server": "^0.4.6",
     "@web/test-runner": "^0.18.2",
     "@web/test-runner-puppeteer": "^0.18.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.1",
     "prettier": "3.5.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vite": "^6.3.2",
+    "vite-plugin-web-components-hmr": "^0.1.3"
   },
   "keywords": []
 }

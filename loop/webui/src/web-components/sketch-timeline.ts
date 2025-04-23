@@ -7,15 +7,15 @@ import "./sketch-timeline-message";
 
 @customElement("sketch-timeline")
 export class SketchTimeline extends LitElement {
-  @property()
+  @property({ attribute: false })
   messages: AgentMessage[] = [];
 
   // Track if we should scroll to the bottom
   @state()
   private scrollingState: "pinToLatest" | "floating" = "pinToLatest";
 
-  @property()
-  scrollContainer: HTMLDivElement;
+  @property({ attribute: false })
+  scrollContainer: HTMLElement;
 
   static styles = css`
     /* Hide views initially to prevent flash of content */
@@ -142,7 +142,7 @@ export class SketchTimeline extends LitElement {
       Math.abs(
         this.scrollContainer.scrollHeight -
           this.scrollContainer.clientHeight -
-          this.scrollContainer.scrollTop,
+          this.scrollContainer.scrollTop
       ) <= 1;
     if (isAtBottom) {
       this.scrollingState = "pinToLatest";
@@ -159,7 +159,7 @@ export class SketchTimeline extends LitElement {
     // Listen for showCommitDiff events from the renderer
     document.addEventListener(
       "showCommitDiff",
-      this._handleShowCommitDiff as EventListener,
+      this._handleShowCommitDiff as EventListener
     );
     this.scrollContainer?.addEventListener("scroll", this._handleScroll);
   }
@@ -171,7 +171,7 @@ export class SketchTimeline extends LitElement {
     // Remove event listeners
     document.removeEventListener(
       "showCommitDiff",
-      this._handleShowCommitDiff as EventListener,
+      this._handleShowCommitDiff as EventListener
     );
 
     this.scrollContainer?.removeEventListener("scroll", this._handleScroll);

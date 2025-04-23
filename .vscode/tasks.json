@@ -16,9 +16,8 @@
       "script": "demo",
       "path": "loop/webui",
       "group": "build",
-      "label": "webui: watch demo",
+      "label": "webui: demo",
       "isBackground": true,
-      "dependsOn": ["webui: watch tsc"],
       "problemMatcher": [
         {
           "pattern": [
@@ -30,9 +29,32 @@
             }
           ],
           "background": {
-            "activeOnStart": true,
-            "beginsPattern": "Web Dev Server started...",
-            "endsPattern": "Network:"
+            "beginsPattern": "VITE",
+            "endsPattern": "Local:"
+          }
+        }
+      ]
+    },
+    {
+      "type": "npm",
+      "script": "dev",
+      "path": "loop/webui",
+      "group": "build",
+      "label": "webui: dev",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "beginsPattern": "VITE",
+            "endsPattern": "Local:"
           }
         }
       ]

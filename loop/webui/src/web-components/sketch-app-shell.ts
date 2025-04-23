@@ -11,6 +11,7 @@ import "./sketch-diff-view";
 import "./sketch-charts";
 import "./sketch-terminal";
 import { SketchDiffView } from "./sketch-diff-view";
+import { aggregateAgentMessages } from "./aggregateAgentMessages";
 
 type ViewMode = "chat" | "diff" | "charts" | "terminal";
 
@@ -23,9 +24,6 @@ export class SketchAppShell extends LitElement {
   // Current commit hash for diff view
   @state()
   currentCommitHash: string = "";
-
-  // Reference to the diff view component
-  private diffViewRef?: HTMLElement;
 
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
@@ -173,7 +171,7 @@ export class SketchAppShell extends LitElement {
   messageStatus: string = "";
 
   // Chat messages
-  @property()
+  @property({ attribute: false })
   messages: AgentMessage[] = [];
 
   @property()
@@ -184,7 +182,7 @@ export class SketchAppShell extends LitElement {
 
   private dataManager = new DataManager();
 
-  @property()
+  @property({ attribute: false })
   containerState: State = {
     title: "",
     os: "",
@@ -194,15 +192,12 @@ export class SketchAppShell extends LitElement {
     initial_commit: "",
   };
 
-  // Track if this is the first load of messages
-  @state()
-  private isFirstLoad: boolean = true;
-
   // Mutation observer to detect when new messages are added
   private mutationObserver: MutationObserver | null = null;
 
   constructor() {
     super();
+    console.log("Hello!");
 
     // Binding methods to this
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
@@ -222,30 +217,21 @@ export class SketchAppShell extends LitElement {
 
     this.toggleViewMode(mode as ViewMode, false);
     // Add popstate event listener to handle browser back/forward navigation
-    window.addEventListener("popstate", this._handlePopState as EventListener);
+    window.addEventListener("popstate", this._handlePopState);
 
     // Add event listeners
-    window.addEventListener(
-      "view-mode-select",
-      this._handleViewModeSelect as EventListener,
-    );
-    window.addEventListener(
-      "diff-comment",
-      this._handleDiffComment as EventListener,
-    );
-    window.addEventListener(
-      "show-commit-diff",
-      this._handleShowCommitDiff as EventListener,
-    );
+    window.addEventListener("view-mode-select", this._handleViewModeSelect);
+    window.addEventListener("diff-comment", this._handleDiffComment);
+    window.addEventListener("show-commit-diff", this._handleShowCommitDiff);
 
     // register event listeners
     this.dataManager.addEventListener(
       "dataChanged",
-      this.handleDataChanged.bind(this),
+      this.handleDataChanged.bind(this)
     );
     this.dataManager.addEventListener(
       "connectionStatusChanged",
-      this.handleConnectionStatusChanged.bind(this),
+      this.handleConnectionStatusChanged.bind(this)
     );
 
     // Initialize the data manager
@@ -255,33 +241,21 @@ export class SketchAppShell extends LitElement {
   // See https://lit.dev/docs/components/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
-    window.removeEventListener(
-      "popstate",
-      this._handlePopState as EventListener,
-    );
+    window.removeEventListener("popstate", this._handlePopState);
 
     // Remove event listeners
-    window.removeEventListener(
-      "view-mode-select",
-      this._handleViewModeSelect as EventListener,
-    );
-    window.removeEventListener(
-      "diff-comment",
-      this._handleDiffComment as EventListener,
-    );
-    window.removeEventListener(
-      "show-commit-diff",
-      this._handleShowCommitDiff as EventListener,
-    );
+    window.removeEventListener("view-mode-select", this._handleViewModeSelect);
+    window.removeEventListener("diff-comment", this._handleDiffComment);
+    window.removeEventListener("show-commit-diff", this._handleShowCommitDiff);
 
     // unregister data manager event listeners
     this.dataManager.removeEventListener(
       "dataChanged",
-      this.handleDataChanged.bind(this),
+      this.handleDataChanged.bind(this)
     );
     this.dataManager.removeEventListener(
       "connectionStatusChanged",
-      this.handleConnectionStatusChanged.bind(this),
+      this.handleConnectionStatusChanged.bind(this)
     );
 
     // Disconnect mutation observer if it exists
@@ -303,7 +277,7 @@ export class SketchAppShell extends LitElement {
     if (mode !== "chat") {
       url.searchParams.set("view", mode);
       const diffView = this.shadowRoot?.querySelector(
-        ".diff-view",
+        ".diff-view"
       ) as SketchDiffView;
 
       // If in diff view and there's a commit hash, include that too
@@ -316,7 +290,7 @@ export class SketchAppShell extends LitElement {
     window.history.pushState({ mode }, "", url.toString());
   }
 
-  _handlePopState(event) {
+  private _handlePopState(event: PopStateEvent) {
     if (event.state && event.state.mode) {
       this.toggleViewMode(event.state.mode, false);
     } else {
@@ -376,7 +350,7 @@ export class SketchAppShell extends LitElement {
    * Listen for commit diff event
    * @param commitHash The commit hash to show diff for
    */
-  public showCommitDiff(commitHash: string): void {
+  private showCommitDiff(commitHash: string): void {
     // Store the commit hash
     this.currentCommitHash = commitHash;
 
@@ -397,7 +371,7 @@ export class SketchAppShell extends LitElement {
   /**
    * Toggle between different view modes: chat, diff, charts, terminal
    */
-  public toggleViewMode(mode: ViewMode, updateHistory: boolean): void {
+  private toggleViewMode(mode: ViewMode, updateHistory: boolean): void {
     // Don't do anything if the mode is already active
     if (this.viewMode === mode) return;
 
@@ -457,7 +431,7 @@ export class SketchAppShell extends LitElement {
 
       // Update view mode buttons
       const viewModeSelect = this.shadowRoot?.querySelector(
-        "sketch-view-mode-select",
+        "sketch-view-mode-select"
       );
       if (viewModeSelect) {
         const event = new CustomEvent("update-active-mode", {
@@ -476,37 +450,6 @@ export class SketchAppShell extends LitElement {
     });
   }
 
-  mergeAndDedupe(arr1: AgentMessage[], arr2: AgentMessage[]): AgentMessage[] {
-    const mergedArray = [...arr1, ...arr2];
-    const seenIds = new Set<number>();
-    const toolCallResults = new Map<string, AgentMessage>();
-
-    let ret: AgentMessage[] = mergedArray
-      .filter((msg) => {
-        if (msg.type == "tool") {
-          toolCallResults.set(msg.tool_call_id, msg);
-          return false;
-        }
-        if (seenIds.has(msg.idx)) {
-          return false; // Skip if idx is already seen
-        }
-
-        seenIds.add(msg.idx);
-        return true;
-      })
-      .sort((a: AgentMessage, b: AgentMessage) => a.idx - b.idx);
-
-    // Attach any tool_call result messages to the original message's tool_call object.
-    ret.forEach((msg) => {
-      msg.tool_calls?.forEach((toolCall) => {
-        if (toolCallResults.has(toolCall.tool_call_id)) {
-          toolCall.result_message = toolCallResults.get(toolCall.tool_call_id);
-        }
-      });
-    });
-    return ret;
-  }
-
   private handleDataChanged(eventData: {
     state: State;
     newMessages: AgentMessage[];
@@ -516,11 +459,8 @@ export class SketchAppShell extends LitElement {
 
     // Check if this is the first data fetch or if there are new messages
     if (isFirstFetch) {
-      console.log("Auto-scroll: First data fetch, will scroll to bottom");
-      this.isFirstLoad = true;
       this.messageStatus = "Initial messages loaded";
     } else if (newMessages && newMessages.length > 0) {
-      console.log(`Auto-scroll: Received ${newMessages.length} new messages`);
       this.messageStatus = "Updated just now";
     } else {
       this.messageStatus = "No new messages";
@@ -536,19 +476,19 @@ export class SketchAppShell extends LitElement {
     const oldMessageCount = this.messages.length;
 
     // Update messages
-    this.messages = this.mergeAndDedupe(this.messages, newMessages);
+    this.messages = aggregateAgentMessages(this.messages, newMessages);
 
     // Log information about the message update
     if (this.messages.length > oldMessageCount) {
       console.log(
-        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}`,
+        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}`
       );
     }
   }
 
   private handleConnectionStatusChanged(
     status: ConnectionStatus,
-    errorMessage?: string,
+    errorMessage?: string
   ): void {
     this.connectionStatus = status;
     this.connectionErrorMessage = errorMessage || "";
@@ -678,11 +618,11 @@ export class SketchAppShell extends LitElement {
     // Initial scroll to bottom when component is first rendered
     setTimeout(
       () => this.scrollTo({ top: this.scrollHeight, behavior: "smooth" }),
-      50,
+      50
     );
 
     const pollToggleCheckbox = this.renderRoot?.querySelector(
-      "#pollToggle",
+      "#pollToggle"
     ) as HTMLInputElement;
     pollToggleCheckbox?.addEventListener("change", () => {
       this.dataManager.setPollingEnabled(pollToggleCheckbox.checked);

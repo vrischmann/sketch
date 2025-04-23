@@ -20,9 +20,6 @@ This module contains a TypeScript-based web UI for the Loop service. The TypeScr
 # Install dependencies
 make install
 
-# Build the TypeScript code
-make build
-
 # Type checking only
 make check
 ```
@@ -32,10 +29,15 @@ make check
 For development, you can use watch mode:
 
 ```bash
-make dev
+make demo
 ```
 
-This will rebuild the TypeScript files whenever they change.
+This will launch a local web server that serves the demo pages for the web components. You can edit the TypeScript files, and the changes will be reflected in real-time.
+p
+
+#### VSCode
+
+If you are using Visual Studio Code, you can use the `Launch Chrome against localhost` launch configuration to run the demo server. This configuration is set up to automatically open a sketch page with dummy data in Chrome when you start debugging, supporting hot module reloading and breakpoints.
 
 ## Integration with Go Server
 

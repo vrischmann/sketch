@@ -79,7 +79,7 @@ export class SketchChatInput extends LitElement {
 
       // Update the textarea value directly, otherwise it won't update until next render
       const textarea = this.shadowRoot?.querySelector(
-        "#chatInput",
+        "#chatInput"
       ) as HTMLTextAreaElement;
       if (textarea) {
         textarea.value = content;
@@ -96,7 +96,7 @@ export class SketchChatInput extends LitElement {
     // Listen for update-content events
     this.addEventListener(
       "update-content",
-      this._handleUpdateContent as EventListener,
+      this._handleUpdateContent as EventListener
     );
   }
 
@@ -107,7 +107,7 @@ export class SketchChatInput extends LitElement {
     // Remove event listeners
     this.removeEventListener(
       "update-content",
-      this._handleUpdateContent as EventListener,
+      this._handleUpdateContent as EventListener
     );
   }
 
