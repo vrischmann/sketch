@@ -1,0 +1,44 @@
+name: Code Formatting
+on:
+  workflow_call:
+  push:
+    branches-ignore:
+      - "queue-main-**"
+  pull_request:
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup for Prettier
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: loop/webui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./loop/webui
+        run: npm ci
+
+      - name: Check Prettier formatting
+        working-directory: ./loop/webui
+        run: npx prettier --check .
+
+      # Setup for gofumpt
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: stable
+          cache: true
+
+      - name: Install gofumpt v0.8.0
+        run: |
+          go install mvdan.cc/gofumpt@v0.8.0
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Check Go formatting
+        run: gofumpt -l . | grep . && { echo "Go files need formatting"; exit 1; } || echo "Go formatting check passed"

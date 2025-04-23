@@ -16,13 +16,21 @@ on:
 permissions: read-all
 
 jobs:
-  test:
+  go-test:
     uses: ./.github/workflows/go_test.yml
+    permissions: read-all
+
+  ui-test:
+    uses: ./.github/workflows/webui_test.yml
+    permissions: read-all
+
+  formatting:
+    uses: ./.github/workflows/formatting.yml
     permissions: read-all
 
   push-to-main:
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [go-test, ui-test, formatting]
     permissions:
       contents: write
     steps:
