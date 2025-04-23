@@ -491,7 +491,8 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			json.NewEncoder(w).Encode(map[string]string{
 				"status":     "cancelled",
 				"too_use_id": requestBody.ToolCallID,
-				"reason":     cancelReason})
+				"reason":     cancelReason,
+			})
 			return
 		}
 		// Call the CancelInnerLoop method
