@@ -250,10 +250,20 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 	}
 
 	// Get the sketch server port from the container
-	localAddr, err := getContainerPort(ctx, cntrName)
+	localAddr, err := getContainerPort(ctx, cntrName, "80")
 	if err != nil {
 		return appendInternalErr(err)
 	}
+
+	localSSHAddr, err := getContainerPort(ctx, cntrName, "22")
+	if err != nil {
+		return appendInternalErr(err)
+	}
+	sshHost, sshPort, err := net.SplitHostPort(localSSHAddr)
+	if err != nil {
+		fmt.Println("Error splitting ssh host and port:", err)
+	}
+	fmt.Printf("ssh into this container with: ssh root@%s -p %s\n", sshHost, sshPort)
 
 	// Tell the sketch container which git server port and commit to initialize with.
 	go func() {
@@ -379,8 +389,10 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.SketchPubKey != "" {
 		cmdArgs = append(cmdArgs, "-e", "SKETCH_PUB_KEY="+config.SketchPubKey)
 	}
-	if config.SSHPort != 0 {
-		cmdArgs = append(cmdArgs, "-p", fmt.Sprintf("%d:2022", config.SSHPort)) // forward container ssh port to host ssh port
+	if config.SSHPort > 0 {
+		cmdArgs = append(cmdArgs, "-p", fmt.Sprintf("%d:22", config.SSHPort)) // forward container ssh port to host ssh port
+	} else {
+		cmdArgs = append(cmdArgs, "-p", "22") // use an ephemeral host port for ssh.
 	}
 	if relPath != "." {
 		cmdArgs = append(cmdArgs, "-w", "/app/"+relPath)
@@ -467,9 +479,9 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 	return dst, nil
 }
 
-func getContainerPort(ctx context.Context, cntrName string) (string, error) {
+func getContainerPort(ctx context.Context, cntrName, cntrPort string) (string, error) {
 	localAddr := ""
-	if out, err := combinedOutput(ctx, "docker", "port", cntrName, "80"); err != nil {
+	if out, err := combinedOutput(ctx, "docker", "port", cntrName, cntrPort); err != nil {
 		return "", fmt.Errorf("failed to find container port: %s: %v", out, err)
 	} else {
 		v4, _, found := strings.Cut(string(out), "\n")
@@ -499,8 +511,6 @@ func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gi
 	if err != nil {
 		return fmt.Errorf("init msg: %w", err)
 	}
-
-	slog.DebugContext(ctx, "/init POST", slog.String("initMsg", string(initMsg)))
 
 	// Note: this /init POST is handled in loop/server/loophttp.go:
 	initMsgByteReader := bytes.NewReader(initMsg)

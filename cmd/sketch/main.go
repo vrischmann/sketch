@@ -50,7 +50,7 @@ func run() error {
 	workingDir := flag.String("C", "", "when set, change to this directory before running")
 	sshServerIdentity := flag.String("ssh_server_identity", "", "location of the file containing the private key that the container's ssh server will use to identify itself")
 	sshAuthorizedKeys := flag.String("ssh_authorized_keys", "", "location of the file containing the public keys that the container's ssh server will authorize")
-	sshPort := flag.Int("ssh_port", 2022, "the host port number that the container's ssh server will listen on")
+	sshPort := flag.Int("ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 
 	// Flags geared towards sketch developers or sketch internals:
 	gitUsername := flag.String("git-username", "", "(internal) username for git commits")

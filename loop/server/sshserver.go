@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -19,17 +20,44 @@ func setWinsize(f *os.File, w, h int) {
 }
 
 func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) error {
-	allowed, _, _, _, err := ssh.ParseAuthorizedKey(authorizedKeys)
-	if err != nil {
-		return fmt.Errorf("ServeSSH: couldn't parse authorized keys: %w", err)
+	// Parse all authorized keys
+	allowedKeys := make([]ssh.PublicKey, 0)
+	rest := authorizedKeys
+	var err error
+
+	// Continue parsing as long as there are bytes left
+	for len(rest) > 0 {
+		var key ssh.PublicKey
+		key, _, _, rest, err = ssh.ParseAuthorizedKey(rest)
+		if err != nil {
+			// If we hit an error, check if we have more lines to try
+			if i := bytes.IndexByte(rest, '\n'); i >= 0 {
+				// Skip to the next line and continue
+				rest = rest[i+1:]
+				continue
+			}
+			// No more lines and we hit an error, so stop parsing
+			break
+		}
+		allowedKeys = append(allowedKeys, key)
 	}
-	return ssh.ListenAndServe(":2022",
+	if len(allowedKeys) == 0 {
+		return fmt.Errorf("ServeSSH: no valid authorized keys found")
+	}
+
+	return ssh.ListenAndServe(":22",
 		func(s ssh.Session) {
 			handleSessionfunc(ctx, s)
 		},
 		ssh.HostKeyPEM(hostKey),
 		ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
-			return ssh.KeysEqual(key, allowed)
+			// Check if the provided key matches any of our allowed keys
+			for _, allowedKey := range allowedKeys {
+				if ssh.KeysEqual(key, allowedKey) {
+					return true
+				}
+			}
+			return false
 		}),
 	)
 }
