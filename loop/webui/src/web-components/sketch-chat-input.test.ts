@@ -154,6 +154,9 @@ test("resizes when user enters more text than will fit", async ({ mount }) => {
   // Enter very tall text in the textarea
   await component.locator("#chatInput").fill(testContent);
 
+  // Wait for the requestAnimationFrame to complete
+  await component.evaluate(() => new Promise(requestAnimationFrame));
+
   // Check that textarea resized
   const newHeight = await component.evaluate(
     (el: SketchChatInput) => el.chatInput.style.height,
