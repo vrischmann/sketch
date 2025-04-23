@@ -79,10 +79,10 @@ type ContainerConfig struct {
 	// Private key used to identify the container's ssh server
 	SSHServerIdentity []byte
 
-	// Host information to pass to the container
-	HostHostname   string
-	HostOS         string
-	HostWorkingDir string
+	// Outside information to pass to the container
+	OutsideHostname   string
+	OutsideOS         string
+	OutsideWorkingDir string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -410,9 +410,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-session-id="+config.SessionID,
 		"-git-username="+config.GitUsername,
 		"-git-email="+config.GitEmail,
-		"-host-hostname="+config.HostHostname,
-		"-host-os="+config.HostOS,
-		"-host-working-dir="+config.HostWorkingDir,
+		"-outside-hostname="+config.OutsideHostname,
+		"-outside-os="+config.OutsideOS,
+		"-outside-working-dir="+config.OutsideWorkingDir,
 	)
 	if config.SkabandAddr != "" {
 		cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)

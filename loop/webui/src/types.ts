@@ -67,12 +67,12 @@ export interface State {
 	initial_commit: string;
 	title: string;
 	os: string;
-	host_hostname?: string;
-	runtime_hostname?: string;
-	host_os?: string;
-	runtime_os?: string;
-	host_working_dir?: string;
-	runtime_working_dir?: string;
+	outside_hostname?: string;
+	inside_hostname?: string;
+	outside_os?: string;
+	inside_os?: string;
+	outside_working_dir?: string;
+	inside_working_dir?: string;
 	git_origin?: string;
 }
 

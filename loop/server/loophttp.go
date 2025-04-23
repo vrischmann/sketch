@@ -59,12 +59,12 @@ type State struct {
 	OS            string               `json:"os"`          // deprecated
 	GitOrigin     string               `json:"git_origin,omitempty"`
 
-	HostHostname      string `json:"host_hostname,omitempty"`
-	RuntimeHostname   string `json:"runtime_hostname,omitempty"`
-	HostOS            string `json:"host_os,omitempty"`
-	RuntimeOS         string `json:"runtime_os,omitempty"`
-	HostWorkingDir    string `json:"host_working_dir,omitempty"`
-	RuntimeWorkingDir string `json:"runtime_working_dir,omitempty"`
+	OutsideHostname   string `json:"outside_hostname,omitempty"`
+	InsideHostname    string `json:"inside_hostname,omitempty"`
+	OutsideOS         string `json:"outside_os,omitempty"`
+	InsideOS          string `json:"inside_os,omitempty"`
+	OutsideWorkingDir string `json:"outside_working_dir,omitempty"`
+	InsideWorkingDir  string `json:"inside_working_dir,omitempty"`
 }
 
 type InitRequest struct {
@@ -356,12 +356,12 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			InitialCommit:     agent.InitialCommit(),
 			Title:             agent.Title(),
 			OS:                agent.OS(),
-			HostHostname:      agent.HostHostname(),
-			RuntimeHostname:   s.hostname,
-			HostOS:            agent.HostOS(),
-			RuntimeOS:         agent.OS(),
-			HostWorkingDir:    agent.HostWorkingDir(),
-			RuntimeWorkingDir: getWorkingDir(),
+			OutsideHostname:   agent.OutsideHostname(),
+			InsideHostname:    s.hostname,
+			OutsideOS:         agent.OutsideOS(),
+			InsideOS:          agent.OS(),
+			OutsideWorkingDir: agent.OutsideWorkingDir(),
+			InsideWorkingDir:  getWorkingDir(),
 			GitOrigin:         agent.GitOrigin(),
 		}
 

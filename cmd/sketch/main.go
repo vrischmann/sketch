@@ -59,9 +59,9 @@ func run() error {
 	record := flag.Bool("httprecord", true, "(debugging) Record trace (if httprr is set)")
 	noCleanup := flag.Bool("nocleanup", false, "(debugging) do not clean up docker containers on exit")
 	containerLogDest := flag.String("save-container-logs", "", "(debugging) host path to save container logs to on exit")
-	hostHostname := flag.String("host-hostname", "", "(internal) hostname on the host")
-	hostOS := flag.String("host-os", "", "(internal) OS on the host")
-	hostWorkingDir := flag.String("host-working-dir", "", "(internal) workign dir on the host")
+	outsideHostname := flag.String("outside-hostname", "", "(internal) hostname on the outside system")
+	outsideOS := flag.String("outside-os", "", "(internal) OS on the outside system")
+	outsideWorkingDir := flag.String("outside-working-dir", "", "(internal) working dir on the outside system")
 	sketchBinaryLinux := flag.String("sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
 
 	flag.Parse()
@@ -216,9 +216,9 @@ func run() error {
 			SSHAuthorizedKeys: authorizedKeys,
 			SSHPort:           *sshPort,
 			ForceRebuild:      false,
-			HostHostname:      getHostname(),
-			HostOS:            runtime.GOOS,
-			HostWorkingDir:    cwd,
+			OutsideHostname:   getHostname(),
+			OutsideOS:         runtime.GOOS,
+			OutsideWorkingDir: cwd,
 		}
 		if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
 			if *verbose {
@@ -255,20 +255,20 @@ func run() error {
 	}
 
 	agentConfig := loop.AgentConfig{
-		Context:          ctx,
-		AntURL:           antURL,
-		APIKey:           apiKey,
-		HTTPC:            client,
-		Budget:           ant.Budget{MaxResponses: *maxIterations, MaxWallTime: *maxWallTime, MaxDollars: *maxDollars},
-		GitUsername:      *gitUsername,
-		GitEmail:         *gitEmail,
-		SessionID:        *sessionID,
-		ClientGOOS:       runtime.GOOS,
-		ClientGOARCH:     runtime.GOARCH,
-		UseAnthropicEdit: os.Getenv("SKETCH_ANTHROPIC_EDIT") == "1",
-		HostHostname:     *hostHostname,
-		HostOS:           *hostOS,
-		HostWorkingDir:   *hostWorkingDir,
+		Context:           ctx,
+		AntURL:            antURL,
+		APIKey:            apiKey,
+		HTTPC:             client,
+		Budget:            ant.Budget{MaxResponses: *maxIterations, MaxWallTime: *maxWallTime, MaxDollars: *maxDollars},
+		GitUsername:       *gitUsername,
+		GitEmail:          *gitEmail,
+		SessionID:         *sessionID,
+		ClientGOOS:        runtime.GOOS,
+		ClientGOARCH:      runtime.GOARCH,
+		UseAnthropicEdit:  os.Getenv("SKETCH_ANTHROPIC_EDIT") == "1",
+		OutsideHostname:   *outsideHostname,
+		OutsideOS:         *outsideOS,
+		OutsideWorkingDir: *outsideWorkingDir,
 	}
 	agent := loop.NewAgent(agentConfig)
 

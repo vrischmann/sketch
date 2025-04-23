@@ -73,9 +73,9 @@ type CodingAgent interface {
 
 	// OS returns the operating system of the client.
 	OS() string
-	HostOS() string
-	HostHostname() string
-	HostWorkingDir() string
+	OutsideOS() string
+	OutsideHostname() string
+	OutsideWorkingDir() string
 	GitOrigin() string
 }
 
@@ -239,10 +239,10 @@ type Agent struct {
 	originalBudget ant.Budget
 	title          string
 	codereview     *claudetool.CodeReviewer
-	// Host information
-	hostHostname   string
-	hostOS         string
-	hostWorkingDir string
+	// Outside information
+	outsideHostname   string
+	outsideOS         string
+	outsideWorkingDir string
 	// URL of the git remote 'origin' if it exists
 	gitOrigin string
 
@@ -294,19 +294,19 @@ func (a *Agent) OS() string {
 	return a.config.ClientGOOS
 }
 
-// HostOS returns the operating system of the host.
-func (a *Agent) HostOS() string {
-	return a.hostOS
+// OutsideOS returns the operating system of the outside system.
+func (a *Agent) OutsideOS() string {
+	return a.outsideOS
 }
 
-// HostHostname returns the hostname of the host.
-func (a *Agent) HostHostname() string {
-	return a.hostHostname
+// OutsideHostname returns the hostname of the outside system.
+func (a *Agent) OutsideHostname() string {
+	return a.outsideHostname
 }
 
-// HostWorkingDir returns the working directory on the host.
-func (a *Agent) HostWorkingDir() string {
-	return a.hostWorkingDir
+// OutsideWorkingDir returns the working directory on the outside system.
+func (a *Agent) OutsideWorkingDir() string {
+	return a.outsideWorkingDir
 }
 
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
@@ -441,26 +441,26 @@ type AgentConfig struct {
 	ClientGOOS       string
 	ClientGOARCH     string
 	UseAnthropicEdit bool
-	// Host information
-	HostHostname   string
-	HostOS         string
-	HostWorkingDir string
+	// Outside information
+	OutsideHostname   string
+	OutsideOS         string
+	OutsideWorkingDir string
 }
 
 // NewAgent creates a new Agent.
 // It is not usable until Init() is called.
 func NewAgent(config AgentConfig) *Agent {
 	agent := &Agent{
-		config:         config,
-		ready:          make(chan struct{}),
-		inbox:          make(chan string, 100),
-		outbox:         make(chan AgentMessage, 100),
-		startedAt:      time.Now(),
-		originalBudget: config.Budget,
-		seenCommits:    make(map[string]bool),
-		hostHostname:   config.HostHostname,
-		hostOS:         config.HostOS,
-		hostWorkingDir: config.HostWorkingDir,
+		config:            config,
+		ready:             make(chan struct{}),
+		inbox:             make(chan string, 100),
+		outbox:            make(chan AgentMessage, 100),
+		startedAt:         time.Now(),
+		originalBudget:    config.Budget,
+		seenCommits:       make(map[string]bool),
+		outsideHostname:   config.OutsideHostname,
+		outsideOS:         config.OutsideOS,
+		outsideWorkingDir: config.OutsideWorkingDir,
 	}
 	return agent
 }

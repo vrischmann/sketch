@@ -75,59 +75,63 @@ export class SketchContainerStatus extends LitElement {
   }
 
   formatHostname() {
-    const hostHostname = this.state?.host_hostname;
-    const runtimeHostname = this.state?.runtime_hostname;
+    const outsideHostname = this.state?.outside_hostname;
+    const insideHostname = this.state?.inside_hostname;
 
-    if (!hostHostname || !runtimeHostname) {
+    if (!outsideHostname || !insideHostname) {
       return this.state?.hostname;
     }
 
-    if (hostHostname === runtimeHostname) {
-      return hostHostname;
+    if (outsideHostname === insideHostname) {
+      return outsideHostname;
     }
 
-    return `${hostHostname}:${runtimeHostname}`;
+    return `${outsideHostname}:${insideHostname}`;
   }
 
   formatWorkingDir() {
-    const hostWorkingDir = this.state?.host_working_dir;
-    const runtimeWorkingDir = this.state?.runtime_working_dir;
+    const outsideWorkingDir = this.state?.outside_working_dir;
+    const insideWorkingDir = this.state?.inside_working_dir;
 
-    if (!hostWorkingDir || !runtimeWorkingDir) {
+    if (!outsideWorkingDir || !insideWorkingDir) {
       return this.state?.working_dir;
     }
 
-    if (hostWorkingDir === runtimeWorkingDir) {
-      return hostWorkingDir;
+    if (outsideWorkingDir === insideWorkingDir) {
+      return outsideWorkingDir;
     }
 
-    return `${hostWorkingDir}:${runtimeWorkingDir}`;
+    return `${outsideWorkingDir}:${insideWorkingDir}`;
   }
 
   getHostnameTooltip() {
-    const hostHostname = this.state?.host_hostname;
-    const runtimeHostname = this.state?.runtime_hostname;
-
-    if (!hostHostname || !runtimeHostname || hostHostname === runtimeHostname) {
-      return "";
-    }
-
-    return `Host: ${hostHostname}, Runtime: ${runtimeHostname}`;
-  }
-
-  getWorkingDirTooltip() {
-    const hostWorkingDir = this.state?.host_working_dir;
-    const runtimeWorkingDir = this.state?.runtime_working_dir;
+    const outsideHostname = this.state?.outside_hostname;
+    const insideHostname = this.state?.inside_hostname;
 
     if (
-      !hostWorkingDir ||
-      !runtimeWorkingDir ||
-      hostWorkingDir === runtimeWorkingDir
+      !outsideHostname ||
+      !insideHostname ||
+      outsideHostname === insideHostname
     ) {
       return "";
     }
 
-    return `Host: ${hostWorkingDir}, Runtime: ${runtimeWorkingDir}`;
+    return `Outside: ${outsideHostname}, Inside: ${insideHostname}`;
+  }
+
+  getWorkingDirTooltip() {
+    const outsideWorkingDir = this.state?.outside_working_dir;
+    const insideWorkingDir = this.state?.inside_working_dir;
+
+    if (
+      !outsideWorkingDir ||
+      !insideWorkingDir ||
+      outsideWorkingDir === insideWorkingDir
+    ) {
+      return "";
+    }
+
+    return `Outside: ${outsideWorkingDir}, Inside: ${insideWorkingDir}`;
   }
 
   // See https://lit.dev/docs/components/lifecycle/
