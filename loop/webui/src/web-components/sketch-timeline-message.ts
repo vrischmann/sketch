@@ -644,22 +644,14 @@ export class SketchTimelineMessage extends LitElement {
                       <div class="commit-boxes-row">
                         <div class="commit-box">
                           <div class="commit-preview">
-                            <span
-                              class="commit-hash"
-                              title="Click to copy: ${commit.hash}"
-                              @click=${(e) =>
-                                this.copyToClipboard(
-                                  commit.hash.substring(0, 7),
-                                  e,
-                                )}
-                            >
-                              ${commit.hash.substring(0, 7)}
+                            <span class="commit-hash" title="Click to copy: ${commit.hash}" @click=${(e) => this.copyToClipboard(commit.hash.substring(0, 8), e)}>
+                              ${commit.hash.substring(0, 8)}
                             </span>
                             ${commit.pushed_branch
                               ? html`
-                                  <span class="branch-wrapper"
-                                    >(<span
-                                      class="commit-branch"
+                                  <span class="branch-wrapper">
+                                    (<span
+                                      class="commit-branch pushed-branch"
                                       title="Click to copy: ${commit.pushed_branch}"
                                       @click=${(e) =>
                                         this.copyToClipboard(
@@ -667,8 +659,8 @@ export class SketchTimelineMessage extends LitElement {
                                           e,
                                         )}
                                       >${commit.pushed_branch}</span
-                                    >)</span
-                                  >
+                                    >)
+                                  </span>
                                 `
                               : ``}
                             <span class="commit-subject"
