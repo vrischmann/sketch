@@ -636,6 +636,11 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	fmt.Printf("building docker image %s...\n", imgName)
+	dockerfileContent, err := os.ReadFile(dockerfilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read Dockerfile: %w", err)
+	}
+	fmt.Printf("Dockerfile:\n%s", string(dockerfileContent))
 
 	err = run(ctx, "docker build", cmd)
 	if err != nil {
