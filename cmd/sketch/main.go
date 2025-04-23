@@ -41,20 +41,26 @@ func run() error {
 	unsafe := flag.Bool("unsafe", false, "run directly without a docker container")
 	openBrowser := flag.Bool("open", false, "open sketch URL in system browser")
 	httprrFile := flag.String("httprr", "", "if set, record HTTP interactions to file")
-	record := flag.Bool("httprecord", true, "Record trace (if httprr is set)")
 	maxIterations := flag.Uint64("max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
 	maxWallTime := flag.Duration("max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
 	maxDollars := flag.Float64("max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
 	one := flag.Bool("one", false, "run a single iteration and exit without termui")
-	sessionID := flag.String("session-id", newSessionID(), "unique session-id for a sketch process")
-	gitUsername := flag.String("git-username", "", "username for git commits")
-	gitEmail := flag.String("git-email", "", "email for git commits")
 	verbose := flag.Bool("verbose", false, "enable verbose output")
 	version := flag.Bool("version", false, "print the version and exit")
-	noCleanup := flag.Bool("nocleanup", false, "do not clean up docker containers on exit")
-	containerLogDest := flag.String("save-container-logs", "", "host path to save container logs to on exit")
-	sketchBinaryLinux := flag.String("sketch-binary-linux", "", "path to a pre-built sketch binary for linux")
 	workingDir := flag.String("C", "", "when set, change to this directory before running")
+
+	// Flags geared towards sketch developers or sketch internals:
+	gitUsername := flag.String("git-username", "", "(internal) username for git commits")
+	gitEmail := flag.String("git-email", "", "(internal) email for git commits")
+	sessionID := flag.String("session-id", newSessionID(), "(internal) unique session-id for a sketch process")
+	record := flag.Bool("httprecord", true, "(debugging) Record trace (if httprr is set)")
+	noCleanup := flag.Bool("nocleanup", false, "(debugging) do not clean up docker containers on exit")
+	containerLogDest := flag.String("save-container-logs", "", "(debugging) host path to save container logs to on exit")
+	hostHostname := flag.String("host-hostname", "", "(internal) hostname on the host")
+	hostOS := flag.String("host-os", "", "(internal) OS on the host")
+	hostWorkingDir := flag.String("host-working-dir", "", "(internal) workign dir on the host")
+	sketchBinaryLinux := flag.String("sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
+
 	flag.Parse()
 
 	if *version {
@@ -189,6 +195,9 @@ func run() error {
 			SketchBinaryLinux: *sketchBinaryLinux,
 			SketchPubKey:      pubKey,
 			ForceRebuild:      false,
+			HostHostname:      getHostname(),
+			HostOS:            runtime.GOOS,
+			HostWorkingDir:    cwd,
 		}
 		if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
 			if *verbose {
@@ -236,6 +245,9 @@ func run() error {
 		ClientGOOS:       runtime.GOOS,
 		ClientGOARCH:     runtime.GOARCH,
 		UseAnthropicEdit: os.Getenv("SKETCH_ANTHROPIC_EDIT") == "1",
+		HostHostname:     *hostHostname,
+		HostOS:           *hostOS,
+		HostWorkingDir:   *hostWorkingDir,
 	}
 	agent := loop.NewAgent(agentConfig)
 
@@ -339,6 +351,14 @@ func newSessionID() string {
 		s += strings.Repeat("0", 16-len(s))
 	}
 	return s[0:4] + "-" + s[4:8] + "-" + s[8:12] + "-" + s[12:16]
+}
+
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "unknown"
+	}
+	return hostname
 }
 
 func defaultGitUsername() string {

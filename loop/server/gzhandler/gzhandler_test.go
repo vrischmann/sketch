@@ -16,23 +16,23 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	testFS := fstest.MapFS{
 		"regular.txt": &fstest.MapFile{
 			Data: []byte("This is a regular text file"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 		"regular.txt.gz": &fstest.MapFile{
 			Data: compressString(t, "This is a regular text file"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 		"regular.js": &fstest.MapFile{
 			Data: []byte("console.log('Hello world');"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 		"regular.js.gz": &fstest.MapFile{
 			Data: compressString(t, "console.log('Hello world');"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 		"nogzip.css": &fstest.MapFile{
 			Data: []byte(".body { color: red; }"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 	}
 
@@ -165,15 +165,15 @@ func TestHandleDirectories(t *testing.T) {
 	// Create a test filesystem with a directory
 	testFS := fstest.MapFS{
 		"dir": &fstest.MapFile{
-			Mode: fs.ModeDir | 0755,
+			Mode: fs.ModeDir | 0o755,
 		},
 		"dir/index.html": &fstest.MapFile{
 			Data: []byte("<html>Directory index</html>"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 		"dir/index.html.gz": &fstest.MapFile{
 			Data: compressString(t, "<html>Directory index</html>"),
-			Mode: 0644,
+			Mode: 0o644,
 		},
 	}
 

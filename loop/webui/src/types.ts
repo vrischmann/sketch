@@ -67,6 +67,13 @@ export interface State {
 	initial_commit: string;
 	title: string;
 	os: string;
+	host_hostname?: string;
+	runtime_hostname?: string;
+	host_os?: string;
+	runtime_os?: string;
+	host_working_dir?: string;
+	runtime_working_dir?: string;
+	git_origin?: string;
 }
 
 export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto';

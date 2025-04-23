@@ -334,7 +334,7 @@ func GenerateBundleMetafile(outputDir string) (string, error) {
 	defer os.RemoveAll(tmpDir)
 
 	// Create output directory if it doesn't exist
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return "", err
 	}
 

@@ -54,6 +54,11 @@ export class SketchContainerStatus extends LitElement {
       font-weight: 600;
     }
 
+    [title] {
+      cursor: help;
+      text-decoration: underline dotted;
+    }
+
     .cost {
       color: #2e7d32;
     }
@@ -67,6 +72,62 @@ export class SketchContainerStatus extends LitElement {
 
   constructor() {
     super();
+  }
+
+  formatHostname() {
+    const hostHostname = this.state?.host_hostname;
+    const runtimeHostname = this.state?.runtime_hostname;
+
+    if (!hostHostname || !runtimeHostname) {
+      return this.state?.hostname;
+    }
+
+    if (hostHostname === runtimeHostname) {
+      return hostHostname;
+    }
+
+    return `${hostHostname}:${runtimeHostname}`;
+  }
+
+  formatWorkingDir() {
+    const hostWorkingDir = this.state?.host_working_dir;
+    const runtimeWorkingDir = this.state?.runtime_working_dir;
+
+    if (!hostWorkingDir || !runtimeWorkingDir) {
+      return this.state?.working_dir;
+    }
+
+    if (hostWorkingDir === runtimeWorkingDir) {
+      return hostWorkingDir;
+    }
+
+    return `${hostWorkingDir}:${runtimeWorkingDir}`;
+  }
+
+  getHostnameTooltip() {
+    const hostHostname = this.state?.host_hostname;
+    const runtimeHostname = this.state?.runtime_hostname;
+
+    if (!hostHostname || !runtimeHostname || hostHostname === runtimeHostname) {
+      return "";
+    }
+
+    return `Host: ${hostHostname}, Runtime: ${runtimeHostname}`;
+  }
+
+  getWorkingDirTooltip() {
+    const hostWorkingDir = this.state?.host_working_dir;
+    const runtimeWorkingDir = this.state?.runtime_working_dir;
+
+    if (
+      !hostWorkingDir ||
+      !runtimeWorkingDir ||
+      hostWorkingDir === runtimeWorkingDir
+    ) {
+      return "";
+    }
+
+    return `Host: ${hostWorkingDir}, Runtime: ${runtimeWorkingDir}`;
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -91,13 +152,33 @@ export class SketchContainerStatus extends LitElement {
           <a href="download">Download</a>
         </div>
         <div class="info-item">
-          <span id="hostname" class="info-value">${this.state?.hostname}</span>
+          <span
+            id="hostname"
+            class="info-value"
+            title="${this.getHostnameTooltip()}"
+          >
+            ${this.formatHostname()}
+          </span>
         </div>
         <div class="info-item">
-          <span id="workingDir" class="info-value"
-            >${this.state?.working_dir}</span
+          <span
+            id="workingDir"
+            class="info-value"
+            title="${this.getWorkingDirTooltip()}"
           >
+            ${this.formatWorkingDir()}
+          </span>
         </div>
+        ${this.state?.git_origin
+          ? html`
+              <div class="info-item">
+                <span class="info-label">Origin:</span>
+                <span id="gitOrigin" class="info-value"
+                  >${this.state?.git_origin}</span
+                >
+              </div>
+            `
+          : ""}
         <div class="info-item">
           <span class="info-label">Commit:</span>
           <span id="initialCommit" class="info-value"

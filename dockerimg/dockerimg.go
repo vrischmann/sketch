@@ -67,6 +67,11 @@ type ContainerConfig struct {
 
 	// Sketch client public key.
 	SketchPubKey string
+
+	// Host information to pass to the container
+	HostHostname   string
+	HostOS         string
+	HostWorkingDir string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -223,7 +228,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 			return nil
 		}
 		out, logsErr := combinedOutput(ctx, "docker", "logs", cntrName)
-		if err != nil {
+		if logsErr != nil {
 			return fmt.Errorf("%w; and docker logs failed: %s, %v", err, out, logsErr)
 		}
 		out = bytes.TrimSpace(out)
@@ -375,7 +380,11 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-unsafe",
 		"-addr=:80",
 		"-session-id="+config.SessionID,
-		"-git-username="+config.GitUsername, "-git-email="+config.GitEmail,
+		"-git-username="+config.GitUsername,
+		"-git-email="+config.GitEmail,
+		"-host-hostname="+config.HostHostname,
+		"-host-os="+config.HostOS,
+		"-host-working-dir="+config.HostWorkingDir,
 	)
 	if config.SkabandAddr != "" {
 		cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)

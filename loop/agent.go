@@ -73,6 +73,10 @@ type CodingAgent interface {
 
 	// OS returns the operating system of the client.
 	OS() string
+	HostOS() string
+	HostHostname() string
+	HostWorkingDir() string
+	GitOrigin() string
 }
 
 type CodingAgentMessageType string
@@ -235,6 +239,12 @@ type Agent struct {
 	originalBudget ant.Budget
 	title          string
 	codereview     *claudetool.CodeReviewer
+	// Host information
+	hostHostname   string
+	hostOS         string
+	hostWorkingDir string
+	// URL of the git remote 'origin' if it exists
+	gitOrigin string
 
 	// Time when the current turn started (reset at the beginning of InnerLoop)
 	startOfTurn time.Time
@@ -282,6 +292,26 @@ func (a *Agent) Title() string {
 // OS returns the operating system of the client.
 func (a *Agent) OS() string {
 	return a.config.ClientGOOS
+}
+
+// HostOS returns the operating system of the host.
+func (a *Agent) HostOS() string {
+	return a.hostOS
+}
+
+// HostHostname returns the hostname of the host.
+func (a *Agent) HostHostname() string {
+	return a.hostHostname
+}
+
+// HostWorkingDir returns the working directory on the host.
+func (a *Agent) HostWorkingDir() string {
+	return a.hostWorkingDir
+}
+
+// GitOrigin returns the URL of the git remote 'origin' if it exists.
+func (a *Agent) GitOrigin() string {
+	return a.gitOrigin
 }
 
 // SetTitle sets the title of the conversation.
@@ -411,6 +441,10 @@ type AgentConfig struct {
 	ClientGOOS       string
 	ClientGOARCH     string
 	UseAnthropicEdit bool
+	// Host information
+	HostHostname   string
+	HostOS         string
+	HostWorkingDir string
 }
 
 // NewAgent creates a new Agent.
@@ -424,6 +458,9 @@ func NewAgent(config AgentConfig) *Agent {
 		startedAt:      time.Now(),
 		originalBudget: config.Budget,
 		seenCommits:    make(map[string]bool),
+		hostHostname:   config.HostHostname,
+		hostOS:         config.HostOS,
+		hostWorkingDir: config.HostWorkingDir,
 	}
 	return agent
 }
@@ -488,6 +525,8 @@ func (a *Agent) Init(ini AgentInit) error {
 			return fmt.Errorf("Agent.Init: claudetool.NewCodeReviewer: %w", err)
 		}
 		a.codereview = codereview
+
+		a.gitOrigin = getGitOrigin(ctx, ini.WorkingDir)
 	}
 	a.lastHEAD = a.initialCommit
 	a.convo = a.initConvo()
@@ -1132,4 +1171,17 @@ func isValidGitSHA(sha string) bool {
 	}
 
 	return true
+}
+
+// getGitOrigin returns the URL of the git remote 'origin' if it exists
+func getGitOrigin(ctx context.Context, dir string) string {
+	cmd := exec.CommandContext(ctx, "git", "config", "--get", "remote.origin.url")
+	cmd.Dir = dir
+	stderr := new(strings.Builder)
+	cmd.Stderr = stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

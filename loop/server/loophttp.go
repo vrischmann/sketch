@@ -51,11 +51,19 @@ type TerminalResponse struct {
 type State struct {
 	MessageCount  int                  `json:"message_count"`
 	TotalUsage    *ant.CumulativeUsage `json:"total_usage,omitempty"`
-	Hostname      string               `json:"hostname"`
-	WorkingDir    string               `json:"working_dir"`
 	InitialCommit string               `json:"initial_commit"`
 	Title         string               `json:"title"`
-	OS            string               `json:"os"`
+	Hostname      string               `json:"hostname"`    // deprecated
+	WorkingDir    string               `json:"working_dir"` // deprecated
+	OS            string               `json:"os"`          // deprecated
+	GitOrigin     string               `json:"git_origin,omitempty"`
+
+	HostHostname      string `json:"host_hostname,omitempty"`
+	RuntimeHostname   string `json:"runtime_hostname,omitempty"`
+	HostOS            string `json:"host_os,omitempty"`
+	RuntimeOS         string `json:"runtime_os,omitempty"`
+	HostWorkingDir    string `json:"host_working_dir,omitempty"`
+	RuntimeWorkingDir string `json:"runtime_working_dir,omitempty"`
 }
 
 // Server serves sketch HTTP. Server implements http.Handler.
@@ -323,13 +331,20 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		w.Header().Set("Content-Type", "application/json")
 
 		state := State{
-			MessageCount:  serverMessageCount,
-			TotalUsage:    &totalUsage,
-			Hostname:      s.hostname,
-			WorkingDir:    getWorkingDir(),
-			InitialCommit: agent.InitialCommit(),
-			Title:         agent.Title(),
-			OS:            agent.OS(),
+			MessageCount:      serverMessageCount,
+			TotalUsage:        &totalUsage,
+			Hostname:          s.hostname,
+			WorkingDir:        getWorkingDir(),
+			InitialCommit:     agent.InitialCommit(),
+			Title:             agent.Title(),
+			OS:                agent.OS(),
+			HostHostname:      agent.HostHostname(),
+			RuntimeHostname:   s.hostname,
+			HostOS:            agent.HostOS(),
+			RuntimeOS:         agent.OS(),
+			HostWorkingDir:    agent.HostWorkingDir(),
+			RuntimeWorkingDir: getWorkingDir(),
+			GitOrigin:         agent.GitOrigin(),
 		}
 
 		// Create a JSON encoder with indentation for pretty-printing
