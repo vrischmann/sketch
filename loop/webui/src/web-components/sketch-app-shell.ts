@@ -323,24 +323,10 @@ export class SketchAppShell extends LitElement {
     const { comment } = event.detail;
     if (!comment) return;
 
-    // Find the chat input textarea
-    const chatInput = this.shadowRoot?.querySelector("sketch-chat-input");
-    if (chatInput) {
-      // Update the chat input content using property
-      const currentContent = chatInput.getAttribute("content") || "";
-      const newContent = currentContent
-        ? `${currentContent}\n\n${comment}`
-        : comment;
-      chatInput.setAttribute("content", newContent);
-
-      // Dispatch an event to update the textarea value in the chat input component
-      const updateEvent = new CustomEvent("update-content", {
-        detail: { content: newContent },
-        bubbles: true,
-        composed: true,
-      });
-      chatInput.dispatchEvent(updateEvent);
+    if (this.chatMessageText.length > 0) {
+      this.chatMessageText += "\n\n";
     }
+    this.chatMessageText += comment;
   }
 
   /**

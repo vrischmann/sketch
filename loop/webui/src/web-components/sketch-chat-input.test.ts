@@ -56,7 +56,7 @@ test("sends message when clicking the send button", async ({ mount }) => {
         (event) => {
           resolve((event as CustomEvent).detail);
         },
-        { once: true },
+        { once: true }
       );
     });
   });
@@ -67,10 +67,6 @@ test("sends message when clicking the send button", async ({ mount }) => {
   // Wait for the event and check its details
   const detail: any = await eventPromise;
   expect(detail.message).toBe(testContent);
-
-  // Check that content was cleared
-  const content = await component.evaluate((el: SketchChatInput) => el.content);
-  expect(content).toBe("");
 });
 
 test.skip("sends message when pressing Enter (without shift)", async ({
@@ -91,7 +87,7 @@ test.skip("sends message when pressing Enter (without shift)", async ({
         (event) => {
           resolve((event as CustomEvent).detail);
         },
-        { once: true },
+        { once: true }
       );
     });
   });
@@ -148,7 +144,7 @@ test("resizes when user enters more text than will fit", async ({ mount }) => {
     },
   });
   const origHeight = await component.evaluate(
-    (el: SketchChatInput) => el.chatInput.style.height,
+    (el: SketchChatInput) => el.chatInput.style.height
   );
 
   // Enter very tall text in the textarea
@@ -159,32 +155,9 @@ test("resizes when user enters more text than will fit", async ({ mount }) => {
 
   // Check that textarea resized
   const newHeight = await component.evaluate(
-    (el: SketchChatInput) => el.chatInput.style.height,
+    (el: SketchChatInput) => el.chatInput.style.height
   );
   expect(Number.parseInt(newHeight)).toBeGreaterThan(
-    Number.parseInt(origHeight),
+    Number.parseInt(origHeight)
   );
-});
-
-test("updates content when receiving update-content event", async ({
-  mount,
-}) => {
-  const component = await mount(SketchChatInput, {});
-  const newContent = "Updated content";
-
-  // Dispatch the update-content event
-  await component.evaluate((el, newContent) => {
-    const updateEvent = new CustomEvent("update-content", {
-      detail: { content: newContent },
-      bubbles: true,
-    });
-    el.dispatchEvent(updateEvent);
-  }, newContent);
-
-  // Wait for the component to update and check values
-  await expect(component.locator("#chatInput")).toHaveValue(newContent);
-
-  // Check the content property
-  const content = await component.evaluate((el: SketchChatInput) => el.content);
-  expect(content).toBe(newContent);
 });

@@ -66,51 +66,15 @@ export class SketchChatInput extends LitElement {
 
   constructor() {
     super();
-
-    // Binding methods
-    this._handleUpdateContent = this._handleUpdateContent.bind(this);
   }
 
-  /**
-   * Handle update-content event
-   */
-  private _handleUpdateContent(event: CustomEvent) {
-    const { content } = event.detail;
-    if (content !== undefined) {
-      this.content = content;
-
-      // Update the textarea value directly, otherwise it won't update until next render
-      const textarea = this.shadowRoot?.querySelector(
-        "#chatInput"
-      ) as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.value = content;
-        // Adjust height after content is updated programmatically
-        requestAnimationFrame(() => this.adjustChatSpacing());
-      }
-    }
-  }
-
-  // See https://lit.dev/docs/components/lifecycle/
   connectedCallback() {
     super.connectedCallback();
-
-    // Listen for update-content events
-    this.addEventListener(
-      "update-content",
-      this._handleUpdateContent as EventListener
-    );
   }
 
   // See https://lit.dev/docs/components/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
-
-    // Remove event listeners
-    this.removeEventListener(
-      "update-content",
-      this._handleUpdateContent as EventListener
-    );
   }
 
   sendChatMessage() {
@@ -120,9 +84,6 @@ export class SketchChatInput extends LitElement {
       composed: true,
     });
     this.dispatchEvent(event);
-    // Clear the input after sending
-    this.content = "";
-    this.setAttribute("content", "");
   }
 
   adjustChatSpacing() {
