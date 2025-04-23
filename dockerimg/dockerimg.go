@@ -323,17 +323,10 @@ func (gs *gitServer) serve(ctx context.Context) error {
 	return gs.srv.Serve(gs.gitLn)
 }
 
-func mkRandToken() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(b[:])
-}
-
 func newGitServer(gitRoot string) (*gitServer, error) {
-	ret := &gitServer{}
-	ret.pass = mkRandToken()
+	ret := &gitServer{
+		pass: rand.Text(),
+	}
 
 	gitLn, err := net.Listen("tcp4", ":0")
 	if err != nil {
@@ -342,7 +335,7 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 	ret.gitLn = gitLn
 
 	srv := http.Server{
-		Handler: &gitHTTP{gitRepoRoot: gitRoot, pass: ret.pass},
+		Handler: &gitHTTP{gitRepoRoot: gitRoot, pass: []byte(ret.pass)},
 	}
 	ret.srv = &srv
 
@@ -469,7 +462,7 @@ func getContainerPort(ctx context.Context, cntrName string) (string, error) {
 }
 
 // Contact the container and configure it.
-func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort string, gitPass string) error {
+func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string) error {
 	localURL := "http://" + localAddr
 	initMsg, err := json.Marshal(map[string]string{
 		"commit":          commit,

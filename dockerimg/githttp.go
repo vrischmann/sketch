@@ -13,7 +13,7 @@ import (
 
 type gitHTTP struct {
 	gitRepoRoot string
-	pass        string
+	pass        []byte
 }
 
 func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -38,12 +38,8 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform constant-time comparison to prevent timing attacks
-	usernameMatch := subtle.ConstantTimeCompare([]byte(username), []byte("sketch")) == 1
-	passwordMatch := subtle.ConstantTimeCompare([]byte(password), []byte(g.pass)) == 1
-
 	// Check if credentials are valid
-	if !usernameMatch || !passwordMatch {
+	if username != "sketch" || subtle.ConstantTimeCompare([]byte(password), g.pass) != 1 {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Git Repository"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		slog.InfoContext(r.Context(), "githttp: denied (basic auth)", "remote addr", r.RemoteAddr)
