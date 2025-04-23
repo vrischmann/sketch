@@ -1,6 +1,6 @@
 FROM golang:1.24.2-alpine3.21
 
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf
+RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim
 
 ENV GOTOOLCHAIN=auto
 ENV GOPATH=/go
@@ -12,17 +12,18 @@ RUN go install mvdan.cc/gofumpt@latest
 
 RUN mkdir -p /root/.cache/sketch/webui
 
-RUN apk add --no-cache build-base || true
+RUN apk add --no-cache ca-certificates && \
+    update-ca-certificates
 
-# Set up any Go-specific environment
+# Set up Go environment variables
 ENV CGO_ENABLED=1
+ENV GO111MODULE=on
 
-# Install any additional Go tools that might be useful
-RUN go install github.com/cweill/gotests/gotests@latest
-RUN go install github.com/fatih/gomodifytags@latest
-RUN go install github.com/josharian/impl@latest
-RUN go install github.com/haya14busa/goplay/cmd/goplay@latest
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
+# Install any additional dependencies if needed
+RUN apk add --no-cache openssh-client || true
+
+# Create necessary directories
+RUN mkdir -p /root/.config/gh
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -30,7 +31,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="29f9694d78039a6a093f09ec31e8d1a19a6c75f5eb5c69dac6ac2395763b42e8"
+LABEL sketch_context="ecacc023382f310d25253734931f73bdfa48bd71cd92bd2c3ae1a6099ce5eb40"
 COPY . /app
 
 WORKDIR /app

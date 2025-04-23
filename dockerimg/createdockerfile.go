@@ -30,7 +30,7 @@ func hashInitFiles(initFiles map[string]string) string {
 // If/when we do this, add them into the list of available tools in bash.go.
 const dockerfileBase = `FROM {{.From}}
 
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf
+RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim
 
 ENV GOTOOLCHAIN=auto
 ENV GOPATH=/go
@@ -120,11 +120,11 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
 
 	// If you want to edit the model prompt, run:
 	//
-	//	go test ./sketch/dockerimg -httprecord ".*" -rewritewant
+	//	go test ./dockerimg -httprecord ".*" -rewritewant
 	//
 	// Then look at the changes with:
 	//
-	//	git diff sketch/dockerimg/testdata/*.dockerfile
+	//	git diff dockerimg/testdata/*.dockerfile
 	//
 	// If the dockerfile changes are a strict improvement, commit all the changes.
 	msg := ant.Message{

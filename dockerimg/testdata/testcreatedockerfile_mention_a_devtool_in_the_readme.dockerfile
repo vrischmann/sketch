@@ -1,6 +1,6 @@
 FROM golang:1.24.2-alpine3.21
 
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf
+RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim
 
 ENV GOTOOLCHAIN=auto
 ENV GOPATH=/go
@@ -20,7 +20,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="e715cbcfe6df6124670790b8a9341f2a978eafac04d94ceac61995a7dedbb22b"
+LABEL sketch_context="d8239a17f871092ba50cc68925458c106655b0741bc27d010b137e5bac79d871"
 COPY . /app
 
 WORKDIR /app
