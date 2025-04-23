@@ -1,5 +1,5 @@
 httprr trace v1
-10862 1840
+10862 1877
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
@@ -286,25 +286,25 @@ Content-Type: application/json
 }HTTP/2.0 200 OK
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
-Anthropic-Ratelimit-Input-Tokens-Remaining: 199000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-02T22:11:22Z
+Anthropic-Ratelimit-Input-Tokens-Remaining: 184000
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-05T20:19:43Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-02T22:11:25Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-05T20:19:41Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-02T22:11:21Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-05T20:19:37Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
-Anthropic-Ratelimit-Tokens-Remaining: 279000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-02T22:11:22Z
+Anthropic-Ratelimit-Tokens-Remaining: 264000
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-05T20:19:41Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 939ada9dcb8e2289-SJC
+Cf-Ray: 93b2ef104988d039-SJC
 Content-Type: application/json
-Date: Fri, 02 May 2025 22:11:25 GMT
-Request-Id: req_011CNjUDARocGVEoaiP81APq
+Date: Mon, 05 May 2025 20:19:41 GMT
+Request-Id: req_011CNq17iEhcyfkeYYQUZ5tz
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01Nrq3RXxm1QyGT215WMZGxQ","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I have access to the following tools:\n\n1. bash - Executes shell commands\n2. keyword_search - Searches for files with specific terms\n3. think - For recording thoughts and plans\n4. title - Sets conversation title and creates a git branch\n5. done - Marks completion of user's goal\n6. codereview - Runs automated code review\n7. multiplechoice - Presents multiple-choice questions\n8. patch - Makes precise text edits to files\n\nThese tools help me assist you with coding tasks, particularly in Go development. How can I help you today?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":2602,"cache_read_input_tokens":0,"output_tokens":131}}
+{"id":"msg_01KueCuaHxNHNG92tja2yhpo","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I have access to the following tools:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files based on keywords\n3. think - Record thoughts and planning\n4. title - Set conversation title and create git branch\n5. done - Mark task as complete with a checklist\n6. codereview - Run automated code review\n7. multiplechoice - Present multiple choice questions to the user\n8. patch - Make precise edits to files\n\nThese tools allow me to help you with coding, research, file manipulation, and other development tasks, particularly with Go programming language."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":2602,"cache_read_input_tokens":0,"output_tokens":130}}

@@ -80,7 +80,7 @@ const (
           "description": `
 
 	doneChecklistJSONSchemaSuffix = `
-		}
+        }
       },
       "additionalProperties": {
         "$ref": "#/definitions/checklistItem"
