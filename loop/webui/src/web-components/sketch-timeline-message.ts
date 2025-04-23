@@ -232,6 +232,9 @@ export class SketchTimelineMessage extends LitElement {
       font-weight: bold;
       margin-bottom: 5px;
       color: #24292e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .commit-boxes-row {
@@ -254,10 +257,13 @@ export class SketchTimelineMessage extends LitElement {
 
     .commit-preview {
       padding: 8px 12px;
-      cursor: pointer;
       font-family: monospace;
       background-color: #f6f8fa;
       border-bottom: 1px dashed #d1d5da;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
     }
 
     .commit-preview:hover {
@@ -267,6 +273,56 @@ export class SketchTimelineMessage extends LitElement {
     .commit-hash {
       color: #0366d6;
       font-weight: bold;
+      cursor: pointer;
+      margin-right: 8px;
+      text-decoration: none;
+      position: relative;
+    }
+
+    .commit-hash:hover {
+      text-decoration: underline;
+    }
+
+    .commit-hash:hover::after {
+      content: "📋";
+      font-size: 10px;
+      position: absolute;
+      top: -8px;
+      right: -12px;
+      opacity: 0.7;
+    }
+
+    .branch-wrapper {
+      margin-right: 8px;
+      color: #555;
+    }
+
+    .commit-branch {
+      color: #28a745;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      position: relative;
+    }
+
+    .commit-branch:hover {
+      text-decoration: underline;
+    }
+
+    .commit-branch:hover::after {
+      content: "📋";
+      font-size: 10px;
+      position: absolute;
+      top: -8px;
+      right: -12px;
+      opacity: 0.7;
+    }
+
+    .commit-preview {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
     }
 
     .commit-details {
@@ -292,16 +348,15 @@ export class SketchTimelineMessage extends LitElement {
     }
 
     .commit-diff-button {
-      padding: 6px 12px;
+      padding: 3px 6px;
       border: 1px solid #ccc;
       border-radius: 3px;
       background-color: #f7f7f7;
       color: #24292e;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       transition: all 0.2s ease;
-      margin: 8px 12px;
-      display: block;
+      margin-left: auto;
     }
 
     .commit-diff-button:hover {
@@ -458,6 +513,64 @@ export class SketchTimelineMessage extends LitElement {
     );
   }
 
+  copyToClipboard(text: string, event: Event) {
+    const element = event.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        this.showFloatingMessage("Copied!", rect, "success");
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err);
+        this.showFloatingMessage("Failed to copy!", rect, "error");
+      });
+  }
+
+  showFloatingMessage(
+    message: string,
+    targetRect: DOMRect,
+    type: "success" | "error",
+  ) {
+    // Create floating message element
+    const floatingMsg = document.createElement("div");
+    floatingMsg.textContent = message;
+    floatingMsg.className = `floating-message ${type}`;
+
+    // Position it near the clicked element
+    // Position just above the element
+    const top = targetRect.top - 30;
+    const left = targetRect.left + targetRect.width / 2 - 40;
+
+    floatingMsg.style.position = "fixed";
+    floatingMsg.style.top = `${top}px`;
+    floatingMsg.style.left = `${left}px`;
+    floatingMsg.style.zIndex = "9999";
+
+    // Add to document body
+    document.body.appendChild(floatingMsg);
+
+    // Animate in
+    floatingMsg.style.opacity = "0";
+    floatingMsg.style.transform = "translateY(10px)";
+
+    setTimeout(() => {
+      floatingMsg.style.opacity = "1";
+      floatingMsg.style.transform = "translateY(0)";
+    }, 10);
+
+    // Remove after animation
+    setTimeout(() => {
+      floatingMsg.style.opacity = "0";
+      floatingMsg.style.transform = "translateY(-10px)";
+
+      setTimeout(() => {
+        document.body.removeChild(floatingMsg);
+      }, 300);
+    }, 1500);
+  }
+
   render() {
     return html`
       <div
@@ -531,23 +644,46 @@ export class SketchTimelineMessage extends LitElement {
                       <div class="commit-boxes-row">
                         <div class="commit-box">
                           <div class="commit-preview">
-                            <span class="commit-hash"
-                              >${commit.hash.substring(0, 8)}</span
+                            <span
+                              class="commit-hash"
+                              title="Click to copy: ${commit.hash}"
+                              @click=${(e) =>
+                                this.copyToClipboard(
+                                  commit.hash.substring(0, 7),
+                                  e,
+                                )}
                             >
-                            ${commit.subject}
-                            <span class="pushed-branch"
-                              >→ pushed to ${commit.pushed_branch}</span
+                              ${commit.hash.substring(0, 7)}
+                            </span>
+                            ${commit.pushed_branch
+                              ? html`
+                                  <span class="branch-wrapper"
+                                    >(<span
+                                      class="commit-branch"
+                                      title="Click to copy: ${commit.pushed_branch}"
+                                      @click=${(e) =>
+                                        this.copyToClipboard(
+                                          commit.pushed_branch,
+                                          e,
+                                        )}
+                                      >${commit.pushed_branch}</span
+                                    >)</span
+                                  >
+                                `
+                              : ``}
+                            <span class="commit-subject"
+                              >${commit.subject}</span
                             >
+                            <button
+                              class="commit-diff-button"
+                              @click=${() => this.showCommit(commit.hash)}
+                            >
+                              View Diff
+                            </button>
                           </div>
                           <div class="commit-details is-hidden">
                             <pre>${commit.body}</pre>
                           </div>
-                          <button
-                            class="commit-diff-button"
-                            @click=${() => this.showCommit(commit.hash)}
-                          >
-                            View Changes
-                          </button>
                         </div>
                       </div>
                     `;
@@ -563,34 +699,64 @@ export class SketchTimelineMessage extends LitElement {
 
 function copyButton(textToCopy: string) {
   // Add click event listener to handle copying
+  const buttonClass = "copy-button";
+  const buttonContent = "Copy";
+  const successContent = "Copied!";
+  const failureContent = "Failed";
+
   const ret = html`<button
-    class="copy-button"
-    title="Copy text to clipboard"
+    class="${buttonClass}"
+    title="Copy to clipboard"
     @click=${(e: Event) => {
       e.stopPropagation();
       const copyButton = e.currentTarget as HTMLButtonElement;
       navigator.clipboard
         .writeText(textToCopy)
         .then(() => {
-          copyButton.textContent = "Copied!";
+          copyButton.textContent = successContent;
           setTimeout(() => {
-            copyButton.textContent = "Copy";
+            copyButton.textContent = buttonContent;
           }, 2000);
         })
         .catch((err) => {
           console.error("Failed to copy text: ", err);
-          copyButton.textContent = "Failed";
+          copyButton.textContent = failureContent;
           setTimeout(() => {
-            copyButton.textContent = "Copy";
+            copyButton.textContent = buttonContent;
           }, 2000);
         });
     }}
   >
-    Copy
+    ${buttonContent}
   </button>`;
 
   return ret;
 }
+
+// Create global styles for floating messages
+const floatingMessageStyles = document.createElement("style");
+floatingMessageStyles.textContent = `
+  .floating-message {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  
+  .floating-message.success {
+    background-color: rgba(40, 167, 69, 0.9);
+  }
+  
+  .floating-message.error {
+    background-color: rgba(220, 53, 69, 0.9);
+  }
+`;
+document.head.appendChild(floatingMessageStyles);
 
 declare global {
   interface HTMLElementTagNameMap {
