@@ -1,9 +1,9 @@
 httprr trace v1
-8492 1723
+8979 1749
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 8295
+Content-Length: 8782
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
@@ -27,7 +27,7 @@ Content-Type: application/json
  "tools": [
   {
    "name": "bash",
-   "description": "Executes a shell command using bash -c with an optional timeout, returning combined stdout and stderr.\n\nExecutables pre-installed in this environment include:\n- standard unix tools\n- go\n- git\n- rg\n- jq\n- gopls\n- sqlite\n- fzf\n- gh\n- python3",
+   "description": "Executes a shell command using bash -c with an optional timeout, returning combined stdout and stderr.\nWhen run with background flag, the process may keep running after the tool call returns, and\nthe agent can inspect the output by reading the output files. Use the background task when, for example,\nstarting a server to test something. Be sure to kill the process group when done.\n\nExecutables pre-installed in this environment include:\n- standard unix tools\n- go\n- git\n- rg\n- jq\n- gopls\n- sqlite\n- fzf\n- gh\n- python3",
    "input_schema": {
     "type": "object",
     "required": [
@@ -40,7 +40,11 @@ Content-Type: application/json
      },
      "timeout": {
       "type": "string",
-      "description": "Timeout as a Go duration string, defaults to '1m'"
+      "description": "Timeout as a Go duration string, defaults to 1m if background is false; 10m if background is true"
+     },
+     "background": {
+      "type": "boolean",
+      "description": "If true, executes the command in the background without waiting for completion"
      }
     }
    }
@@ -238,23 +242,23 @@ Content-Type: application/json
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
 Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-04-05T23:01:05Z
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-04-24T02:27:06Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-04-05T23:01:08Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-04-24T02:27:09Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-04-05T23:01:05Z
+Anthropic-Ratelimit-Requests-Reset: 2025-04-24T02:27:04Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
 Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-04-05T23:01:05Z
+Anthropic-Ratelimit-Tokens-Reset: 2025-04-24T02:27:06Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 92bcaa52a9e4cfc8-SJC
+Cf-Ray: 935228ce59f9679c-SJC
 Content-Type: application/json
-Date: Sat, 05 Apr 2025 23:01:08 GMT
-Request-Id: req_01GT1wg7toE5VY2k2b2WiX13
+Date: Thu, 24 Apr 2025 02:27:09 GMT
+Request-Id: req_011CNSmRs5o2pNWuMSMroxEC
 Server: cloudflare
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01N9DMvaYosVobjJaYB2SiDd","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files using keywords\n3. think - Record thoughts or plans (no external effects)\n4. title - Summarize conversation topic\n5. done - Mark when user's goal is achieved\n6. codereview - Run automated code review\n7. patch - Make precise text edits to files\n\nThese tools allow me to navigate codebases, execute commands, make code changes, and help you achieve your goals effectively."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":2074,"cache_read_input_tokens":0,"output_tokens":119}}
+{"id":"msg_01J2yw38zCKNmTCwLjcTqCU2","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I have access to the following tools:\n\n1. bash - Executes shell commands\n2. keyword_search - Locates files with a search-and-filter approach\n3. think - For recording thoughts, notes and plans\n4. title - Creates a brief title for the chat\n5. done - Marks the user's goal as achieved and verifies a checklist\n6. codereview - Runs an automated code review\n7. patch - Allows precise text edits in files\n\nLet me know if you'd like more details about any specific tool or if you have a task you'd like assistance with."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":2177,"cache_read_input_tokens":0,"output_tokens":135}}

@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +29,9 @@ const (
 	bashName        = "bash"
 	bashDescription = `
 Executes a shell command using bash -c with an optional timeout, returning combined stdout and stderr.
+When run with background flag, the process may keep running after the tool call returns, and
+the agent can inspect the output by reading the output files. Use the background task when, for example,
+starting a server to test something. Be sure to kill the process group when done.
 
 Executables pre-installed in this environment include:
 - standard unix tools
@@ -52,7 +57,11 @@ Executables pre-installed in this environment include:
     },
     "timeout": {
       "type": "string",
-      "description": "Timeout as a Go duration string, defaults to '1m'"
+      "description": "Timeout as a Go duration string, defaults to 1m if background is false; 10m if background is true"
+    },
+    "background": {
+      "type": "boolean",
+      "description": "If true, executes the command in the background without waiting for completion"
     }
   }
 }
@@ -60,16 +69,31 @@ Executables pre-installed in this environment include:
 )
 
 type bashInput struct {
-	Command string `json:"command"`
-	Timeout string `json:"timeout,omitempty"`
+	Command    string `json:"command"`
+	Timeout    string `json:"timeout,omitempty"`
+	Background bool   `json:"background,omitempty"`
+}
+
+type BackgroundResult struct {
+	PID        int    `json:"pid"`
+	StdoutFile string `json:"stdout_file"`
+	StderrFile string `json:"stderr_file"`
 }
 
 func (i *bashInput) timeout() time.Duration {
-	dur, err := time.ParseDuration(i.Timeout)
-	if err != nil {
+	if i.Timeout != "" {
+		dur, err := time.ParseDuration(i.Timeout)
+		if err == nil {
+			return dur
+		}
+	}
+
+	// Otherwise, use different defaults based on background mode
+	if i.Background {
+		return 10 * time.Minute
+	} else {
 		return 1 * time.Minute
 	}
-	return dur
 }
 
 func BashRun(ctx context.Context, m json.RawMessage) (string, error) {
@@ -82,6 +106,22 @@ func BashRun(ctx context.Context, m json.RawMessage) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// If Background is set to true, use executeBackgroundBash
+	if req.Background {
+		result, err := executeBackgroundBash(ctx, req)
+		if err != nil {
+			return "", err
+		}
+		// Marshal the result to JSON
+		output, err := json.Marshal(result)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal background result: %w", err)
+		}
+		return string(output), nil
+	}
+
+	// For foreground commands, use executeBash
 	out, execErr := executeBash(ctx, req)
 	if execErr == nil {
 		return out, nil
@@ -160,4 +200,78 @@ func humanizeBytes(bytes int) string {
 		return fmt.Sprintf("%dMB", mb)
 	}
 	return "more than 1GB"
+}
+
+// executeBackgroundBash executes a command in the background and returns the pid and output file locations
+func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResult, error) {
+	// Create temporary directory for output files
+	tmpDir, err := os.MkdirTemp("", "sketch-bg-")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	// Create temp files for stdout and stderr
+	stdoutFile := filepath.Join(tmpDir, "stdout")
+	stderrFile := filepath.Join(tmpDir, "stderr")
+
+	// Prepare the command
+	cmd := exec.Command("bash", "-c", req.Command)
+	cmd.Dir = WorkingDir(ctx)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// Open output files
+	stdout, err := os.Create(stdoutFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdout file: %w", err)
+	}
+	defer stdout.Close()
+
+	stderr, err := os.Create(stderrFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stderr file: %w", err)
+	}
+	defer stderr.Close()
+
+	// Configure command to use the files
+	cmd.Stdin = nil
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start background command: %w", err)
+	}
+
+	// Start a goroutine to reap the process when it finishes
+	go func() {
+		cmd.Wait()
+		// Process has been reaped
+	}()
+
+	// Set up timeout handling if a timeout was specified
+	pid := cmd.Process.Pid
+	timeout := req.timeout()
+	if timeout > 0 {
+		// Launch a goroutine that will kill the process after the timeout
+		go func() {
+			// Sleep for the timeout duration
+			time.Sleep(timeout)
+
+			// TODO(philip): Should we do SIGQUIT and then SIGKILL in 5s?
+
+			// Try to kill the process group
+			killErr := syscall.Kill(-pid, syscall.SIGKILL)
+			if killErr != nil {
+				// If killing the process group fails, try to kill just the process
+				syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}()
+	}
+
+	// Return the process ID and file paths
+	return &BackgroundResult{
+		PID:        cmd.Process.Pid,
+		StdoutFile: stdoutFile,
+		StderrFile: stderrFile,
+	}, nil
 }

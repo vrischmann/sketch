@@ -281,6 +281,21 @@ export class SketchToolCardBash extends LitElement {
       color: #555;
       border-radius: 0 0 4px 4px;
     }
+    .background-badge {
+      display: inline-block;
+      background-color: #6200ea;
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .command-wrapper {
+      display: flex;
+      align-items: center;
+    }
   `;
 
   constructor() {
@@ -296,10 +311,20 @@ export class SketchToolCardBash extends LitElement {
   }
 
   render() {
+    const inputData = JSON.parse(this.toolCall?.input || "{}");
+    const isBackground = inputData?.background === true;
+    const backgroundIcon = isBackground ? "🔄 " : "";
+
     return html`
     <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-    <span slot="summary" class="summary-text">${JSON.parse(this.toolCall?.input)?.command}</span>
-    <div slot="input" class="input"><pre>${JSON.parse(this.toolCall?.input)?.command}</pre></div>
+    <span slot="summary" class="summary-text">
+      <div class="command-wrapper">
+        🖥️ ${backgroundIcon}${inputData?.command}
+      </div>
+    </span>
+    <div slot="input" class="input">
+      <pre>🖥️ ${backgroundIcon}${inputData?.command}</pre>
+    </div>
     ${
       this.toolCall?.result_message
         ? html` ${this.toolCall?.result_message.tool_result

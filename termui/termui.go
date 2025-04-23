@@ -33,7 +33,7 @@ var (
 {{else if eq .msg.ToolName "keyword_search" -}}
  🔍 {{ .input.query}}: {{.input.keywords -}}
 {{else if eq .msg.ToolName "bash" -}}
- 🖥️  {{ .input.command -}}
+ 🖥️{{if .input.background}}🔄{{end}}  {{ .input.command -}}
 {{else if eq .msg.ToolName "patch" -}}
  ⌨️  {{.input.path -}}
 {{else if eq .msg.ToolName "done" -}}
