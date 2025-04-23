@@ -12,6 +12,10 @@ export class SketchDiffView extends LitElement {
   @state()
   private selectedDiffLine: string | null = null;
 
+  // The clicked button element used for positioning the comment box
+  @state()
+  private clickedElement: HTMLElement | null = null;
+
   // View format (side-by-side or line-by-line)
   @state()
   private viewFormat: "side-by-side" | "line-by-line" = "side-by-side";
@@ -56,9 +60,7 @@ export class SketchDiffView extends LitElement {
 
     /* Comment box styles */
     .diff-comment-box {
-      position: fixed;
-      bottom: 80px;
-      right: 20px;
+      position: absolute;
       width: 400px;
       background-color: white;
       border: 1px solid #ddd;
@@ -66,6 +68,7 @@ export class SketchDiffView extends LitElement {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 16px;
       z-index: 1000;
+      margin-top: 10px;
     }
 
     .diff-comment-box h3 {
@@ -187,7 +190,7 @@ export class SketchDiffView extends LitElement {
 
       if (!response.ok) {
         console.error(
-          `Failed to load diff2html CSS: ${response.status} ${response.statusText}`,
+          `Failed to load diff2html CSS: ${response.status} ${response.statusText}`
         );
         return;
       }
@@ -221,20 +224,23 @@ export class SketchDiffView extends LitElement {
     if (!diff2htmlContent) return;
 
     try {
-      // Show loading state
-      diff2htmlContent.innerHTML = "Loading enhanced diff...";
-
       // Build the diff URL - include commit hash if specified
       const diffUrl = this.commitHash
         ? `diff?commit=${this.commitHash}`
         : "diff";
+
+      if (this.commitHash) {
+        diff2htmlContent.innerHTML = `Loading diff for commit <strong>${this.commitHash}</strong>...`;
+      } else {
+        diff2htmlContent.innerHTML = "Loading diff...";
+      }
 
       // Fetch the diff from the server
       const response = await fetch(diffUrl);
 
       if (!response.ok) {
         throw new Error(
-          `Server returned ${response.status}: ${response.statusText}`,
+          `Server returned ${response.status}: ${response.statusText}`
         );
       }
 
@@ -296,8 +302,6 @@ export class SketchDiffView extends LitElement {
       this.shadowRoot?.getElementById("diff2htmlContent");
     if (!diff2htmlContent) return;
 
-    console.log("Setting up diff line comments");
-
     // Add plus buttons to each code line
     this.addCommentButtonsToCodeLines();
 
@@ -343,7 +347,8 @@ export class SketchDiffView extends LitElement {
 
         console.log("Comment button clicked for line: ", formattedLine);
 
-        // Open the comment box with this line
+        // Open the comment box with this line and store the clicked element for positioning
+        this.clickedElement = target;
         this.openDiffCommentBox(formattedLine);
 
         // Prevent event from bubbling up
@@ -362,7 +367,7 @@ export class SketchDiffView extends LitElement {
 
     // Target code lines first, then find their parent rows
     const codeLines = diff2htmlContent.querySelectorAll(
-      ".d2h-code-side-line, .d2h-code-line",
+      ".d2h-code-side-line, .d2h-code-line"
     );
 
     // Create a Set to store unique rows to avoid duplicates
@@ -387,7 +392,7 @@ export class SketchDiffView extends LitElement {
 
       // Find the code line number element (first TD in the row)
       const lineNumberCell = rowElem.querySelector(
-        ".d2h-code-side-linenumber, .d2h-code-linenumber",
+        ".d2h-code-side-linenumber, .d2h-code-linenumber"
       );
 
       if (!lineNumberCell) return;
@@ -435,7 +440,13 @@ export class SketchDiffView extends LitElement {
         </div>
       `;
 
-      this.shadowRoot?.appendChild(commentBox);
+      // Append the comment box to the diff container to ensure proper positioning
+      const diffContainer = this.shadowRoot?.querySelector(".diff-container");
+      if (diffContainer) {
+        diffContainer.appendChild(commentBox);
+      } else {
+        this.shadowRoot?.appendChild(commentBox);
+      }
     }
 
     // Store the selected line
@@ -449,14 +460,36 @@ export class SketchDiffView extends LitElement {
 
     // Reset the comment input
     const commentInput = this.shadowRoot?.getElementById(
-      "diffCommentInput",
+      "diffCommentInput"
     ) as HTMLTextAreaElement;
     if (commentInput) {
       commentInput.value = "";
     }
 
-    // Show the comment box
-    if (commentBox) {
+    // Show the comment box and position it below the clicked line
+    if (commentBox && this.clickedElement) {
+      // Get the row that contains the clicked button
+      const row = this.clickedElement.closest("tr");
+      if (row) {
+        // Get the position of the row
+        const rowRect = row.getBoundingClientRect();
+        const diffContainerRect = this.shadowRoot?.querySelector(".diff-container")?.getBoundingClientRect();
+        
+        if (diffContainerRect) {
+          // Position the comment box below the row
+          const topPosition = rowRect.bottom - diffContainerRect.top + this.shadowRoot!.querySelector(".diff-container")!.scrollTop;
+          const leftPosition = rowRect.left - diffContainerRect.left;
+          
+          commentBox.style.top = `${topPosition}px`;
+          commentBox.style.left = `${leftPosition}px`;
+          commentBox.style.display = "block";
+        }
+      } else {
+        // Fallback if we can't find the row
+        commentBox.style.display = "block";
+      }
+    } else if (commentBox) {
+      // Fallback if we don't have clickedElement
       commentBox.style.display = "block";
     }
 
@@ -486,6 +519,7 @@ export class SketchDiffView extends LitElement {
       commentBox.style.display = "none";
     }
     this.selectedDiffLine = null;
+    this.clickedElement = null;
   }
 
   /**
@@ -493,7 +527,7 @@ export class SketchDiffView extends LitElement {
    */
   private submitDiffComment(): void {
     const commentInput = this.shadowRoot?.getElementById(
-      "diffCommentInput",
+      "diffCommentInput"
     ) as HTMLTextAreaElement;
 
     if (!commentInput) return;

@@ -120,7 +120,9 @@ export class SketchChatInput extends LitElement {
       composed: true,
     });
     this.dispatchEvent(event);
-    this.content = ""; // Clear the input after sending
+    // Clear the input after sending
+    this.content = "";
+    this.setAttribute("content", "");
   }
 
   adjustChatSpacing() {

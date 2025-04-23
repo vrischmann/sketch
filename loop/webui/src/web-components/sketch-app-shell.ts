@@ -340,9 +340,6 @@ export class SketchAppShell extends LitElement {
         composed: true,
       });
       chatInput.dispatchEvent(updateEvent);
-
-      // Switch back to chat view
-      this.toggleViewMode("chat", true);
     }
   }
 
