@@ -258,8 +258,8 @@ export class SketchToolCardBash extends LitElement {
 
   static styles = css`
     pre {
-      background: black;
-      color: white;
+      background: rgb(236, 236, 236);
+      color: black;
       padding: 0.5em;
       border-radius: 4px;
     }
@@ -278,7 +278,7 @@ export class SketchToolCardBash extends LitElement {
     }
     .result pre {
       margin-top: 0;
-      color: gray;
+      color: #555;
       border-radius: 0 0 4px 4px;
     }
   `;
