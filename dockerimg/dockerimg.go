@@ -123,7 +123,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		if err != nil {
 			return err
 		}
-		defer os.Remove(linuxSketchBin)
+		defer os.Remove(linuxSketchBin) // in case of errors
 	}
 
 	cntrName := imgName + "-" + config.SessionID
@@ -180,6 +180,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 	if out, err := combinedOutput(ctx, "docker", "cp", linuxSketchBin, cntrName+":/bin/sketch"); err != nil {
 		return fmt.Errorf("docker cp: %s, %w", out, err)
 	}
+	os.Remove(linuxSketchBin) // in normal operations, the code below blocks, so actively delete now
 
 	// Make sure that the webui is built so we can copy the results to the container.
 	_, err = webui.Build()
