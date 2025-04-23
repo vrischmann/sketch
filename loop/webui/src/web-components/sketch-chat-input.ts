@@ -55,6 +55,8 @@ export class SketchChatInput extends LitElement {
       padding: 0 20px;
       cursor: pointer;
       font-weight: 600;
+      align-self: center;
+      height: 40px;
     }
 
     #sendChatButton:hover {
