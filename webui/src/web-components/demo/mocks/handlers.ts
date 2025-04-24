@@ -3,9 +3,12 @@ import { initialState, initialMessages } from "./fixtures/dummy";
 
 // Mock state updates for long-polling simulation
 let currentState = { ...initialState };
-const messages = [...initialMessages];
+const EMPTY_CONVERSATION =
+  new URL(window.location.href).searchParams.get("emptyConversation") === "1";
 const ADD_NEW_MESSAGES =
   new URL(window.location.href).searchParams.get("addNewMessages") === "1";
+
+const messages = EMPTY_CONVERSATION ? [] : [...initialMessages];
 
 export const handlers = [
   // Unified state endpoint that handles both regular and polling requests
