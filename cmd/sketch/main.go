@@ -197,7 +197,6 @@ func run() error {
 			}
 		}
 
-		fmt.Printf("launching container...\n")
 		config := dockerimg.ContainerConfig{
 			SessionID:         *sessionID,
 			LocalAddr:         *addr,

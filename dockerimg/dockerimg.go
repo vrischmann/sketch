@@ -196,7 +196,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		return fmt.Errorf("docker cp: %s, %w", out, err)
 	}
 
-	fmt.Printf("starting container %s\ncommits made by the agent will be pushed to \033[1msketch/*\033[0m\n", cntrName)
+	fmt.Printf("starting container %s\n", cntrName)
 
 	// Start the sketch container
 	if out, err := combinedOutput(ctx, "docker", "start", cntrName); err != nil {
@@ -442,7 +442,7 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 		return "", fmt.Errorf("failed to run go list -m: %s: %v", out, err)
 	} else {
 		if strings.TrimSpace(string(out)) == "sketch.dev" {
-			fmt.Printf("building linux agent from currently checked out module\n")
+			slog.DebugContext(ctx, "built linux agent from currently checked out module")
 			verToInstall = ""
 		}
 	}
@@ -458,7 +458,6 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 		"GOBIN=",
 	)
 
-	fmt.Printf("building linux agent binary...\n")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		slog.ErrorContext(ctx, "go", slog.Duration("elapsed", time.Now().Sub(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
@@ -479,8 +478,6 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 	if err := moveFile(src, dst); err != nil {
 		return "", err
 	}
-
-	fmt.Printf("built linux agent binary in %s\n", time.Since(start).Round(100*time.Millisecond))
 
 	return dst, nil
 }
@@ -585,7 +582,6 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 		}
 		fmt.Printf("using %s as dev env\n", candidates[0])
 		if hashInitFiles(map[string]string{dockerfilePath: string(contents)}) == curImgInitFilesHash && !forceRebuild {
-			fmt.Printf("using existing docker image %s\n", imgName)
 			return imgName, nil
 		}
 	} else {
@@ -599,7 +595,6 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 		}
 		initFileHash := hashInitFiles(initFiles)
 		if curImgInitFilesHash == initFileHash && !forceRebuild {
-			fmt.Printf("using existing docker image %s\n", imgName)
 			return imgName, nil
 		}
 
