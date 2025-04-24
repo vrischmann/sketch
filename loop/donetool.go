@@ -41,7 +41,7 @@ func makeDoneTool(codereview *claudetool.CodeReviewer, gitUsername, gitEmail str
 }
 
 func doneChecklistJSONSchema(gitUsername, gitEmail string) string {
-	gitCommitDescription := fmt.Sprintf(`Create git commits for any code changes you made. Match the style of recent commit messages. Include 'Co-Authored-By: sketch' and the original user prompt. Use GIT_AUTHOR_NAME="%s" GIT_AUTHOR_EMAIL="%s" (not git config).`,
+	gitCommitDescription := fmt.Sprintf(`Create git commits for any code changes you made. Match the style of recent commit messages. Include 'Co-Authored-By: sketch <hello@sketch.dev>' and the original user prompt. Use GIT_AUTHOR_NAME="%s" GIT_AUTHOR_EMAIL="%s" (not git config).`,
 		gitUsername, gitEmail)
 	desc, err := json.Marshal(gitCommitDescription)
 	if err != nil {
