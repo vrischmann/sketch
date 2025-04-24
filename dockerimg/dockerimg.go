@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"sketch.dev/loop/server"
-	"sketch.dev/loop/webui"
+	"sketch.dev/webui"
 	"sketch.dev/skribe"
 )
 

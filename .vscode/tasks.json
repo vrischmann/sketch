@@ -4,7 +4,7 @@
     {
       "type": "npm",
       "script": "watch",
-      "path": "loop/webui",
+      "path": "webui",
       "group": "build",
       "problemMatcher": ["$tsc-watch"],
       "label": "webui: watch tsc",
@@ -14,7 +14,7 @@
     {
       "type": "npm",
       "script": "demo",
-      "path": "loop/webui",
+      "path": "webui",
       "group": "build",
       "label": "webui: demo",
       "isBackground": true,
@@ -38,7 +38,7 @@
     {
       "type": "npm",
       "script": "dev",
-      "path": "loop/webui",
+      "path": "webui",
       "group": "build",
       "label": "webui: dev",
       "isBackground": true,

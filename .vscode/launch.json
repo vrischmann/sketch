@@ -9,7 +9,7 @@
       "request": "launch",
       "name": "Launch Chrome against localhost",
       "url": "http://localhost:5173/src/web-components/demo/sketch-app-shell.demo.html",
-      "webRoot": "${workspaceFolder}/loop/webui",
+      "webRoot": "${workspaceFolder}/webui",
       "preLaunchTask": "webui: dev"
     }
   ]

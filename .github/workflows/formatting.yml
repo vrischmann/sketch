@@ -18,14 +18,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: loop/webui/package-lock.json
+          cache-dependency-path: webui/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./loop/webui
+        working-directory: ./webui
         run: npm ci
 
       - name: Check Prettier formatting
-        working-directory: ./loop/webui
+        working-directory: ./webui
         run: npx prettier --check .
 
       # Setup for gofumpt

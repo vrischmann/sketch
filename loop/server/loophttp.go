@@ -25,7 +25,7 @@ import (
 	"github.com/creack/pty"
 	"sketch.dev/ant"
 	"sketch.dev/loop"
-	"sketch.dev/loop/webui"
+	"sketch.dev/webui"
 )
 
 // terminalSession represents a terminal session with its PTY and the event channel

@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"sketch.dev/loop/webui"
+	"sketch.dev/webui"
 )
 
 func main() {

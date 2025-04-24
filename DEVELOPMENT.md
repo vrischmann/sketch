@@ -3,7 +3,7 @@
 ## Running tests
 
 * `go test ./...`
-* `cd loop/webui && CI=1 npm run test`
+* `cd webui && CI=1 npm run test`
 
 ## Synchronizing Go structs and TypeScript types
 
