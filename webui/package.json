@@ -12,7 +12,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "demo": "vite --open src/web-components/demo/index.html",
-    "dev": "vite",
+    "dev": "vite --port 5173 --strictPort",
     "format": "prettier ./src --write",
     "gentypes": "go run ../../cmd/go2ts -o src/types.ts",
     "build": "go run ../../cmd/go2ts -o src/types.ts && tsc",
