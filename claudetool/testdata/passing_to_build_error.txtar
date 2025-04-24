@@ -1,0 +1,32 @@
+Going from a passing test to a test with build errors is a regression
+
+-- p_test.go --
+package p
+
+import "testing"
+
+func TestP(t *testing.T) {
+}
+
+-- .commit --
+Initial commit with passing test
+
+-- p_test.go --
+package p
+
+import "testing"
+
+func TestP(t *testing.T) {
+	(
+}
+
+-- .commit --
+Break test with build error
+
+-- .run_test --
+Test regressions detected between initial commit (149798f10aaf06bc4700bb62d46ed6d8d88e35ad) and HEAD:
+
+1: sketch.dev: Was passing, now has build/vet errors
+
+
+Please fix before proceeding.

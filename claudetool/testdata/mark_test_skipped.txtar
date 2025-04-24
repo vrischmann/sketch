@@ -1,0 +1,32 @@
+Marking a passing test as skipped test is a regression
+
+-- p_test.go --
+package p
+
+import "testing"
+
+func TestP(t *testing.T) {
+}
+
+-- .commit --
+Initial commit
+
+-- p_test.go --
+package p
+
+import "testing"
+
+func TestP(t *testing.T) {
+	t.SkipNow()
+}
+
+-- .commit --
+Skip test
+
+-- .run_test --
+Test regressions detected between initial commit (851ba0628e0e2d93e27e168d6af336f3e4d375c7) and HEAD:
+
+1: sketch.dev.TestP: Was passing, now skipped
+
+
+Please fix before proceeding.

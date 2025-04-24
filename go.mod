@@ -10,10 +10,10 @@ require (
 	github.com/richardlehane/crock32 v1.0.1
 	go.skia.org/infra v0.0.0-20250421160028-59e18403fd4a
 	golang.org/x/crypto v0.37.0
-	golang.org/x/net v0.38.0
+	golang.org/x/net v0.39.0
 	golang.org/x/sync v0.13.0
 	golang.org/x/term v0.31.0
-	golang.org/x/tools v0.31.0
+	golang.org/x/tools v0.32.0
 	mvdan.cc/sh/v3 v3.11.0
 )
 
@@ -28,3 +28,5 @@ require (
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 )
+
+tool golang.org/x/tools/cmd/stringer

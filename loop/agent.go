@@ -598,7 +598,10 @@ for, including creating a git commit. Do not forget to run tests.
 <git_root>
 %v
 </git_root>
-`, editPrompt, a.config.ClientGOOS, a.config.ClientGOARCH, a.workingDir, a.repoRoot)
+<HEAD>
+%v
+</HEAD>
+`, editPrompt, a.config.ClientGOOS, a.config.ClientGOARCH, a.workingDir, a.repoRoot, a.initialCommit)
 
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display

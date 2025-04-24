@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"os"
@@ -69,14 +70,13 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	// The packages in the initial commit may be different.
 	// Good enough for now.
 	// TODO: do better
-	directPkgs, allPkgs, err := r.packagesForFiles(ctx, changedFiles)
+	allPkgs, err := r.packagesForFiles(ctx, changedFiles)
 	if err != nil {
 		// TODO: log and skip to stuff that doesn't require packages
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get packages for files", "err", err)
 		return "", err
 	}
 	allPkgList := slices.Collect(maps.Keys(allPkgs))
-	directPkgList := slices.Collect(maps.Keys(directPkgs))
 
 	var msgs []string
 
@@ -89,16 +89,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 		msgs = append(msgs, testMsg)
 	}
 
-	vetMsg, err := r.checkVet(ctx, directPkgList)
-	if err != nil {
-		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check vet", "err", err)
-		return "", err
-	}
-	if vetMsg != "" {
-		msgs = append(msgs, vetMsg)
-	}
-
-	goplsMsg, err := r.checkGopls(ctx, changedFiles)
+	goplsMsg, err := r.checkGopls(ctx, changedFiles) // includes vet checks
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check gopls", "err", err)
 		return "", err
@@ -111,6 +102,8 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 		slog.DebugContext(ctx, "CodeReviewer.Run: no issues found")
 		return "OK", nil
 	}
+
+	msgs = append(msgs, "Please fix before proceeding.")
 	slog.DebugContext(ctx, "CodeReviewer.Run: found issues", "issues", msgs)
 	return strings.Join(msgs, "\n\n"), nil
 }
@@ -139,10 +132,9 @@ func (r *CodeReviewer) checkTests(ctx context.Context, pkgList []string) (string
 
 	afterTestCmd := exec.CommandContext(ctx, "go", goTestArgs...)
 	afterTestCmd.Dir = r.repoRoot
-	afterTestOut, afterTestErr := afterTestCmd.Output()
-	if afterTestErr == nil {
-		return "", nil // all tests pass, we're good!
-	}
+	afterTestOut, _ := afterTestCmd.Output()
+	// unfortunately, we can't short-circuit here even if all tests pass,
+	// because we need to check for skipped tests.
 
 	err := r.initializeInitialCommitWorktree(ctx)
 	if err != nil {
@@ -162,7 +154,6 @@ func (r *CodeReviewer) checkTests(ctx context.Context, pkgList []string) (string
 	if afterParseErr != nil {
 		return "", fmt.Errorf("unable to parse test results for current commit: %w\n%s", afterParseErr, afterTestOut)
 	}
-
 	testRegressions, err := r.compareTestResults(beforeResults, afterResults)
 	if err != nil {
 		return "", fmt.Errorf("failed to compare test results: %w", err)
@@ -170,281 +161,6 @@ func (r *CodeReviewer) checkTests(ctx context.Context, pkgList []string) (string
 	// TODO: better output formatting?
 	res := r.formatTestRegressions(testRegressions)
 	return res, nil
-}
-
-// VetIssue represents a single issue found by go vet
-type VetIssue struct {
-	Position string `json:"posn"`
-	Message  string `json:"message"`
-	// Ignoring suggested_fixes for now as we don't need them for comparison
-}
-
-// VetResult represents the JSON output of go vet -json for a single package
-type VetResult map[string][]VetIssue // category -> issues
-
-// VetResults represents the full JSON output of go vet -json
-type VetResults map[string]VetResult // package path -> result
-
-// checkVet runs go vet on the provided packages in both the current and initial state,
-// compares the results, and reports any new vet issues introduced in the current state.
-func (r *CodeReviewer) checkVet(ctx context.Context, pkgList []string) (string, error) {
-	if len(pkgList) == 0 {
-		return "", nil // no packages to check
-	}
-
-	// Run vet on the current state with JSON output
-	goVetArgs := []string{"vet", "-json"}
-	goVetArgs = append(goVetArgs, pkgList...)
-
-	afterVetCmd := exec.CommandContext(ctx, "go", goVetArgs...)
-	afterVetCmd.Dir = r.repoRoot
-	afterVetOut, afterVetErr := afterVetCmd.CombinedOutput() // ignore error, we'll parse the output regar
-	if afterVetErr != nil {
-		slog.WarnContext(ctx, "CodeReviewer.checkVet: (after) go vet failed", "err", afterVetErr, "output", string(afterVetOut))
-		return "", nil // nothing more we can do here
-	}
-
-	// Parse the JSON output (even if vet returned an error, as it does when issues are found)
-	afterVetResults, err := parseVetJSON(afterVetOut)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse vet output for current state: %w", err)
-	}
-
-	// If no issues were found, we're done
-	if len(afterVetResults) == 0 || !vetResultsHaveIssues(afterVetResults) {
-		return "", nil
-	}
-
-	// Vet detected issues in the current state, check if they existed in the initial state
-	err = r.initializeInitialCommitWorktree(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	beforeVetCmd := exec.CommandContext(ctx, "go", goVetArgs...)
-	beforeVetCmd.Dir = r.initialWorktree
-	beforeVetOut, _ := beforeVetCmd.CombinedOutput() // ignore error, we'll parse the output anyway
-
-	// Parse the JSON output for the initial state
-	beforeVetResults, err := parseVetJSON(beforeVetOut)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse vet output for initial state: %w", err)
-	}
-
-	// Find new issues that weren't present in the initial state
-	vetRegressions := findVetRegressions(beforeVetResults, afterVetResults)
-	if !vetResultsHaveIssues(vetRegressions) {
-		return "", nil // no new issues
-	}
-
-	// Format the results
-	return formatVetRegressions(vetRegressions), nil
-}
-
-// parseVetJSON parses the JSON output from go vet -json
-func parseVetJSON(output []byte) (VetResults, error) {
-	// The output contains multiple JSON objects, one per package
-	// We need to parse them separately
-	results := make(VetResults)
-
-	// Process the output by collecting JSON chunks between # comment lines
-	lines := strings.Split(string(output), "\n")
-	currentChunk := strings.Builder{}
-
-	// Helper function to process accumulated JSON chunks
-	processChunk := func() {
-		chunk := strings.TrimSpace(currentChunk.String())
-		if chunk == "" || !strings.HasPrefix(chunk, "{") {
-			return // Skip empty chunks or non-JSON chunks
-		}
-
-		// Try to parse the chunk as JSON
-		var result VetResults
-		if err := json.Unmarshal([]byte(chunk), &result); err != nil {
-			return // Skip invalid JSON
-		}
-
-		// Merge with our results
-		for pkg, issues := range result {
-			results[pkg] = issues
-		}
-
-		// Reset the chunk builder
-		currentChunk.Reset()
-	}
-
-	// Process lines
-	for _, line := range lines {
-		// If we hit a comment line, process the previous chunk and start a new one
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
-			processChunk()
-			continue
-		}
-
-		// Add the line to the current chunk
-		currentChunk.WriteString(line)
-		currentChunk.WriteString("\n")
-	}
-
-	// Process the final chunk
-	processChunk()
-
-	return results, nil
-}
-
-// vetResultsHaveIssues checks if there are any actual issues in the vet results
-func vetResultsHaveIssues(results VetResults) bool {
-	for _, pkgResult := range results {
-		for _, issues := range pkgResult {
-			if len(issues) > 0 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// findVetRegressions identifies vet issues that are new in the after state
-func findVetRegressions(before, after VetResults) VetResults {
-	regressions := make(VetResults)
-
-	// Go through all packages in the after state
-	for pkgPath, afterPkgResults := range after {
-		beforePkgResults, pkgExistedBefore := before[pkgPath]
-
-		// Initialize package in regressions if it has issues
-		if !pkgExistedBefore {
-			// If the package didn't exist before, all issues are new
-			regressions[pkgPath] = afterPkgResults
-			continue
-		}
-
-		// Compare issues by category
-		for category, afterIssues := range afterPkgResults {
-			beforeIssues, categoryExistedBefore := beforePkgResults[category]
-
-			if !categoryExistedBefore {
-				// If this category didn't exist before, all issues are new
-				if regressions[pkgPath] == nil {
-					regressions[pkgPath] = make(VetResult)
-				}
-				regressions[pkgPath][category] = afterIssues
-				continue
-			}
-
-			// Compare individual issues
-			var newIssues []VetIssue
-			for _, afterIssue := range afterIssues {
-				if !issueExistsIn(afterIssue, beforeIssues) {
-					newIssues = append(newIssues, afterIssue)
-				}
-			}
-
-			// Add new issues to regressions
-			if len(newIssues) > 0 {
-				if regressions[pkgPath] == nil {
-					regressions[pkgPath] = make(VetResult)
-				}
-				regressions[pkgPath][category] = newIssues
-			}
-		}
-	}
-
-	return regressions
-}
-
-// issueExistsIn checks if an issue already exists in a list of issues
-// using a looser comparison that's resilient to position changes
-func issueExistsIn(issue VetIssue, issues []VetIssue) bool {
-	issueFile := extractFilePath(issue.Position)
-
-	for _, existing := range issues {
-		// Main comparison is by message content, which is likely stable
-		if issue.Message == existing.Message {
-			// If messages match exactly, consider it the same issue even if position changed
-			return true
-		}
-
-		// As a secondary check, if the issue is in the same file and has similar message,
-		// it's likely the same issue that might have been slightly reworded or relocated
-		existingFile := extractFilePath(existing.Position)
-		if issueFile == existingFile && messagesSimilar(issue.Message, existing.Message) {
-			return true
-		}
-	}
-	return false
-}
-
-// extractFilePath gets just the file path from a position string like "/path/to/file.go:10:15"
-func extractFilePath(position string) string {
-	parts := strings.Split(position, ":")
-	if len(parts) >= 1 {
-		return parts[0]
-	}
-	return position // fallback to the full position if we can't parse it
-}
-
-// messagesSimilar checks if two messages are similar enough to be considered the same issue
-// This is a simple implementation that could be enhanced with more sophisticated text comparison
-func messagesSimilar(msg1, msg2 string) bool {
-	// For now, simple similarity check: if one is a substring of the other
-	return strings.Contains(msg1, msg2) || strings.Contains(msg2, msg1)
-}
-
-// formatVetRegressions generates a human-readable summary of vet regressions
-func formatVetRegressions(regressions VetResults) string {
-	if !vetResultsHaveIssues(regressions) {
-		return ""
-	}
-
-	var sb strings.Builder
-	sb.WriteString("Go vet issues detected:\n\n")
-
-	// Get sorted list of packages for deterministic output
-	pkgPaths := make([]string, 0, len(regressions))
-	for pkgPath := range regressions {
-		pkgPaths = append(pkgPaths, pkgPath)
-	}
-	slices.Sort(pkgPaths)
-
-	issueCount := 1
-	for _, pkgPath := range pkgPaths {
-		pkgResult := regressions[pkgPath]
-
-		// Get sorted list of categories
-		categories := make([]string, 0, len(pkgResult))
-		for category := range pkgResult {
-			categories = append(categories, category)
-		}
-		slices.Sort(categories)
-
-		for _, category := range categories {
-			issues := pkgResult[category]
-
-			// Skip empty issue lists (shouldn't happen, but just in case)
-			if len(issues) == 0 {
-				continue
-			}
-
-			// Sort issues by position for deterministic output
-			slices.SortFunc(issues, func(a, b VetIssue) int {
-				return strings.Compare(a.Position, b.Position)
-			})
-
-			// Format each issue
-			for _, issue := range issues {
-				sb.WriteString(fmt.Sprintf("%d. [%s] %s: %s\n",
-					issueCount,
-					category,
-					issue.Position,
-					issue.Message))
-				issueCount++
-			}
-		}
-	}
-
-	sb.WriteString("\nPlease fix these issues before proceeding.")
-	return sb.String()
 }
 
 // GoplsIssue represents a single issue reported by gopls check
@@ -496,7 +212,7 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 	}
 
 	// Parse the output
-	afterIssues := parseGoplsOutput(afterGoplsOut)
+	afterIssues := parseGoplsOutput(r.repoRoot, afterGoplsOut)
 
 	// If no issues were found, we're done
 	if len(afterIssues) == 0 {
@@ -530,22 +246,18 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 	}
 
 	// Run gopls check on the files that existed in the initial commit
-	beforeIssues := []GoplsIssue{}
+	var beforeIssues []GoplsIssue
 	if len(initialFilesToCheck) > 0 {
 		beforeGoplsArgs := append([]string{"check"}, initialFilesToCheck...)
 		beforeGoplsCmd := exec.CommandContext(ctx, "gopls", beforeGoplsArgs...)
 		beforeGoplsCmd.Dir = r.initialWorktree
-		var beforeGoplsOut []byte
-		var beforeCmdErr error
-		beforeGoplsOut, beforeCmdErr = beforeGoplsCmd.CombinedOutput()
+		beforeGoplsOut, beforeCmdErr := beforeGoplsCmd.CombinedOutput()
 		if beforeCmdErr != nil && !looksLikeGoplsIssues(beforeGoplsOut) {
 			// If gopls fails to run properly on the initial commit, log a warning and continue
 			// with empty before issues - this will be conservative and report more issues
-			slog.WarnContext(ctx, "CodeReviewer.checkGopls: gopls check failed on initial commit",
-				"err", err, "output", string(beforeGoplsOut))
-			// Continue with empty beforeIssues
+			slog.WarnContext(ctx, "CodeReviewer.checkGopls: gopls check failed on initial commit", "err", err, "output", string(beforeGoplsOut))
 		} else {
-			beforeIssues = parseGoplsOutput(beforeGoplsOut)
+			beforeIssues = parseGoplsOutput(r.initialWorktree, beforeGoplsOut)
 		}
 	}
 
@@ -556,12 +268,12 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 	}
 
 	// Format the results
-	return formatGoplsRegressions(goplsRegressions), nil
+	return r.formatGoplsRegressions(goplsRegressions), nil
 }
 
 // parseGoplsOutput parses the text output from gopls check
 // Each line has the format: '/path/to/file.go:448:22-26: unused parameter: path'
-func parseGoplsOutput(output []byte) []GoplsIssue {
+func parseGoplsOutput(root string, output []byte) []GoplsIssue {
 	var issues []GoplsIssue
 	lines := strings.Split(string(output), "\n")
 
@@ -600,6 +312,10 @@ func parseGoplsOutput(output []byte) []GoplsIssue {
 
 		// Extract position and message
 		position := line[:messageStart]
+		rel, err := filepath.Rel(root, position)
+		if err == nil {
+			position = rel
+		}
 		message := line[messageStart+2:] // Skip the ': ' separator
 
 		// Verify position has the expected format (at least 2 colons for line:col)
@@ -717,7 +433,7 @@ func findGoplsRegressions(before, after []GoplsIssue) []GoplsIssue {
 }
 
 // formatGoplsRegressions generates a human-readable summary of gopls check regressions
-func formatGoplsRegressions(regressions []GoplsIssue) string {
+func (r *CodeReviewer) formatGoplsRegressions(regressions []GoplsIssue) string {
 	if len(regressions) == 0 {
 		return ""
 	}
@@ -727,11 +443,11 @@ func formatGoplsRegressions(regressions []GoplsIssue) string {
 
 	// Format each issue
 	for i, issue := range regressions {
-		sb.WriteString(fmt.Sprintf("%d. %s: %s\n", i+1, issue.Position, issue.Message))
+		sb.WriteString(fmt.Sprintf("%d. %s: %s\n", i+1, filepath.Join(r.repoRoot, issue.Position), issue.Message))
 	}
 
-	sb.WriteString("\nIMPORTANT: Only fix new gopls check issues in parts of the code that you have already edited. ")
-	sb.WriteString("Do not change existing code that was not part of your current edits.")
+	sb.WriteString("\nIMPORTANT: Only fix new gopls check issues in parts of the code that you have already edited.")
+	sb.WriteString(" Do not change existing code that was not part of your current edits.\n")
 	return sb.String()
 }
 
@@ -748,10 +464,10 @@ func (r *CodeReviewer) IsInitialCommit(commit string) bool {
 // 2. allPkgs: all packages that might be affected, including downstream packages that depend on the direct packages
 // It may include false positives.
 // Files must be absolute paths!
-func (r *CodeReviewer) packagesForFiles(ctx context.Context, files []string) (directPkgs, allPkgs map[string]*packages.Package, err error) {
+func (r *CodeReviewer) packagesForFiles(ctx context.Context, files []string) (allPkgs map[string]*packages.Package, err error) {
 	for _, f := range files {
 		if !filepath.IsAbs(f) {
-			return nil, nil, fmt.Errorf("path %q is not absolute", f)
+			return nil, fmt.Errorf("path %q is not absolute", f)
 		}
 	}
 	cfg := &packages.Config{
@@ -767,14 +483,12 @@ func (r *CodeReviewer) packagesForFiles(ctx context.Context, files []string) (di
 	}
 	universe, err := packages.Load(cfg, "./...")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// Identify packages that directly contain the changed files
-	directPkgs = make(map[string]*packages.Package) // import path -> package
+	directPkgs := make(map[string]*packages.Package) // import path -> package
 	for _, pkg := range universe {
-		// fmt.Println("pkg:", pkg.PkgPath)
 		pkgFiles := allFiles(pkg)
-		// fmt.Println("pkgFiles:", pkgFiles)
 		for _, file := range files {
 			if pkgFiles[file] {
 				// prefer test packages, as they contain strictly more files (right?)
@@ -786,26 +500,34 @@ func (r *CodeReviewer) packagesForFiles(ctx context.Context, files []string) (di
 		}
 	}
 
-	// Create a copy of directPkgs to expand with dependencies
-	allPkgs = make(map[string]*packages.Package)
-	for k, v := range directPkgs {
-		allPkgs[k] = v
-	}
+	allPkgs = maps.Clone(directPkgs)
 
 	// Add packages that depend on the direct packages
 	addDependentPackages(universe, allPkgs)
-	return directPkgs, allPkgs, nil
+	return allPkgs, nil
 }
 
 // allFiles returns all files that might be referenced by the package.
 // It may contain false positives.
 func allFiles(p *packages.Package) map[string]bool {
 	files := make(map[string]bool)
+	// Add files from package info
 	add := [][]string{p.GoFiles, p.CompiledGoFiles, p.OtherFiles, p.EmbedFiles, p.IgnoredFiles}
 	for _, extra := range add {
 		for _, file := range extra {
 			files[file] = true
 		}
+	}
+	// Add files from testdata directory
+	testdataDir := filepath.Join(p.Dir, "testdata")
+	if _, err := os.Stat(testdataDir); err == nil {
+		fsys := os.DirFS(p.Dir)
+		fs.WalkDir(fsys, "testdata", func(path string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				files[filepath.Join(p.Dir, path)] = true
+			}
+			return nil
+		})
 	}
 	return files
 }
@@ -816,6 +538,10 @@ func addDependentPackages(universe []*packages.Package, pkgs map[string]*package
 	for {
 		changed := false
 		for _, p := range universe {
+			if strings.HasSuffix(p.PkgPath, ".test") { // ick, but I don't see another way
+				// skip test packages
+				continue
+			}
 			if _, ok := pkgs[p.PkgPath]; ok {
 				// already in pkgs
 				continue
@@ -910,146 +636,151 @@ func parseTestResults(testOutput []byte) ([]testJSON, error) {
 // testStatus represents the status of a test in a given commit
 type testStatus int
 
+//go:generate go tool stringer -type=testStatus -trimprefix=testStatus
 const (
 	testStatusUnknown testStatus = iota
 	testStatusPass
 	testStatusFail
 	testStatusBuildFail
 	testStatusSkip
+	testStatusNoTests // no tests exist for this package
 )
-
-// testInfo represents information about a specific test
-type testInfo struct {
-	Package string
-	Test    string // empty for package tests
-}
-
-// String returns a human-readable string representation of the test
-func (t testInfo) String() string {
-	if t.Test == "" {
-		return t.Package
-	}
-	return fmt.Sprintf("%s.%s", t.Package, t.Test)
-}
 
 // testRegression represents a test that regressed between commits
 type testRegression struct {
-	Info         testInfo
+	Package      string
+	Test         string // empty for package tests
 	BeforeStatus testStatus
 	AfterStatus  testStatus
 	Output       string // failure output in the after state
 }
 
-// collectTestStatuses processes a slice of test events and returns a map of test statuses
-func collectTestStatuses(results []testJSON) map[testInfo]testStatus {
-	statuses := make(map[testInfo]testStatus)
-	failedBuilds := make(map[string]bool)      // track packages with build failures
-	testOutputs := make(map[testInfo][]string) // collect output for failing tests
-
-	// First pass: identify build failures
-	for _, result := range results {
-		if result.Action == "fail" && result.FailedBuild != "" {
-			failedBuilds[result.FailedBuild] = true
-		}
+func (r *testRegression) Source() string {
+	if r.Test == "" {
+		return r.Package
 	}
+	return fmt.Sprintf("%s.%s", r.Package, r.Test)
+}
 
-	// Second pass: collect test statuses
-	for _, result := range results {
-		info := testInfo{Package: result.Package, Test: result.Test}
+type packageResult struct {
+	Status     testStatus            // overall status for the package
+	TestStatus map[string]testStatus // name -> status
+	TestOutput map[string][]string   // name -> output parts
+}
 
-		// Skip output events for now, we'll process them in a separate pass
-		if result.Action == "output" {
-			if result.Test != "" { // only collect output for actual tests, not package messages
-				testOutputs[info] = append(testOutputs[info], result.Output)
-			}
-			continue
+// collectTestStatuses processes a slice of test events and returns rich status information
+func collectTestStatuses(results []testJSON) map[string]*packageResult {
+	m := make(map[string]*packageResult)
+
+	for _, event := range results {
+		pkg := event.Package
+		p, ok := m[pkg]
+		if !ok {
+			p = new(packageResult)
+			p.TestStatus = make(map[string]testStatus)
+			p.TestOutput = make(map[string][]string)
+			m[pkg] = p
 		}
 
-		// Handle BuildEvent output
-		if result.Action == "build-fail" {
-			// Mark all tests in this package as build failures
-			for ti := range statuses {
-				if ti.Package == result.ImportPath {
-					statuses[ti] = testStatusBuildFail
-				}
-			}
+		switch event.Action {
+		case "output":
+			p.TestOutput[event.Test] = append(p.TestOutput[event.Test], event.Output)
 			continue
-		}
-
-		// Check if the package has a build failure
-		if _, hasBuildFailure := failedBuilds[result.Package]; hasBuildFailure {
-			statuses[info] = testStatusBuildFail
-			continue
-		}
-
-		// Handle test events
-		switch result.Action {
 		case "pass":
-			statuses[info] = testStatusPass
+			if event.Test == "" {
+				p.Status = testStatusPass
+			} else {
+				p.TestStatus[event.Test] = testStatusPass
+			}
 		case "fail":
-			statuses[info] = testStatusFail
+			if event.Test == "" {
+				if event.FailedBuild != "" {
+					p.Status = testStatusBuildFail
+				} else {
+					p.Status = testStatusFail
+				}
+			} else {
+				p.TestStatus[event.Test] = testStatusFail
+			}
 		case "skip":
-			statuses[info] = testStatusSkip
+			if event.Test == "" {
+				p.Status = testStatusNoTests
+			} else {
+				p.TestStatus[event.Test] = testStatusSkip
+			}
 		}
 	}
 
-	return statuses
+	return m
 }
 
 // compareTestResults identifies tests that have regressed between commits
 func (r *CodeReviewer) compareTestResults(beforeResults, afterResults []testJSON) ([]testRegression, error) {
-	beforeStatuses := collectTestStatuses(beforeResults)
-	afterStatuses := collectTestStatuses(afterResults)
+	before := collectTestStatuses(beforeResults)
+	after := collectTestStatuses(afterResults)
+	var testLevelRegressions []testRegression
+	var packageLevelRegressions []testRegression
 
-	// Collect output for failing tests
-	testOutputMap := make(map[testInfo]string)
-	for _, result := range afterResults {
-		if result.Action == "output" {
-			info := testInfo{Package: result.Package, Test: result.Test}
-			testOutputMap[info] += result.Output
+	afterPkgs := slices.Sorted(maps.Keys(after))
+	for _, pkg := range afterPkgs {
+		afterResult := after[pkg]
+		afterStatus := afterResult.Status
+		// Can't short-circuit here when tests are passing, because we need to check for skipped tests.
+		beforeResult, ok := before[pkg]
+		beforeStatus := testStatusNoTests
+		if ok {
+			beforeStatus = beforeResult.Status
+		}
+		// If things no longer build, stop at the package level.
+		// Otherwise, proceed to the test level, so we have more precise information.
+		if afterStatus == testStatusBuildFail && beforeStatus != testStatusBuildFail {
+			packageLevelRegressions = append(packageLevelRegressions, testRegression{
+				Package:      pkg,
+				BeforeStatus: beforeStatus,
+				AfterStatus:  afterStatus,
+			})
+			continue
+		}
+		tests := slices.Sorted(maps.Keys(afterResult.TestStatus))
+		for _, test := range tests {
+			afterStatus := afterResult.TestStatus[test]
+			switch afterStatus {
+			case testStatusPass:
+				continue
+			case testStatusUnknown:
+				slog.WarnContext(context.Background(), "unknown test status", "package", pkg, "test", test)
+				continue
+			}
+			beforeStatus := beforeResult.TestStatus[test]
+			if isRegression(beforeStatus, afterStatus) {
+				testLevelRegressions = append(testLevelRegressions, testRegression{
+					Package:      pkg,
+					Test:         test,
+					BeforeStatus: beforeStatus,
+					AfterStatus:  afterStatus,
+					Output:       strings.Join(afterResult.TestOutput[test], ""),
+				})
+			}
 		}
 	}
 
+	// If we have test-level regressions, report only those
+	// Otherwise, report package-level regressions
 	var regressions []testRegression
-
-	// Look for tests that regressed
-	for info, afterStatus := range afterStatuses {
-		// Skip tests that are passing or skipped in the after state
-		if afterStatus == testStatusPass || afterStatus == testStatusSkip {
-			continue
-		}
-
-		// Get the before status (default to unknown if not present)
-		beforeStatus, exists := beforeStatuses[info]
-		if !exists {
-			beforeStatus = testStatusUnknown
-		}
-
-		// Log warning if we encounter unexpected unknown status in the 'after' state
-		if afterStatus == testStatusUnknown {
-			slog.WarnContext(context.Background(), "Unexpected unknown test status encountered",
-				"package", info.Package, "test", info.Test)
-		}
-
-		// Check for regressions
-		if isRegression(beforeStatus, afterStatus) {
-			regressions = append(regressions, testRegression{
-				Info:         info,
-				BeforeStatus: beforeStatus,
-				AfterStatus:  afterStatus,
-				Output:       testOutputMap[info],
-			})
-		}
+	if len(testLevelRegressions) > 0 {
+		regressions = testLevelRegressions
+	} else {
+		regressions = packageLevelRegressions
 	}
 
 	// Sort regressions for consistent output
 	slices.SortFunc(regressions, func(a, b testRegression) int {
 		// First by package
-		if c := strings.Compare(a.Info.Package, b.Info.Package); c != 0 {
+		if c := strings.Compare(a.Package, b.Package); c != 0 {
 			return c
 		}
 		// Then by test name
-		return strings.Compare(a.Info.Test, b.Info.Test)
+		return strings.Compare(a.Test, b.Test)
 	})
 
 	return regressions, nil
@@ -1058,11 +789,32 @@ func (r *CodeReviewer) compareTestResults(beforeResults, afterResults []testJSON
 // badnessLevels maps test status to a badness level
 // Higher values indicate worse status (more severe issues)
 var badnessLevels = map[testStatus]int{
-	testStatusBuildFail: 4, // Worst
-	testStatusFail:      3,
-	testStatusSkip:      2,
+	testStatusBuildFail: 5, // Worst
+	testStatusFail:      4,
+	testStatusSkip:      3,
+	testStatusNoTests:   2,
 	testStatusPass:      1,
 	testStatusUnknown:   0, // Least bad - avoids false positives
+}
+
+// regressionFormatter defines a mapping of before/after state pairs to descriptive messages
+type regressionKey struct {
+	before, after testStatus
+}
+
+var regressionMessages = map[regressionKey]string{
+	{testStatusUnknown, testStatusBuildFail}: "New test has build/vet errors",
+	{testStatusUnknown, testStatusFail}:      "New test is failing",
+	{testStatusUnknown, testStatusSkip}:      "New test is skipped",
+	{testStatusPass, testStatusBuildFail}:    "Was passing, now has build/vet errors",
+	{testStatusPass, testStatusFail}:         "Was passing, now failing",
+	{testStatusPass, testStatusSkip}:         "Was passing, now skipped",
+	{testStatusNoTests, testStatusBuildFail}: "Previously had no tests, now has build/vet errors",
+	{testStatusNoTests, testStatusFail}:      "Previously had no tests, now has failing tests",
+	{testStatusNoTests, testStatusSkip}:      "Previously had no tests, now has skipped tests",
+	{testStatusSkip, testStatusBuildFail}:    "Was skipped, now has build/vet errors",
+	{testStatusSkip, testStatusFail}:         "Was skipped, now failing",
+	{testStatusFail, testStatusBuildFail}:    "Was failing, now has build/vet errors",
 }
 
 // isRegression determines if a test has regressed based on before and after status
@@ -1078,48 +830,18 @@ func (r *CodeReviewer) formatTestRegressions(regressions []testRegression) strin
 		return ""
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Test regressions detected between initial commit (%s) and HEAD:\n\n", r.initialCommit))
+	buf := new(strings.Builder)
+	fmt.Fprintf(buf, "Test regressions detected between initial commit (%s) and HEAD:\n\n", r.initialCommit)
 
 	for i, reg := range regressions {
-		// Describe the regression
-		sb.WriteString(fmt.Sprintf("%d. %s: ", i+1, reg.Info.String()))
-
-		switch {
-		case reg.BeforeStatus == testStatusUnknown && reg.AfterStatus == testStatusFail:
-			sb.WriteString("New test is failing")
-		case reg.BeforeStatus == testStatusUnknown && reg.AfterStatus == testStatusBuildFail:
-			sb.WriteString("New test has build errors")
-		case reg.BeforeStatus == testStatusPass && reg.AfterStatus == testStatusFail:
-			sb.WriteString("Was passing, now failing")
-		case reg.BeforeStatus == testStatusPass && reg.AfterStatus == testStatusBuildFail:
-			sb.WriteString("Was passing, now has build errors")
-		case reg.BeforeStatus == testStatusSkip && reg.AfterStatus == testStatusFail:
-			sb.WriteString("Was skipped, now failing")
-		case reg.BeforeStatus == testStatusSkip && reg.AfterStatus == testStatusBuildFail:
-			sb.WriteString("Was skipped, now has build errors")
-		default:
-			sb.WriteString("Regression detected")
+		fmt.Fprintf(buf, "%d: %v: ", i+1, reg.Source())
+		key := regressionKey{reg.BeforeStatus, reg.AfterStatus}
+		message, exists := regressionMessages[key]
+		if !exists {
+			message = "Regression detected"
 		}
-		sb.WriteString("\n")
-
-		// Add failure output with indentation for readability
-		if reg.Output != "" {
-			outputLines := strings.Split(strings.TrimSpace(reg.Output), "\n")
-			// Limit output to first 10 lines to avoid overwhelming feedback
-			shownLines := min(len(outputLines), 10)
-
-			sb.WriteString("   Output:\n")
-			for _, line := range outputLines[:shownLines] {
-				sb.WriteString(fmt.Sprintf("   | %s\n", line))
-			}
-			if shownLines < len(outputLines) {
-				sb.WriteString(fmt.Sprintf("   | ... (%d more lines)\n", len(outputLines)-shownLines))
-			}
-		}
-		sb.WriteString("\n")
+		fmt.Fprintf(buf, "%s\n", message)
 	}
 
-	sb.WriteString("Please fix these test failures before proceeding.")
-	return sb.String()
+	return buf.String()
 }

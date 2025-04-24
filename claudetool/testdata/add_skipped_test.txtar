@@ -1,0 +1,27 @@
+Adding a skipped test is a regression
+
+-- p_test.go --
+package p
+
+-- .commit --
+Initial commit with no tests
+
+-- p_test.go --
+package p
+
+import "testing"
+
+func TestP(t *testing.T) {
+	t.SkipNow()
+}
+
+-- .commit --
+Add skipped test
+
+-- .run_test --
+Test regressions detected between initial commit (2cdfdc5009e364add9a263909472f85eb08480ed) and HEAD:
+
+1: sketch.dev.TestP: New test is skipped
+
+
+Please fix before proceeding.
