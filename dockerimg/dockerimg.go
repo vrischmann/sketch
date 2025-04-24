@@ -278,11 +278,16 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
-	}()
 
-	if config.OpenBrowser {
-		OpenBrowser(ctx, "http://"+localAddr)
-	}
+		// We open the browser after the init config because the above waits for the web server to be serving.
+		if config.OpenBrowser {
+			if config.SkabandAddr != "" {
+				OpenBrowser(ctx, fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID))
+			} else {
+				OpenBrowser(ctx, "http://"+localAddr)
+			}
+		}
+	}()
 
 	go func() {
 		cmd := exec.CommandContext(ctx, "docker", "attach", cntrName)

@@ -315,7 +315,7 @@ func run() error {
 		}
 	}
 
-	// Open the debug URL in the system browser if requested
+	// Open the web UI URL in the system browser if requested
 	if *openBrowser {
 		dockerimg.OpenBrowser(ctx, ps1URL)
 	}
