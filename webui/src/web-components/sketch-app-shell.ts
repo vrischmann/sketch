@@ -194,7 +194,6 @@ export class SketchAppShell extends LitElement {
 
   constructor() {
     super();
-    console.log("Hello!");
 
     // Binding methods to this
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
@@ -254,7 +253,6 @@ export class SketchAppShell extends LitElement {
 
     // Disconnect mutation observer if it exists
     if (this.mutationObserver) {
-      console.log("Auto-scroll: Disconnecting mutation observer");
       this.mutationObserver.disconnect();
       this.mutationObserver = null;
     }
@@ -436,18 +434,8 @@ export class SketchAppShell extends LitElement {
       this.title = state.title;
     }
 
-    // Create a copy of the current messages before updating
-    const oldMessageCount = this.messages.length;
-
     // Update messages
     this.messages = aggregateAgentMessages(this.messages, newMessages);
-
-    // Log information about the message update
-    if (this.messages.length > oldMessageCount) {
-      console.log(
-        `Auto-scroll: Messages updated from ${oldMessageCount} to ${this.messages.length}`,
-      );
-    }
   }
 
   private handleConnectionStatusChanged(
