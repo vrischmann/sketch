@@ -15,9 +15,4 @@ which has a list of types to translate.
 
 A few tests record/replay calls to LLMs. As necessary (e.g.,
 if changing the system prompt or tool definitions), rebuild the
-test data with:
-
-```
-go test ./dockerimg -httprecord ".*" -rewritewant
-go test ./loop -httprecord .*agent_.*
-```
+test data by running update_tests.sh in the relevant directory.
