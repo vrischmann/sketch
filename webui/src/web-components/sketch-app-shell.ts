@@ -1,17 +1,19 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { DataManager, ConnectionStatus } from "../data";
-import { State, AgentMessage } from "../types";
-import "./sketch-container-status";
-import "./sketch-view-mode-select";
-import "./sketch-network-status";
-import "./sketch-timeline";
-import "./sketch-chat-input";
-import "./sketch-diff-view";
-import "./sketch-charts";
-import "./sketch-terminal";
-import { SketchDiffView } from "./sketch-diff-view";
+import { ConnectionStatus, DataManager } from "../data";
+import { AgentMessage, State } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
+import "./sketch-charts";
+import "./sketch-chat-input";
+import "./sketch-container-status";
+import "./sketch-diff-view";
+import { SketchDiffView } from "./sketch-diff-view";
+import "./sketch-network-status";
+import "./sketch-terminal";
+import "./sketch-timeline";
+import "./sketch-view-mode-select";
+
+import { createRef, ref } from "lit/directives/ref.js";
 
 type ViewMode = "chat" | "diff" | "charts" | "terminal";
 
@@ -41,29 +43,51 @@ export class SketchAppShell extends LitElement {
         sans-serif;
       color: #333;
       line-height: 1.4;
-      min-height: 100vh;
+      height: 100vh;
       width: 100%;
       position: relative;
       overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Top banner with combined elements */
-    .top-banner {
+    #top-banner {
       display: flex;
+      align-self: flex-start;
       justify-content: space-between;
       align-items: center;
       padding: 5px 20px;
       margin-bottom: 0;
       border-bottom: 1px solid #eee;
       gap: 10px;
-      position: fixed;
       top: 0;
       left: 0;
       right: 0;
       background: white;
-      z-index: 100;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       max-width: 100%;
+    }
+
+    /* View mode container styles - mirroring timeline.css structure */
+    #view-container {
+      align-self: stretch;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #view-container-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      padding-bottom: 10px;
+      padding-top: 10px;
+    }
+
+    #chat-input {
+      align-self: flex-end;
+      width: 100%;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     }
 
     .banner-title {
@@ -88,19 +112,8 @@ export class SketchAppShell extends LitElement {
       text-overflow: ellipsis;
     }
 
-    /* View mode container styles - mirroring timeline.css structure */
-    .view-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      margin-top: 65px; /* Space for the top banner */
-      margin-bottom: 90px; /* Increased space for the chat input */
-      position: relative;
-      padding-bottom: 15px; /* Additional padding to prevent clipping */
-      padding-top: 15px; /* Add padding at top to prevent content touching the header */
-    }
-
     /* Allow the container to expand to full width in diff mode */
-    .view-container.diff-active {
+    #view-container.diff-active {
       max-width: 100%;
     }
 
@@ -348,7 +361,7 @@ export class SketchAppShell extends LitElement {
     // Wait for DOM update to complete
     this.updateComplete.then(() => {
       // Update active view
-      const viewContainer = this.shadowRoot?.querySelector(".view-container");
+      const viewContainer = this.shadowRoot?.querySelector("#view-container");
       const chatView = this.shadowRoot?.querySelector(".chat-view");
       const diffView = this.shadowRoot?.querySelector(".diff-view");
       const chartView = this.shadowRoot?.querySelector(".chart-view");
@@ -490,9 +503,11 @@ export class SketchAppShell extends LitElement {
     }
   }
 
+  private scrollContainerRef = createRef<HTMLElement>();
+
   render() {
     return html`
-      <div class="top-banner">
+      <div id="top-banner">
         <div class="title-container">
           <h1 class="banner-title">sketch</h1>
           <h2 id="chatTitle" class="chat-title">${this.title}</h2>
@@ -522,36 +537,43 @@ export class SketchAppShell extends LitElement {
         </div>
       </div>
 
-      <div class="view-container">
-        <div class="chat-view ${this.viewMode === "chat" ? "view-active" : ""}">
-          <sketch-timeline
-            .messages=${this.messages}
-            .scrollContainer=${this}
-          ></sketch-timeline>
-        </div>
-
-        <div class="diff-view ${this.viewMode === "diff" ? "view-active" : ""}">
-          <sketch-diff-view
-            .commitHash=${this.currentCommitHash}
-          ></sketch-diff-view>
-        </div>
-
-        <div
-          class="chart-view ${this.viewMode === "charts" ? "view-active" : ""}"
-        >
-          <sketch-charts .messages=${this.messages}></sketch-charts>
-        </div>
-
-        <div
-          class="terminal-view ${this.viewMode === "terminal"
-            ? "view-active"
-            : ""}"
-        >
-          <sketch-terminal></sketch-terminal>
+      <div id="view-container" ${ref(this.scrollContainerRef)}>
+        <div id="view-container-inner">
+          <div
+            class="chat-view ${this.viewMode === "chat" ? "view-active" : ""}"
+          >
+            <sketch-timeline
+              .messages=${this.messages}
+              .scrollContainer=${this.scrollContainerRef}
+            ></sketch-timeline>
+          </div>
+          <div
+            class="diff-view ${this.viewMode === "diff" ? "view-active" : ""}"
+          >
+            <sketch-diff-view
+              .commitHash=${this.currentCommitHash}
+            ></sketch-diff-view>
+          </div>
+          <div
+            class="chart-view ${this.viewMode === "charts"
+              ? "view-active"
+              : ""}"
+          >
+            <sketch-charts .messages=${this.messages}></sketch-charts>
+          </div>
+          <div
+            class="terminal-view ${this.viewMode === "terminal"
+              ? "view-active"
+              : ""}"
+          >
+            <sketch-terminal></sketch-terminal>
+          </div>
         </div>
       </div>
 
-      <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
+      <div id="chat-input">
+        <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
+      </div>
     `;
   }
 

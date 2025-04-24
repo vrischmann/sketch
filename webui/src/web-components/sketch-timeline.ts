@@ -4,6 +4,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { AgentMessage } from "../types";
 import "./sketch-timeline-message";
+import { Ref } from "lit/directives/ref";
 
 @customElement("sketch-timeline")
 export class SketchTimeline extends LitElement {
@@ -15,7 +16,7 @@ export class SketchTimeline extends LitElement {
   private scrollingState: "pinToLatest" | "floating" = "pinToLatest";
 
   @property({ attribute: false })
-  scrollContainer: HTMLElement;
+  scrollContainer: Ref<HTMLElement>;
 
   static styles = css`
     /* Hide views initially to prevent flash of content */
@@ -100,8 +101,8 @@ export class SketchTimeline extends LitElement {
    * Scroll to the bottom of the timeline
    */
   private scrollToBottom(): void {
-    this.scrollContainer?.scrollTo({
-      top: this.scrollContainer?.scrollHeight,
+    this.scrollContainer.value?.scrollTo({
+      top: this.scrollContainer.value?.scrollHeight,
       behavior: "smooth",
     });
   }
@@ -117,7 +118,10 @@ export class SketchTimeline extends LitElement {
       }
     }
     if (changedProperties.has("scrollContainer")) {
-      this.scrollContainer?.addEventListener("scroll", this._handleScroll);
+      this.scrollContainer.value?.addEventListener(
+        "scroll",
+        this._handleScroll,
+      );
     }
   }
 
@@ -140,9 +144,9 @@ export class SketchTimeline extends LitElement {
   private _handleScroll(event) {
     const isAtBottom =
       Math.abs(
-        this.scrollContainer.scrollHeight -
-          this.scrollContainer.clientHeight -
-          this.scrollContainer.scrollTop,
+        this.scrollContainer.value.scrollHeight -
+          this.scrollContainer.value.clientHeight -
+          this.scrollContainer.value.scrollTop,
       ) <= 1;
     if (isAtBottom) {
       this.scrollingState = "pinToLatest";
@@ -161,7 +165,8 @@ export class SketchTimeline extends LitElement {
       "showCommitDiff",
       this._handleShowCommitDiff as EventListener,
     );
-    this.scrollContainer?.addEventListener("scroll", this._handleScroll);
+
+    this.scrollContainer.value?.addEventListener("scroll", this._handleScroll);
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -174,7 +179,10 @@ export class SketchTimeline extends LitElement {
       this._handleShowCommitDiff as EventListener,
     );
 
-    this.scrollContainer?.removeEventListener("scroll", this._handleScroll);
+    this.scrollContainer.value?.removeEventListener(
+      "scroll",
+      this._handleScroll,
+    );
   }
 
   // messageKey uniquely identifes a AgentMessage based on its ID and tool_calls, so

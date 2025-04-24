@@ -13,14 +13,9 @@ export class SketchChatInput extends LitElement {
   static styles = css`
     /* Chat styles - exactly matching timeline.css */
     .chat-container {
-      position: fixed;
-      bottom: 0;
-      left: 0;
       width: 100%;
       background: #f0f0f0;
       padding: 15px;
-      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-      z-index: 1000;
       min-height: 40px; /* Ensure minimum height */
     }
 
