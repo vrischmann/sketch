@@ -322,7 +322,7 @@ export const initialMessages: AgentMessage[] = [
   },
   {
     type: "agent",
-    end_of_turn: false,
+    end_of_turn: true,
     content:
       'I\'ve completed your request:\n\n1. Added a new line to dummy.txt: "Adding a new dummy line here - requested change"\n2. Created a git commit with the change using the specified author information\n3. Included "Co-Authored-By: sketch" in the commit message as required\n\nThe change has been successfully committed to the repository. Is there anything else you\'d like me to help with?',
     timestamp: "2025-04-24T10:32:29.072661+01:00",
