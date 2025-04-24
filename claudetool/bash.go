@@ -114,6 +114,7 @@ func BashRun(ctx context.Context, m json.RawMessage) (string, error) {
 			return "", err
 		}
 		// Marshal the result to JSON
+		// TODO: emit XML(-ish) instead?
 		output, err := json.Marshal(result)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal background result: %w", err)
@@ -254,6 +255,8 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 	if timeout > 0 {
 		// Launch a goroutine that will kill the process after the timeout
 		go func() {
+			// TODO(josh): this should use a context instead of a sleep, like executeBash above,
+			// to avoid goroutine leaks. Possibly should be partially unified with executeBash.
 			// Sleep for the timeout duration
 			time.Sleep(timeout)
 
