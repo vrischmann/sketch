@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"sketch.dev/loop/server"
-	"sketch.dev/webui"
 	"sketch.dev/skribe"
+	"sketch.dev/webui"
 )
 
 // ContainerConfig holds all configuration for launching a container
@@ -642,7 +642,7 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 	if err != nil {
 		return "", fmt.Errorf("failed to read Dockerfile: %w", err)
 	}
-	fmt.Printf("Dockerfile:\n%s\n", string(dockerfileContent))
+	fmt.Fprintf(stdout, "Dockerfile:\n%s\n", string(dockerfileContent))
 
 	err = run(ctx, "docker build", cmd)
 	if err != nil {
