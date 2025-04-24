@@ -2,7 +2,6 @@
 package dockerimg
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -214,13 +213,13 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 			fmt.Fprintf(os.Stderr, "docker logs failed: %v\n", err)
 			return
 		}
-		scanner := bufio.NewScanner(bytes.NewReader(out))
-		for scanner.Scan() {
-			logLine := scanner.Text()
-			if !strings.HasPrefix(logLine, "structured logs:") {
+		prefix := []byte("structured logs:")
+		for line := range bytes.Lines(out) {
+			rest, ok := bytes.CutPrefix(line, prefix)
+			if !ok {
 				continue
 			}
-			logFile := strings.TrimSpace(strings.TrimPrefix(logLine, "structured logs:"))
+			logFile := string(bytes.TrimSpace(rest))
 			srcPath := fmt.Sprintf("%s:%s", cntrName, logFile)
 			logFileName := filepath.Base(logFile)
 			dstPath := filepath.Join(config.ContainerLogDest, logFileName)
