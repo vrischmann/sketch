@@ -27,7 +27,7 @@ to an LLM service and give you a way to access the web UI from anywhere.
 
 We have a discord server to discuss sketch.
 
-Join if you want! https://discord.gg/2xG3KEG3
+Join if you want! https://discord.gg/YNUSuVm4
 
 ## Development
 
