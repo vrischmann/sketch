@@ -176,6 +176,9 @@ func Build() (fs.FS, error) {
 			}
 			return nil
 		}
+		if strings.HasSuffix(path, "mockServiceWorker.js") {
+			return nil
+		}
 		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js") {
 			b, err := embedded.ReadFile(path)
 			if err != nil {

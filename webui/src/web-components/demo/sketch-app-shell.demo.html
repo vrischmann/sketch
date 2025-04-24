@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>sketch coding assistant</title>
     <link rel="stylesheet" href="sketch-app-shell.css" />
-    <script src="../sketch-app-shell.ts" type="module"></script>
+    <script type="module">
+      const { worker } = await import("./mocks/browser");
+      await worker.start();
+      await import("../sketch-app-shell.ts");
+    </script>
   </head>
   <body>
     <sketch-app-shell></sketch-app-shell>
