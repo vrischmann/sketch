@@ -31,7 +31,7 @@ Join if you want! https://discord.gg/2xG3KEG3
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Open Source
 

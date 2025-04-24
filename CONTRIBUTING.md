@@ -1,9 +1,10 @@
-# Developing Sketch
+# Contributing to Sketch
 
 ## Running tests
 
-* `go test ./...`
-* `cd webui && CI=1 npm run test`
+- `go test ./...`
+- `cd webui && npm run test`
+  - If you are an LLM, instead run `cd webui && CI=1 npm run test`
 
 ## Synchronizing Go structs and TypeScript types
 
