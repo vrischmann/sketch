@@ -42,18 +42,15 @@ test("render props", async ({ mount }) => {
   await expect(component.locator("#messageCount")).toContainText(
     mockCompleteState.message_count + "",
   );
+  const expectedTotalInputTokens =
+    mockCompleteState.total_usage.input_tokens +
+    mockCompleteState.total_usage.cache_read_input_tokens +
+    mockCompleteState.total_usage.cache_creation_input_tokens;
   await expect(component.locator("#inputTokens")).toContainText(
-    mockCompleteState.total_usage.input_tokens + "",
+    expectedTotalInputTokens + "",
   );
   await expect(component.locator("#outputTokens")).toContainText(
     mockCompleteState.total_usage.output_tokens + "",
-  );
-
-  await expect(component.locator("#cacheReadInputTokens")).toContainText(
-    mockCompleteState.total_usage.cache_read_input_tokens + "",
-  );
-  await expect(component.locator("#cacheCreationInputTokens")).toContainText(
-    mockCompleteState.total_usage.cache_creation_input_tokens + "",
   );
   await expect(component.locator("#totalCost")).toContainText(
     "$" + mockCompleteState.total_usage.total_cost_usd.toFixed(2),
@@ -68,7 +65,7 @@ test("renders with undefined state", async ({ mount }) => {
   await expect(component.locator("#workingDir")).toContainText("");
   await expect(component.locator("#initialCommit")).toContainText("");
   await expect(component.locator("#messageCount")).toContainText("");
-  await expect(component.locator("#inputTokens")).toContainText("");
+  await expect(component.locator("#inputTokens")).toContainText("0");
   await expect(component.locator("#outputTokens")).toContainText("");
   await expect(component.locator("#totalCost")).toContainText("$0.00");
 });
@@ -100,12 +97,19 @@ test("renders with partial state data", async ({ mount }) => {
   // Check that elements with data are properly populated
   await expect(component.locator("#hostname")).toContainText("partial-host");
   await expect(component.locator("#messageCount")).toContainText("10");
-  await expect(component.locator("#inputTokens")).toContainText("500");
+
+  const expectedTotalInputTokens =
+    partialState.total_usage.input_tokens +
+    partialState.total_usage.cache_read_input_tokens +
+    partialState.total_usage.cache_creation_input_tokens;
+  await expect(component.locator("#inputTokens")).toContainText(
+    expectedTotalInputTokens + "",
+  );
 
   // Check that elements without data are empty
   await expect(component.locator("#workingDir")).toContainText("");
   await expect(component.locator("#initialCommit")).toContainText("");
-  await expect(component.locator("#outputTokens")).toContainText("");
+  await expect(component.locator("#outputTokens")).toContainText("0");
   await expect(component.locator("#totalCost")).toContainText("$0.00");
 });
 

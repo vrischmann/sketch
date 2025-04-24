@@ -149,9 +149,8 @@ test("displays usage information when available", async ({ mount }) => {
   });
 
   await expect(component.locator(".message-usage")).toBeVisible();
-  await expect(component.locator(".message-usage")).toContainText("150"); // In
+  await expect(component.locator(".message-usage")).toContainText("200"); // In (150 + 50 cache)
   await expect(component.locator(".message-usage")).toContainText("300"); // Out
-  await expect(component.locator(".message-usage")).toContainText("50"); // Cache
   await expect(component.locator(".message-usage")).toContainText("$0.03"); // Cost
 });
 

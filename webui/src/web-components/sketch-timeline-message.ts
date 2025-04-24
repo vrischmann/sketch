@@ -595,16 +595,12 @@ export class SketchTimelineMessage extends LitElement {
             ${this.message?.usage
               ? html` <span class="message-usage">
                   <span title="Input tokens"
-                    >In: ${this.message?.usage?.input_tokens}</span
+                    >In:
+                    ${(this.message?.usage?.input_tokens || 0) +
+                    (this.message?.usage?.cache_read_input_tokens || 0) +
+                    (this.message?.usage?.cache_creation_input_tokens ||
+                      0)}</span
                   >
-                  ${this.message?.usage?.cache_read_input_tokens > 0
-                    ? html`<span title="Cache tokens"
-                        >[Cache:
-                        ${this.formatNumber(
-                          this.message?.usage?.cache_read_input_tokens,
-                        )}]</span
-                      >`
-                    : ""}
                   <span title="Output tokens"
                     >Out: ${this.message?.usage?.output_tokens}</span
                   >

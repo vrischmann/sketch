@@ -206,7 +206,7 @@ func (ui *termUI) inputLoop(ctx context.Context) error {
 		case "usage", "cost":
 			totalUsage := ui.agent.TotalUsage()
 			ui.AppendSystemMessage("💰 Current usage summary:")
-			ui.AppendSystemMessage("- Input tokens: %d [Cache: read=%d, creation=%d]", totalUsage.InputTokens, totalUsage.CacheReadInputTokens, totalUsage.CacheCreationInputTokens)
+			ui.AppendSystemMessage("- Input tokens: %d", totalUsage.TotalInputTokens())
 			ui.AppendSystemMessage("- Output tokens: %d", totalUsage.OutputTokens)
 			ui.AppendSystemMessage("- Responses: %d", totalUsage.Responses)
 			ui.AppendSystemMessage("- Wall time: %s", totalUsage.WallTime().Round(time.Second))
@@ -216,7 +216,7 @@ func (ui *termUI) inputLoop(ctx context.Context) error {
 			// Display final usage stats
 			totalUsage := ui.agent.TotalUsage()
 			ui.AppendSystemMessage("💰 Final usage summary:")
-			ui.AppendSystemMessage("- Input tokens: %d [Cache: read=%d, creation=%d]", totalUsage.InputTokens, totalUsage.CacheReadInputTokens, totalUsage.CacheCreationInputTokens)
+			ui.AppendSystemMessage("- Input tokens: %d", totalUsage.TotalInputTokens())
 			ui.AppendSystemMessage("- Output tokens: %d", totalUsage.OutputTokens)
 			ui.AppendSystemMessage("- Responses: %d", totalUsage.Responses)
 			ui.AppendSystemMessage("- Wall time: %s", totalUsage.WallTime().Round(time.Second))

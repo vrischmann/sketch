@@ -196,25 +196,15 @@ export class SketchContainerStatus extends LitElement {
           >
         </div>
         <div class="info-item">
-          <span class="info-label">In:</span>
+          <span class="info-label">Input tokens:</span>
           <span id="inputTokens" class="info-value"
-            >${this.state?.total_usage?.input_tokens}</span
+            >${(this.state?.total_usage?.input_tokens || 0) +
+            (this.state?.total_usage?.cache_read_input_tokens || 0) +
+            (this.state?.total_usage?.cache_creation_input_tokens || 0)}</span
           >
         </div>
         <div class="info-item">
-          <span class="info-label">Cache Read:</span>
-          <span id="cacheReadInputTokens" class="info-value"
-            >${this.state?.total_usage?.cache_read_input_tokens}</span
-          >
-        </div>
-        <div class="info-item">
-          <span class="info-label">Cache Create:</span>
-          <span id="cacheCreationInputTokens" class="info-value"
-            >${this.state?.total_usage?.cache_creation_input_tokens}</span
-          >
-        </div>
-        <div class="info-item">
-          <span class="info-label">Out:</span>
+          <span class="info-label">Output tokens:</span>
           <span id="outputTokens" class="info-value"
             >${this.state?.total_usage?.output_tokens}</span
           >

@@ -908,6 +908,11 @@ func (u *CumulativeUsage) AddResponse(resp *MessageResponse) {
 	u.TotalCostUSD += resp.TotalDollars()
 }
 
+// TotalInputTokens returns the grand total cumulative input tokens in u.
+func (u *CumulativeUsage) TotalInputTokens() uint64 {
+	return u.InputTokens + u.CacheReadInputTokens + u.CacheCreationInputTokens
+}
+
 // Attr returns the cumulative usage as a slog.Attr with key "usage".
 func (u CumulativeUsage) Attr() slog.Attr {
 	elapsed := time.Since(u.StartTime)
