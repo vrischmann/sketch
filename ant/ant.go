@@ -440,6 +440,7 @@ func (c *Convo) SubConvo() *Convo {
 	return &Convo{
 		Ctx:           skribe.ContextWithAttr(c.Ctx, slog.String("convo_id", id), slog.String("parent_convo_id", c.ID)),
 		HTTPC:         c.HTTPC,
+		URL:           c.URL,
 		APIKey:        c.APIKey,
 		Model:         c.Model,
 		MaxTokens:     c.MaxTokens,
