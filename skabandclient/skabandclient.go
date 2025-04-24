@@ -101,6 +101,9 @@ func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, 
 	if err != nil {
 		return fmt.Errorf("skabandclient: %w", err)
 	}
+	if conn == nil {
+		return fmt.Errorf("skabandclient: nil connection")
+	}
 	defer conn.Close()
 
 	// "Upgrade" our connection, like a WebSocket does.
@@ -119,8 +122,12 @@ func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, 
 	reader := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(reader, req)
 	if err != nil {
-		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("skabandclient.Dial: read upgrade response: %w: %s", err, b)
+		if resp != nil {
+			b, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("skabandclient.Dial: read upgrade response: %w: %s", err, b)
+		} else {
+			return fmt.Errorf("skabandclient.Dial: read upgrade response: %w", err)
+		}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusSwitchingProtocols {
