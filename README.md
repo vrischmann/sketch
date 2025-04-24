@@ -29,6 +29,10 @@ We have a discord server to discuss sketch.
 
 Join if you want! https://discord.gg/2xG3KEG3
 
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md)
+
 ## Open Source
 
 Sketch is open source.
@@ -36,5 +40,5 @@ It is right here in this repository!
 Have a look around and mod away.
 
 If you want to run sketch entirely without the sketch.dev service, you can
-set the flag -skaband-addr="" and then provide an ANTHROPIC_API_KEY
+set the flag -skaband-addr="" and then provide an `ANTHROPIC_API_KEY`
 environment variable. (More LLM services coming soon!)
