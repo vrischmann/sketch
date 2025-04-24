@@ -97,9 +97,7 @@ func New(agent loop.CodingAgent, httpURL string) *termUI {
 }
 
 func (ui *termUI) Run(ctx context.Context) error {
-	fmt.Println(`🎨 Welcome to Sketch`)
 	fmt.Println(`🌐 ` + ui.httpURL + `/`)
-	fmt.Println(`📍 Initial Commit: ` + ui.agent.InitialCommit())
 	fmt.Println(`💬 type 'help' for help`)
 	fmt.Println()
 
