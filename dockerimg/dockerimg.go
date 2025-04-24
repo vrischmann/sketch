@@ -196,7 +196,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		return fmt.Errorf("docker cp: %s, %w", out, err)
 	}
 
-	fmt.Printf("starting container %s\n", cntrName)
+	fmt.Printf("📦 running in container %s\n", cntrName)
 
 	// Start the sketch container
 	if out, err := combinedOutput(ctx, "docker", "start", cntrName); err != nil {
