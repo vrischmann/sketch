@@ -335,10 +335,12 @@ func run() error {
 	// Start skaband connection loop if needed
 	if *skabandAddr != "" {
 		connectFn := func(connected bool) {
-			if connected {
-				s.AppendSystemMessage("skaband connected")
-			} else {
-				s.AppendSystemMessage("skaband disconnected")
+			if *verbose {
+				if connected {
+					s.AppendSystemMessage("skaband connected")
+				} else {
+					s.AppendSystemMessage("skaband disconnected")
+				}
 			}
 		}
 		go skabandclient.DialAndServeLoop(ctx, *skabandAddr, *sessionID, pubKey, srv, connectFn)
