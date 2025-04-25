@@ -188,7 +188,19 @@ export class SketchAppShell extends LitElement {
   messages: AgentMessage[] = [];
 
   @property()
-  title: string = "";
+  set title(value: string) {
+    const oldValue = this._title;
+    this._title = value;
+    this.requestUpdate("title", oldValue);
+    // Update document title when title property changes
+    this.updateDocumentTitle();
+  }
+
+  get title(): string {
+    return this._title;
+  }
+
+  private _title: string = "";
 
   private dataManager = new DataManager();
 
@@ -240,6 +252,9 @@ export class SketchAppShell extends LitElement {
       "connectionStatusChanged",
       this.handleConnectionStatusChanged.bind(this),
     );
+
+    // Set initial document title
+    this.updateDocumentTitle();
 
     // Initialize the data manager
     this.dataManager.initialize();
@@ -425,6 +440,20 @@ export class SketchAppShell extends LitElement {
     });
   }
 
+  /**
+   * Updates the document title based on current title and connection status
+   */
+  private updateDocumentTitle(): void {
+    let docTitle = `sk: ${this.title || "untitled"}`;
+
+    // Add red circle emoji if disconnected
+    if (this.connectionStatus === "disconnected") {
+      docTitle += " 🔴";
+    }
+
+    document.title = docTitle;
+  }
+
   private handleDataChanged(eventData: {
     state: State;
     newMessages: AgentMessage[];
@@ -445,6 +474,9 @@ export class SketchAppShell extends LitElement {
     if (state) {
       this.containerState = state;
       this.title = state.title;
+
+      // Update document title when sketch title changes
+      this.updateDocumentTitle();
     }
 
     // Update messages
@@ -457,6 +489,9 @@ export class SketchAppShell extends LitElement {
   ): void {
     this.connectionStatus = status;
     this.connectionErrorMessage = errorMessage || "";
+
+    // Update document title when connection status changes
+    this.updateDocumentTitle();
   }
 
   async _sendChat(e: CustomEvent) {
