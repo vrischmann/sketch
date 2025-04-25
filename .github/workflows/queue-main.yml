@@ -18,7 +18,8 @@ permissions: read-all
 jobs:
   formatting:
     uses: ./.github/workflows/formatting.yml
-    permissions: read-all
+    permissions:
+      contents: write
     with:
       auto_fix: true
 

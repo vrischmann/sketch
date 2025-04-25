@@ -12,6 +12,9 @@ on:
       - "queue-main-**"
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   formatting:
     runs-on: ubuntu-latest
@@ -71,5 +74,5 @@ jobs:
 
           # If this is a queue-main branch, push the changes
           if [[ "${{ github.ref }}" == refs/heads/queue-main-* ]]; then
-            git push -f origin HEAD
+            git push -f https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/boldsoftware/sketch.git HEAD
           fi
