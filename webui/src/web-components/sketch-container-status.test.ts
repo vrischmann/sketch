@@ -39,7 +39,7 @@ test("render props", async ({ mount }) => {
     mockCompleteState.initial_commit.substring(0, 8),
   );
 
-  await expect(component.locator("#messageCount")).toContainText(
+  await   expect(component.locator("#messageCount")).toContainText(
     mockCompleteState.message_count + "",
   );
   const expectedTotalInputTokens =
