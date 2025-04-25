@@ -264,7 +264,7 @@ Host existing-host
   HostName example.com
   User testuser
 `
-	if err := os.WriteFile(configPath, []byte(initialConfig), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(initialConfig), 0o644); err != nil {
 		t.Fatalf("Failed to write initial config: %v", err)
 	}
 
@@ -356,7 +356,7 @@ Host %s
 		cntrName, sshHost, sshPort, userIdentityPath, knownHostsPath,
 	)
 
-	if err := os.WriteFile(sshConfigPath, []byte(initialConfig), 0644); err != nil {
+	if err := os.WriteFile(sshConfigPath, []byte(initialConfig), 0o644); err != nil {
 		t.Fatalf("Failed to write initial SSH config: %v", err)
 	}
 
@@ -463,8 +463,8 @@ func TestSSHTheaterCleanup(t *testing.T) {
 	}
 
 	// Initialize files
-	os.WriteFile(sshConfigPath, []byte("initial ssh_config content"), 0644)
-	os.WriteFile(knownHostsPath, []byte("initial known_hosts content"), 0644)
+	os.WriteFile(sshConfigPath, []byte("initial ssh_config content"), 0o644)
+	os.WriteFile(knownHostsPath, []byte("initial known_hosts content"), 0o644)
 
 	// Create a theater with the real filesystem but custom paths
 	cntrName := "test-container"
