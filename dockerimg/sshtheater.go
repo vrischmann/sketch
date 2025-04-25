@@ -133,11 +133,11 @@ func CheckForInclude() error {
 	}
 
 	if sketchInludePos == nil {
-		return fmt.Errorf("⚠️  SSH connections are disabled. To enable them, add the line %q to the top of %s before any 'Host' lines", sketchSSHPathInclude, defaultSSHPath)
+		return fmt.Errorf("⚠️ SSH connections are disabled. To enable them, add the line %q to the top of %s before any 'Host' lines", sketchSSHPathInclude, defaultSSHPath)
 	}
 
 	if firstNonIncludePos != nil && firstNonIncludePos.Line < sketchInludePos.Line {
-		fmt.Printf("⚠️  SSH confg warning: The location of the Include statement for sketch's ssh config on line %d of %s may prevent ssh from working with sketch containers. Try moving it to the top of the file (before any 'Host' lines) if ssh isn't working for you.\n", sketchInludePos.Line, defaultSSHPath)
+		fmt.Printf("⚠️ SSH confg warning: The location of the Include statement for sketch's ssh config on line %d of %s may prevent ssh from working with sketch containers. Try moving it to the top of the file (before any 'Host' lines) if ssh isn't working for you.\n", sketchInludePos.Line, defaultSSHPath)
 	}
 	return nil
 }
