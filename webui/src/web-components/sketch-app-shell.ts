@@ -61,9 +61,6 @@ export class SketchAppShell extends LitElement {
       margin-bottom: 0;
       border-bottom: 1px solid #eee;
       gap: 10px;
-      top: 0;
-      left: 0;
-      right: 0;
       background: white;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       max-width: 100%;
@@ -113,8 +110,9 @@ export class SketchAppShell extends LitElement {
     }
 
     /* Allow the container to expand to full width in diff mode */
-    #view-container.diff-active {
+    #view-container-inner.diff-active {
       max-width: 100%;
+      width: 100%;
     }
 
     /* Individual view styles */
@@ -376,7 +374,9 @@ export class SketchAppShell extends LitElement {
     // Wait for DOM update to complete
     this.updateComplete.then(() => {
       // Update active view
-      const viewContainer = this.shadowRoot?.querySelector("#view-container");
+      const viewContainerInner = this.shadowRoot?.querySelector(
+        "#view-container-inner",
+      );
       const chatView = this.shadowRoot?.querySelector(".chat-view");
       const diffView = this.shadowRoot?.querySelector(".diff-view");
       const chartView = this.shadowRoot?.querySelector(".chart-view");
@@ -390,9 +390,9 @@ export class SketchAppShell extends LitElement {
 
       // Add/remove diff-active class on view container
       if (mode === "diff") {
-        viewContainer?.classList.add("diff-active");
+        viewContainerInner?.classList.add("diff-active");
       } else {
-        viewContainer?.classList.remove("diff-active");
+        viewContainerInner?.classList.remove("diff-active");
       }
 
       // Add active class to the selected view
