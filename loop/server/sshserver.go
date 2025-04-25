@@ -51,6 +51,7 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) e
 	if err != nil {
 		return fmt.Errorf("ServeSSH: failed to parse host private key, err: %w", err)
 	}
+	forwardHandler := &ssh.ForwardedTCPHandler{}
 
 	server := ssh.Server{
 		LocalPortForwardingCallback: ssh.LocalPortForwardingCallback(func(ctx ssh.Context, dhost string, dport uint32) bool {
@@ -67,6 +68,10 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) e
 				handleSession(ctx, s)
 			}
 		}),
+		RequestHandlers: map[string]ssh.RequestHandler{
+			"tcpip-forward":        forwardHandler.HandleSSHRequest,
+			"cancel-tcpip-forward": forwardHandler.HandleSSHRequest,
+		},
 		HostSigners: []ssh.Signer{signer},
 		PublicKeyHandler: func(ctx ssh.Context, key ssh.PublicKey) bool {
 			// Check if the provided key matches any of our allowed keys
