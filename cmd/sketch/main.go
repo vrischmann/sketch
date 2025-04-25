@@ -49,6 +49,7 @@ func run() error {
 	version := flag.Bool("version", false, "print the version and exit")
 	workingDir := flag.String("C", "", "when set, change to this directory before running")
 	sshPort := flag.Int("ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
+	forceRebuild := flag.Bool("force-rebuild-container", false, "rebuild Docker container")
 
 	// Flags geared towards sketch developers or sketch internals:
 	gitUsername := flag.String("git-username", "", "(internal) username for git commits")
@@ -198,7 +199,7 @@ func run() error {
 			SketchBinaryLinux: *sketchBinaryLinux,
 			SketchPubKey:      pubKey,
 			SSHPort:           *sshPort,
-			ForceRebuild:      false,
+			ForceRebuild:      *forceRebuild,
 			OutsideHostname:   getHostname(),
 			OutsideOS:         runtime.GOOS,
 			OutsideWorkingDir: cwd,
