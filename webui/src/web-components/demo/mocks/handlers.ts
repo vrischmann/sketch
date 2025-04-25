@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from "msw";
-import { initialState, initialMessages } from "./fixtures/dummy";
+import { initialState, initialMessages } from "../../../fixtures/dummy";
 
 // Mock state updates for long-polling simulation
 let currentState = { ...initialState };

@@ -1,4 +1,4 @@
-import { AgentMessage, State } from "../../../../types";
+import { AgentMessage, State } from "../types";
 
 export const initialMessages: AgentMessage[] = [
   {
