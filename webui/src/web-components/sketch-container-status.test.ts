@@ -47,10 +47,10 @@ test("render props", async ({ mount }) => {
     mockCompleteState.total_usage.cache_read_input_tokens +
     mockCompleteState.total_usage.cache_creation_input_tokens;
   await expect(component.locator("#inputTokens")).toContainText(
-    expectedTotalInputTokens + "",
+    expectedTotalInputTokens.toLocaleString(),
   );
   await expect(component.locator("#outputTokens")).toContainText(
-    mockCompleteState.total_usage.output_tokens + "",
+    mockCompleteState.total_usage.output_tokens.toLocaleString(),
   );
   await expect(component.locator("#totalCost")).toContainText(
     "$" + mockCompleteState.total_usage.total_cost_usd.toFixed(2),
@@ -103,7 +103,7 @@ test("renders with partial state data", async ({ mount }) => {
     partialState.total_usage.cache_read_input_tokens +
     partialState.total_usage.cache_creation_input_tokens;
   await expect(component.locator("#inputTokens")).toContainText(
-    expectedTotalInputTokens + "",
+    expectedTotalInputTokens.toLocaleString(),
   );
 
   // Check that elements without data are empty

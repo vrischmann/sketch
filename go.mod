@@ -19,6 +19,7 @@ require (
 
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gliderlabs/ssh v0.3.8 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

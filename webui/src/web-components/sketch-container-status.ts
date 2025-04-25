@@ -1,6 +1,7 @@
 import { State } from "../types";
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { formatNumber } from "../utils";
 
 @customElement("sketch-container-status")
 export class SketchContainerStatus extends LitElement {
@@ -198,15 +199,17 @@ export class SketchContainerStatus extends LitElement {
         <div class="info-item">
           <span class="info-label">Input tokens:</span>
           <span id="inputTokens" class="info-value"
-            >${(this.state?.total_usage?.input_tokens || 0) +
-            (this.state?.total_usage?.cache_read_input_tokens || 0) +
-            (this.state?.total_usage?.cache_creation_input_tokens || 0)}</span
+            >${formatNumber(
+              (this.state?.total_usage?.input_tokens || 0) +
+              (this.state?.total_usage?.cache_read_input_tokens || 0) +
+              (this.state?.total_usage?.cache_creation_input_tokens || 0)
+            )}</span
           >
         </div>
         <div class="info-item">
           <span class="info-label">Output tokens:</span>
           <span id="outputTokens" class="info-value"
-            >${this.state?.total_usage?.output_tokens}</span
+            >${formatNumber(this.state?.total_usage?.output_tokens)}</span
           >
         </div>
         <div class="info-item">
