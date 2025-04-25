@@ -48,13 +48,13 @@ jobs:
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           
-          # Check if we have a formatting commit SHA
+          # Use the formatted commit SHA if available, otherwise use HEAD
+          COMMIT_TO_PUSH="HEAD"
           if [[ "${{ needs.formatting.outputs.commit_sha }}" != "" ]]; then
             echo "Using formatted commit: ${{ needs.formatting.outputs.commit_sha }}"
-            git fetch origin ${{ needs.formatting.outputs.commit_sha }}
-            git checkout ${{ needs.formatting.outputs.commit_sha }}
+            COMMIT_TO_PUSH="${{ needs.formatting.outputs.commit_sha }}"
           fi
           
-          git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/boldsoftware/sketch.git HEAD:main
+          git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/boldsoftware/sketch.git "${COMMIT_TO_PUSH}":main
         env:
           GITHUB_TOKEN: ${{ github.token }}

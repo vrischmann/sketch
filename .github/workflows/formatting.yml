@@ -7,6 +7,10 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      commit_sha:
+        description: "The SHA of the commit with formatting fixes"
+        value: ${{ jobs.formatting.outputs.commit_sha }}
   push:
     branches-ignore:
       - "queue-main-**"
