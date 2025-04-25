@@ -87,7 +87,9 @@ func run() error {
 		if err != nil {
 			return fmt.Errorf("cannot create log file: %v", err)
 		}
-		fmt.Printf("structured logs: %v\n", logFile.Name())
+		if *unsafe {
+			fmt.Printf("structured logs: %v\n", logFile.Name())
+		}
 		defer logFile.Close()
 		slogHandler = slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})
 		slogHandler = skribe.AttrsWrap(slogHandler)
