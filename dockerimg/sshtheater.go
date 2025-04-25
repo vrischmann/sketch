@@ -110,6 +110,38 @@ func NewSSHTheather(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
 	return cst, nil
 }
 
+func CheckForInclude() error {
+	sketchSSHPathInclude := "Include " + filepath.Join(os.Getenv("HOME"), ".sketch", "ssh_config")
+	defaultSSHPath := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
+	f, _ := os.Open(filepath.Join(os.Getenv("HOME"), ".ssh", "config"))
+	cfg, _ := ssh_config.Decode(f)
+	var sketchInludePos *ssh_config.Position
+	var firstNonIncludePos *ssh_config.Position
+	for _, host := range cfg.Hosts {
+		for _, node := range host.Nodes {
+			inc, ok := node.(*ssh_config.Include)
+			if ok {
+				if strings.TrimSpace(inc.String()) == sketchSSHPathInclude {
+					pos := inc.Pos()
+					sketchInludePos = &pos
+				}
+			} else if firstNonIncludePos == nil && !strings.HasPrefix(strings.TrimSpace(node.String()), "#") {
+				pos := node.Pos()
+				firstNonIncludePos = &pos
+			}
+		}
+	}
+
+	if sketchInludePos == nil {
+		return fmt.Errorf("⚠️  SSH connections are disabled. To enable them, add the line %q to the top of %s before any 'Host' lines", sketchSSHPathInclude, defaultSSHPath)
+	}
+
+	if firstNonIncludePos != nil && firstNonIncludePos.Line < sketchInludePos.Line {
+		fmt.Printf("⚠️  SSH confg warning: The location of the Include statement for sketch's ssh config on line %d of %s may prevent ssh from working with sketch containers. Try moving it to the top of the file (before any 'Host' lines) if ssh isn't working for you.\n", sketchInludePos.Line, defaultSSHPath)
+	}
+	return nil
+}
+
 func removeFromHosts(cntrName string, cfgHosts []*ssh_config.Host) []*ssh_config.Host {
 	hosts := []*ssh_config.Host{}
 	for _, host := range cfgHosts {

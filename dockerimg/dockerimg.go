@@ -259,22 +259,30 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		return appendInternalErr(fmt.Errorf("Error splitting ssh host and port: %w", err))
 	}
 
-	cst, err := NewSSHTheather(cntrName, sshHost, sshPort)
-	if err != nil {
-		return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
-	}
+	var sshServerIdentity, sshUserIdentity []byte
 
-	fmt.Printf(`Connect to this container via any of these methods:
+	if err := CheckForInclude(); err != nil {
+		fmt.Println(err.Error())
+		// continue - ssh config is not required for the rest of sketch to function locally.
+	} else {
+		cst, err := NewSSHTheather(cntrName, sshHost, sshPort)
+		if err != nil {
+			return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
+		}
+
+		fmt.Printf(`Connect to this container via any of these methods:
 🖥️  ssh %s
 🖥️  code --remote ssh-remote+root@%s /app -n
 🔗 vscode://vscode-remote/ssh-remote+root@%s/app?n=true
 `, cntrName, cntrName, cntrName)
-
-	defer func() {
-		if err := cst.Cleanup(); err != nil {
-			appendInternalErr(err)
-		}
-	}()
+		sshUserIdentity = cst.userIdentity
+		sshServerIdentity = cst.serverIdentity
+		defer func() {
+			if err := cst.Cleanup(); err != nil {
+				appendInternalErr(err)
+			}
+		}()
+	}
 
 	// Tell the sketch container which git server port and commit to initialize with.
 	go func() {
@@ -283,7 +291,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		// the scrollback (which is not good, but also not fatal).  I can't see why it does this
 		// though, since none of the calls in postContainerInitConfig obviously write to stdout
 		// or stderr.
-		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, cst.serverIdentity, cst.userIdentity); err != nil {
+		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, sshServerIdentity, sshUserIdentity); err != nil {
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
