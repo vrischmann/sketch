@@ -201,8 +201,8 @@ export class SketchContainerStatus extends LitElement {
           <span id="inputTokens" class="info-value"
             >${formatNumber(
               (this.state?.total_usage?.input_tokens || 0) +
-              (this.state?.total_usage?.cache_read_input_tokens || 0) +
-              (this.state?.total_usage?.cache_creation_input_tokens || 0)
+                (this.state?.total_usage?.cache_read_input_tokens || 0) +
+                (this.state?.total_usage?.cache_creation_input_tokens || 0),
             )}</span
           >
         </div>

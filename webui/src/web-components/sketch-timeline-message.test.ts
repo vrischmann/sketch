@@ -149,8 +149,12 @@ test("displays usage information when available", async ({ mount }) => {
   });
 
   await expect(component.locator(".message-usage")).toBeVisible();
-  await expect(component.locator(".message-usage")).toContainText("200".toLocaleString()); // In (150 + 50 cache)
-  await expect(component.locator(".message-usage")).toContainText("300".toLocaleString()); // Out
+  await expect(component.locator(".message-usage")).toContainText(
+    "200".toLocaleString(),
+  ); // In (150 + 50 cache)
+  await expect(component.locator(".message-usage")).toContainText(
+    "300".toLocaleString(),
+  ); // Out
   await expect(component.locator(".message-usage")).toContainText("$0.03"); // Cost
 });
 
