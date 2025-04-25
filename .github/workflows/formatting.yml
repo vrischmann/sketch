@@ -24,10 +24,6 @@ jobs:
         working-directory: ./webui
         run: npm ci
 
-      - name: Check Prettier formatting
-        working-directory: ./webui
-        run: npx prettier --check .
-
       # Setup for gofumpt
       - name: Setup Go
         uses: actions/setup-go@v4
@@ -40,5 +36,5 @@ jobs:
           go install mvdan.cc/gofumpt@v0.8.0
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Check Go formatting
-        run: gofumpt -l . | grep . && { echo "Go files need formatting"; exit 1; } || echo "Go formatting check passed"
+      - name: Check formatting
+        run: bin/run-formatters.sh check
