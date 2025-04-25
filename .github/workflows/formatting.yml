@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   formatting:
+    outputs:
+      commit_sha: ${{ steps.get_commit.outputs.commit_sha }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,3 +78,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/heads/queue-main-* ]]; then
             git push -f https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/boldsoftware/sketch.git HEAD
           fi
+        
+      - name: Get commit SHA
+        id: get_commit
+        run: echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
