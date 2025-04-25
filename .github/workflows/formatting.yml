@@ -70,7 +70,7 @@ jobs:
           git config --global user.name "Autoformatter"
           git config --global user.email "bot@sketch.dev"
           git add .
-          git commit -m "Automatic formatting fixes" -m "Applied automatic formatting with bin/run-formatters.sh"
+          git commit -m "all: fix formatting"
 
           # If this is a queue-main branch, push the changes
           if [[ "${{ github.ref }}" == refs/heads/queue-main-* ]]; then
