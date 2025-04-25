@@ -1,6 +1,12 @@
 name: Code Formatting
 on:
   workflow_call:
+    inputs:
+      auto_fix:
+        description: "Automatically fix formatting issues instead of just checking"
+        required: false
+        type: boolean
+        default: false
   push:
     branches-ignore:
       - "queue-main-**"
@@ -11,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          # Need full history for queue-main pushes
+          fetch-depth: 0
 
       # Setup for Prettier
       - name: Setup Node.js
@@ -37,4 +47,29 @@ jobs:
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Check formatting
+        if: inputs.auto_fix != true
         run: bin/run-formatters.sh check
+
+      - name: Fix formatting
+        if: inputs.auto_fix == true
+        run: bin/run-formatters.sh fix
+
+      # Commit formatting fixes if auto_fix is true
+      - name: Commit and push formatting fixes if needed
+        if: inputs.auto_fix == true
+        run: |
+          # Only proceed if there are changes to commit
+          if [[ -z $(git status --porcelain) ]]; then
+            echo "No formatting changes detected, skipping commit"
+            exit 0
+          fi
+
+          git config --global user.name "Autoformatter"
+          git config --global user.email "bot@sketch.dev"
+          git add .
+          git commit -m "Automatic formatting fixes" -m "Applied automatic formatting with bin/run-formatters.sh"
+
+          # If this is a queue-main branch, push the changes
+          if [[ "${{ github.ref }}" == refs/heads/queue-main-* ]]; then
+            git push -f origin HEAD
+          fi
