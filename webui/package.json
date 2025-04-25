@@ -17,7 +17,9 @@
     "gentypes": "go run ../../cmd/go2ts -o src/types.ts",
     "build": "go run ../../cmd/go2ts -o src/types.ts && tsc",
     "watch": "tsc --watch",
-    "test": "tsc && playwright test -c playwright-ct.config.ts"
+    "test": "tsc && npm run test:playwright",
+    "test:playwright": "playwright test -c playwright-ct.config.ts",
+    "update-snapshots": "npm run test:playwright -- --update-snapshots"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",

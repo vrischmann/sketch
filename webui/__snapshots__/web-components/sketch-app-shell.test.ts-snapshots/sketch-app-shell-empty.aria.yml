@@ -1,0 +1,14 @@
+- heading "sketch" [level=1]
+- heading [level=2]
+- link "Logs"
+- link "Download"
+- text: "/MacBook-Pro-9\\.local \\/Users\\/pokey\\/src\\/sketch Origin: git@github\\.com:boldsoftware\\/sketch\\.git Commit: 08e2cf2e Msgs: 0 Input tokens: 0 Output tokens: 0 Cost: \\$\\d+\\.\\d+/"
+- button "💬"
+- button "±"
+- button "📈"
+- button "💻"
+- button "Stop"
+- checkbox "Poll" [checked]
+- text: Poll Invalid response from server - not connected
+- textbox "Type your message here and press Enter to send..."
+- button "Send"

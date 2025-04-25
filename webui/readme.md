@@ -20,7 +20,7 @@ This module contains a TypeScript-based web UI for the Loop service. The TypeScr
 # Install dependencies
 make install
 
-# Type checking only
+# Run tests
 make check
 ```
 
@@ -33,7 +33,14 @@ make demo
 ```
 
 This will launch a local web server that serves the demo pages for the web components. You can edit the TypeScript files, and the changes will be reflected in real-time.
-p
+
+### Snapshot tests
+
+We use aria snapshot tests to verify the rendering of our components. To update snapshots, run:
+
+```bash
+make update-snapshots
+```
 
 #### VSCode
 
