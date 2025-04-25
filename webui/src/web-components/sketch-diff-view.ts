@@ -275,6 +275,9 @@ export class SketchDiffView extends LitElement {
         }
       });
 
+      // Intercept clicks on anchor links within the diff to prevent browser navigation
+      this.interceptAnchorClicks(diff2htmlContent);
+
       // Add click event handlers to each code line for commenting
       this.setupDiffLineComments();
     } catch (error) {
@@ -571,6 +574,34 @@ export class SketchDiffView extends LitElement {
     this.commitHash = commitHash;
     // Load the diff content
     this.loadDiffContent();
+  }
+
+  /**
+   * Intercept clicks on anchor links within the diff to prevent default browser navigation
+   * and instead scroll to the target element without changing URL
+   *
+   * @param container The container element containing diff content
+   */
+  private interceptAnchorClicks(container: HTMLElement): void {
+    const anchors = container.querySelectorAll('a[href^="#"]');
+
+    anchors.forEach((anchor) => {
+      anchor.addEventListener("click", (event) => {
+        event.preventDefault();
+
+        // Extract the target ID from the href
+        const href = (anchor as HTMLAnchorElement).getAttribute("href");
+        if (!href || !href.startsWith("#")) return;
+
+        const targetId = href.substring(1);
+        const targetElement = container.querySelector(`[id="${targetId}"]`);
+
+        if (targetElement) {
+          // Scroll the target element into view
+          targetElement.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+    });
   }
 
   render() {
