@@ -72,12 +72,6 @@ type ContainerConfig struct {
 	// Host port for the container's ssh server
 	SSHPort int
 
-	// Public keys authorized to connect to the container's ssh server
-	SSHAuthorizedKeys []byte
-
-	// Private key used to identify the container's ssh server
-	SSHServerIdentity []byte
-
 	// Outside information to pass to the container
 	OutsideHostname   string
 	OutsideOS         string
@@ -262,9 +256,25 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 	}
 	sshHost, sshPort, err := net.SplitHostPort(localSSHAddr)
 	if err != nil {
-		fmt.Println("Error splitting ssh host and port:", err)
+		return appendInternalErr(fmt.Errorf("Error splitting ssh host and port: %w", err))
 	}
-	fmt.Printf("ssh into this container with: ssh root@%s -p %s\n", sshHost, sshPort)
+
+	cst, err := NewSSHTheather(cntrName, sshHost, sshPort)
+	if err != nil {
+		return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
+	}
+
+	fmt.Printf(`Connect to this container via any of these methods:
+🖥️  ssh %s
+🖥️  code --remote ssh-remote+root@%s /app -n
+🔗 vscode://vscode-remote/ssh-remote+root@%s/app?n=true
+`, cntrName, cntrName, cntrName)
+
+	defer func() {
+		if err := cst.Cleanup(); err != nil {
+			appendInternalErr(err)
+		}
+	}()
 
 	// Tell the sketch container which git server port and commit to initialize with.
 	go func() {
@@ -273,7 +283,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		// the scrollback (which is not good, but also not fatal).  I can't see why it does this
 		// though, since none of the calls in postContainerInitConfig obviously write to stdout
 		// or stderr.
-		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, config.SSHServerIdentity, config.SSHAuthorizedKeys); err != nil {
+		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, cst.serverIdentity, cst.userIdentity); err != nil {
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
