@@ -76,6 +76,9 @@ type ContainerConfig struct {
 	OutsideHostname   string
 	OutsideOS         string
 	OutsideWorkingDir string
+
+	// If not empty, handle this message and exit
+	OneShot string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -438,6 +441,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	)
 	if config.SkabandAddr != "" {
 		cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)
+	}
+	if config.OneShot != "" {
+		cmdArgs = append(cmdArgs, "-one-shot", config.OneShot)
 	}
 	if out, err := combinedOutput(ctx, "docker", cmdArgs...); err != nil {
 		return fmt.Errorf("docker create: %s, %w", out, err)

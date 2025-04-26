@@ -44,7 +44,7 @@ func run() error {
 	maxIterations := flag.Uint64("max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
 	maxWallTime := flag.Duration("max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
 	maxDollars := flag.Float64("max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
-	one := flag.Bool("one", false, "run a single iteration and exit without termui")
+	oneShot := flag.String("one-shot", "", "run a single iteration with the given prompt and exit without termui")
 	verbose := flag.Bool("verbose", false, "enable verbose output")
 	version := flag.Bool("version", false, "print the version and exit")
 	workingDir := flag.String("C", "", "when set, change to this directory before running")
@@ -73,8 +73,6 @@ func run() error {
 		return nil
 	}
 
-	firstMessage := flag.Args()
-
 	// Add a global "session_id" to all logs using this context.
 	// A "session" is a single full run of the agent.
 	ctx := skribe.ContextWithAttr(context.Background(), slog.String("session_id", *sessionID))
@@ -82,7 +80,7 @@ func run() error {
 	var slogHandler slog.Handler
 	var err error
 	var logFile *os.File
-	if !*one && !*verbose {
+	if *oneShot == "" && !*verbose {
 		// Log to a file
 		logFile, err = os.CreateTemp("", "sketch-cli-log-*")
 		if err != nil {
@@ -131,10 +129,6 @@ func run() error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if *one && len(firstMessage) == 0 {
-		return fmt.Errorf("-one flag requires a message to send to the agent")
 	}
 
 	var pubKey, antURL, apiKey string
@@ -203,6 +197,7 @@ func run() error {
 			OutsideHostname:   getHostname(),
 			OutsideOS:         runtime.GOOS,
 			OutsideWorkingDir: cwd,
+			OneShot:           *oneShot,
 		}
 		if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
 			if *verbose {
@@ -288,15 +283,15 @@ func run() error {
 		ps1URL = fmt.Sprintf("http://%s", ln.Addr())
 	}
 
-	if len(firstMessage) > 0 {
-		agent.UserMessage(ctx, strings.Join(firstMessage, " "))
-	}
-
 	if inDocker {
 		<-agent.Ready()
 		if ps1URL == "" {
 			ps1URL = agent.URL()
 		}
+	}
+
+	if *oneShot != "" {
+		agent.UserMessage(ctx, *oneShot)
 	}
 
 	// Open the web UI URL in the system browser if requested
@@ -306,15 +301,6 @@ func run() error {
 
 	// Create the termui instance
 	s := termui.New(agent, ps1URL)
-	defer func() {
-		r := recover()
-		if err := s.RestoreOldState(); err != nil {
-			fmt.Fprintf(os.Stderr, "couldn't restore old terminal state: %s\n", err)
-		}
-		if r != nil {
-			panic(r)
-		}
-	}()
 
 	// Start skaband connection loop if needed
 	if *skabandAddr != "" {
@@ -330,7 +316,7 @@ func run() error {
 		go skabandclient.DialAndServeLoop(ctx, *skabandAddr, *sessionID, pubKey, srv, connectFn)
 	}
 
-	if *one {
+	if *oneShot != "" {
 		for {
 			m := agent.WaitForMessage(ctx)
 			if m.Content != "" {
@@ -343,6 +329,15 @@ func run() error {
 		}
 	}
 
+	defer func() {
+		r := recover()
+		if err := s.RestoreOldState(); err != nil {
+			fmt.Fprintf(os.Stderr, "couldn't restore old terminal state: %s\n", err)
+		}
+		if r != nil {
+			panic(r)
+		}
+	}()
 	if err := s.Run(ctx); err != nil {
 		return err
 	}
