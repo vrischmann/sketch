@@ -117,6 +117,7 @@ func run() error {
 	if _, err := os.Stat("/.dockerenv"); err == nil {
 		inDocker = true
 	}
+	inInsideSketch := inDocker && *outsideHostname != ""
 
 	if !inDocker {
 		msgs, err := hostReqsCheck(*unsafe)
@@ -256,7 +257,7 @@ func run() error {
 		return err
 	}
 
-	if !inDocker {
+	if !inInsideSketch {
 		ini := loop.AgentInit{
 			WorkingDir: wd,
 		}
@@ -283,7 +284,7 @@ func run() error {
 		ps1URL = fmt.Sprintf("http://%s", ln.Addr())
 	}
 
-	if inDocker {
+	if inInsideSketch {
 		<-agent.Ready()
 		if ps1URL == "" {
 			ps1URL = agent.URL()
