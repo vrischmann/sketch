@@ -1,18 +1,4 @@
-FROM golang:1.24.2-alpine3.21
-
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim
-
-ENV GOTOOLCHAIN=auto
-ENV GOPATH=/go
-ENV PATH="$GOPATH/bin:$PATH"
-
-RUN go install golang.org/x/tools/cmd/goimports@latest
-RUN go install golang.org/x/tools/gopls@latest
-RUN go install mvdan.cc/gofumpt@latest
-
-RUN mkdir -p /root/.cache/sketch/webui
-
-RUN apk add graphviz || true
+FROM ghcr.io/boldsoftware/sketch:v1
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -20,10 +6,12 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="d8239a17f871092ba50cc68925458c106655b0741bc27d010b137e5bac79d871"
+LABEL sketch_context="5ddad5f1e105aea5cff88f638a4e2377a20797b71fe352a3d4361af3d2ec8411"
 COPY . /app
 
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi
+
+RUN apk add graphviz || true
 
 CMD ["/bin/sketch"]

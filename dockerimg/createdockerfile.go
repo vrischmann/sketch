@@ -22,13 +22,29 @@ func hashInitFiles(initFiles map[string]string) string {
 	for _, path := range slices.Sorted(maps.Keys(initFiles)) {
 		fmt.Fprintf(h, "%s\n%s\n\n", path, initFiles[path])
 	}
-	fmt.Fprintf(h, "docker template\n%s\n", dockerfileBase)
+	fmt.Fprintf(h, "docker template 1\n%s\n", dockerfileCustomTmpl)
+	fmt.Fprintf(h, "docker template 2\n%s\n", dockerfileDefaultTmpl)
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// DefaultImage is intended to ONLY be used by the pushdockerimg.go script.
+func DefaultImage() (name, dockerfile, hash string) {
+	buf := new(bytes.Buffer)
+	err := template.Must(template.New("dockerfile").Parse(dockerfileBaseTmpl)).Execute(buf, map[string]string{
+		"From": defaultBaseImg,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return dockerfileDefaultImg, buf.String(), hashInitFiles(nil)
+}
+
+const dockerfileDefaultImg = "ghcr.io/boldsoftware/sketch:v1"
+const defaultBaseImg = "golang:1.24.2-alpine3.21"
+
 // TODO: add semgrep, prettier -- they require node/npm/etc which is more complicated than apk
 // If/when we do this, add them into the list of available tools in bash.go.
-const dockerfileBase = `FROM {{.From}}
+const dockerfileBaseTmpl = `FROM {{.From}}
 
 RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim
 
@@ -41,9 +57,9 @@ RUN go install golang.org/x/tools/gopls@latest
 RUN go install mvdan.cc/gofumpt@latest
 
 RUN mkdir -p /root/.cache/sketch/webui
+`
 
-{{.ExtraCmds}}
-
+const dockerfileFragment = `
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
 
@@ -56,7 +72,18 @@ COPY . /app
 WORKDIR /app{{.SubDir}}
 RUN if [ -f go.mod ]; then go mod download; fi
 
-CMD ["/bin/sketch"]`
+{{.ExtraCmds}}
+
+CMD ["/bin/sketch"]
+`
+
+// dockerfileCustomTmpl is the dockerfile template used when the LLM
+// chooses a custom base image.
+const dockerfileCustomTmpl = dockerfileBaseTmpl + dockerfileFragment
+
+// dockerfileDefaultTmpl is the dockerfile used when the LLM went with
+// the defaultBaseImg. In this case, we use a pre-canned image.
+const dockerfileDefaultTmpl = "FROM " + dockerfileDefaultImg + "\n" + dockerfileFragment
 
 // createDockerfile creates a Dockerfile for a git repo.
 // It expects the relevant initFiles to have been provided.
@@ -136,10 +163,10 @@ Call the dockerfile tool to create a Dockerfile.
 The parameters to dockerfile fill out the From and ExtraCmds
 template variables in the following Go template:
 
-` + "```\n" + dockerfileBase + "\n```" + `
+` + "```\n" + dockerfileCustomTmpl + "\n```" + `
 
 In particular:
-- Assume it is primarily a Go project. For a minimal env, prefer 1.24.2-alpine3.21 as a base image.
+- Assume it is primarily a Go project. For a minimal env, prefer ` + defaultBaseImg + ` as a base image.
 - If any python is needed at all, switch to using a python alpine image as a the base and apk add go.
   Favor using uv, and use one of these base images, depending on the preferred python version:
     ghcr.io/astral-sh/uv:python3.13-alpine
@@ -149,7 +176,8 @@ In particular:
 - Python env setup is challenging and often no required, so any RUN commands involving python tooling should be written to let docker build continue if there is a failure.
 - Include any tools particular to this repository that can be inferred from the given context.
 - Append || true to any apk add commands in case the package does not exist.
-- Do not expose any ports.
+- Do NOT expose any ports.
+- Do NOT generate any CMD or ENTRYPOINT extra commands.
 `,
 		}},
 	}
@@ -181,8 +209,16 @@ In particular:
 		return "", fmt.Errorf("no dockerfile returned")
 	}
 
+	tmpl := dockerfileCustomTmpl
+	if dockerfileFROM == defaultBaseImg {
+		// Because the LLM has chosen the image we recommended, we
+		// can use a pre-canned image of our entire template, which
+		// saves a lot of build time.
+		tmpl = dockerfileDefaultTmpl
+	}
+
 	buf := new(bytes.Buffer)
-	err = template.Must(template.New("dockerfile").Parse(dockerfileBase)).Execute(buf, map[string]string{
+	err = template.Must(template.New("dockerfile").Parse(tmpl)).Execute(buf, map[string]string{
 		"From":          dockerfileFROM,
 		"ExtraCmds":     dockerfileExtraCmds,
 		"InitFilesHash": hashInitFiles(initFiles),

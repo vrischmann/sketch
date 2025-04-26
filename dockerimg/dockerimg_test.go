@@ -2,10 +2,12 @@ package dockerimg
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"io/fs"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -189,5 +191,42 @@ func TestReadInitFilesWithSubdir(t *testing.T) {
 		t.Error(".github/workflows/test.yml not found")
 	} else if content != "name: Test Workflow" {
 		t.Errorf("Workflow file has incorrect content: %q", content)
+	}
+}
+
+// TestDockerHashIsPushed ensures that any changes made to the
+// dockerfile template have been pushed to the default image.
+func TestDockerHashIsPushed(t *testing.T) {
+	name, _, hash := DefaultImage()
+
+	cmd := exec.Command("docker", "buildx", "imagetools", "inspect", name, "--raw")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("command %v", cmd.Args)
+		t.Fatalf("failed to inspect docker image %s: %v: %s", name, err, out)
+	}
+
+	var config struct {
+		Annotations map[string]string `json:"annotations"`
+	}
+	if err := json.Unmarshal(out, &config); err != nil {
+		t.Fatal(err)
+	}
+	rev := config.Annotations["org.opencontainers.image.revision"]
+	if rev != hash {
+		t.Fatalf(`Currently released docker image %s does not match dockerfileCustomTmpl.
+
+Inspecting the docker image shows revision hash %s,
+but the current hash of dockerfileCustomTmpl is %s.
+
+This means the template constants in createdockerfile.go have been
+edited (e.g. defaultBaseImg or dockerfileBaseTmpl), but a new version
+of the public default docker image has not been built and pushed.
+
+To do so:
+
+	go run ./dockerimg/pushdockerimg.go
+
+`, name, rev, hash)
 	}
 }
