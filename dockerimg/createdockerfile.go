@@ -40,6 +40,7 @@ func DefaultImage() (name, dockerfile, hash string) {
 }
 
 const dockerfileDefaultImg = "ghcr.io/boldsoftware/sketch:v1"
+
 const defaultBaseImg = "golang:1.24.2-alpine3.21"
 
 // TODO: add semgrep, prettier -- they require node/npm/etc which is more complicated than apk
