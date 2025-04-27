@@ -55,16 +55,18 @@ export class SketchAppShell extends LitElement {
     /* Top banner with combined elements */
     #top-banner {
       display: flex;
-      align-self: flex-start;
+      align-self: stretch;
       justify-content: space-between;
       align-items: center;
-      padding: 5px 20px;
+      padding: 0 20px;
       margin-bottom: 0;
       border-bottom: 1px solid #eee;
-      gap: 10px;
+      gap: 20px;
       background: white;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      max-width: 100%;
+      width: 100%;
+      height: 48px;
+      padding-right: 30px; /* Extra padding on the right to prevent elements from hitting the edge */
     }
 
     /* View mode container styles - mirroring timeline.css structure */
@@ -137,7 +139,8 @@ export class SketchAppShell extends LitElement {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 33%;
+      max-width: 25%;
+      padding: 6px 0;
     }
 
     .refresh-control {
@@ -147,6 +150,9 @@ export class SketchAppShell extends LitElement {
       flex-wrap: nowrap;
       white-space: nowrap;
       flex-shrink: 0;
+      gap: 15px;
+      padding-left: 15px;
+      margin-right: 50px;
     }
 
     .refresh-button {
@@ -167,7 +173,6 @@ export class SketchAppShell extends LitElement {
     .poll-updates {
       display: flex;
       align-items: center;
-      margin: 0 5px;
       font-size: 12px;
     }
   `;
@@ -551,13 +556,15 @@ export class SketchAppShell extends LitElement {
           <h2 id="chatTitle" class="chat-title">${this.title}</h2>
         </div>
 
+        <!-- Views section with tabs -->
+        <sketch-view-mode-select></sketch-view-mode-select>
+
+        <!-- Container status info -->
         <sketch-container-status
           .state=${this.containerState}
         ></sketch-container-status>
 
         <div class="refresh-control">
-          <sketch-view-mode-select></sketch-view-mode-select>
-
           <button id="stopButton" class="refresh-button stop-button">
             Stop
           </button>

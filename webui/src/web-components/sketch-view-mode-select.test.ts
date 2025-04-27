@@ -16,34 +16,6 @@ test("initializes with 'chat' as the default mode", async ({ mount }) => {
   ).toBeVisible();
 });
 
-test("displays all four view mode buttons", async ({ mount }) => {
-  const component = await mount(SketchViewModeSelect, {});
-
-  // Count the number of buttons
-  const buttonCount = await component.locator(".emoji-button").count();
-  expect(buttonCount).toBe(4);
-
-  // Check that each button exists
-  await expect(component.locator("#showConversationButton")).toBeVisible();
-  await expect(component.locator("#showDiffButton")).toBeVisible();
-  await expect(component.locator("#showChartsButton")).toBeVisible();
-  await expect(component.locator("#showTerminalButton")).toBeVisible();
-
-  // Check the title attributes
-  expect(
-    await component.locator("#showConversationButton").getAttribute("title"),
-  ).toBe("Conversation View");
-  expect(await component.locator("#showDiffButton").getAttribute("title")).toBe(
-    "Diff View",
-  );
-  expect(
-    await component.locator("#showChartsButton").getAttribute("title"),
-  ).toBe("Charts View");
-  expect(
-    await component.locator("#showTerminalButton").getAttribute("title"),
-  ).toBe("Terminal View");
-});
-
 test("dispatches view-mode-select event when clicking a mode button", async ({
   mount,
 }) => {

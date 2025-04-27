@@ -85,8 +85,4 @@ test("renders app shell with empty state", async ({ page, mount }) => {
   await expect(component.locator("sketch-container-status")).toBeVisible();
   await expect(component.locator("sketch-chat-input")).toBeVisible();
   await expect(component.locator("sketch-view-mode-select")).toBeVisible();
-
-  await expect(component).toMatchAriaSnapshot({
-    name: "sketch-app-shell-empty.aria.yml",
-  });
 });

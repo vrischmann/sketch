@@ -10,39 +10,48 @@ export class SketchViewModeSelect extends LitElement {
   // Header bar: view mode buttons
 
   static styles = css`
-    /* View Mode Button Styles */
-    .view-mode-buttons {
+    /* Tab-style View Mode Styles */
+    .tab-nav {
       display: flex;
-      gap: 8px;
       margin-right: 10px;
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #ddd;
     }
 
-    .emoji-button {
-      font-size: 18px;
-      width: 32px;
-      height: 32px;
+    .tab-btn {
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      cursor: pointer;
+      gap: 5px;
+      color: #666;
+      border-bottom: 2px solid transparent;
       transition: all 0.2s ease;
-      padding: 0;
-      line-height: 1;
+      white-space: nowrap;
     }
 
-    .emoji-button:hover {
+    .tab-btn:not(:last-child) {
+      border-right: 1px solid #eee;
+    }
+
+    .tab-btn:hover {
       background-color: #f0f0f0;
-      transform: translateY(-2px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    .emoji-button.active {
+    .tab-btn.active {
+      border-bottom: 2px solid #4a90e2;
+      color: #4a90e2;
+      font-weight: 500;
       background-color: #e6f7ff;
-      border-color: #1890ff;
-      color: #1890ff;
+    }
+
+    .tab-icon {
+      font-size: 16px;
     }
   `;
 
@@ -101,38 +110,42 @@ export class SketchViewModeSelect extends LitElement {
 
   render() {
     return html`
-      <div class="view-mode-buttons">
+      <div class="tab-nav">
         <button
           id="showConversationButton"
-          class="emoji-button ${this.activeMode === "chat" ? "active" : ""}"
+          class="tab-btn ${this.activeMode === "chat" ? "active" : ""}"
           title="Conversation View"
           @click=${() => this._handleViewModeClick("chat")}
         >
-          💬
+          <span class="tab-icon">💬</span>
+          <span>Chat</span>
         </button>
         <button
           id="showDiffButton"
-          class="emoji-button ${this.activeMode === "diff" ? "active" : ""}"
+          class="tab-btn ${this.activeMode === "diff" ? "active" : ""}"
           title="Diff View"
           @click=${() => this._handleViewModeClick("diff")}
         >
-          ±
+          <span class="tab-icon">±</span>
+          <span>Diff</span>
         </button>
         <button
           id="showChartsButton"
-          class="emoji-button ${this.activeMode === "charts" ? "active" : ""}"
+          class="tab-btn ${this.activeMode === "charts" ? "active" : ""}"
           title="Charts View"
           @click=${() => this._handleViewModeClick("charts")}
         >
-          📈
+          <span class="tab-icon">📈</span>
+          <span>Charts</span>
         </button>
         <button
           id="showTerminalButton"
-          class="emoji-button ${this.activeMode === "terminal" ? "active" : ""}"
+          class="tab-btn ${this.activeMode === "terminal" ? "active" : ""}"
           title="Terminal View"
           @click=${() => this._handleViewModeClick("terminal")}
         >
-          💻
+          <span class="tab-icon">💻</span>
+          <span>Terminal</span>
         </button>
       </div>
     `;
