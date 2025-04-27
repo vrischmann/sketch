@@ -9,6 +9,7 @@ import "./sketch-container-status";
 import "./sketch-diff-view";
 import { SketchDiffView } from "./sketch-diff-view";
 import "./sketch-network-status";
+import "./sketch-call-status";
 import "./sketch-terminal";
 import "./sketch-timeline";
 import "./sketch-view-mode-select";
@@ -210,6 +211,8 @@ export class SketchAppShell extends LitElement {
     hostname: "",
     working_dir: "",
     initial_commit: "",
+    outstanding_llm_calls: 0,
+    outstanding_tool_calls: [],
   };
 
   // Mutation observer to detect when new messages are added
@@ -569,6 +572,11 @@ export class SketchAppShell extends LitElement {
             connection=${this.connectionStatus}
             error=${this.connectionErrorMessage}
           ></sketch-network-status>
+
+          <sketch-call-status
+            .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
+            .toolCalls=${this.containerState?.outstanding_tool_calls || []}
+          ></sketch-call-status>
         </div>
       </div>
 

@@ -152,3 +152,55 @@ func TestAgentLoop(t *testing.T) {
 
 	t.Logf("Agent used %d tools in its response", toolUseCount)
 }
+
+func TestAgentTracksOutstandingCalls(t *testing.T) {
+	agent := &Agent{
+		outstandingLLMCalls:  make(map[string]struct{}),
+		outstandingToolCalls: make(map[string]string),
+	}
+
+	// Check initial state
+	if count := agent.OutstandingLLMCallCount(); count != 0 {
+		t.Errorf("Expected 0 outstanding LLM calls, got %d", count)
+	}
+
+	if tools := agent.OutstandingToolCalls(); len(tools) != 0 {
+		t.Errorf("Expected 0 outstanding tool calls, got %d", len(tools))
+	}
+
+	// Add some calls
+	agent.mu.Lock()
+	agent.outstandingLLMCalls["llm1"] = struct{}{}
+	agent.outstandingToolCalls["tool1"] = "bash"
+	agent.outstandingToolCalls["tool2"] = "think"
+	agent.mu.Unlock()
+
+	// Check tracking works
+	if count := agent.OutstandingLLMCallCount(); count != 1 {
+		t.Errorf("Expected 1 outstanding LLM call, got %d", count)
+	}
+
+	tools := agent.OutstandingToolCalls()
+	if len(tools) != 2 {
+		t.Errorf("Expected 2 outstanding tool calls, got %d", len(tools))
+	}
+
+	// Check removal
+	agent.mu.Lock()
+	delete(agent.outstandingLLMCalls, "llm1")
+	delete(agent.outstandingToolCalls, "tool1")
+	agent.mu.Unlock()
+
+	if count := agent.OutstandingLLMCallCount(); count != 0 {
+		t.Errorf("Expected 0 outstanding LLM calls after removal, got %d", count)
+	}
+
+	tools = agent.OutstandingToolCalls()
+	if len(tools) != 1 {
+		t.Errorf("Expected 1 outstanding tool call after removal, got %d", len(tools))
+	}
+
+	if tools[0] != "think" {
+		t.Errorf("Expected 'think' tool remaining, got %s", tools[0])
+	}
+}

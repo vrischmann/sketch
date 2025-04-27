@@ -20,6 +20,8 @@ const mockCompleteState: State = {
     messages: 0,
     tool_uses: {},
   },
+  outstanding_llm_calls: 0,
+  outstanding_tool_calls: [],
 };
 
 test("render props", async ({ mount }) => {

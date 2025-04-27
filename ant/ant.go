@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oklog/ulid/v2"
 	"github.com/richardlehane/crock32"
 	"sketch.dev/skribe"
 )
@@ -54,17 +55,23 @@ const (
 type Listener interface {
 	// TODO: Content is leaking an anthropic API; should we avoid it?
 	// TODO: Where should we include start/end time and usage?
-	OnToolResult(ctx context.Context, convo *Convo, toolName string, toolInput json.RawMessage, content Content, result *string, err error)
-	OnResponse(ctx context.Context, convo *Convo, msg *MessageResponse)
-	OnRequest(ctx context.Context, convo *Convo, msg *Message)
+	OnToolCall(ctx context.Context, convo *Convo, toolCallID string, toolName string, toolInput json.RawMessage, content Content)
+	OnToolResult(ctx context.Context, convo *Convo, toolCallID string, toolName string, toolInput json.RawMessage, content Content, result *string, err error)
+	OnRequest(ctx context.Context, convo *Convo, requestID string, msg *Message)
+	OnResponse(ctx context.Context, convo *Convo, requestID string, msg *MessageResponse)
 }
 
 type NoopListener struct{}
 
-func (n *NoopListener) OnToolResult(ctx context.Context, convo *Convo, toolName string, toolInput json.RawMessage, content Content, result *string, err error) {
+func (n *NoopListener) OnToolCall(ctx context.Context, convo *Convo, id string, toolName string, toolInput json.RawMessage, content Content) {
 }
-func (n *NoopListener) OnResponse(ctx context.Context, convo *Convo, msg *MessageResponse) {}
-func (n *NoopListener) OnRequest(ctx context.Context, convo *Convo, msg *Message)          {}
+
+func (n *NoopListener) OnToolResult(ctx context.Context, convo *Convo, id string, toolName string, toolInput json.RawMessage, content Content, result *string, err error) {
+}
+
+func (n *NoopListener) OnResponse(ctx context.Context, convo *Convo, id string, msg *MessageResponse) {
+}
+func (n *NoopListener) OnRequest(ctx context.Context, convo *Convo, id string, msg *Message) {}
 
 type Content struct {
 	// TODO: image support?
@@ -577,6 +584,7 @@ func (c *Convo) insertMissingToolResults(mr *MessageRequest, msg *Message) {
 // SendMessage sends a message to Claude.
 // The conversation records (internally) all messages succesfully sent and received.
 func (c *Convo) SendMessage(msg Message) (*MessageResponse, error) {
+	id := ulid.Make().String()
 	mr := c.messageRequest(msg)
 	var lastMessage *Message
 	if c.PromptCaching {
@@ -594,7 +602,7 @@ func (c *Convo) SendMessage(msg Message) (*MessageResponse, error) {
 		}
 	}()
 	c.insertMissingToolResults(mr, &msg)
-	c.Listener.OnRequest(c.Ctx, c, &msg)
+	c.Listener.OnRequest(c.Ctx, c, id, &msg)
 
 	startTime := time.Now()
 	resp, err := createMessage(c.Ctx, c.HTTPC, c.URL, c.APIKey, mr)
@@ -605,6 +613,7 @@ func (c *Convo) SendMessage(msg Message) (*MessageResponse, error) {
 	}
 
 	if err != nil {
+		c.Listener.OnResponse(c.Ctx, c, id, nil)
 		return nil, err
 	}
 	c.messages = append(c.messages, msg, resp.ToMessage())
@@ -612,7 +621,7 @@ func (c *Convo) SendMessage(msg Message) (*MessageResponse, error) {
 	for x := c; x != nil; x = x.Parent {
 		x.usage.AddResponse(resp)
 	}
-	c.Listener.OnResponse(c.Ctx, c, resp)
+	c.Listener.OnResponse(c.Ctx, c, id, resp)
 	return resp, err
 }
 
@@ -689,12 +698,17 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *MessageResponse) (
 			continue
 		}
 		c.incrementToolUse(part.ToolName)
+		startTime := time.Now()
+
+		c.Listener.OnToolCall(ctx, c, part.ID, part.ToolName, part.ToolInput, Content{
+			Type:      ContentTypeToolUse,
+			ToolUseID: part.ID,
+			StartTime: &startTime,
+		})
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
-			// Record start time
-			startTime := time.Now()
 
 			content := Content{
 				Type:      ContentTypeToolResult,
@@ -708,7 +722,7 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *MessageResponse) (
 
 				content.ToolError = true
 				content.ToolResult = err.Error()
-				c.Listener.OnToolResult(ctx, c, part.ToolName, part.ToolInput, content, nil, err)
+				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, nil, err)
 				toolResultC <- content
 			}
 			sendRes := func(res string) {
@@ -717,7 +731,7 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *MessageResponse) (
 				content.EndTime = &endTime
 
 				content.ToolResult = res
-				c.Listener.OnToolResult(ctx, c, part.ToolName, part.ToolInput, content, &res, nil)
+				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, &res, nil)
 				toolResultC <- content
 			}
 

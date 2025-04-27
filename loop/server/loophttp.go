@@ -50,14 +50,16 @@ type TerminalResponse struct {
 }
 
 type State struct {
-	MessageCount  int                  `json:"message_count"`
-	TotalUsage    *ant.CumulativeUsage `json:"total_usage,omitempty"`
-	InitialCommit string               `json:"initial_commit"`
-	Title         string               `json:"title"`
-	Hostname      string               `json:"hostname"`    // deprecated
-	WorkingDir    string               `json:"working_dir"` // deprecated
-	OS            string               `json:"os"`          // deprecated
-	GitOrigin     string               `json:"git_origin,omitempty"`
+	MessageCount         int                  `json:"message_count"`
+	TotalUsage           *ant.CumulativeUsage `json:"total_usage,omitempty"`
+	InitialCommit        string               `json:"initial_commit"`
+	Title                string               `json:"title"`
+	Hostname             string               `json:"hostname"`    // deprecated
+	WorkingDir           string               `json:"working_dir"` // deprecated
+	OS                   string               `json:"os"`          // deprecated
+	GitOrigin            string               `json:"git_origin,omitempty"`
+	OutstandingLLMCalls  int                  `json:"outstanding_llm_calls"`
+	OutstandingToolCalls []string             `json:"outstanding_tool_calls"`
 
 	OutsideHostname   string `json:"outside_hostname,omitempty"`
 	InsideHostname    string `json:"inside_hostname,omitempty"`
@@ -349,20 +351,22 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		w.Header().Set("Content-Type", "application/json")
 
 		state := State{
-			MessageCount:      serverMessageCount,
-			TotalUsage:        &totalUsage,
-			Hostname:          s.hostname,
-			WorkingDir:        getWorkingDir(),
-			InitialCommit:     agent.InitialCommit(),
-			Title:             agent.Title(),
-			OS:                agent.OS(),
-			OutsideHostname:   agent.OutsideHostname(),
-			InsideHostname:    s.hostname,
-			OutsideOS:         agent.OutsideOS(),
-			InsideOS:          agent.OS(),
-			OutsideWorkingDir: agent.OutsideWorkingDir(),
-			InsideWorkingDir:  getWorkingDir(),
-			GitOrigin:         agent.GitOrigin(),
+			MessageCount:         serverMessageCount,
+			TotalUsage:           &totalUsage,
+			Hostname:             s.hostname,
+			WorkingDir:           getWorkingDir(),
+			InitialCommit:        agent.InitialCommit(),
+			Title:                agent.Title(),
+			OS:                   agent.OS(),
+			OutsideHostname:      agent.OutsideHostname(),
+			InsideHostname:       s.hostname,
+			OutsideOS:            agent.OutsideOS(),
+			InsideOS:             agent.OS(),
+			OutsideWorkingDir:    agent.OutsideWorkingDir(),
+			InsideWorkingDir:     getWorkingDir(),
+			GitOrigin:            agent.GitOrigin(),
+			OutstandingLLMCalls:  agent.OutstandingLLMCallCount(),
+			OutstandingToolCalls: agent.OutstandingToolCalls(),
 		}
 
 		// Create a JSON encoder with indentation for pretty-printing

@@ -369,4 +369,6 @@ export const initialState: State = {
   inside_hostname: "MacBook-Pro-9.local",
   inside_os: "darwin",
   inside_working_dir: "/Users/pokey/src/spaghetti",
+  outstanding_llm_calls: 0,
+  outstanding_tool_calls: [],
 };

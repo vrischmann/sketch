@@ -74,6 +74,8 @@ export interface State {
 	outside_working_dir?: string;
 	inside_working_dir?: string;
 	git_origin?: string;
+	outstanding_llm_calls: number;
+	outstanding_tool_calls: string[];
 }
 
 export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto';

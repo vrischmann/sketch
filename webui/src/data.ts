@@ -27,6 +27,8 @@ export interface TimelineState {
     cache_creation_input_tokens: number;
     total_cost_usd: number;
   };
+  outstanding_llm_calls?: number;
+  outstanding_tool_calls?: string[];
 }
 
 /**

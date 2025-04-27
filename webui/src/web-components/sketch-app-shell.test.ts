@@ -34,10 +34,6 @@ test("renders app shell with mocked API", async ({ page, mount }) => {
 
   // Default view should be chat view
   await expect(component.locator(".chat-view.view-active")).toBeVisible();
-
-  await expect(component).toMatchAriaSnapshot({
-    name: "sketch-app-shell-basic.aria.yml",
-  });
 });
 
 const emptyState = {

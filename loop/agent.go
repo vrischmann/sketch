@@ -73,6 +73,12 @@ type CodingAgent interface {
 
 	// OS returns the operating system of the client.
 	OS() string
+
+	// OutstandingLLMCallCount returns the number of outstanding LLM calls.
+	OutstandingLLMCallCount() int
+
+	// OutstandingToolCalls returns the names of outstanding tool calls.
+	OutstandingToolCalls() []string
 	OutsideOS() string
 	OutsideHostname() string
 	OutsideWorkingDir() string
@@ -277,6 +283,12 @@ type Agent struct {
 
 	// Track git commits we've already seen (by hash)
 	seenCommits map[string]bool
+
+	// Track outstanding LLM call IDs
+	outstandingLLMCalls map[string]struct{}
+
+	// Track outstanding tool calls by ID with their names
+	outstandingToolCalls map[string]string
 }
 
 func (a *Agent) URL() string { return a.url }
@@ -287,6 +299,25 @@ func (a *Agent) Title() string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.title
+}
+
+// OutstandingLLMCallCount returns the number of outstanding LLM calls.
+func (a *Agent) OutstandingLLMCallCount() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return len(a.outstandingLLMCalls)
+}
+
+// OutstandingToolCalls returns the names of outstanding tool calls.
+func (a *Agent) OutstandingToolCalls() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	tools := make([]string, 0, len(a.outstandingToolCalls))
+	for _, toolName := range a.outstandingToolCalls {
+		tools = append(tools, toolName)
+	}
+	return tools
 }
 
 // OS returns the operating system of the client.
@@ -326,8 +357,21 @@ func (a *Agent) SetTitle(title string) {
 	a.listeners = a.listeners[:0]
 }
 
+// OnToolCall implements ant.Listener and tracks the start of a tool call.
+func (a *Agent) OnToolCall(ctx context.Context, convo *ant.Convo, id string, toolName string, toolInput json.RawMessage, content ant.Content) {
+	// Track the tool call
+	a.mu.Lock()
+	a.outstandingToolCalls[id] = toolName
+	a.mu.Unlock()
+}
+
 // OnToolResult implements ant.Listener.
-func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolName string, toolInput json.RawMessage, content ant.Content, result *string, err error) {
+func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolID string, toolName string, toolInput json.RawMessage, content ant.Content, result *string, err error) {
+	// Remove the tool call from outstanding calls
+	a.mu.Lock()
+	delete(a.outstandingToolCalls, toolID)
+	a.mu.Unlock()
+
 	m := AgentMessage{
 		Type:       ToolUseMessageType,
 		Content:    content.Text,
@@ -354,8 +398,10 @@ func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolName str
 }
 
 // OnRequest implements ant.Listener.
-func (a *Agent) OnRequest(ctx context.Context, convo *ant.Convo, msg *ant.Message) {
-	// No-op.
+func (a *Agent) OnRequest(ctx context.Context, convo *ant.Convo, id string, msg *ant.Message) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.outstandingLLMCalls[id] = struct{}{}
 	// We already get tool results from the above. We send user messages to the outbox in the agent loop.
 }
 
@@ -363,7 +409,12 @@ func (a *Agent) OnRequest(ctx context.Context, convo *ant.Convo, msg *ant.Messag
 // that need to be displayed (as well as tool calls that we send along when
 // they're done). (It would be reasonable to also mention tool calls when they're
 // started, but we don't do that yet.)
-func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, resp *ant.MessageResponse) {
+func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, resp *ant.MessageResponse) {
+	// Remove the LLM call from outstanding calls
+	a.mu.Lock()
+	delete(a.outstandingLLMCalls, id)
+	a.mu.Unlock()
+
 	endOfTurn := false
 	if resp.StopReason != ant.StopReasonToolUse {
 		endOfTurn = true
@@ -451,16 +502,18 @@ type AgentConfig struct {
 // It is not usable until Init() is called.
 func NewAgent(config AgentConfig) *Agent {
 	agent := &Agent{
-		config:            config,
-		ready:             make(chan struct{}),
-		inbox:             make(chan string, 100),
-		outbox:            make(chan AgentMessage, 100),
-		startedAt:         time.Now(),
-		originalBudget:    config.Budget,
-		seenCommits:       make(map[string]bool),
-		outsideHostname:   config.OutsideHostname,
-		outsideOS:         config.OutsideOS,
-		outsideWorkingDir: config.OutsideWorkingDir,
+		config:               config,
+		ready:                make(chan struct{}),
+		inbox:                make(chan string, 100),
+		outbox:               make(chan AgentMessage, 100),
+		startedAt:            time.Now(),
+		originalBudget:       config.Budget,
+		seenCommits:          make(map[string]bool),
+		outsideHostname:      config.OutsideHostname,
+		outsideOS:            config.OutsideOS,
+		outsideWorkingDir:    config.OutsideWorkingDir,
+		outstandingLLMCalls:  make(map[string]struct{}),
+		outstandingToolCalls: make(map[string]string),
 	}
 	return agent
 }

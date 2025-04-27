@@ -9,6 +9,6 @@
 - button "💻"
 - button "Stop"
 - checkbox "Poll" [checked]
-- text: Poll Invalid response from server - not connected
+- text: Poll Invalid response from server - not connected 💡 🔧
 - textbox "Type your message here and press Enter to send..."
 - button "Send"
