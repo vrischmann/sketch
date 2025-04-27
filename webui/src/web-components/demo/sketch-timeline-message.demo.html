@@ -19,6 +19,21 @@
           content: "a tool use message",
         },
         {
+          type:"agent",
+          content: `Mermaid Sequence Diagram Example
+\`\`\`mermaid
+sequenceDiagram
+    participant Browser
+    participant Server
+    Browser->>Server: GET /index.html
+    Server-->>Browser: HTML Response
+    Browser->>Server: GET /style.css
+    Server-->>Browser: CSS Response
+    Browser->>Server: GET /script.js
+    Server-->>Browser: JS Response
+\`\`\``,
+        },
+        {
           type: "commit",
           end_of_turn: false,
           content: "",

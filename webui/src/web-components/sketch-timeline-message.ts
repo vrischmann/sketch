@@ -2,7 +2,8 @@ import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
 import { AgentMessage } from "../types";
-import { marked, MarkedOptions } from "marked";
+import { marked, MarkedOptions, Renderer, Tokens } from "marked";
+import mermaid from "mermaid";
 import "./sketch-tool-calls";
 @customElement("sketch-timeline-message")
 export class SketchTimelineMessage extends LitElement {
@@ -417,15 +418,81 @@ export class SketchTimelineMessage extends LitElement {
       margin-block-start: 0.5em;
       margin-block-end: 0.5em;
     }
+    
+    /* Mermaid diagram styling */
+    .mermaid-container {
+      margin: 1em 0;
+      padding: 0.5em;
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    .mermaid {
+      text-align: center;
+    }
   `;
+
+  // Track mermaid diagrams that need rendering
+  private mermaidDiagrams = new Map();
 
   constructor() {
     super();
+    // Initialize mermaid with specific config
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose', // Allows more flexibility but be careful with user-generated content
+      fontFamily: 'monospace'
+    });
   }
 
   // See https://lit.dev/docs/components/lifecycle/
   connectedCallback() {
     super.connectedCallback();
+  }
+  
+  // After the component is updated and rendered, render any mermaid diagrams
+  updated(changedProperties: Map<string, unknown>) {
+    super.updated(changedProperties);
+    this.renderMermaidDiagrams();
+  }
+  
+  // Render mermaid diagrams after the component is updated
+  renderMermaidDiagrams() {
+    // Add a small delay to ensure the DOM is fully rendered
+    setTimeout(() => {
+      // Find all mermaid containers in our shadow root
+      const containers = this.shadowRoot?.querySelectorAll('.mermaid');
+      if (!containers || containers.length === 0) return;
+      
+      // Process each mermaid diagram
+      containers.forEach(container => {
+        const id = container.id;
+        const code = container.textContent || '';
+        if (!code || !id) return; // Use return for forEach instead of continue
+        
+        try {
+          // Clear any previous content
+          container.innerHTML = code;
+          
+          // Render the mermaid diagram using promise
+          mermaid.render(`${id}-svg`, code)
+            .then(({ svg }) => {
+              container.innerHTML = svg;
+            })
+            .catch(err => {
+              console.error('Error rendering mermaid diagram:', err);
+              // Show the original code as fallback
+              container.innerHTML = `<pre>${code}</pre>`;
+            });
+        } catch (err) {
+          console.error('Error processing mermaid diagram:', err);
+          // Show the original code as fallback
+          container.innerHTML = `<pre>${code}</pre>`;
+        }
+      });
+    }, 100); // Small delay to ensure DOM is ready
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -435,11 +502,31 @@ export class SketchTimelineMessage extends LitElement {
 
   renderMarkdown(markdownContent: string): string {
     try {
+      // Create a custom renderer
+      const renderer = new Renderer();
+      const originalCodeRenderer = renderer.code.bind(renderer);
+      
+      // Override the code renderer to handle mermaid diagrams
+      renderer.code = function({ text, lang, escaped }: Tokens.Code): string {
+        if (lang === 'mermaid') {
+          // Generate a unique ID for this diagram
+          const id = `mermaid-diagram-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // Just create the container and mermaid div - we'll render it in the updated() lifecycle method
+          return `<div class="mermaid-container">
+                   <div class="mermaid" id="${id}">${text}</div>
+                 </div>`;
+        }
+        // Default rendering for other code blocks
+        return originalCodeRenderer({ text, lang, escaped });
+      };
+      
       // Set markdown options for proper code block highlighting and safety
       const markedOptions: MarkedOptions = {
         gfm: true, // GitHub Flavored Markdown
         breaks: true, // Convert newlines to <br>
         async: false,
+        renderer: renderer
         // DOMPurify is recommended for production, but not included in this implementation
       };
       return marked.parse(markdownContent, markedOptions) as string;
