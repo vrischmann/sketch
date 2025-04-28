@@ -1,9 +1,9 @@
-import { html, css, LitElement } from 'lit';
-import { customElement } from 'lit/decorators.js';
-import '../../sketch-timeline-message.ts';
+import { html, css, LitElement } from "lit";
+import { customElement } from "lit/decorators.js";
+import "../../sketch-timeline-message.ts";
 // Using simple objects matching the AgentMessage interface
 
-@customElement('mermaid-test-component')
+@customElement("mermaid-test-component")
 export class MermaidTestComponent extends LitElement {
   static styles = css`
     :host {
@@ -21,8 +21,8 @@ export class MermaidTestComponent extends LitElement {
   render() {
     // Create a sample message with Mermaid diagrams
     const flowchartMessage = {
-      id: 'test-1',
-      type: 'agent',
+      id: "test-1",
+      type: "agent",
       content: `# Mermaid Flowchart Example
 
 This is a test of a flowchart diagram in Mermaid syntax:
@@ -41,8 +41,8 @@ The above should render as a Mermaid diagram.`,
     };
 
     const sequenceDiagramMessage = {
-      id: 'test-2',
-      type: 'agent',
+      id: "test-2",
+      type: "agent",
       content: `# Mermaid Sequence Diagram Example
 
 Here's a sequence diagram showing a typical HTTP request:
@@ -64,8 +64,8 @@ Complex diagrams should render properly.`,
     };
 
     const classDiagramMessage = {
-      id: 'test-3',
-      type: 'agent',
+      id: "test-3",
+      type: "agent",
       content: `# Mermaid Class Diagram Example
 
 A simple class diagram in Mermaid:
@@ -91,8 +91,8 @@ This represents a basic inheritance diagram.`,
     };
 
     const normalMarkdownMessage = {
-      id: 'test-4',
-      type: 'agent',
+      id: "test-4",
+      type: "agent",
       content: `# Regular Markdown
 
 This is regular markdown with:
@@ -114,22 +114,30 @@ Regular markdown should continue to work properly.`,
     return html`
       <div class="test-section">
         <h2>Flowchart Diagram Test</h2>
-        <sketch-timeline-message .message=${flowchartMessage}></sketch-timeline-message>
+        <sketch-timeline-message
+          .message=${flowchartMessage}
+        ></sketch-timeline-message>
       </div>
-      
+
       <div class="test-section">
         <h2>Sequence Diagram Test</h2>
-        <sketch-timeline-message .message=${sequenceDiagramMessage}></sketch-timeline-message>
+        <sketch-timeline-message
+          .message=${sequenceDiagramMessage}
+        ></sketch-timeline-message>
       </div>
 
       <div class="test-section">
         <h2>Class Diagram Test</h2>
-        <sketch-timeline-message .message=${classDiagramMessage}></sketch-timeline-message>
+        <sketch-timeline-message
+          .message=${classDiagramMessage}
+        ></sketch-timeline-message>
       </div>
 
       <div class="test-section">
         <h2>Normal Markdown Test</h2>
-        <sketch-timeline-message .message=${normalMarkdownMessage}></sketch-timeline-message>
+        <sketch-timeline-message
+          .message=${normalMarkdownMessage}
+        ></sketch-timeline-message>
       </div>
     `;
   }
