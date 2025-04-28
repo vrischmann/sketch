@@ -134,7 +134,6 @@ export class SketchToolCard extends LitElement {
     .summary-text {
       padding: 0.25em;
       display: flex;
-      max-width: 50%;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -505,7 +504,6 @@ export class SketchToolCardThink extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
       font-family: monospace;
-      max-width: 50%;
     }
   `;
 
@@ -525,7 +523,7 @@ export class SketchToolCardThink extends LitElement {
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
         <span slot="summary" class="summary-text"
-          >${JSON.parse(this.toolCall?.input)?.thoughts}</span
+          >${JSON.parse(this.toolCall?.input)?.thoughts?.split("\n")[0]}</span
         >
         <div slot="input" class="thought-bubble">
           <div class="markdown-content">
