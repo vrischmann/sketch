@@ -276,10 +276,12 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 			return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
 		}
 
+		// Note: The vscode: link uses an undocumented request parameter that I really had to dig to find:
+		// https://github.com/microsoft/vscode/blob/2b9486161abaca59b5132ce3c59544f3cc7000f6/src/vs/code/electron-main/app.ts#L878
 		fmt.Printf(`Connect to this container via any of these methods:
 🖥️  ssh %s
 🖥️  code --remote ssh-remote+root@%s /app -n
-🔗 vscode://vscode-remote/ssh-remote+root@%s/app?n=true
+🔗 vscode://vscode-remote/ssh-remote+root@%s/app?windowId=_blank
 `, cntrName, cntrName, cntrName)
 		sshUserIdentity = cst.userIdentity
 		sshServerIdentity = cst.serverIdentity
