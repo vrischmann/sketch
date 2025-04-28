@@ -51,6 +51,7 @@ func run() error {
 	workingDir := flag.String("C", "", "when set, change to this directory before running")
 	sshPort := flag.Int("ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	forceRebuild := flag.Bool("force-rebuild-container", false, "rebuild Docker container")
+	initialCommit := flag.String("initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
 
 	// Flags geared towards sketch developers or sketch internals:
 	gitUsername := flag.String("git-username", "", "(internal) username for git commits")
@@ -65,6 +66,10 @@ func run() error {
 	sketchBinaryLinux := flag.String("sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
 
 	flag.Parse()
+
+	if *unsafe && *initialCommit != "HEAD" {
+		return fmt.Errorf("cannot use -initial-commit with -unsafe, they are incompatible")
+	}
 
 	if *version {
 		bi, ok := debug.ReadBuildInfo()
@@ -201,6 +206,7 @@ func run() error {
 			OutsideWorkingDir: cwd,
 			OneShot:           *oneShot,
 			Prompt:            *prompt,
+			InitialCommit:     *initialCommit,
 		}
 		if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
 			if *verbose {

@@ -82,6 +82,9 @@ type ContainerConfig struct {
 
 	// Initial prompt
 	Prompt string
+
+	// Initial commit to use as starting point
+	InitialCommit string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -157,8 +160,8 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 
 	// Get the current host git commit
 	var commit string
-	if out, err := combinedOutput(ctx, "git", "rev-parse", "HEAD"); err != nil {
-		return fmt.Errorf("git rev-parse HEAD: %w", err)
+	if out, err := combinedOutput(ctx, "git", "rev-parse", config.InitialCommit); err != nil {
+		return fmt.Errorf("git rev-parse %s: %w", config.InitialCommit, err)
 	} else {
 		commit = strings.TrimSpace(string(out))
 	}
