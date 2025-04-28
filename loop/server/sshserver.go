@@ -97,7 +97,7 @@ func handlePTYSession(ctx context.Context, s ssh.Session, ptyReq ssh.Pty, winCh 
 	cmd := exec.CommandContext(ctx, "/bin/bash")
 	slog.DebugContext(ctx, "handlePTYSession", slog.Any("ptyReq", ptyReq))
 
-	cmd.Env = append(cmd.Env, fmt.Sprintf("TERM=%s", ptyReq.Term))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("TERM=%s", ptyReq.Term))
 	f, err := pty.Start(cmd)
 	if err != nil {
 		fmt.Fprintf(s, "PTY requested, but unable to start due to error: %v", err)
