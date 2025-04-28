@@ -574,6 +574,200 @@ export class SketchToolCardTitle extends LitElement {
   }
 }
 
+@customElement("sketch-tool-card-multiple-choice")
+export class SketchToolCardMultipleChoice extends LitElement {
+  @property()
+  toolCall: ToolCall;
+
+  @property()
+  open: boolean;
+
+  @property()
+  selectedOption: string | number | null = null;
+
+  static styles = css`
+    .options-container {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .option {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+
+    .option:hover {
+      background-color: #e0e0e0;
+      border-color: #ccc;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .option:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      background-color: #d5d5d5;
+    }
+
+    .option.selected {
+      background-color: #e3f2fd;
+      border-color: #2196f3;
+      border-width: 1px;
+      border-style: solid;
+    }
+
+    .option-index {
+      font-size: 0.8em;
+      opacity: 0.7;
+      margin-right: 6px;
+    }
+
+    .option-label {
+      font-family: sans-serif;
+    }
+
+    .option-checkmark {
+      margin-left: 6px;
+      color: #2196f3;
+    }
+
+    .summary-text {
+      font-style: italic;
+    }
+
+    .summary-text strong {
+      font-style: normal;
+      color: #2196f3;
+      font-weight: 600;
+    }
+
+    p {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+  `;
+
+  constructor() {
+    super();
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.updateSelectedOption();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+  }
+
+  updated(changedProps) {
+    if (changedProps.has("toolCall")) {
+      this.updateSelectedOption();
+    }
+  }
+
+  updateSelectedOption() {
+    // Get selected option from result if available
+    if (this.toolCall?.result_message?.tool_result) {
+      try {
+        this.selectedOption = JSON.parse(
+          this.toolCall.result_message.tool_result,
+        ).selected;
+      } catch (e) {
+        console.error("Error parsing result:", e);
+        this.selectedOption = this.toolCall.result_message.tool_result;
+      }
+    } else {
+      this.selectedOption = null;
+    }
+  }
+
+  handleOptionClick(choice) {
+    // If this option is already selected, unselect it (toggle behavior)
+    if (this.selectedOption === choice) {
+      this.selectedOption = null;
+    } else {
+      // Otherwise, select the clicked option
+      this.selectedOption = choice;
+    }
+
+    // Dispatch a custom event that can be listened to by parent components
+    const event = new CustomEvent("option-selected", {
+      detail: { selected: this.selectedOption },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+
+  render() {
+    // Parse the input to get choices if available
+    let choices = [];
+    let question = "";
+    try {
+      const inputData = JSON.parse(this.toolCall?.input || "{}");
+      choices = inputData.choices || [];
+      question = inputData.question || "Please select an option:";
+    } catch (e) {
+      console.error("Error parsing multiple-choice input:", e);
+    }
+
+    // Determine what to show in the summary slot
+    const summaryContent =
+      this.selectedOption !== null
+        ? html`<span class="summary-text"
+            >${question}: <strong>${this.selectedOption}</strong></span
+          >`
+        : html`<span class="summary-text">${question}</span>`;
+
+    return html` <sketch-tool-card
+      .open=${this.open}
+      .toolCall=${this.toolCall}
+    >
+      <span slot="summary">${summaryContent}</span>
+      <div slot="input">
+        <p>${question}</p>
+        <div class="options-container">
+          ${choices.map((choice, index) => {
+            const isSelected =
+              this.selectedOption !== null &&
+              (this.selectedOption === choice || this.selectedOption === index);
+            return html`
+              <div
+                class="option ${isSelected ? "selected" : ""}"
+                @click=${() => this.handleOptionClick(choice)}
+              >
+                <span class="option-index">${index + 1}</span>
+                <span class="option-label">${choice}</span>
+                ${isSelected
+                  ? html`<span class="option-checkmark">✓</span>`
+                  : ""}
+              </div>
+            `;
+          })}
+        </div>
+      </div>
+      <div slot="result">
+        ${this.toolCall?.result_message && this.selectedOption
+          ? html`<p>Selected: <strong>${this.selectedOption}</strong></p>`
+          : ""}
+      </div>
+    </sketch-tool-card>`;
+  }
+}
+
 @customElement("sketch-tool-card-generic")
 export class SketchToolCardGeneric extends LitElement {
   @property()
@@ -626,5 +820,6 @@ declare global {
     "sketch-tool-card-patch": SketchToolCardPatch;
     "sketch-tool-card-think": SketchToolCardThink;
     "sketch-tool-card-title": SketchToolCardTitle;
+    "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
   }
 }

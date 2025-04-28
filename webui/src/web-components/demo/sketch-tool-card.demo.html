@@ -8,6 +8,41 @@
     <script>
       const toolCalls = [
         {
+          name: "multiple-choice",
+          input: JSON.stringify({
+            question: "What is your favorite programming language?",
+            choices: [
+              "JavaScript",
+              "TypeScript",
+              "Python",
+              "Go",
+              "Rust",
+              "Java",
+              "C#",
+              "C++",
+            ],
+          }),
+          result_message: {
+            type: "tool",
+            tool_result: JSON.stringify({
+              selected: "Go",
+            }),
+          },
+        },
+        {
+          name: "multiple-choice",
+          input: JSON.stringify({
+            question: "Which feature would you like to implement next?",
+            choices: [
+              "Dark mode",
+              "User profiles",
+              "Social sharing",
+              "Analytics dashboard",
+            ],
+          }),
+          // No result yet, showing the choices without a selection
+        },
+        {
           name: "bash",
           input: JSON.stringify({
             command:
@@ -237,6 +272,11 @@ Total reclaimed space: 1.426GB`,
               break;
             case "title":
               toolCardEl = document.createElement("sketch-tool-card-title");
+              break;
+            case "multiple-choice":
+              toolCardEl = document.createElement(
+                "sketch-tool-card-multiple-choice",
+              );
               break;
           }
           toolCardEl.toolCall = toolCall;
