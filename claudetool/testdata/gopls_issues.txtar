@@ -15,6 +15,8 @@ func F() {
 Add file with gopls issues
 
 -- .run_test --
+# Errors
+
 Gopls check issues detected:
 
 1. /PATH/TO/REPO/p.go:5:2-22: unreachable code

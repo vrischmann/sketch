@@ -26,6 +26,8 @@ func G() {
 Add a new function with a new gopls issue
 
 -- .run_test --
+# Errors
+
 Gopls check issues detected:
 
 1. /PATH/TO/REPO/p.go:9:2-31: unreachable code

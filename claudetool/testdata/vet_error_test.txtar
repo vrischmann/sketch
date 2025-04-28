@@ -21,6 +21,8 @@ func F()  {
 Add vet error
 
 -- .run_test --
+# Errors
+
 Test regressions detected between initial commit (656e4d573cb77a30ebce29ebb974533ece282946) and HEAD:
 
 1: sketch.dev: Previously had no tests, now has build/vet errors

@@ -24,6 +24,8 @@ func TestP(t *testing.T) {
 Skip test
 
 -- .run_test --
+# Errors
+
 Test regressions detected between initial commit (851ba0628e0e2d93e27e168d6af336f3e4d375c7) and HEAD:
 
 1: sketch.dev.TestP: Was passing, now skipped

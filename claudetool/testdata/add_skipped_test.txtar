@@ -19,6 +19,8 @@ func TestP(t *testing.T) {
 Add skipped test
 
 -- .run_test --
+# Errors
+
 Test regressions detected between initial commit (2cdfdc5009e364add9a263909472f85eb08480ed) and HEAD:
 
 1: sketch.dev.TestP: New test is skipped

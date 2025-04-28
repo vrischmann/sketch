@@ -29,6 +29,8 @@ hi
 Add non-empty file to testdata
 
 -- .run_test --
+# Errors
+
 Test regressions detected between initial commit (cdc9ec6dfb8669c11d8aa0df49c72112627784dc) and HEAD:
 
 1: sketch.dev.TestEmptyTestdata: Was passing, now failing

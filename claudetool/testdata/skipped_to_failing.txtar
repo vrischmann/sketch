@@ -25,6 +25,8 @@ func TestP(t *testing.T) {
 Change skipped test to failing test
 
 -- .run_test --
+# Errors
+
 Test regressions detected between initial commit (3635353dfefb2fa652728318567209ccfc4aba42) and HEAD:
 
 1: sketch.dev.TestP: Was skipped, now failing

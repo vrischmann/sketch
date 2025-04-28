@@ -36,6 +36,8 @@ package main
 Add yet another file
 
 -- .run_test --
+# Errors
+
 Test regressions detected between initial commit (a4fd3c2166b35e02a2cde466880e45aea6e6212e) and HEAD:
 
 1: sketch.dev.TestX: New test is failing
