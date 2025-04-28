@@ -464,6 +464,29 @@ func (c *Convo) SubConvo() *Convo {
 	}
 }
 
+func (c *Convo) SubConvoWithHistory() *Convo {
+	id := newConvoID()
+	return &Convo{
+		Ctx:           skribe.ContextWithAttr(c.Ctx, slog.String("convo_id", id), slog.String("parent_convo_id", c.ID)),
+		HTTPC:         c.HTTPC,
+		URL:           c.URL,
+		APIKey:        c.APIKey,
+		Model:         c.Model,
+		MaxTokens:     c.MaxTokens,
+		PromptCaching: c.PromptCaching,
+		Parent:        c,
+		// For convenience, sub-convo usage shares tool uses map with parent,
+		// all other fields separate, propagated in AddResponse
+		usage:    newUsageWithSharedToolUses(c.usage),
+		mu:       c.mu,
+		Listener: c.Listener,
+		ID:       id,
+		// Do not copy Budget. Each budget is independent,
+		// and OverBudget checks whether any ancestor is over budget.
+		messages: slices.Clone(c.messages),
+	}
+}
+
 // Depth reports how many "sub-conversations" deep this conversation is.
 // That it, it walks up parents until it finds a root.
 func (c *Convo) Depth() int {
@@ -662,6 +685,11 @@ func (c *Convo) ToolResultCancelContents(resp *MessageResponse) ([]Content, erro
 		toolResults = append(toolResults, content)
 	}
 	return toolResults, nil
+}
+
+// GetID returns the conversation ID
+func (c *Convo) GetID() string {
+	return c.ID
 }
 
 func (c *Convo) CancelToolUse(toolUseID string, err error) error {

@@ -267,6 +267,8 @@ type MockConvoInterface struct {
 	cumulativeUsageFunc          func() ant.CumulativeUsage
 	resetBudgetFunc              func(ant.Budget)
 	overBudgetFunc               func() error
+	getIDFunc                    func() string
+	subConvoWithHistoryFunc      func() *ant.Convo
 }
 
 func (m *MockConvoInterface) SendMessage(message ant.Message) (*ant.MessageResponse, error) {
@@ -320,6 +322,20 @@ func (m *MockConvoInterface) ResetBudget(budget ant.Budget) {
 func (m *MockConvoInterface) OverBudget() error {
 	if m.overBudgetFunc != nil {
 		return m.overBudgetFunc()
+	}
+	return nil
+}
+
+func (m *MockConvoInterface) GetID() string {
+	if m.getIDFunc != nil {
+		return m.getIDFunc()
+	}
+	return "mock-convo-id"
+}
+
+func (m *MockConvoInterface) SubConvoWithHistory() *ant.Convo {
+	if m.subConvoWithHistoryFunc != nil {
+		return m.subConvoWithHistoryFunc()
 	}
 	return nil
 }

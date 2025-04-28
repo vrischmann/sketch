@@ -257,6 +257,7 @@ func run() error {
 		OutsideHostname:   *outsideHostname,
 		OutsideOS:         *outsideOS,
 		OutsideWorkingDir: *outsideWorkingDir,
+		InDocker:          inDocker,
 	}
 	agent := loop.NewAgent(agentConfig)
 

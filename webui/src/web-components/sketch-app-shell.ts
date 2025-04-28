@@ -13,6 +13,7 @@ import "./sketch-call-status";
 import "./sketch-terminal";
 import "./sketch-timeline";
 import "./sketch-view-mode-select";
+import "./sketch-restart-modal";
 
 import { createRef, ref } from "lit/directives/ref.js";
 
@@ -229,6 +230,27 @@ export class SketchAppShell extends LitElement {
       margin-right: 50px;
     }
 
+    .restart-button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+
+    .restart-button:hover {
+      background-color: #0b7dda;
+    }
+
+    .restart-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
     .refresh-button {
       background: #4caf50;
       color: white;
@@ -304,7 +326,13 @@ export class SketchAppShell extends LitElement {
     outstanding_tool_calls: [],
     session_id: "",
     ssh_available: false,
+    ssh_error: "",
+    in_container: false,
+    first_message_index: 0,
   };
+
+  @state()
+  private restartModalOpen = false;
 
   // Mutation observer to detect when new messages are added
   private mutationObserver: MutationObserver | null = null;
@@ -706,10 +734,6 @@ export class SketchAppShell extends LitElement {
     this.updateDocumentTitle();
   }
 
-  /**
-   * Handle stop button click
-   * Sends a request to the server to stop the current operation
-   */
   // Update last commit information when new messages arrive
   private updateLastCommitInfo(newMessages: AgentMessage[]): void {
     if (!newMessages || newMessages.length === 0) return;
@@ -780,6 +804,14 @@ export class SketchAppShell extends LitElement {
       console.error("Error stopping operation:", error);
       this.messageStatus = "Failed to stop operation";
     }
+  }
+
+  openRestartModal() {
+    this.restartModalOpen = true;
+  }
+
+  handleRestartModalClose() {
+    this.restartModalOpen = false;
   }
 
   async _sendChat(e: CustomEvent) {
@@ -867,10 +899,14 @@ export class SketchAppShell extends LitElement {
 
         <div class="refresh-control">
           <button
-            id="stopButton"
-            class="refresh-button stop-button"
-            @click="${this._handleStopClick}"
+            id="restartButton"
+            class="restart-button"
+            ?disabled=${this.containerState.message_count === 0}
+            @click=${this.openRestartModal}
           >
+            Restart
+          </button>
+          <button id="stopButton" class="refresh-button stop-button">
             Stop
           </button>
 
@@ -939,6 +975,13 @@ export class SketchAppShell extends LitElement {
       <div id="chat-input">
         <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
       </div>
+
+      <sketch-restart-modal
+        ?open=${this.restartModalOpen}
+        @close=${this.handleRestartModalClose}
+        .containerState=${this.containerState}
+        .messages=${this.messages}
+      ></sketch-restart-modal>
     `;
   }
 
@@ -955,6 +998,27 @@ export class SketchAppShell extends LitElement {
       () => this.scrollTo({ top: this.scrollHeight, behavior: "smooth" }),
       50,
     );
+
+    // Setup stop button
+    const stopButton = this.renderRoot?.querySelector(
+      "#stopButton",
+    ) as HTMLButtonElement;
+    stopButton?.addEventListener("click", async () => {
+      try {
+        const response = await fetch("/cancel", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reason: "User clicked stop button" }),
+        });
+        if (!response.ok) {
+          console.error("Failed to cancel:", await response.text());
+        }
+      } catch (error) {
+        console.error("Error cancelling operation:", error);
+      }
+    });
 
     const pollToggleCheckbox = this.renderRoot?.querySelector(
       "#pollToggle",

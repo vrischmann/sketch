@@ -24,6 +24,8 @@ const mockCompleteState: State = {
   outstanding_tool_calls: [],
   session_id: "test-session-id",
   ssh_available: false,
+  in_container: true,
+  first_message_index: 0,
 };
 
 test("render props", async ({ mount }) => {

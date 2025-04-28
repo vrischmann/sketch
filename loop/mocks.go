@@ -192,6 +192,16 @@ func (m *MockConvo) OverBudget() error {
 	return nil
 }
 
+func (m *MockConvo) GetID() string {
+	m.recordCall("GetID")
+	return "mock-conversation-id"
+}
+
+func (m *MockConvo) SubConvoWithHistory() *ant.Convo {
+	m.recordCall("SubConvoWithHistory")
+	return nil
+}
+
 func (m *MockConvo) ResetBudget(_ ant.Budget) {
 	m.recordCall("ResetBudget")
 }

@@ -92,6 +92,15 @@ type CodingAgent interface {
 	OutsideHostname() string
 	OutsideWorkingDir() string
 	GitOrigin() string
+
+	// RestartConversation resets the conversation history
+	RestartConversation(ctx context.Context, rev string, initialPrompt string) error
+	// SuggestReprompt suggests a re-prompt based on the current conversation.
+	SuggestReprompt(ctx context.Context) (string, error)
+	// IsInContainer returns true if the agent is running in a container
+	IsInContainer() bool
+	// FirstMessageIndex returns the index of the first message in the current conversation
+	FirstMessageIndex() int
 }
 
 type CodingAgentMessageType string
@@ -248,26 +257,29 @@ type ConvoInterface interface {
 	OverBudget() error
 	SendMessage(message ant.Message) (*ant.MessageResponse, error)
 	SendUserTextMessage(s string, otherContents ...ant.Content) (*ant.MessageResponse, error)
+	GetID() string
 	ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error)
 	ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error)
 	CancelToolUse(toolUseID string, cause error) error
+	SubConvoWithHistory() *ant.Convo
 }
 
 type Agent struct {
-	convo          ConvoInterface
-	config         AgentConfig // config for this agent
-	workingDir     string
-	repoRoot       string // workingDir may be a subdir of repoRoot
-	url            string
-	lastHEAD       string        // hash of the last HEAD that was pushed to the host (only when under docker)
-	initialCommit  string        // hash of the Git HEAD when the agent was instantiated or Init()
-	gitRemoteAddr  string        // HTTP URL of the host git repo (only when under docker)
-	ready          chan struct{} // closed when the agent is initialized (only when under docker)
-	startedAt      time.Time
-	originalBudget ant.Budget
-	title          string
-	branchName     string
-	codereview     *claudetool.CodeReviewer
+	convo             ConvoInterface
+	config            AgentConfig // config for this agent
+	workingDir        string
+	repoRoot          string // workingDir may be a subdir of repoRoot
+	url               string
+	firstMessageIndex int           // index of the first message in the current conversation
+	lastHEAD          string        // hash of the last HEAD that was pushed to the host (only when under docker)
+	initialCommit     string        // hash of the Git HEAD when the agent was instantiated or Init()
+	gitRemoteAddr     string        // HTTP URL of the host git repo (only when under docker)
+	ready             chan struct{} // closed when the agent is initialized (only when under docker)
+	startedAt         time.Time
+	originalBudget    ant.Budget
+	title             string
+	branchName        string
+	codereview        *claudetool.CodeReviewer
 	// Outside information
 	outsideHostname   string
 	outsideOS         string
@@ -377,6 +389,16 @@ func (a *Agent) OutsideWorkingDir() string {
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
 func (a *Agent) GitOrigin() string {
 	return a.gitOrigin
+}
+
+func (a *Agent) IsInContainer() bool {
+	return a.config.InDocker
+}
+
+func (a *Agent) FirstMessageIndex() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.firstMessageIndex
 }
 
 // SetTitleBranch sets the title and branch name of the conversation.
@@ -531,6 +553,7 @@ type AgentConfig struct {
 	SessionID        string
 	ClientGOOS       string
 	ClientGOARCH     string
+	InDocker         bool
 	UseAnthropicEdit bool
 	// Outside information
 	OutsideHostname   string
@@ -1381,4 +1404,83 @@ func getGitOrigin(ctx context.Context, dir string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+func (a *Agent) initGitRevision(ctx context.Context, workingDir, revision string) error {
+	cmd := exec.CommandContext(ctx, "git", "stash")
+	cmd.Dir = workingDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git stash: %s: %v", out, err)
+	}
+	cmd = exec.CommandContext(ctx, "git", "fetch", "sketch-host")
+	cmd.Dir = workingDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git fetch: %s: %w", out, err)
+	}
+	cmd = exec.CommandContext(ctx, "git", "checkout", "-f", revision)
+	cmd.Dir = workingDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git checkout %s: %s: %w", revision, out, err)
+	}
+	a.lastHEAD = revision
+	a.initialCommit = revision
+	return nil
+}
+
+func (a *Agent) RestartConversation(ctx context.Context, rev string, initialPrompt string) error {
+	a.mu.Lock()
+	a.title = ""
+	a.firstMessageIndex = len(a.history)
+	a.convo = a.initConvo()
+	gitReset := func() error {
+		if a.config.InDocker && rev != "" {
+			err := a.initGitRevision(ctx, a.workingDir, rev)
+			if err != nil {
+				return err
+			}
+		} else if !a.config.InDocker && rev != "" {
+			return fmt.Errorf("Not resetting git repo when working outside of a container.")
+		}
+		return nil
+	}
+	err := gitReset()
+	a.mu.Unlock()
+	if err != nil {
+		a.pushToOutbox(a.config.Context, errorMessage(err))
+	}
+
+	a.pushToOutbox(a.config.Context, AgentMessage{
+		Type: AgentMessageType, Content: "Conversation restarted.",
+	})
+	if initialPrompt != "" {
+		a.UserMessage(ctx, initialPrompt)
+	}
+	return nil
+}
+
+func (a *Agent) SuggestReprompt(ctx context.Context) (string, error) {
+	msg := `The user has requested a suggestion for a re-prompt.
+
+	Given the current conversation thus far, suggest a re-prompt that would
+	capture the instructions and feedback so far, as well as any
+	research or other information that would be helpful in implementing
+	the task.
+
+	Reply with ONLY the reprompt text.
+	`
+	userMessage := ant.Message{
+		Role:    "user",
+		Content: []ant.Content{{Type: "text", Text: msg}},
+	}
+	// By doing this in a subconversation, the agent doesn't call tools (because
+	// there aren't any), and there's not a concurrency risk with on-going other
+	// outstanding conversations.
+	convo := a.convo.SubConvoWithHistory()
+	resp, err := convo.SendMessage(userMessage)
+	if err != nil {
+		a.pushToOutbox(ctx, errorMessage(err))
+		return "", err
+	}
+	textContent := collectTextContent(resp)
+	return textContent, nil
 }

@@ -64,6 +64,8 @@ type State struct {
 	SessionID            string               `json:"session_id"`
 	SSHAvailable         bool                 `json:"ssh_available"`
 	SSHError             string               `json:"ssh_error,omitempty"`
+	InContainer          bool                 `json:"in_container"`
+	FirstMessageIndex    int                  `json:"first_message_index"`
 
 	OutsideHostname   string `json:"outside_hostname,omitempty"`
 	InsideHostname    string `json:"inside_hostname,omitempty"`
@@ -388,6 +390,8 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			SessionID:            agent.SessionID(),
 			SSHAvailable:         s.sshAvailable,
 			SSHError:             s.sshError,
+			InContainer:          agent.IsInContainer(),
+			FirstMessageIndex:    agent.FirstMessageIndex(),
 		}
 
 		// Create a JSON encoder with indentation for pretty-printing
@@ -449,6 +453,94 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 		w.Header().Set("Content-Type", "text/html")
 		w.Write(data)
+	})
+
+	// Handler for POST /restart - restarts the conversation
+	s.mux.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Parse the request body
+		var requestBody struct {
+			Revision      string `json:"revision"`
+			InitialPrompt string `json:"initial_prompt"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&requestBody); err != nil {
+			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		// Call the restart method
+		err := agent.RestartConversation(r.Context(), requestBody.Revision, requestBody.InitialPrompt)
+		if err != nil {
+			http.Error(w, "Failed to restart conversation: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Return success response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "restarted"})
+	})
+
+	// Handler for /suggest-reprompt - suggests a reprompt based on conversation history
+	// Handler for /commit-description - returns the description of a git commit
+	s.mux.HandleFunc("/commit-description", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Get the revision parameter
+		revision := r.URL.Query().Get("revision")
+		if revision == "" {
+			http.Error(w, "Missing revision parameter", http.StatusBadRequest)
+			return
+		}
+
+		// Run git command to get commit description
+		cmd := exec.Command("git", "log", "--oneline", "--decorate", "-n", "1", revision)
+		// Use the working directory from the agent
+		cmd.Dir = s.agent.WorkingDir()
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			http.Error(w, "Failed to get commit description: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Prepare the response
+		resp := map[string]string{
+			"description": strings.TrimSpace(string(output)),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			slog.ErrorContext(r.Context(), "Error encoding commit description response", slog.Any("err", err))
+		}
+	})
+
+	// Handler for /suggest-reprompt - suggests a reprompt based on conversation history
+	s.mux.HandleFunc("/suggest-reprompt", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Call the suggest reprompt method
+		suggestedPrompt, err := agent.SuggestReprompt(r.Context())
+		if err != nil {
+			http.Error(w, "Failed to suggest reprompt: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Return success response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"prompt": suggestedPrompt})
 	})
 
 	// Handler for POST /chat
@@ -774,9 +866,11 @@ func initDebugMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /debug/{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		// TODO: pid is not as useful as "outside pid"
 		fmt.Fprintf(w, `<!doctype html>
 			<html><head><title>sketch debug</title></head><body>
 			<h1>sketch debug</h1>
+			pid %d
 			<ul>
 					<li><a href="/debug/pprof/cmdline">pprof/cmdline</a></li>
 					<li><a href="/debug/pprof/profile">pprof/profile</a></li>
@@ -787,7 +881,7 @@ func initDebugMux() *http.ServeMux {
 			</ul>
 			</body>
 			</html>
-			`)
+			`, os.Getpid())
 	})
 	mux.HandleFunc("GET /debug/pprof/", pprof.Index)
 	mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
