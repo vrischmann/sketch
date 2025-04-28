@@ -44,7 +44,8 @@ func run() error {
 	maxIterations := flag.Uint64("max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
 	maxWallTime := flag.Duration("max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
 	maxDollars := flag.Float64("max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
-	oneShot := flag.String("one-shot", "", "run a single iteration with the given prompt and exit without termui")
+	oneShot := flag.Bool("one-shot", false, "exit after the first turn without termui")
+	prompt := flag.String("prompt", "", "prompt to send to sketch")
 	verbose := flag.Bool("verbose", false, "enable verbose output")
 	version := flag.Bool("version", false, "print the version and exit")
 	workingDir := flag.String("C", "", "when set, change to this directory before running")
@@ -80,7 +81,7 @@ func run() error {
 	var slogHandler slog.Handler
 	var err error
 	var logFile *os.File
-	if *oneShot == "" && !*verbose {
+	if !*oneShot && !*verbose {
 		// Log to a file
 		logFile, err = os.CreateTemp("", "sketch-cli-log-*")
 		if err != nil {
@@ -199,6 +200,7 @@ func run() error {
 			OutsideOS:         runtime.GOOS,
 			OutsideWorkingDir: cwd,
 			OneShot:           *oneShot,
+			Prompt:            *prompt,
 		}
 		if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
 			if *verbose {
@@ -291,8 +293,9 @@ func run() error {
 		}
 	}
 
-	if *oneShot != "" {
-		agent.UserMessage(ctx, *oneShot)
+	// Use prompt if provided
+	if *prompt != "" {
+		agent.UserMessage(ctx, *prompt)
 	}
 
 	// Open the web UI URL in the system browser if requested
@@ -317,7 +320,7 @@ func run() error {
 		go skabandclient.DialAndServeLoop(ctx, *skabandAddr, *sessionID, pubKey, srv, connectFn)
 	}
 
-	if *oneShot != "" {
+	if *oneShot {
 		for {
 			m := agent.WaitForMessage(ctx)
 			if m.Content != "" {
