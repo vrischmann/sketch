@@ -2,6 +2,7 @@ all: install check
 
 install:
 	npm ci
+	npm run playwright-install
 
 demo:
 	npm run demo
