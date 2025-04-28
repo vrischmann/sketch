@@ -85,6 +85,16 @@ export interface State {
 	inside_working_dir?: string;
 }
 
+export interface MultipleChoiceOption {
+	caption: string;
+	responseText: string;
+}
+
+export interface MultipleChoiceParams {
+	question: string;
+	responseOptions: MultipleChoiceOption[] | null;
+}
+
 export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto';
 
 export type Duration = number;

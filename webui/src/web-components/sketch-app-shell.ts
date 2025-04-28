@@ -16,6 +16,7 @@ import "./sketch-view-mode-select";
 import "./sketch-restart-modal";
 
 import { createRef, ref } from "lit/directives/ref.js";
+import { SketchChatInput } from "./sketch-chat-input";
 
 type ViewMode = "chat" | "diff" | "charts" | "terminal";
 
@@ -389,7 +390,8 @@ export class SketchAppShell extends LitElement {
     // Binding methods to this
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
-    this._handlePopState = this._handlePopState.bind(this);
+    this._handleMutlipleChoiceSelected =
+      this._handleMutlipleChoiceSelected.bind(this);
     this._handleStopClick = this._handleStopClick.bind(this);
     this._handleNotificationsToggle =
       this._handleNotificationsToggle.bind(this);
@@ -427,6 +429,10 @@ export class SketchAppShell extends LitElement {
     // Add window focus/blur listeners for controlling notifications
     window.addEventListener("focus", this._handleWindowFocus);
     window.addEventListener("blur", this._handleWindowBlur);
+    window.addEventListener(
+      "multiple-choice-selected",
+      this._handleMutlipleChoiceSelected,
+    );
 
     // register event listeners
     this.dataManager.addEventListener(
@@ -460,6 +466,10 @@ export class SketchAppShell extends LitElement {
     window.removeEventListener("show-commit-diff", this._handleShowCommitDiff);
     window.removeEventListener("focus", this._handleWindowFocus);
     window.removeEventListener("blur", this._handleWindowBlur);
+    window.removeEventListener(
+      "multiple-choice-selected",
+      this._handleMutlipleChoiceSelected,
+    );
 
     // unregister data manager event listeners
     this.dataManager.removeEventListener(
@@ -528,6 +538,10 @@ export class SketchAppShell extends LitElement {
     }
   }
 
+  private _handleMultipleChoice(event: CustomEvent) {
+    window.console.log("_handleMultipleChoice", event);
+    this._sendChat;
+  }
   /**
    * Listen for commit diff event
    * @param commitHash The commit hash to show diff for
@@ -878,8 +892,20 @@ export class SketchAppShell extends LitElement {
     this.restartModalOpen = false;
   }
 
+  async _handleMutlipleChoiceSelected(e: CustomEvent) {
+    const chatInput = this.shadowRoot?.querySelector(
+      "sketch-chat-input",
+    ) as SketchChatInput;
+    if (chatInput) {
+      chatInput.content = e.detail.responseText;
+      chatInput.focus();
+    }
+  }
+
   async _sendChat(e: CustomEvent) {
     console.log("app shell: _sendChat", e);
+    e.preventDefault();
+    e.stopPropagation();
     const message = e.detail.message?.trim();
     if (message == "") {
       return;

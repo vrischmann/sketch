@@ -46,6 +46,11 @@ var (
  ✏️  {{.input.file_path -}}
 {{else if eq .msg.ToolName "codereview" -}}
  🐛  Running automated code review, may be slow
+{{else if eq .msg.ToolName "multiplechoice" -}}
+ 📝 {{.input.question}}
+{{ range .input.responseOptions -}}
+  - {{ .caption}}: {{.responseText}}
+{{end -}}
 {{else -}}
  🛠️  {{ .msg.ToolName}}: {{.msg.ToolInput -}}
 {{end -}}

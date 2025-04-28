@@ -1,9 +1,9 @@
 httprr trace v1
-9296 1708
+10862 1840
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 9099
+Content-Length: 10664
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
@@ -187,6 +187,45 @@ Content-Type: application/json
    }
   },
   {
+   "name": "multiplechoice",
+   "description": "Present the user with an quick way to answer to your question using one of a short list of possible answers you would expect from the user.",
+   "input_schema": {
+    "type": "object",
+    "description": "The question and a list of answers you would expect the user to choose from.",
+    "properties": {
+     "question": {
+      "type": "string",
+      "description": "The text of the multiple-choice question you would like the user, e.g. 'What kinds of test cases would you like me to add?'"
+     },
+     "responseOptions": {
+      "type": "array",
+      "description": "The set of possible answers to let the user quickly choose from, e.g. ['Basic unit test coverage', 'Error return values', 'Malformed input'].",
+      "items": {
+       "type": "object",
+       "properties": {
+        "caption": {
+         "type": "string",
+         "description": "The caption, e.g. 'Basic coverage', 'Error return values', or 'Malformed input' for the response button. Do NOT include options for responses that would end the conversation like 'Ok', 'No thank you', 'This looks good'"
+        },
+        "responseText": {
+         "type": "string",
+         "description": "The full text of the response, e.g. 'Add unit tests for basic test coverage', 'Add unit tests for error return values', or 'Add unit tests for malformed input'"
+        }
+       },
+       "required": [
+        "caption",
+        "responseText"
+       ]
+      }
+     }
+    },
+    "required": [
+     "question",
+     "responseOptions"
+    ]
+   }
+  },
+  {
    "name": "patch",
    "description": "File modification tool for precise text edits.\n\nOperations:\n- replace: Substitute text with new content\n- append_eof: Append new text at the end of the file\n- prepend_bof: Insert new text at the beginning of the file\n- overwrite: Replace the entire file with new content (automatically creates the file)\n\nUsage notes:\n- All inputs are interpreted literally (no automatic newline or whitespace handling)\n- For replace operations, oldText must appear EXACTLY ONCE in the file",
    "input_schema": {
@@ -247,24 +286,25 @@ Content-Type: application/json
 }HTTP/2.0 200 OK
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
-Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-04-30T17:29:47Z
+Anthropic-Ratelimit-Input-Tokens-Remaining: 199000
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-02T22:11:22Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-04-30T17:29:49Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-02T22:11:25Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-04-30T17:29:47Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-02T22:11:21Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
-Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-04-30T17:29:47Z
+Anthropic-Ratelimit-Tokens-Remaining: 279000
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-02T22:11:22Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 9388c364d81aed3b-SJC
+Cf-Ray: 939ada9dcb8e2289-SJC
 Content-Type: application/json
-Date: Wed, 30 Apr 2025 17:29:49 GMT
-Request-Id: req_011CNfK7wMYMH3rv3YTfoRHn
+Date: Fri, 02 May 2025 22:11:25 GMT
+Request-Id: req_011CNjUDARocGVEoaiP81APq
 Server: cloudflare
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01L6bfTxo2BbKxnFVT9ZdooZ","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I can access the following tools:\n\n1. `bash` - Run shell commands\n2. `keyword_search` - Search for files containing specific terms\n3. `think` - Record my thoughts and planning\n4. `title` - Set conversation title and create a git branch\n5. `done` - Mark the task as complete with a checklist\n6. `codereview` - Run automated code review\n7. `patch` - Make precise text edits to files\n\nThese tools allow me to explore code, execute commands, make edits, and document my work."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":2257,"cache_read_input_tokens":0,"output_tokens":126}}
+{"id":"msg_01Nrq3RXxm1QyGT215WMZGxQ","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I have access to the following tools:\n\n1. bash - Executes shell commands\n2. keyword_search - Searches for files with specific terms\n3. think - For recording thoughts and plans\n4. title - Sets conversation title and creates a git branch\n5. done - Marks completion of user's goal\n6. codereview - Runs automated code review\n7. multiplechoice - Presents multiple-choice questions\n8. patch - Makes precise text edits to files\n\nThese tools help me assist you with coding tasks, particularly in Go development. How can I help you today?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":2602,"cache_read_input_tokens":0,"output_tokens":131}}

@@ -1,7 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
-import { ToolCall } from "../types";
+import { ToolCall, MultipleChoiceOption, MultipleChoiceParams } from "../types";
 import { marked, MarkedOptions } from "marked";
 
 function renderMarkdown(markdownContent: string): string {
@@ -606,7 +606,7 @@ export class SketchToolCardMultipleChoice extends LitElement {
   open: boolean;
 
   @property()
-  selectedOption: string | number | null = null;
+  selectedOption: MultipleChoiceOption = null;
 
   static styles = css`
     .options-container {
@@ -666,6 +666,7 @@ export class SketchToolCardMultipleChoice extends LitElement {
 
     .summary-text {
       font-style: italic;
+      padding: 0.5em;
     }
 
     .summary-text strong {
@@ -710,14 +711,13 @@ export class SketchToolCardMultipleChoice extends LitElement {
         ).selected;
       } catch (e) {
         console.error("Error parsing result:", e);
-        this.selectedOption = this.toolCall.result_message.tool_result;
       }
     } else {
       this.selectedOption = null;
     }
   }
 
-  handleOptionClick(choice) {
+  async handleOptionClick(choice) {
     // If this option is already selected, unselect it (toggle behavior)
     if (this.selectedOption === choice) {
       this.selectedOption = null;
@@ -727,8 +727,11 @@ export class SketchToolCardMultipleChoice extends LitElement {
     }
 
     // Dispatch a custom event that can be listened to by parent components
-    const event = new CustomEvent("option-selected", {
-      detail: { selected: this.selectedOption },
+    const event = new CustomEvent("multiple-choice-selected", {
+      detail: {
+        responseText: this.selectedOption.responseText,
+        toolCall: this.toolCall,
+      },
       bubbles: true,
       composed: true,
     });
@@ -740,8 +743,10 @@ export class SketchToolCardMultipleChoice extends LitElement {
     let choices = [];
     let question = "";
     try {
-      const inputData = JSON.parse(this.toolCall?.input || "{}");
-      choices = inputData.choices || [];
+      const inputData = JSON.parse(
+        this.toolCall?.input || "{}",
+      ) as MultipleChoiceParams;
+      choices = inputData.responseOptions || [];
       question = inputData.question || "Please select an option:";
     } catch (e) {
       console.error("Error parsing multiple-choice input:", e);
@@ -751,29 +756,24 @@ export class SketchToolCardMultipleChoice extends LitElement {
     const summaryContent =
       this.selectedOption !== null
         ? html`<span class="summary-text"
-            >${question}: <strong>${this.selectedOption}</strong></span
+            >${question}: <strong>${this.selectedOption.caption}</strong></span
           >`
         : html`<span class="summary-text">${question}</span>`;
 
-    return html` <sketch-tool-card
-      .open=${this.open}
-      .toolCall=${this.toolCall}
-    >
-      <span slot="summary">${summaryContent}</span>
-      <div slot="input">
-        <p>${question}</p>
+    return html`
+      <div class="multiple-choice-card">
+        ${summaryContent}
         <div class="options-container">
-          ${choices.map((choice, index) => {
+          ${choices.map((choice) => {
             const isSelected =
-              this.selectedOption !== null &&
-              (this.selectedOption === choice || this.selectedOption === index);
+              this.selectedOption !== null && this.selectedOption === choice;
             return html`
               <div
                 class="option ${isSelected ? "selected" : ""}"
                 @click=${() => this.handleOptionClick(choice)}
+                title="${choice.responseText}"
               >
-                <span class="option-index">${index + 1}</span>
-                <span class="option-label">${choice}</span>
+                <span class="option-label">${choice.caption}</span>
                 ${isSelected
                   ? html`<span class="option-checkmark">✓</span>`
                   : ""}
@@ -782,12 +782,7 @@ export class SketchToolCardMultipleChoice extends LitElement {
           })}
         </div>
       </div>
-      <div slot="result">
-        ${this.toolCall?.result_message && this.selectedOption
-          ? html`<p>Selected: <strong>${this.selectedOption}</strong></p>`
-          : ""}
-      </div>
-    </sketch-tool-card>`;
+    `;
   }
 }
 

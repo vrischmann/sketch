@@ -56,6 +56,8 @@ func TS() *go2ts.Go2TS {
 		loop.ToolCall{},
 		llm.Usage{},
 		server.State{},
+		loop.MultipleChoiceOption{},
+		loop.MultipleChoiceParams{},
 	)
 
 	generator.GenerateNominalTypes = true
