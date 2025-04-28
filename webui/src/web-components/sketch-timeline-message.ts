@@ -441,6 +441,7 @@ export class SketchTimelineMessage extends LitElement {
     // Initialize mermaid with specific config
     mermaid.initialize({
       startOnLoad: false,
+      suppressErrorRendering: true,
       theme: "default",
       securityLevel: "loose", // Allows more flexibility but be careful with user-generated content
       fontFamily: "monospace",
