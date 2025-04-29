@@ -87,6 +87,31 @@ export class SketchTimeline extends LitElement {
     #jump-to-latest.floating {
       display: block;
     }
+
+    /* Welcome box styles for the empty chat state */
+    .welcome-box {
+      margin: 2rem auto;
+      max-width: 80%;
+      padding: 2rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      background-color: #ffffff;
+      text-align: center;
+    }
+
+    .welcome-box-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #333;
+    }
+
+    .welcome-box-content {
+      color: #666; /* Slightly grey font color */
+      line-height: 1.6;
+      font-size: 1rem;
+    }
   `;
 
   constructor() {
@@ -198,6 +223,23 @@ export class SketchTimeline extends LitElement {
   }
 
   render() {
+    // Check if messages array is empty and render welcome box if it is
+    if (this.messages.length === 0) {
+      return html`
+        <div id="scroll-container">
+          <div class="welcome-box">
+            <h2 class="welcome-box-title">How to use Sketch</h2>
+            <p class="welcome-box-content">
+              Sketch is an agentic coding assistant. Ask it, in the chat box below, to implement a task or answer a question. 
+              It will create commits, which you can review and leave comments on in the Diff tab. 
+              When you're done, you'll find the changes ready to go in a <code>sketch/*</code> branch in your repo!
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Otherwise render the regular timeline with messages
     return html`
       <div id="scroll-container">
         <div class="timeline-container">
