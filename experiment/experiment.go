@@ -31,6 +31,10 @@ var (
 			Name:        "not_done",
 			Description: "Let the model backtrack halfway through a done tool call",
 		},
+		{
+			Name:        "llm_review",
+			Description: "Add an LLM step to the codereview tool",
+		},
 	}
 	byName = map[string]*Experiment{}
 )

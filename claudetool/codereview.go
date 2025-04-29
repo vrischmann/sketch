@@ -18,12 +18,19 @@ type CodeReviewer struct {
 	initialStatus   []fileStatus // git status of files at initial commit, absolute paths
 	reviewed        []string     // history of all commits which have been reviewed
 	initialWorktree string       // git worktree at initial commit, absolute path
+	llmReview       bool         // enables a subagent LLM review
 }
 
-func NewCodeReviewer(ctx context.Context, repoRoot, initialCommit string) (*CodeReviewer, error) {
+const (
+	NoLLMReview = false
+	DoLLMReview = true
+)
+
+func NewCodeReviewer(ctx context.Context, repoRoot, initialCommit string, llmReview bool) (*CodeReviewer, error) {
 	r := &CodeReviewer{
 		repoRoot:      repoRoot,
 		initialCommit: initialCommit,
+		llmReview:     llmReview,
 	}
 	if r.repoRoot == "" {
 		return nil, fmt.Errorf("NewCodeReviewer: repoRoot must be non-empty")

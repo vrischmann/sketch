@@ -20,6 +20,7 @@ import (
 	"sketch.dev/browser"
 	"sketch.dev/claudetool"
 	"sketch.dev/claudetool/bashkit"
+	"sketch.dev/experiment"
 	"sketch.dev/llm"
 	"sketch.dev/llm/conversation"
 )
@@ -758,7 +759,11 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.initialCommit = commitHash
 
-		codereview, err := claudetool.NewCodeReviewer(ctx, a.repoRoot, a.initialCommit)
+		llmCodeReview := claudetool.NoLLMReview
+		if experiment.Enabled("llm_review") {
+			llmCodeReview = claudetool.DoLLMReview
+		}
+		codereview, err := claudetool.NewCodeReviewer(ctx, a.repoRoot, a.initialCommit, llmCodeReview)
 		if err != nil {
 			return fmt.Errorf("Agent.Init: claudetool.NewCodeReviewer: %w", err)
 		}
