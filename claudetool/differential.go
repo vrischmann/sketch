@@ -86,6 +86,8 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 
 	// Find potentially related files that should also be considered
 	// TODO: add some caching here, since this depends only on the initial commit and the changed files, not the details of the changes
+	// TODO: make "related files found" w/o other notes be a non-error response
+	// TODO: do some kind of decay--weight recency higher, add a cutoff
 	relatedFiles, err := r.findRelatedFiles(ctx, changedFiles)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to find related files", "err", err)
