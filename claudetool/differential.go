@@ -31,7 +31,7 @@ func (r *CodeReviewer) Tool() *ant.Tool {
 		Name:        "codereview",
 		Description: `Run an automated code review.`,
 		// If you modify this, update the termui template for prettier rendering.
-		InputSchema: ant.MustSchema(`{"type": "object"}`),
+		InputSchema: ant.MustSchema(`{"type": "object", "properties": {}}`),
 		Run:         r.Run,
 	}
 	return spec
