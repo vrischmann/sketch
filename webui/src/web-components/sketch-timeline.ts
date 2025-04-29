@@ -230,9 +230,11 @@ export class SketchTimeline extends LitElement {
           <div class="welcome-box">
             <h2 class="welcome-box-title">How to use Sketch</h2>
             <p class="welcome-box-content">
-              Sketch is an agentic coding assistant. Ask it, in the chat box below, to implement a task or answer a question. 
-              It will create commits, which you can review and leave comments on in the Diff tab. 
-              When you're done, you'll find the changes ready to go in a <code>sketch/*</code> branch in your repo!
+              Sketch is an agentic coding assistant. Ask it, in the chat box
+              below, to implement a task or answer a question. It will create
+              commits, which you can review and leave comments on in the Diff
+              tab. When you're done, you'll find the changes ready to go in a
+              <code>sketch/*</code> branch in your repo!
             </p>
           </div>
         </div>
