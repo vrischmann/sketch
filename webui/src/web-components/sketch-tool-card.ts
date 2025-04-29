@@ -360,16 +360,30 @@ export class SketchToolCardCodeReview extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
   }
+  // Determine the status icon based on the content of the result message
+  // This corresponds to the output format in claudetool/differential.go:Run
+  getStatusIcon(resultText: string): string {
+    if (!resultText) return "";
+    if (resultText === "OK") return "✔️";
+    if (resultText.includes("# Errors")) return "⛔";
+    if (resultText.includes("# Info")) return "ℹ️";
+    if (resultText.includes("uncommitted changes in repo")) return "🧹";
+    if (resultText.includes("no new commits have been added")) return "🐣";
+    if (resultText.includes("git repo is not clean")) return "🧼";
+    return "❓";
+  }
+
   render() {
+    const resultText = this.toolCall?.result_message?.tool_result || "";
+    const statusIcon = this.getStatusIcon(resultText);
+
     return html` <sketch-tool-card
       .open=${this.open}
       .toolCall=${this.toolCall}
     >
-      <span slot="summary" class="summary-text">
-        ${this.toolCall?.result_message?.tool_result == "OK" ? "✔️" : "⛔"}
-      </span>
+      <span slot="summary" class="summary-text"> ${statusIcon} </span>
       <div slot="result">
-        <pre>${this.toolCall?.result_message?.tool_result}</pre>
+        <pre>${resultText}</pre>
       </div>
     </sketch-tool-card>`;
   }

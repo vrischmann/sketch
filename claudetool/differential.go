@@ -38,6 +38,8 @@ func (r *CodeReviewer) Tool() *ant.Tool {
 }
 
 func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, error) {
+	// NOTE: If you add or modify error messages here, update the corresponding UI parsing in:
+	// webui/src/web-components/sketch-tool-card.ts (SketchToolCardCodeReview.getStatusIcon)
 	if err := r.RequireNormalGitState(ctx); err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check for normal git state", "err", err)
 		return "", err
@@ -86,7 +88,6 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 
 	// Find potentially related files that should also be considered
 	// TODO: add some caching here, since this depends only on the initial commit and the changed files, not the details of the changes
-	// TODO: make "related files found" w/o other notes be a non-error response
 	relatedFiles, err := r.findRelatedFiles(ctx, changedFiles)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to find related files", "err", err)
@@ -115,6 +116,8 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 		errorMessages = append(errorMessages, goplsMsg)
 	}
 
+	// NOTE: If you change this output format, update the corresponding UI parsing in:
+	// webui/src/web-components/sketch-tool-card.ts (SketchToolCardCodeReview.getStatusIcon)
 	buf := new(strings.Builder)
 	if len(infoMessages) > 0 {
 		buf.WriteString("# Info\n\n")
