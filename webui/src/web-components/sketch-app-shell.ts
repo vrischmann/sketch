@@ -230,6 +230,7 @@ export class SketchAppShell extends LitElement {
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handlePopState = this._handlePopState.bind(this);
+    this._handleStopClick = this._handleStopClick.bind(this);
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -502,6 +503,34 @@ export class SketchAppShell extends LitElement {
     this.updateDocumentTitle();
   }
 
+  /**
+   * Handle stop button click
+   * Sends a request to the server to stop the current operation
+   */
+  private async _handleStopClick(): Promise<void> {
+    try {
+      const response = await fetch("cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: "user requested cancellation" }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(
+          `Failed to stop operation: ${response.status} - ${errorData}`,
+        );
+      }
+
+      this.messageStatus = "Stop request sent";
+    } catch (error) {
+      console.error("Error stopping operation:", error);
+      this.messageStatus = "Failed to stop operation";
+    }
+  }
+
   async _sendChat(e: CustomEvent) {
     console.log("app shell: _sendChat", e);
     const message = e.detail.message?.trim();
@@ -565,7 +594,11 @@ export class SketchAppShell extends LitElement {
         ></sketch-container-status>
 
         <div class="refresh-control">
-          <button id="stopButton" class="refresh-button stop-button">
+          <button
+            id="stopButton"
+            class="refresh-button stop-button"
+            @click="${this._handleStopClick}"
+          >
             Stop
           </button>
 
