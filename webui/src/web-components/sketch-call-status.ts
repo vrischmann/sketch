@@ -32,23 +32,23 @@ export class SketchCallStatus extends LitElement {
     /* LLM indicator (lightbulb) */
     .llm-indicator {
       background-color: transparent;
-      color: #9CA3AF; /* Gray when inactive */
+      color: #9ca3af; /* Gray when inactive */
     }
 
     .llm-indicator.active {
-      background-color: #FEF3C7; /* Light yellow */
-      color: #F59E0B; /* Yellow/amber when active */
+      background-color: #fef3c7; /* Light yellow */
+      color: #f59e0b; /* Yellow/amber when active */
     }
 
     /* Tool indicator (wrench) */
     .tool-indicator {
       background-color: transparent;
-      color: #9CA3AF; /* Gray when inactive */
+      color: #9ca3af; /* Gray when inactive */
     }
 
     .tool-indicator.active {
-      background-color: #DBEAFE; /* Light blue */
-      color: #3B82F6; /* Blue when active */
+      background-color: #dbeafe; /* Light blue */
+      color: #3b82f6; /* Blue when active */
     }
 
     svg {

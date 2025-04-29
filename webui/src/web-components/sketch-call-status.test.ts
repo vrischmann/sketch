@@ -32,7 +32,7 @@ test("displays the correct state for active LLM calls", async ({ mount }) => {
 
   // Check that LLM indicator is active
   await expect(component.locator(".llm-indicator")).toHaveClass(/active/);
-  
+
   // Check that LLM indicator has the correct background and color
   await expect(component.locator(".llm-indicator.active")).toBeVisible();
 
@@ -50,7 +50,7 @@ test("displays the correct state for active tool calls", async ({ mount }) => {
 
   // Check that tool indicator is active
   await expect(component.locator(".tool-indicator")).toHaveClass(/active/);
-  
+
   // Check that tool indicator has the correct background and color
   await expect(component.locator(".tool-indicator.active")).toBeVisible();
 
@@ -71,7 +71,7 @@ test("displays both indicators when both call types are active", async ({
   // Check that both indicators are active
   await expect(component.locator(".llm-indicator")).toHaveClass(/active/);
   await expect(component.locator(".tool-indicator")).toHaveClass(/active/);
-  
+
   // Check that both active indicators are visible with their respective styles
   await expect(component.locator(".llm-indicator.active")).toBeVisible();
   await expect(component.locator(".tool-indicator.active")).toBeVisible();
