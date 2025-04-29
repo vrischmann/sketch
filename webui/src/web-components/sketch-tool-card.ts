@@ -197,7 +197,7 @@ export class SketchToolCard extends LitElement {
   render() {
     const toolCallStatus = this.toolCall?.result_message
       ? this.toolCall?.result_message.tool_error
-        ? html`❌
+        ? html`🙈
             <span class="tool-error-message"
               >${this.toolCall?.result_message.tool_result}</span
             >`
