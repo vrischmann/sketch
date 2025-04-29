@@ -529,6 +529,9 @@ type AgentInit struct {
 }
 
 func (a *Agent) Init(ini AgentInit) error {
+	if a.convo != nil {
+		return fmt.Errorf("Agent.Init: already initialized")
+	}
 	ctx := a.config.Context
 	if ini.InDocker {
 		cmd := exec.CommandContext(ctx, "git", "stash")
