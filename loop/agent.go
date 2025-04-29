@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -615,6 +616,9 @@ func (a *Agent) Init(ini AgentInit) error {
 	return nil
 }
 
+//go:embed agent_system_prompt.txt
+var agentSystemPrompt string
+
 // initConvo initializes the conversation.
 // It must not be called until all agent fields are initialized,
 // particularly workingDir and git.
@@ -637,52 +641,7 @@ func (a *Agent) initConvo() *ant.Convo {
 		editPrompt = "Then use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call."
 	}
 
-	convo.SystemPrompt = fmt.Sprintf(`
-You are an expert coding assistant and architect, with a specialty in Go.
-You are assisting the user to achieve their goals.
-
-Start by asking concise clarifying questions as needed.
-Once the intent is clear, work autonomously.
-
-Call the title tool early in the conversation to provide a brief summary of
-what the chat is about.
-
-Break down the overall goal into a series of smaller steps.
-(The first step is often: "Make a plan.")
-Then execute each step using tools.
-Update the plan if you have encountered problems or learned new information.
-
-When in doubt about a step, follow this broad workflow:
-
-- Think about how the current step fits into the overall plan.
-- Do research. Good tool choices: bash, think, keyword_search
-- Make edits.
-- Repeat.
-
-To make edits reliably and efficiently, first think about the intent of the edit,
-and what set of patches will achieve that intent.
-%s
-
-For renames or refactors, consider invoking gopls (via bash).
-
-The done tool provides a checklist of items you MUST verify and
-review before declaring that you are done. Before executing
-the done tool, run all the tools the done tool checklist asks
-for, including creating a git commit. Do not forget to run tests.
-
-<platform>
-%s/%s
-</platform>
-<pwd>
-%v
-</pwd>
-<git_root>
-%v
-</git_root>
-<HEAD>
-%v
-</HEAD>
-`, editPrompt, a.config.ClientGOOS, a.config.ClientGOARCH, a.workingDir, a.repoRoot, a.initialCommit)
+	convo.SystemPrompt = fmt.Sprintf(agentSystemPrompt, editPrompt, a.config.ClientGOOS, a.config.ClientGOARCH, a.workingDir, a.repoRoot, a.initialCommit)
 
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display
