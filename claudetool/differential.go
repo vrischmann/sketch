@@ -87,7 +87,6 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	// Find potentially related files that should also be considered
 	// TODO: add some caching here, since this depends only on the initial commit and the changed files, not the details of the changes
 	// TODO: make "related files found" w/o other notes be a non-error response
-	// TODO: do some kind of decay--weight recency higher, add a cutoff
 	relatedFiles, err := r.findRelatedFiles(ctx, changedFiles)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to find related files", "err", err)
@@ -979,7 +978,7 @@ func (r *CodeReviewer) getCommitsTouchingFiles(ctx context.Context, files []stri
 	if len(files) == 0 {
 		return nil, nil
 	}
-	fileArgs := append([]string{"rev-list", "--all", "--"}, files...)
+	fileArgs := append([]string{"rev-list", "--all", "--date-order", "--max-count=100", "--"}, files...)
 	cmd := exec.CommandContext(ctx, "git", fileArgs...)
 	cmd.Dir = r.repoRoot
 	out, err := cmd.CombinedOutput()
