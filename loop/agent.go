@@ -136,6 +136,19 @@ type AgentMessage struct {
 	Idx int `json:"idx"`
 }
 
+// SetConvo sets m.ConversationID and m.ParentConversationID based on convo.
+func (m *AgentMessage) SetConvo(convo *ant.Convo) {
+	if convo == nil {
+		m.ConversationID = ""
+		m.ParentConversationID = nil
+		return
+	}
+	m.ConversationID = convo.ID
+	if convo.Parent != nil {
+		m.ParentConversationID = &convo.Parent.ID
+	}
+}
+
 // GitCommit represents a single git commit for a commit message
 type GitCommit struct {
 	Hash         string `json:"hash"`                    // Full commit hash
@@ -390,10 +403,7 @@ func (a *Agent) OnToolResult(ctx context.Context, convo *ant.Convo, toolID strin
 		m.Elapsed = &elapsed
 	}
 
-	m.ConversationID = convo.ID
-	if convo.Parent != nil {
-		m.ParentConversationID = &convo.Parent.ID
-	}
+	m.SetConvo(convo)
 	a.pushToOutbox(ctx, m)
 }
 
@@ -414,6 +424,17 @@ func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, res
 	a.mu.Lock()
 	delete(a.outstandingLLMCalls, id)
 	a.mu.Unlock()
+
+	if resp == nil {
+		// LLM API call failed
+		m := AgentMessage{
+			Type:    ErrorMessageType,
+			Content: "API call failed, type 'continue' to try again",
+		}
+		m.SetConvo(convo)
+		a.pushToOutbox(ctx, m)
+		return
+	}
 
 	endOfTurn := false
 	if resp.StopReason != ant.StopReasonToolUse {
@@ -449,10 +470,7 @@ func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, res
 		m.Elapsed = &elapsed
 	}
 
-	m.ConversationID = convo.ID
-	if convo.Parent != nil {
-		m.ParentConversationID = &convo.Parent.ID
-	}
+	m.SetConvo(convo)
 	a.pushToOutbox(ctx, m)
 }
 
