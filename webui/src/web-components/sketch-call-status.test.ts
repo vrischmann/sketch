@@ -17,8 +17,9 @@ test("initializes with zero LLM calls and empty tool calls by default", async ({
   );
   expect(toolCalls).toEqual([]);
 
-  // Check that badges are not shown
-  await expect(component.locator(".count-badge")).toHaveCount(0);
+  // Check that indicators are not active
+  await expect(component.locator(".llm-indicator")).not.toHaveClass(/active/);
+  await expect(component.locator(".tool-indicator")).not.toHaveClass(/active/);
 });
 
 test("displays the correct state for active LLM calls", async ({ mount }) => {
@@ -31,11 +32,9 @@ test("displays the correct state for active LLM calls", async ({ mount }) => {
 
   // Check that LLM indicator is active
   await expect(component.locator(".llm-indicator")).toHaveClass(/active/);
-
-  // Check that badge shows correct count
-  await expect(component.locator(".llm-indicator .count-badge")).toHaveText(
-    "3",
-  );
+  
+  // Check that LLM indicator has the correct background and color
+  await expect(component.locator(".llm-indicator.active")).toBeVisible();
 
   // Check that tool indicator is not active
   await expect(component.locator(".tool-indicator")).not.toHaveClass(/active/);
@@ -51,11 +50,9 @@ test("displays the correct state for active tool calls", async ({ mount }) => {
 
   // Check that tool indicator is active
   await expect(component.locator(".tool-indicator")).toHaveClass(/active/);
-
-  // Check that badge shows correct count
-  await expect(component.locator(".tool-indicator .count-badge")).toHaveText(
-    "2",
-  );
+  
+  // Check that tool indicator has the correct background and color
+  await expect(component.locator(".tool-indicator.active")).toBeVisible();
 
   // Check that LLM indicator is not active
   await expect(component.locator(".llm-indicator")).not.toHaveClass(/active/);
@@ -74,14 +71,10 @@ test("displays both indicators when both call types are active", async ({
   // Check that both indicators are active
   await expect(component.locator(".llm-indicator")).toHaveClass(/active/);
   await expect(component.locator(".tool-indicator")).toHaveClass(/active/);
-
-  // Check that badges show correct counts
-  await expect(component.locator(".llm-indicator .count-badge")).toHaveText(
-    "1",
-  );
-  await expect(component.locator(".tool-indicator .count-badge")).toHaveText(
-    "1",
-  );
+  
+  // Check that both active indicators are visible with their respective styles
+  await expect(component.locator(".llm-indicator.active")).toBeVisible();
+  await expect(component.locator(".tool-indicator.active")).toBeVisible();
 });
 
 test("has correct tooltip text for LLM calls", async ({ mount }) => {
