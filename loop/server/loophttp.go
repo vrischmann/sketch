@@ -60,6 +60,9 @@ type State struct {
 	GitOrigin            string               `json:"git_origin,omitempty"`
 	OutstandingLLMCalls  int                  `json:"outstanding_llm_calls"`
 	OutstandingToolCalls []string             `json:"outstanding_tool_calls"`
+	SessionID            string               `json:"session_id"`
+	SSHAvailable         bool                 `json:"ssh_available"`
+	SSHError             string               `json:"ssh_error,omitempty"`
 
 	OutsideHostname   string `json:"outside_hostname,omitempty"`
 	InsideHostname    string `json:"inside_hostname,omitempty"`
@@ -75,6 +78,8 @@ type InitRequest struct {
 	Commit            string `json:"commit"`
 	SSHAuthorizedKeys []byte `json:"ssh_authorized_keys"`
 	SSHServerIdentity []byte `json:"ssh_server_identity"`
+	SSHAvailable      bool   `json:"ssh_available"`
+	SSHError          string `json:"ssh_error,omitempty"`
 }
 
 // Server serves sketch HTTP. Server implements http.Handler.
@@ -86,6 +91,8 @@ type Server struct {
 	// Mutex to protect terminalSessions
 	ptyMutex         sync.Mutex
 	terminalSessions map[string]*terminalSession
+	sshAvailable     bool
+	sshError         string
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +107,8 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		hostname:         getHostname(),
 		logFile:          logFile,
 		terminalSessions: make(map[string]*terminalSession),
+		sshAvailable:     false,
+		sshError:         "",
 	}
 
 	webBundle, err := webui.Build()
@@ -164,12 +173,19 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			return
 		}
 
+		// Store SSH availability info
+		s.sshAvailable = m.SSHAvailable
+		s.sshError = m.SSHError
+
 		// Start the SSH server if the init request included ssh keys.
 		if len(m.SSHAuthorizedKeys) > 0 && len(m.SSHServerIdentity) > 0 {
 			go func() {
 				ctx := context.Background()
 				if err := s.ServeSSH(ctx, m.SSHServerIdentity, m.SSHAuthorizedKeys); err != nil {
 					slog.ErrorContext(r.Context(), "/init ServeSSH", slog.String("err", err.Error()))
+					// Update SSH error if server fails to start
+					s.sshAvailable = false
+					s.sshError = err.Error()
 				}
 			}()
 		}
@@ -367,6 +383,9 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			GitOrigin:            agent.GitOrigin(),
 			OutstandingLLMCalls:  agent.OutstandingLLMCallCount(),
 			OutstandingToolCalls: agent.OutstandingToolCalls(),
+			SessionID:            agent.SessionID(),
+			SSHAvailable:         s.sshAvailable,
+			SSHError:             s.sshError,
 		}
 
 		// Create a JSON encoder with indentation for pretty-printing

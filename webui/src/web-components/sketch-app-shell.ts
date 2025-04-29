@@ -218,6 +218,8 @@ export class SketchAppShell extends LitElement {
     initial_commit: "",
     outstanding_llm_calls: 0,
     outstanding_tool_calls: [],
+    session_id: "",
+    ssh_available: false,
   };
 
   // Mutation observer to detect when new messages are added

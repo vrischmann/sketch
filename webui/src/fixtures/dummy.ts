@@ -363,6 +363,8 @@ export const initialState: State = {
   initial_commit: "a6c5a08a451ef1082774a7affb6af58775e7bc16",
   title: "Add a line to dummy.txt and commit the change",
   hostname: "MacBook-Pro-9.local",
+  session_id: "dummy-session",
+  ssh_available: false,
   working_dir: "/Users/pokey/src/spaghetti",
   os: "darwin",
   git_origin: "git@github.com:pokey/spaghetti.git",

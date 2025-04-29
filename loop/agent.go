@@ -74,6 +74,9 @@ type CodingAgent interface {
 	// OS returns the operating system of the client.
 	OS() string
 
+	// SessionID returns the unique session identifier.
+	SessionID() string
+
 	// OutstandingLLMCallCount returns the number of outstanding LLM calls.
 	OutstandingLLMCallCount() int
 
@@ -336,6 +339,10 @@ func (a *Agent) OutstandingToolCalls() []string {
 // OS returns the operating system of the client.
 func (a *Agent) OS() string {
 	return a.config.ClientGOOS
+}
+
+func (a *Agent) SessionID() string {
+	return a.config.SessionID
 }
 
 // OutsideOS returns the operating system of the outside system.

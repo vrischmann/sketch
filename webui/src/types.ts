@@ -76,6 +76,9 @@ export interface State {
 	git_origin?: string;
 	outstanding_llm_calls: number;
 	outstanding_tool_calls: string[];
+	session_id: string;
+	ssh_available: boolean;
+	ssh_error?: string;
 }
 
 export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto';

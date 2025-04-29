@@ -22,6 +22,8 @@ const mockCompleteState: State = {
   },
   outstanding_llm_calls: 0,
   outstanding_tool_calls: [],
+  session_id: "test-session-id",
+  ssh_available: false,
 };
 
 test("render props", async ({ mount }) => {
@@ -78,6 +80,8 @@ test("renders with partial state data", async ({ mount }) => {
     message_count: 10,
     os: "linux",
     title: "Partial Test",
+    session_id: "partial-session",
+    ssh_available: false,
     total_usage: {
       input_tokens: 500,
       start_time: "",

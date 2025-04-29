@@ -129,7 +129,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		defer os.Remove(linuxSketchBin) // in case of errors
 	}
 
-	cntrName := imgName + "-" + config.SessionID
+	cntrName := "sketch-" + config.SessionID
 	defer func() {
 		if config.NoCleanup {
 			return
@@ -538,6 +538,14 @@ func getContainerPort(ctx context.Context, cntrName, cntrPort string) (string, e
 func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string, sshServerIdentity, sshAuthorizedKeys []byte) error {
 	localURL := "http://" + localAddr
 
+	// Check if SSH is available by checking for the Include directive in ~/.ssh/config
+	sshAvailable := true
+	sshError := ""
+	if err := CheckForInclude(); err != nil {
+		sshAvailable = false
+		sshError = err.Error()
+	}
+
 	initMsg, err := json.Marshal(
 		server.InitRequest{
 			Commit:            commit,
@@ -545,6 +553,8 @@ func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gi
 			HostAddr:          localAddr,
 			SSHAuthorizedKeys: sshAuthorizedKeys,
 			SSHServerIdentity: sshServerIdentity,
+			SSHAvailable:      sshAvailable,
+			SSHError:          sshError,
 		})
 	if err != nil {
 		return fmt.Errorf("init msg: %w", err)

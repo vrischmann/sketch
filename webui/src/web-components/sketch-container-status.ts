@@ -40,7 +40,7 @@ export class SketchContainerStatus extends LitElement {
       top: 100%;
       right: 0;
       z-index: 10;
-      min-width: 320px;
+      min-width: 400px;
       background: white;
       border-radius: 8px;
       padding: 10px 15px;
@@ -131,6 +131,61 @@ export class SketchContainerStatus extends LitElement {
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 8px;
       margin-top: 10px;
+    }
+
+    .ssh-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+
+    .ssh-command {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+
+    .ssh-command-text {
+      font-family: monospace;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+      flex-grow: 1;
+    }
+
+    .copy-button {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-button:hover {
+      background: #e0e0e0;
+    }
+
+    .ssh-warning {
+      background: #fff3e0;
+      border-left: 3px solid #ff9800;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #e65100;
+    }
+
+    .vscode-link {
+      color: #2962ff;
+      text-decoration: none;
+    }
+
+    .vscode-link:hover {
+      text-decoration: underline;
     }
   `;
 
@@ -228,6 +283,72 @@ export class SketchContainerStatus extends LitElement {
     // unregister event listeners
   }
 
+  copyToClipboard(text: string) {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        // Could add a temporary success indicator here
+      })
+      .catch((err) => {
+        console.error("Could not copy text: ", err);
+      });
+  }
+
+  getSSHHostname() {
+    return `sketch-${this.state?.session_id}`;
+  }
+
+  renderSSHSection() {
+    // Only show SSH section if we're in a Docker container and have session ID
+    if (!this.state?.session_id) {
+      return html``;
+    }
+
+    const sshHost = this.getSSHHostname();
+    const sshCommand = `ssh ${sshHost}`;
+    const vscodeCommand = `code --remote ssh-remote+root@${sshHost} /app -n`;
+    const vscodeURL = `vscode://vscode-remote/ssh-remote+root@${sshHost}/app?windowId=_blank`;
+
+    if (!this.state?.ssh_available) {
+      return html`
+        <div class="ssh-section">
+          <h3>SSH Connection</h3>
+          <div class="ssh-warning">
+            SSH connections are not available:
+            ${this.state?.ssh_error || "SSH configuration is missing"}
+          </div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="ssh-section">
+        <h3>SSH Connection</h3>
+        <div class="ssh-command">
+          <div class="ssh-command-text">${sshCommand}</div>
+          <button
+            class="copy-button"
+            @click=${() => this.copyToClipboard(sshCommand)}
+          >
+            Copy
+          </button>
+        </div>
+        <div class="ssh-command">
+          <div class="ssh-command-text">${vscodeCommand}</div>
+          <button
+            class="copy-button"
+            @click=${() => this.copyToClipboard(vscodeCommand)}
+          >
+            Copy
+          </button>
+        </div>
+        <div class="ssh-command">
+          <a href="${vscodeURL}" class="vscode-link">${vscodeURL}</a>
+        </div>
+      </div>
+    `;
+  }
+
   render() {
     return html`
       <div class="info-container">
@@ -323,6 +444,9 @@ export class SketchContainerStatus extends LitElement {
               <a href="logs">Logs</a> (<a href="download">Download</a>)
             </div>
           </div>
+
+          <!-- SSH Connection Information -->
+          ${this.renderSSHSection()}
         </div>
       </div>
     `;
