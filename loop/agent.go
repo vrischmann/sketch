@@ -704,6 +704,23 @@ func (a *Agent) initConvo() *ant.Convo {
 	return convo
 }
 
+// branchExists reports whether branchName exists, either locally or in well-known remotes.
+func branchExists(dir, branchName string) bool {
+	refs := []string{
+		"refs/heads/",
+		"refs/remotes/origin/",
+		"refs/remotes/sketch-host/",
+	}
+	for _, ref := range refs {
+		cmd := exec.Command("git", "show-ref", "--verify", "--quiet", ref+branchName)
+		cmd.Dir = dir
+		if cmd.Run() == nil { // exit code 0 means branch exists
+			return true
+		}
+	}
+	return false
+}
+
 func (a *Agent) titleTool() *ant.Tool {
 	title := &ant.Tool{
 		Name:        "title",
@@ -745,6 +762,10 @@ func (a *Agent) titleTool() *ant.Tool {
 			}
 
 			branchName := "sketch/" + cleanBranchName(params.BranchName)
+			if branchExists(a.workingDir, branchName) {
+				return "", fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
+			}
+
 			a.SetTitleBranch(params.Title, branchName)
 
 			response := fmt.Sprintf("Title set to %q, branch name set to %q", params.Title, branchName)
