@@ -24,11 +24,15 @@ jobs:
     needs: [formatting]
     uses: ./.github/workflows/go_test.yml
     permissions: read-all
+    with:
+      ref: ${{ needs.formatting.outputs.commit_sha }}
 
   ui-test:
     needs: [formatting]
     uses: ./.github/workflows/webui_test.yml
     permissions: read-all
+    with:
+      ref: ${{ needs.formatting.outputs.commit_sha }}
 
   push-to-main:
     runs-on: ubuntu-latest

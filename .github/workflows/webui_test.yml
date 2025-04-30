@@ -1,6 +1,12 @@
 name: WebUI Tests
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: "The git ref to checkout"
+        required: false
+        type: string
+        default: ""
   push:
     branches-ignore:
       - "queue-main-*"
@@ -16,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

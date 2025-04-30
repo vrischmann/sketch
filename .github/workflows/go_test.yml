@@ -1,6 +1,12 @@
 name: go_tests
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: "The git ref to checkout"
+        required: false
+        type: string
+        default: ""
   push:
     branches-ignore:
       - "queue-main-*"
@@ -10,7 +16,9 @@ jobs:
   test:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-go@v5
         with:
