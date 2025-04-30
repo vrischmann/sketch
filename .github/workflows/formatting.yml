@@ -13,7 +13,8 @@ on:
         value: ${{ jobs.formatting.outputs.commit_sha }}
   push:
     branches-ignore:
-      - "queue-main-**"
+      - "queue-main-*"
+      - "queue-dev-*"
   pull_request:
 
 permissions:

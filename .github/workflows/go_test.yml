@@ -3,7 +3,8 @@ on:
   workflow_call:
   push:
     branches-ignore:
-      - "queue-main-**"
+      - "queue-main-*"
+      - "queue-dev-*"
   pull_request:
 jobs:
   test:
