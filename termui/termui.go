@@ -253,7 +253,7 @@ func (ui *termUI) inputLoop(ctx context.Context) error {
 			ui.AppendSystemMessage("\n👋 Goodbye!")
 			return nil
 		case "stop", "cancel", "abort":
-			ui.agent.CancelInnerLoop(fmt.Errorf("user canceled the operation"))
+			ui.agent.CancelTurn(fmt.Errorf("user canceled the operation"))
 		case "panic":
 			panic("user forced a panic")
 		default:

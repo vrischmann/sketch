@@ -46,7 +46,7 @@ type CodingAgent interface {
 	// Loop begins the agent loop returns only when ctx is cancelled.
 	Loop(ctx context.Context)
 
-	CancelInnerLoop(cause error)
+	CancelTurn(cause error)
 
 	CancelToolUse(toolUseID string, cause error) error
 
@@ -291,10 +291,10 @@ type Agent struct {
 	// 	called by termui inside its repl loop.
 	outbox chan AgentMessage
 
-	// protects cancelInnerLoop
-	cancelInnerLoopMu sync.Mutex
+	// protects cancelTurn
+	cancelTurnMu sync.Mutex
 	// cancels potentially long-running tool_use calls or chains of them
-	cancelInnerLoop context.CancelCauseFunc
+	cancelTurn context.CancelCauseFunc
 
 	// protects following
 	mu sync.Mutex
@@ -798,11 +798,11 @@ func (a *Agent) CancelToolUse(toolUseID string, cause error) error {
 	return a.convo.CancelToolUse(toolUseID, cause)
 }
 
-func (a *Agent) CancelInnerLoop(cause error) {
-	a.cancelInnerLoopMu.Lock()
-	defer a.cancelInnerLoopMu.Unlock()
-	if a.cancelInnerLoop != nil {
-		a.cancelInnerLoop(cause)
+func (a *Agent) CancelTurn(cause error) {
+	a.cancelTurnMu.Lock()
+	defer a.cancelTurnMu.Unlock()
+	if a.cancelTurn != nil {
+		a.cancelTurn(cause)
 	}
 }
 
@@ -813,13 +813,13 @@ func (a *Agent) Loop(ctxOuter context.Context) {
 			return
 		default:
 			ctxInner, cancel := context.WithCancelCause(ctxOuter)
-			a.cancelInnerLoopMu.Lock()
-			// Set .cancelInnerLoop so the user can cancel whatever is happening
+			a.cancelTurnMu.Lock()
+			// Set .cancelTurn so the user can cancel whatever is happening
 			// inside the conversation loop without canceling this outer Loop execution.
-			// This CancelInnerLoop func is intended be called from other goroutines,
+			// This cancelTurn func is intended be called from other goroutines,
 			// hence the mutex.
-			a.cancelInnerLoop = cancel
-			a.cancelInnerLoopMu.Unlock()
+			a.cancelTurn = cancel
+			a.cancelTurnMu.Unlock()
 			a.processTurn(ctxInner) // Renamed from InnerLoop to better reflect its purpose
 			cancel(nil)
 		}

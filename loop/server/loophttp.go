@@ -520,8 +520,8 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			})
 			return
 		}
-		// Call the CancelInnerLoop method
-		agent.CancelInnerLoop(fmt.Errorf("%s", cancelReason))
+		// Call the CancelTurn method
+		agent.CancelTurn(fmt.Errorf("%s", cancelReason))
 		// Return a success response
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "cancelled", "reason": cancelReason})
