@@ -3,6 +3,7 @@ package dockerimg
 import (
 	"crypto/subtle"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cgi"
@@ -14,6 +15,7 @@ import (
 type gitHTTP struct {
 	gitRepoRoot string
 	pass        []byte
+	browserC    chan string // browser launch requests
 }
 
 func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +45,33 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Git Repository"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		slog.InfoContext(r.Context(), "githttp: denied (basic auth)", "remote addr", r.RemoteAddr)
+		return
+	}
+
+	// TODO: real mux?
+	if strings.HasPrefix(r.URL.Path, "/browser") {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+		url := strings.TrimSpace(string(body))
+		if len(url) == 0 {
+			http.Error(w, "URL cannot be empty", http.StatusBadRequest)
+			return
+		}
+		select {
+		case g.browserC <- string(url):
+			slog.InfoContext(r.Context(), "open browser", "url", url)
+			w.WriteHeader(http.StatusOK)
+		default:
+			http.Error(w, "Too many browser launch requests", http.StatusTooManyRequests)
+		}
 		return
 	}
 

@@ -195,6 +195,7 @@ Special commands:
 - help, ?             : Show this help message
 - budget              : Show original budget
 - usage, cost         : Show current token usage and cost
+- browser, open, b    : Open current conversation in browser
 - stop, cancel, abort : Cancel the current operation
 - exit, quit, q       : Exit sketch
 - ! <command>         : Execute a shell command (e.g. !ls -la)`)
@@ -208,6 +209,13 @@ Special commands:
 				ui.AppendSystemMessage("- Max wall time: %v", originalBudget.MaxWallTime)
 			}
 			ui.AppendSystemMessage("- Max total cost: %0.2f", originalBudget.MaxDollars)
+		case "browser", "open", "b":
+			if ui.httpURL != "" {
+				ui.AppendSystemMessage("🌐 Opening %s in browser", ui.httpURL)
+				go ui.agent.OpenBrowser(ui.httpURL)
+			} else {
+				ui.AppendSystemMessage("❌ No web URL available for this session")
+			}
 		case "usage", "cost":
 			totalUsage := ui.agent.TotalUsage()
 			ui.AppendSystemMessage("💰 Current usage summary:")

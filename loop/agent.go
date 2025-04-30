@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"sketch.dev/ant"
+	"sketch.dev/browser"
 	"sketch.dev/claudetool"
 	"sketch.dev/claudetool/bashkit"
 )
@@ -92,6 +94,8 @@ type CodingAgent interface {
 	OutsideHostname() string
 	OutsideWorkingDir() string
 	GitOrigin() string
+	// OpenBrowser is a best-effort attempt to open a browser at url in outside sketch.
+	OpenBrowser(url string)
 
 	// RestartConversation resets the conversation history
 	RestartConversation(ctx context.Context, rev string, initialPrompt string) error
@@ -274,6 +278,7 @@ type Agent struct {
 	lastHEAD          string        // hash of the last HEAD that was pushed to the host (only when under docker)
 	initialCommit     string        // hash of the Git HEAD when the agent was instantiated or Init()
 	gitRemoteAddr     string        // HTTP URL of the host git repo (only when under docker)
+	outsideHTTP       string        // base address of the outside webserver (only when under docker)
 	ready             chan struct{} // closed when the agent is initialized (only when under docker)
 	startedAt         time.Time
 	originalBudget    ant.Budget
@@ -391,6 +396,27 @@ func (a *Agent) OutsideWorkingDir() string {
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
 func (a *Agent) GitOrigin() string {
 	return a.gitOrigin
+}
+
+func (a *Agent) OpenBrowser(url string) {
+	if !a.IsInContainer() {
+		browser.Open(url)
+		return
+	}
+	// We're in Docker, need to send a request to the Git server
+	// to signal that the outer process should open the browser.
+	httpc := &http.Client{Timeout: 5 * time.Second}
+	resp, err := httpc.Post(a.outsideHTTP+"/browser", "text/plain", strings.NewReader(url))
+	if err != nil {
+		slog.Debug("browser launch request connection failed", "err", err, "url", url)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		return
+	}
+	body, _ := io.ReadAll(resp.Body)
+	slog.Debug("browser launch request execution failed", "status", resp.Status, "body", string(body))
 }
 
 // CurrentState returns the current state of the agent's state machine.
@@ -595,6 +621,7 @@ type AgentInit struct {
 
 	InDocker      bool
 	Commit        string
+	OutsideHTTP   string
 	GitRemoteAddr string
 	HostAddr      string
 }
@@ -627,6 +654,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.lastHEAD = ini.Commit
 		a.gitRemoteAddr = ini.GitRemoteAddr
+		a.outsideHTTP = ini.OutsideHTTP
 		a.initialCommit = ini.Commit
 		if ini.HostAddr != "" {
 			a.url = "http://" + ini.HostAddr

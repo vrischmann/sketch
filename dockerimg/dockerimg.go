@@ -396,9 +396,14 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 	}
 	ret.gitLn = gitLn
 
-	srv := http.Server{
-		Handler: &gitHTTP{gitRepoRoot: gitRoot, pass: []byte(ret.pass)},
-	}
+	browserC := make(chan string, 1) // channel of URLs to open in browser
+	go func() {
+		for url := range browserC {
+			browser.Open(url)
+		}
+	}()
+
+	srv := http.Server{Handler: &gitHTTP{gitRepoRoot: gitRoot, pass: []byte(ret.pass), browserC: browserC}}
 	ret.srv = &srv
 
 	_, gitPort, err := net.SplitHostPort(gitLn.Addr().String())
@@ -551,6 +556,7 @@ func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gi
 	initMsg, err := json.Marshal(
 		server.InitRequest{
 			Commit:            commit,
+			OutsideHTTP:       fmt.Sprintf("http://sketch:%s@host.docker.internal:%s", gitPass, gitPort),
 			GitRemoteAddr:     fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitPass, gitPort),
 			HostAddr:          localAddr,
 			SSHAuthorizedKeys: sshAuthorizedKeys,

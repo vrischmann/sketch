@@ -77,6 +77,7 @@ type State struct {
 
 type InitRequest struct {
 	HostAddr          string `json:"host_addr"`
+	OutsideHTTP       string `json:"outside_http"`
 	GitRemoteAddr     string `json:"git_remote_addr"`
 	Commit            string `json:"commit"`
 	SSHAuthorizedKeys []byte `json:"ssh_authorized_keys"`
@@ -197,6 +198,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			WorkingDir:    "/app",
 			InDocker:      true,
 			Commit:        m.Commit,
+			OutsideHTTP:   m.OutsideHTTP,
 			GitRemoteAddr: m.GitRemoteAddr,
 			HostAddr:      m.HostAddr,
 		}
