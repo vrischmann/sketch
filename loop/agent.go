@@ -280,6 +280,8 @@ type Agent struct {
 	title             string
 	branchName        string
 	codereview        *claudetool.CodeReviewer
+	// State machine to track agent state
+	stateMachine *StateMachine
 	// Outside information
 	outsideHostname   string
 	outsideOS         string
@@ -389,6 +391,11 @@ func (a *Agent) OutsideWorkingDir() string {
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
 func (a *Agent) GitOrigin() string {
 	return a.gitOrigin
+}
+
+// CurrentState returns the current state of the agent's state machine.
+func (a *Agent) CurrentState() State {
+	return a.stateMachine.CurrentState()
 }
 
 func (a *Agent) IsInContainer() bool {
@@ -577,6 +584,7 @@ func NewAgent(config AgentConfig) *Agent {
 		outsideWorkingDir:    config.OutsideWorkingDir,
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
+		stateMachine:         NewStateMachine(),
 	}
 	return agent
 }
@@ -827,6 +835,9 @@ func (a *Agent) CancelTurn(cause error) {
 	a.cancelTurnMu.Lock()
 	defer a.cancelTurnMu.Unlock()
 	if a.cancelTurn != nil {
+		// Force state transition to cancelled state
+		ctx := a.config.Context
+		a.stateMachine.ForceTransition(ctx, StateCancelled, "User cancelled turn: "+cause.Error())
 		a.cancelTurn(cause)
 	}
 }
@@ -906,15 +917,21 @@ func (a *Agent) processTurn(ctx context.Context) error {
 	// Reset the start of turn time
 	a.startOfTurn = time.Now()
 
+	// Transition to waiting for user input state
+	a.stateMachine.Transition(ctx, StateWaitingForUserInput, "Starting turn")
+
 	// Process initial user message
 	initialResp, err := a.processUserMessage(ctx)
 	if err != nil {
+		a.stateMachine.Transition(ctx, StateError, "Error processing user message: "+err.Error())
 		return err
 	}
 
 	// Handle edge case where both initialResp and err are nil
 	if initialResp == nil {
 		err := fmt.Errorf("unexpected nil response from processUserMessage with no error")
+		a.stateMachine.Transition(ctx, StateError, "Error processing user message: "+err.Error())
+
 		a.pushToOutbox(ctx, errorMessage(err))
 		return err
 	}
@@ -932,13 +949,18 @@ func (a *Agent) processTurn(ctx context.Context) error {
 	for {
 		// Check if we are over budget
 		if err := a.overBudget(ctx); err != nil {
+			a.stateMachine.Transition(ctx, StateBudgetExceeded, "Budget exceeded: "+err.Error())
 			return err
 		}
 
 		// If the model is not requesting to use a tool, we're done
 		if resp.StopReason != ant.StopReasonToolUse {
+			a.stateMachine.Transition(ctx, StateEndOfTurn, "LLM completed response, ending turn")
 			break
 		}
+
+		// Transition to tool use requested state
+		a.stateMachine.Transition(ctx, StateToolUseRequested, "LLM requested tool use")
 
 		// Handle tool execution
 		continueConversation, toolResp := a.handleToolExecution(ctx, resp)
@@ -958,6 +980,7 @@ func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, e
 	// Wait for at least one message from the user
 	msgs, err := a.GatherMessages(ctx, true)
 	if err != nil { // e.g. the context was canceled while blocking in GatherMessages
+		a.stateMachine.Transition(ctx, StateError, "Error gathering messages: "+err.Error())
 		return nil, err
 	}
 
@@ -966,12 +989,19 @@ func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, e
 		Content: msgs,
 	}
 
+	// Transition to sending to LLM state
+	a.stateMachine.Transition(ctx, StateSendingToLLM, "Sending user message to LLM")
+
 	// Send message to the model
 	resp, err := a.convo.SendMessage(userMessage)
 	if err != nil {
+		a.stateMachine.Transition(ctx, StateError, "Error sending to LLM: "+err.Error())
 		a.pushToOutbox(ctx, errorMessage(err))
 		return nil, err
 	}
+
+	// Transition to processing LLM response state
+	a.stateMachine.Transition(ctx, StateProcessingLLMResponse, "Processing LLM response")
 
 	return resp, nil
 }
@@ -981,6 +1011,9 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *ant.MessageRespon
 	var results []ant.Content
 	cancelled := false
 
+	// Transition to checking for cancellation state
+	a.stateMachine.Transition(ctx, StateCheckingForCancellation, "Checking if user requested cancellation")
+
 	// Check if the operation was cancelled by the user
 	select {
 	case <-ctx.Done():
@@ -989,10 +1022,15 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *ant.MessageRespon
 		var err error
 		results, err = a.convo.ToolResultCancelContents(resp)
 		if err != nil {
+			a.stateMachine.Transition(ctx, StateError, "Error creating cancellation response: "+err.Error())
 			a.pushToOutbox(ctx, errorMessage(err))
 		}
 		cancelled = true
+		a.stateMachine.Transition(ctx, StateCancelled, "Operation cancelled by user")
 	default:
+		// Transition to running tool state
+		a.stateMachine.Transition(ctx, StateRunningTool, "Executing requested tool")
+
 		// Add working directory to context for tool execution
 		ctx = claudetool.WithWorkingDir(ctx, a.workingDir)
 
@@ -1001,16 +1039,21 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *ant.MessageRespon
 		results, err = a.convo.ToolResultContents(ctx, resp)
 		if ctx.Err() != nil { // e.g. the user canceled the operation
 			cancelled = true
+			a.stateMachine.Transition(ctx, StateCancelled, "Operation cancelled during tool execution")
 		} else if err != nil {
+			a.stateMachine.Transition(ctx, StateError, "Error executing tool: "+err.Error())
 			a.pushToOutbox(ctx, errorMessage(err))
 		}
 	}
 
 	// Process git commits that may have occurred during tool execution
+	a.stateMachine.Transition(ctx, StateCheckingGitCommits, "Checking for git commits")
 	autoqualityMessages := a.processGitChanges(ctx)
 
 	// Check budget again after tool execution
+	a.stateMachine.Transition(ctx, StateCheckingBudget, "Checking budget after tool execution")
 	if err := a.overBudget(ctx); err != nil {
+		a.stateMachine.Transition(ctx, StateBudgetExceeded, "Budget exceeded after tool execution: "+err.Error())
 		return false, nil
 	}
 
@@ -1031,6 +1074,7 @@ func (a *Agent) processGitChanges(ctx context.Context) []string {
 	// Run autoformatters if there was exactly one new commit
 	var autoqualityMessages []string
 	if len(newCommits) == 1 {
+		a.stateMachine.Transition(ctx, StateRunningAutoformatters, "Running autoformatters on new commit")
 		formatted := a.codereview.Autoformat(ctx)
 		if len(formatted) > 0 {
 			msg := fmt.Sprintf(`
@@ -1056,8 +1100,10 @@ Please amend your latest git commit with these changes and then continue with wh
 // continueTurnWithToolResults continues the conversation with tool results
 func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.Content, autoqualityMessages []string, cancelled bool) (bool, *ant.MessageResponse) {
 	// Get any messages the user sent while tools were executing
+	a.stateMachine.Transition(ctx, StateGatheringAdditionalMessages, "Gathering additional user messages")
 	msgs, err := a.GatherMessages(ctx, false)
 	if err != nil {
+		a.stateMachine.Transition(ctx, StateError, "Error gathering additional messages: "+err.Error())
 		return false, nil
 	}
 
@@ -1083,14 +1129,19 @@ func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.C
 	results = append(results, msgs...)
 
 	// Send the combined message to continue the conversation
+	a.stateMachine.Transition(ctx, StateSendingToolResults, "Sending tool results back to LLM")
 	resp, err := a.convo.SendMessage(ant.Message{
 		Role:    "user",
 		Content: results,
 	})
 	if err != nil {
+		a.stateMachine.Transition(ctx, StateError, "Error sending tool results: "+err.Error())
 		a.pushToOutbox(ctx, errorMessage(fmt.Errorf("error: failed to continue conversation: %s", err.Error())))
 		return true, nil // Return true to continue the conversation, but with no response
 	}
+
+	// Transition back to processing LLM response
+	a.stateMachine.Transition(ctx, StateProcessingLLMResponse, "Processing LLM response to tool results")
 
 	if cancelled {
 		return false, nil
@@ -1101,6 +1152,7 @@ func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.C
 
 func (a *Agent) overBudget(ctx context.Context) error {
 	if err := a.convo.OverBudget(); err != nil {
+		a.stateMachine.Transition(ctx, StateBudgetExceeded, "Budget exceeded: "+err.Error())
 		m := budgetMessage(err)
 		m.Content = m.Content + "\n\nBudget reset."
 		a.pushToOutbox(ctx, budgetMessage(err))
