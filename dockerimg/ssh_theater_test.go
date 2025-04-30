@@ -20,6 +20,7 @@ type MockFileSystem struct {
 	CreatedDirs    map[string]bool
 	OpenedFiles    map[string]*MockFile
 	StatCalledWith []string
+	TempFiles      []string
 	FailOn         map[string]error // Map of function name to error to simulate failures
 }
 
@@ -28,6 +29,7 @@ func NewMockFileSystem() *MockFileSystem {
 		Files:       make(map[string][]byte),
 		CreatedDirs: make(map[string]bool),
 		OpenedFiles: make(map[string]*MockFile),
+		TempFiles:   []string{},
 		FailOn:      make(map[string]error),
 	}
 }
@@ -133,6 +135,54 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm fs.FileMode) (*os.
 	return tmpFile, nil
 }
 
+func (m *MockFileSystem) TempFile(dir, pattern string) (*os.File, error) {
+	if err, ok := m.FailOn["TempFile"]; ok {
+		return nil, err
+	}
+
+	// Create an actual temporary file for testing purposes
+	tmpFile, err := os.CreateTemp(dir, pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Record the temp file path
+	m.TempFiles = append(m.TempFiles, tmpFile.Name())
+
+	return tmpFile, nil
+}
+
+func (m *MockFileSystem) Rename(oldpath, newpath string) error {
+	if err, ok := m.FailOn["Rename"]; ok {
+		return err
+	}
+
+	// If the old path exists in our mock file system, move its contents
+	if data, exists := m.Files[oldpath]; exists {
+		m.Files[newpath] = data
+		delete(m.Files, oldpath)
+	}
+
+	return nil
+}
+
+func (m *MockFileSystem) SafeWriteFile(name string, data []byte, perm fs.FileMode) error {
+	if err, ok := m.FailOn["SafeWriteFile"]; ok {
+		return err
+	}
+
+	// For the mock, we'll create a backup if the file exists
+	if existingData, exists := m.Files[name]; exists {
+		backupName := name + ".bak"
+		m.Files[backupName] = existingData
+	}
+
+	// Write the new data
+	m.Files[name] = data
+
+	return nil
+}
+
 // MockKeyGenerator implements KeyGenerator interface for testing
 type MockKeyGenerator struct {
 	privateKey *rsa.PrivateKey
@@ -192,6 +242,12 @@ func setupTestSSHTheater(t *testing.T) (*SSHTheater, *MockFileSystem, *MockKeyGe
 	sketchDir := filepath.Join(homePath, ".config/sketch")
 	mockFS.CreatedDirs[sketchDir] = true
 
+	// Create empty files so the tests don't fail
+	sketchConfigPath := filepath.Join(sketchDir, "ssh_config")
+	mockFS.Files[sketchConfigPath] = []byte("")
+	knownHostsPath := filepath.Join(sketchDir, "known_hosts")
+	mockFS.Files[knownHostsPath] = []byte("")
+
 	// Set HOME environment variable for the test
 	oldHome := os.Getenv("HOME")
 	os.Setenv("HOME", homePath)
@@ -213,6 +269,13 @@ func TestNewSSHTheatherCreatesRequiredDirectories(t *testing.T) {
 	oldHome := os.Getenv("HOME")
 	os.Setenv("HOME", "/home/testuser")
 	defer func() { os.Setenv("HOME", oldHome) }()
+
+	// Create empty files so the test doesn't fail
+	sketchDir := "/home/testuser/.config/sketch"
+	sketchConfigPath := filepath.Join(sketchDir, "ssh_config")
+	mockFS.Files[sketchConfigPath] = []byte("")
+	knownHostsPath := filepath.Join(sketchDir, "known_hosts")
+	mockFS.Files[knownHostsPath] = []byte("")
 
 	// Create theater
 	_, err := newSSHTheatherWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
