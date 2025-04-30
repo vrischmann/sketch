@@ -178,7 +178,7 @@ export class SketchAppShell extends LitElement {
       margin: 0;
       padding: 0;
       color: rgba(82, 82, 82, 0.85);
-      font-size: 16px;
+      font-size: 14px;
       font-weight: normal;
       font-style: italic;
       white-space: nowrap;
@@ -213,7 +213,7 @@ export class SketchAppShell extends LitElement {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 25%;
+      max-width: 30%;
       padding: 6px 0;
     }
 
