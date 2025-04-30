@@ -127,7 +127,7 @@ func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg
 func CheckForIncludeWithFS(fs FileSystem) error {
 	sketchSSHPathInclude := "Include " + filepath.Join(os.Getenv("HOME"), ".config", "sketch", "ssh_config")
 	defaultSSHPath := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
-	f, _ := fs.OpenFile(filepath.Join(os.Getenv("HOME"), ".ssh", "config"), os.O_RDONLY, 0)
+	f, _ := fs.OpenFile(filepath.Join(os.Getenv("HOME"), ".ssh", "config"), os.O_RDWR|os.O_CREATE, 0o644)
 	if f == nil {
 		return fmt.Errorf("⚠️  SSH connections are disabled. cannot open SSH config file: %s", defaultSSHPath)
 	}
@@ -151,7 +151,22 @@ func CheckForIncludeWithFS(fs FileSystem) error {
 	}
 
 	if sketchInludePos == nil {
-		return fmt.Errorf("⚠️  SSH connections are disabled. to enable them, add the line %q to the top of %s before any 'Host' lines", sketchSSHPathInclude, defaultSSHPath)
+		cfgBytes, err := cfg.MarshalText()
+		if err != nil {
+			return fmt.Errorf("couldn't marshal ssh_config: %w", err)
+		}
+		if err := f.Truncate(0); err != nil {
+			return fmt.Errorf("couldn't truncate ssh_config: %w", err)
+		}
+		if _, err := f.Seek(0, 0); err != nil {
+			return fmt.Errorf("couldn't seek to beginning of ssh_config: %w", err)
+		}
+		cfgBytes = append([]byte(sketchSSHPathInclude+"\n"), cfgBytes...)
+		if _, err := f.Write(cfgBytes); err != nil {
+			return fmt.Errorf("couldn't write ssh_config: %w", err)
+		}
+
+		return nil
 	}
 
 	if firstNonIncludePos != nil && firstNonIncludePos.Line < sketchInludePos.Line {
