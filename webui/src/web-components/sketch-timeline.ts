@@ -241,12 +241,10 @@ export class SketchTimeline extends LitElement {
 
             <p class="welcome-box-content">
               Ask it to implement a task or answer a question in the chat box
-              below. Sketch has created a container with your repo, and it can
-              edit and run your code in the container. Sketch will create
-              commits, which you can look at and review with comments in the
-              Diff tab. Once you're done, you'll find the changes ready to go in
-              a
-              <code>sketch/*</code> branch.
+              below. It can edit and run your code, all in the container. Sketch
+              will create commits in a newly created git branch, which you can
+              look at and comment on in the Diff tab. Once you're done, you'll
+              find that branch available in your (original) repo.
             </p>
             <p class="welcome-box-content">
               Because Sketch operates a container per session, you can run
