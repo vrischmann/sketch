@@ -822,7 +822,10 @@ func (a *Agent) Loop(ctxOuter context.Context) {
 			// hence the mutex.
 			a.cancelTurn = cancel
 			a.cancelTurnMu.Unlock()
-			a.processTurn(ctxInner) // Renamed from InnerLoop to better reflect its purpose
+			err := a.processTurn(ctxInner) // Renamed from InnerLoop to better reflect its purpose
+			if err != nil {
+				slog.ErrorContext(ctxOuter, "Error in processing turn", "error", err)
+			}
 			cancel(nil)
 		}
 	}
@@ -876,14 +879,21 @@ func (a *Agent) GatherMessages(ctx context.Context, block bool) ([]ant.Content, 
 }
 
 // processTurn handles a single conversation turn with the user
-func (a *Agent) processTurn(ctx context.Context) {
+func (a *Agent) processTurn(ctx context.Context) error {
 	// Reset the start of turn time
 	a.startOfTurn = time.Now()
 
 	// Process initial user message
 	initialResp, err := a.processUserMessage(ctx)
 	if err != nil {
-		return
+		return err
+	}
+
+	// Handle edge case where both initialResp and err are nil
+	if initialResp == nil {
+		err := fmt.Errorf("unexpected nil response from processUserMessage with no error")
+		a.pushToOutbox(ctx, errorMessage(err))
+		return err
 	}
 
 	// We do this as we go, but let's also do it at the end of the turn
@@ -899,7 +909,7 @@ func (a *Agent) processTurn(ctx context.Context) {
 	for {
 		// Check if we are over budget
 		if err := a.overBudget(ctx); err != nil {
-			return
+			return err
 		}
 
 		// If the model is not requesting to use a tool, we're done
@@ -910,12 +920,14 @@ func (a *Agent) processTurn(ctx context.Context) {
 		// Handle tool execution
 		continueConversation, toolResp := a.handleToolExecution(ctx, resp)
 		if !continueConversation {
-			return
+			return nil
 		}
 
 		// Set the response for the next iteration
 		resp = toolResp
 	}
+
+	return nil
 }
 
 // processUserMessage waits for user messages and sends them to the model

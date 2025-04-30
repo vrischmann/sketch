@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -202,5 +203,176 @@ func TestAgentTracksOutstandingCalls(t *testing.T) {
 
 	if tools[0] != "think" {
 		t.Errorf("Expected 'think' tool remaining, got %s", tools[0])
+	}
+}
+
+// TestAgentProcessTurnWithNilResponse tests the scenario where Agent.processTurn receives
+// a nil value for initialResp from processUserMessage.
+func TestAgentProcessTurnWithNilResponse(t *testing.T) {
+	// Create a mock conversation that will return nil and error
+	mockConvo := &MockConvoInterface{
+		sendMessageFunc: func(message ant.Message) (*ant.MessageResponse, error) {
+			return nil, fmt.Errorf("test error: simulating nil response")
+		},
+	}
+
+	// Create a minimal Agent instance for testing
+	agent := &Agent{
+		convo:                mockConvo,
+		inbox:                make(chan string, 10),
+		outbox:               make(chan AgentMessage, 10),
+		outstandingLLMCalls:  make(map[string]struct{}),
+		outstandingToolCalls: make(map[string]string),
+	}
+
+	// Create a test context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Push a test message to the inbox so that processUserMessage will try to process it
+	agent.inbox <- "Test message"
+
+	// Call processTurn - it should exit early without panic when initialResp is nil
+	agent.processTurn(ctx)
+
+	// Verify the error message was added to outbox
+	select {
+	case msg := <-agent.outbox:
+		if msg.Type != ErrorMessageType {
+			t.Errorf("Expected error message, got message type: %s", msg.Type)
+		}
+		if !strings.Contains(msg.Content, "simulating nil response") {
+			t.Errorf("Expected error message to contain 'simulating nil response', got: %s", msg.Content)
+		}
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for error message in outbox")
+	}
+
+	// No more messages should be in the outbox since processTurn should exit early
+	select {
+	case msg := <-agent.outbox:
+		t.Errorf("Expected no more messages in outbox, but got: %+v", msg)
+	case <-time.After(100 * time.Millisecond):
+		// This is the expected outcome - no more messages
+	}
+}
+
+// MockConvoInterface implements the ConvoInterface for testing
+type MockConvoInterface struct {
+	sendMessageFunc              func(message ant.Message) (*ant.MessageResponse, error)
+	sendUserTextMessageFunc      func(s string, otherContents ...ant.Content) (*ant.MessageResponse, error)
+	toolResultContentsFunc       func(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error)
+	toolResultCancelContentsFunc func(resp *ant.MessageResponse) ([]ant.Content, error)
+	cancelToolUseFunc            func(toolUseID string, cause error) error
+	cumulativeUsageFunc          func() ant.CumulativeUsage
+	resetBudgetFunc              func(ant.Budget)
+	overBudgetFunc               func() error
+}
+
+func (m *MockConvoInterface) SendMessage(message ant.Message) (*ant.MessageResponse, error) {
+	if m.sendMessageFunc != nil {
+		return m.sendMessageFunc(message)
+	}
+	return nil, nil
+}
+
+func (m *MockConvoInterface) SendUserTextMessage(s string, otherContents ...ant.Content) (*ant.MessageResponse, error) {
+	if m.sendUserTextMessageFunc != nil {
+		return m.sendUserTextMessageFunc(s, otherContents...)
+	}
+	return nil, nil
+}
+
+func (m *MockConvoInterface) ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
+	if m.toolResultContentsFunc != nil {
+		return m.toolResultContentsFunc(ctx, resp)
+	}
+	return nil, nil
+}
+
+func (m *MockConvoInterface) ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error) {
+	if m.toolResultCancelContentsFunc != nil {
+		return m.toolResultCancelContentsFunc(resp)
+	}
+	return nil, nil
+}
+
+func (m *MockConvoInterface) CancelToolUse(toolUseID string, cause error) error {
+	if m.cancelToolUseFunc != nil {
+		return m.cancelToolUseFunc(toolUseID, cause)
+	}
+	return nil
+}
+
+func (m *MockConvoInterface) CumulativeUsage() ant.CumulativeUsage {
+	if m.cumulativeUsageFunc != nil {
+		return m.cumulativeUsageFunc()
+	}
+	return ant.CumulativeUsage{}
+}
+
+func (m *MockConvoInterface) ResetBudget(budget ant.Budget) {
+	if m.resetBudgetFunc != nil {
+		m.resetBudgetFunc(budget)
+	}
+}
+
+func (m *MockConvoInterface) OverBudget() error {
+	if m.overBudgetFunc != nil {
+		return m.overBudgetFunc()
+	}
+	return nil
+}
+
+// TestAgentProcessTurnWithNilResponseNilError tests the scenario where Agent.processTurn receives
+// a nil value for initialResp and nil error from processUserMessage.
+// This test verifies that the implementation properly handles this edge case.
+func TestAgentProcessTurnWithNilResponseNilError(t *testing.T) {
+	// Create a mock conversation that will return nil response and nil error
+	mockConvo := &MockConvoInterface{
+		sendMessageFunc: func(message ant.Message) (*ant.MessageResponse, error) {
+			return nil, nil // This is unusual but now handled gracefully
+		},
+	}
+
+	// Create a minimal Agent instance for testing
+	agent := &Agent{
+		convo:                mockConvo,
+		inbox:                make(chan string, 10),
+		outbox:               make(chan AgentMessage, 10),
+		outstandingLLMCalls:  make(map[string]struct{}),
+		outstandingToolCalls: make(map[string]string),
+	}
+
+	// Create a test context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Push a test message to the inbox so that processUserMessage will try to process it
+	agent.inbox <- "Test message"
+
+	// Call processTurn - it should handle nil initialResp with a descriptive error
+	err := agent.processTurn(ctx)
+
+	// Verify we get the expected error
+	if err == nil {
+		t.Error("Expected processTurn to return an error for nil initialResp, but got nil")
+	} else if !strings.Contains(err.Error(), "unexpected nil response") {
+		t.Errorf("Expected error about nil response, got: %v", err)
+	} else {
+		t.Logf("As expected, processTurn returned error: %v", err)
+	}
+
+	// Verify an error message was sent to the outbox
+	select {
+	case msg := <-agent.outbox:
+		if msg.Type != ErrorMessageType {
+			t.Errorf("Expected error message type, got: %s", msg.Type)
+		}
+		if !strings.Contains(msg.Content, "unexpected nil response") {
+			t.Errorf("Expected error about nil response, got: %s", msg.Content)
+		}
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for error message in outbox")
 	}
 }
