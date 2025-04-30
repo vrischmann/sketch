@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"sketch.dev/browser"
 	"sketch.dev/loop/server"
 	"sketch.dev/skribe"
 	"sketch.dev/webui"
@@ -310,9 +311,9 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		// We open the browser after the init config because the above waits for the web server to be serving.
 		if config.OpenBrowser {
 			if config.SkabandAddr != "" {
-				OpenBrowser(ctx, fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID))
+				browser.Open(ctx, fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID))
 			} else {
-				OpenBrowser(ctx, "http://"+localAddr)
+				browser.Open(ctx, "http://"+localAddr)
 			}
 		}
 	}()
@@ -762,21 +763,6 @@ and try running sketch again.
 	gitDir := strings.TrimSpace(string(out)) // location of .git dir, often as a relative path
 	absGitDir := filepath.Join(path, gitDir)
 	return filepath.Dir(absGitDir), err
-}
-
-func OpenBrowser(ctx context.Context, url string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.CommandContext(ctx, "open", url)
-	case "windows":
-		cmd = exec.CommandContext(ctx, "cmd", "/c", "start", url)
-	default: // Linux and other Unix-like systems
-		cmd = exec.CommandContext(ctx, "xdg-open", url)
-	}
-	if b, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open browser: %v: %s\n", err, b)
-	}
 }
 
 // moveFile is like Python's shutil.move, in that it tries a rename, and, if that fails,

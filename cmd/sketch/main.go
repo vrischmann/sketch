@@ -18,6 +18,7 @@ import (
 
 	"github.com/richardlehane/crock32"
 	"sketch.dev/ant"
+	"sketch.dev/browser"
 	"sketch.dev/dockerimg"
 	"sketch.dev/httprr"
 	"sketch.dev/loop"
@@ -307,7 +308,7 @@ func run() error {
 
 	// Open the web UI URL in the system browser if requested
 	if *openBrowser {
-		dockerimg.OpenBrowser(ctx, ps1URL)
+		browser.Open(ctx, ps1URL)
 	}
 
 	// Create the termui instance
