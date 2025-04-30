@@ -567,12 +567,15 @@ export class SketchAppShell extends LitElement {
     // Update state if we received it
     if (state) {
       // Ensure we're using the latest call status to prevent indicators from being stuck
-      if (state.outstanding_llm_calls === 0 && state.outstanding_tool_calls.length === 0) {
+      if (
+        state.outstanding_llm_calls === 0 &&
+        state.outstanding_tool_calls.length === 0
+      ) {
         // Force reset containerState calls when nothing is reported as in progress
         state.outstanding_llm_calls = 0;
         state.outstanding_tool_calls = [];
       }
-      
+
       this.containerState = state;
       this.title = state.title;
 
