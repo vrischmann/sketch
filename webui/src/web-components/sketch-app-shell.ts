@@ -244,10 +244,12 @@ export class SketchAppShell extends LitElement {
       background-color: #c82333 !important;
     }
 
-    .poll-updates {
+    .poll-updates,
+    .notifications-toggle {
       display: flex;
       align-items: center;
       font-size: 12px;
+      margin-right: 10px;
     }
   `;
 
@@ -258,6 +260,10 @@ export class SketchAppShell extends LitElement {
   // Track if the last commit info has been copied
   @state()
   lastCommitCopied: boolean = false;
+
+  // Track notification preferences
+  @state()
+  notificationsEnabled: boolean = true;
 
   @property()
   connectionErrorMessage: string = "";
@@ -311,6 +317,18 @@ export class SketchAppShell extends LitElement {
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handlePopState = this._handlePopState.bind(this);
     this._handleStopClick = this._handleStopClick.bind(this);
+    this._handleNotificationsToggle =
+      this._handleNotificationsToggle.bind(this);
+
+    // Load notification preference from localStorage
+    try {
+      const savedPref = localStorage.getItem("sketch-notifications-enabled");
+      if (savedPref !== null) {
+        this.notificationsEnabled = savedPref === "true";
+      }
+    } catch (error) {
+      console.error("Error loading notification preference:", error);
+    }
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -548,6 +566,83 @@ export class SketchAppShell extends LitElement {
     document.title = docTitle;
   }
 
+  // Check and request notification permission if needed
+  private async checkNotificationPermission(): Promise<boolean> {
+    // Check if the Notification API is supported
+    if (!("Notification" in window)) {
+      console.log("This browser does not support notifications");
+      return false;
+    }
+
+    // Check if permission is already granted
+    if (Notification.permission === "granted") {
+      return true;
+    }
+
+    // If permission is not denied, request it
+    if (Notification.permission !== "denied") {
+      const permission = await Notification.requestPermission();
+      return permission === "granted";
+    }
+
+    return false;
+  }
+
+  // Handle notifications toggle change
+  private _handleNotificationsToggle(event: Event): void {
+    const toggleCheckbox = event.target as HTMLInputElement;
+    this.notificationsEnabled = toggleCheckbox.checked;
+
+    // If enabling notifications, check permissions
+    if (this.notificationsEnabled) {
+      this.checkNotificationPermission();
+    }
+
+    // Save preference to localStorage
+    try {
+      localStorage.setItem(
+        "sketch-notifications-enabled",
+        String(this.notificationsEnabled),
+      );
+    } catch (error) {
+      console.error("Error saving notification preference:", error);
+    }
+  }
+
+  // Show notification for message with EndOfTurn=true
+  private async showEndOfTurnNotification(
+    message: AgentMessage,
+  ): Promise<void> {
+    // Don't show notifications if they're disabled
+    if (!this.notificationsEnabled) return;
+
+    // Check if we have permission to show notifications
+    const hasPermission = await this.checkNotificationPermission();
+    if (!hasPermission) return;
+
+    // Only show notifications for agent messages with end_of_turn=true
+    if (message.type !== "agent" || !message.end_of_turn) return;
+
+    // Create a title that includes the sketch title
+    const notificationTitle = `Sketch: ${this.title || "untitled"}`;
+
+    // Extract the beginning of the message content (first 100 chars)
+    const messagePreview = message.content
+      ? message.content.substring(0, 100) +
+        (message.content.length > 100 ? "..." : "")
+      : "Agent has completed its turn";
+
+    // Create and show the notification
+    try {
+      new Notification(notificationTitle, {
+        body: messagePreview,
+        icon: "/static/favicon.ico", // Use sketch favicon if available
+      });
+    } catch (error) {
+      console.error("Error showing notification:", error);
+    }
+  }
+
   private handleDataChanged(eventData: {
     state: State;
     newMessages: AgentMessage[];
@@ -588,6 +683,16 @@ export class SketchAppShell extends LitElement {
 
     // Process new messages to find commit messages
     this.updateLastCommitInfo(newMessages);
+
+    // Check for agent messages with end_of_turn=true and show notifications
+    if (newMessages && newMessages.length > 0 && !isFirstFetch) {
+      for (const message of newMessages) {
+        if (message.type === "agent" && message.end_of_turn) {
+          this.showEndOfTurnNotification(message);
+          break; // Only show one notification per batch of messages
+        }
+      }
+    }
   }
 
   private handleConnectionStatusChanged(
@@ -772,6 +877,16 @@ export class SketchAppShell extends LitElement {
           <div class="poll-updates">
             <input type="checkbox" id="pollToggle" checked />
             <label for="pollToggle">Poll</label>
+          </div>
+
+          <div class="notifications-toggle">
+            <input
+              type="checkbox"
+              id="notificationsToggle"
+              ?checked=${this.notificationsEnabled}
+              @change=${this._handleNotificationsToggle}
+            />
+            <label for="notificationsToggle">Notifications</label>
           </div>
 
           <sketch-network-status
