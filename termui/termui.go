@@ -188,13 +188,16 @@ func (ui *termUI) inputLoop(ctx context.Context) error {
 
 		switch line {
 		case "?", "help":
-			ui.AppendSystemMessage(`Available commands:
-- help, ?         : Show this help message
-- budget          : Show original budget
-- usage, cost     : Show current token usage and cost
+			ui.AppendSystemMessage(`General use:
+Use chat to ask sketch to tackle a task or answer a question about this repo.
+
+Special commands:
+- help, ?             : Show this help message
+- budget              : Show original budget
+- usage, cost         : Show current token usage and cost
 - stop, cancel, abort : Cancel the current operation
-- exit, quit, q   : Exit the application
-- ! <command>     : Execute shell command (e.g. !ls -la)`)
+- exit, quit, q       : Exit sketch
+- ! <command>         : Execute a shell command (e.g. !ls -la)`)
 		case "budget":
 			originalBudget := ui.agent.OriginalBudget()
 			ui.AppendSystemMessage("💰 Budget summary:")
