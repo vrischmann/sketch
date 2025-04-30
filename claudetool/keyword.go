@@ -30,8 +30,9 @@ Use when navigating unfamiliar codebases with only conceptual understanding or v
 
 Effective use:
 - Provide a detailed query for accurate relevance ranking
-- Include extensive but uncommon keywords to ensure comprehensive results
-- Order keywords by importance (most important first) - less important keywords may be dropped if there are too many results
+- Prefer MANY SPECIFIC terms over FEW GENERAL ones (high precision beats high recall)
+- Order search terms by importance (most important first)
+- Supports regex search terms for flexible matching
 
 IMPORTANT: Do NOT use this tool if you have precise information like log lines, error messages, filenames, symbols, or package names. Use direct approaches (grep, cat, go doc, etc.) instead.
 `
@@ -42,19 +43,19 @@ IMPORTANT: Do NOT use this tool if you have precise information like log lines, 
   "type": "object",
   "required": [
     "query",
-    "keywords"
+    "search_terms"
   ],
   "properties": {
     "query": {
       "type": "string",
       "description": "A detailed statement of what you're trying to find or learn."
     },
-    "keywords": {
+    "search_terms": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "List of keywords in descending order of importance."
+      "description": "List of search terms in descending order of importance."
     }
   }
 }
@@ -62,8 +63,8 @@ IMPORTANT: Do NOT use this tool if you have precise information like log lines, 
 )
 
 type keywordInput struct {
-	Query    string   `json:"query"`
-	Keywords []string `json:"keywords"`
+	Query       string   `json:"query"`
+	SearchTerms []string `json:"search_terms"`
 }
 
 //go:embed keyword_system_prompt.txt
@@ -91,11 +92,11 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 	if err == nil {
 		wd = root
 	}
-	slog.InfoContext(ctx, "keyword search input", "query", input.Query, "keywords", input.Keywords, "wd", wd)
+	slog.InfoContext(ctx, "keyword search input", "query", input.Query, "keywords", input.SearchTerms, "wd", wd)
 
 	// first remove stopwords
 	var keep []string
-	for _, term := range input.Keywords {
+	for _, term := range input.SearchTerms {
 		out, err := ripgrep(ctx, wd, []string{term})
 		if err != nil {
 			return "", err

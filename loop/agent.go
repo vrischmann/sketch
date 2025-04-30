@@ -730,7 +730,7 @@ func (a *Agent) titleTool() *ant.Tool {
 	"properties": {
 		"title": {
 			"type": "string",
-			"description": "A concise, descriptive title summarizing what this conversation is about"
+			"description": "A concise title summarizing what this conversation is about, imperative tense preferred"
 		},
 		"branch_name": {
 			"type": "string",
