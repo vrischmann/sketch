@@ -74,6 +74,9 @@ type CodingAgent interface {
 	// Title returns the current title of the conversation.
 	Title() string
 
+	// BranchName returns the git branch name for the conversation.
+	BranchName() string
+
 	// OS returns the operating system of the client.
 	OS() string
 
@@ -319,6 +322,13 @@ func (a *Agent) Title() string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.title
+}
+
+// BranchName returns the git branch name for the conversation.
+func (a *Agent) BranchName() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.branchName
 }
 
 // OutstandingLLMCallCount returns the number of outstanding LLM calls.

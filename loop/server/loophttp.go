@@ -54,6 +54,7 @@ type State struct {
 	TotalUsage           *ant.CumulativeUsage `json:"total_usage,omitempty"`
 	InitialCommit        string               `json:"initial_commit"`
 	Title                string               `json:"title"`
+	BranchName           string               `json:"branch_name,omitempty"`
 	Hostname             string               `json:"hostname"`    // deprecated
 	WorkingDir           string               `json:"working_dir"` // deprecated
 	OS                   string               `json:"os"`          // deprecated
@@ -373,6 +374,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			WorkingDir:           getWorkingDir(),
 			InitialCommit:        agent.InitialCommit(),
 			Title:                agent.Title(),
+			BranchName:           agent.BranchName(),
 			OS:                   agent.OS(),
 			OutsideHostname:      agent.OutsideHostname(),
 			InsideHostname:       s.hostname,

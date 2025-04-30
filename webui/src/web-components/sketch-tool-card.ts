@@ -563,6 +563,14 @@ export class SketchToolCardTitle extends LitElement {
     .summary-text {
       font-style: italic;
     }
+    pre {
+      display: inline;
+      font-family: monospace;
+      background: rgb(236, 236, 236);
+      padding: 2px 4px;
+      border-radius: 2px;
+      margin: 0;
+    }
   `;
   constructor() {
     super();
@@ -577,11 +585,14 @@ export class SketchToolCardTitle extends LitElement {
   }
 
   render() {
+    const inputData = JSON.parse(this.toolCall?.input || "{}");
     return html`
-      <span class="summary-text"
-        >I've set the title of this sketch to
-        <b>"${JSON.parse(this.toolCall?.input)?.title}"</b></span
-      >
+      <span class="summary-text">
+        Setting title to
+        <b>${inputData.title}</b>
+        and branch to
+        <pre>sketch/${inputData.branch_name}</pre>
+      </span>
     `;
   }
 }

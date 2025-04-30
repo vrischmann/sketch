@@ -66,6 +66,7 @@ export interface State {
 	working_dir: string;
 	initial_commit: string;
 	title: string;
+	branch_name?: string;
 	os: string;
 	outside_hostname?: string;
 	inside_hostname?: string;
