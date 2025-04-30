@@ -57,6 +57,14 @@ func (m *MockFileSystem) Mkdir(name string, perm fs.FileMode) error {
 	return nil
 }
 
+func (m *MockFileSystem) MkdirAll(name string, perm fs.FileMode) error {
+	if err, ok := m.FailOn["MkdirAll"]; ok {
+		return err
+	}
+	m.CreatedDirs[name] = true
+	return nil
+}
+
 func (m *MockFileSystem) ReadFile(name string) ([]byte, error) {
 	if err, ok := m.FailOn["ReadFile"]; ok {
 		return nil, err
@@ -181,7 +189,7 @@ func setupTestSSHTheater(t *testing.T) (*SSHTheater, *MockFileSystem, *MockKeyGe
 
 	// Setup home dir in mock filesystem
 	homePath := "/home/testuser"
-	sketchDir := filepath.Join(homePath, ".sketch")
+	sketchDir := filepath.Join(homePath, ".config/sketch")
 	mockFS.CreatedDirs[sketchDir] = true
 
 	// Set HOME environment variable for the test
@@ -212,8 +220,8 @@ func TestNewSSHTheatherCreatesRequiredDirectories(t *testing.T) {
 		t.Fatalf("Failed to create SSHTheater: %v", err)
 	}
 
-	// Check if the .sketch directory was created
-	expectedDir := "/home/testuser/.sketch"
+	// Check if the .config/sketch directory was created
+	expectedDir := "/home/testuser/.config/sketch"
 	if !mockFS.CreatedDirs[expectedDir] {
 		t.Errorf("Expected directory %s to be created", expectedDir)
 	}
@@ -223,7 +231,7 @@ func TestCreateKeyPairIfMissing(t *testing.T) {
 	ssh, mockFS, _ := setupTestSSHTheater(t)
 
 	// Test key pair creation
-	keyPath := "/home/testuser/.sketch/test_key"
+	keyPath := "/home/testuser/.config/sketch/test_key"
 	_, err := ssh.createKeyPairIfMissing(keyPath)
 	if err != nil {
 		t.Fatalf("Failed to create key pair: %v", err)
@@ -535,7 +543,7 @@ func TestCheckForInclude(t *testing.T) {
 	defer func() { os.Setenv("HOME", oldHome) }()
 
 	// Create a mock ssh config with the expected include
-	includeLine := "Include /home/testuser/.sketch/ssh_config"
+	includeLine := "Include /home/testuser/.config/sketch/ssh_config"
 	initialConfig := fmt.Sprintf("%s\nHost example\n  HostName example.com\n", includeLine)
 
 	// Add the config to the mock filesystem
@@ -552,15 +560,15 @@ func TestCheckForInclude(t *testing.T) {
 	mockFS.Files[sshConfigPath] = []byte("Host example\n  HostName example.com\n")
 
 	err = CheckForIncludeWithFS(mockFS)
-	if err == nil {
-		t.Fatalf("CheckForInclude should have returned an error for missing include")
+	if err != nil {
+		t.Fatalf("CheckForInclude should have created the Include line without an error")
 	}
 }
 
 func TestSSHTheaterWithErrors(t *testing.T) {
 	// Test directory creation failure
 	mockFS := NewMockFileSystem()
-	mockFS.FailOn["Mkdir"] = fmt.Errorf("mock mkdir error")
+	mockFS.FailOn["MkdirAll"] = fmt.Errorf("mock mkdir error")
 	mockKG := NewMockKeyGenerator(nil, nil)
 
 	// Set HOME environment variable for the test
@@ -613,9 +621,9 @@ func TestRealSSHTheatherInit(t *testing.T) {
 	}
 
 	// Check if the sketch dir was created
-	sketchDir := filepath.Join(tempDir, ".sketch")
+	sketchDir := filepath.Join(tempDir, ".config/sketch")
 	if _, err := os.Stat(sketchDir); os.IsNotExist(err) {
-		t.Errorf(".sketch directory not created")
+		t.Errorf(".config/sketch directory not created")
 	}
 
 	// Check if key files were created

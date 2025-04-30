@@ -68,7 +68,8 @@ func NewSSHTheather(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
 func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg KeyGenerator) (*SSHTheater, error) {
 	base := filepath.Join(os.Getenv("HOME"), ".config", "sketch")
 	if _, err := fs.Stat(base); err != nil {
-		if err := fs.Mkdir(base, 0o777); err != nil {
+
+		if err := fs.MkdirAll(base, 0o777); err != nil {
 			return nil, fmt.Errorf("couldn't create %s: %w", base, err)
 		}
 	}
@@ -422,9 +423,14 @@ func (c *SSHTheater) removeContainerFromSSHConfig() error {
 type FileSystem interface {
 	Stat(name string) (fs.FileInfo, error)
 	Mkdir(name string, perm fs.FileMode) error
+	MkdirAll(name string, perm fs.FileMode) error
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm fs.FileMode) error
 	OpenFile(name string, flag int, perm fs.FileMode) (*os.File, error)
+}
+
+func (fs *RealFileSystem) MkdirAll(name string, perm fs.FileMode) error {
+	return os.MkdirAll(name, perm)
 }
 
 // RealFileSystem is the default implementation of FileSystem that uses the OS
