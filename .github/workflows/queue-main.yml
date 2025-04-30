@@ -51,6 +51,6 @@ jobs:
             COMMIT_TO_PUSH="${{ needs.formatting.outputs.commit_sha }}"
           fi
 
-          git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/boldsoftware/sketch.git "${COMMIT_TO_PUSH}":main
+          git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "${COMMIT_TO_PUSH}":main
         env:
           GITHUB_TOKEN: ${{ github.token }}
