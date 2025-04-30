@@ -153,7 +153,7 @@ func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
 		case loop.AutoMessageType:
 			ui.AppendSystemMessage("🧐 %s", resp.Content)
 		case loop.UserMessageType:
-			ui.AppendChatMessage(chatMessage{thinking: thinking, idx: resp.Idx, sender: "👤️", content: resp.Content})
+			ui.AppendChatMessage(chatMessage{thinking: thinking, idx: resp.Idx, sender: "🦸", content: resp.Content})
 		case loop.CommitMessageType:
 			// Display each commit in the terminal
 			for _, commit := range resp.Commits {
