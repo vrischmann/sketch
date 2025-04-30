@@ -104,6 +104,7 @@ export class SketchTimeline extends LitElement {
       font-size: 1.5rem;
       font-weight: 600;
       margin-bottom: 1.5rem;
+      text-align: center;
       color: #333;
     }
 
@@ -111,6 +112,7 @@ export class SketchTimeline extends LitElement {
       color: #666; /* Slightly grey font color */
       line-height: 1.6;
       font-size: 1rem;
+      text-align: left;
     }
   `;
 
@@ -230,11 +232,26 @@ export class SketchTimeline extends LitElement {
           <div class="welcome-box">
             <h2 class="welcome-box-title">How to use Sketch</h2>
             <p class="welcome-box-content">
-              Sketch is an agentic coding assistant. Ask it, in the chat box
-              below, to implement a task or answer a question. It will create
-              commits, which you can review and leave comments on in the Diff
-              tab. When you're done, you'll find the changes ready to go in a
-              <code>sketch/*</code> branch in your repo!
+              Sketch is an agentic coding assistant.
+            </p>
+
+            <p class="welcome-box-content">
+              Sketch has created a container with your repo.
+            </p>
+
+            <p class="welcome-box-content">
+              Ask it to implement a task or answer a question in the chat box
+              below. Sketch has created a container with your repo, and it can
+              edit and run your code in the container. Sketch will create
+              commits, which you can look at and review with comments in the
+              Diff tab. Once you're done, you'll find the changes ready to go in
+              a
+              <code>sketch/*</code> branch.
+            </p>
+            <p class="welcome-box-content">
+              Because Sketch operates a container per session, you can run
+              Sketch in parallel to work on multiple ideas or even the same idea
+              with different approaches.
             </p>
           </div>
         </div>
