@@ -404,7 +404,7 @@ func (ui *termUI) AppendSystemMessage(fmtString string, args ...any) {
 
 // getGitRefName returns a readable git ref for sha, falling back to the original sha on error.
 func getGitRefName(sha string) string {
-	// branch or tag name
+	// local branch or tag name
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", sha)
 	branchName, err := cmd.Output()
 	if err == nil {
@@ -412,6 +412,22 @@ func getGitRefName(sha string) string {
 		// If we got a branch name that's not HEAD, use it
 		if branchStr != "" && branchStr != "HEAD" {
 			return branchStr
+		}
+	}
+
+	// check sketch-host (outer) remote branches
+	cmd = exec.Command("git", "branch", "-r", "--contains", sha)
+	remoteBranches, err := cmd.Output()
+	if err == nil {
+		for line := range strings.Lines(string(remoteBranches)) {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			suf, ok := strings.CutPrefix(line, "sketch-host/")
+			if ok {
+				return suf
+			}
 		}
 	}
 
