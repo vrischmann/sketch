@@ -39,7 +39,7 @@ func run() error {
 	addr := flag.String("addr", "localhost:0", "local debug HTTP server address")
 	skabandAddr := flag.String("skaband-addr", "https://sketch.dev", "URL of the skaband server")
 	unsafe := flag.Bool("unsafe", false, "run directly without a docker container")
-	openBrowser := flag.Bool("open", false, "open sketch URL in system browser")
+	openBrowser := flag.Bool("open", true, "open sketch URL in system browser")
 	httprrFile := flag.String("httprr", "", "if set, record HTTP interactions to file")
 	maxIterations := flag.Uint64("max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
 	maxWallTime := flag.Duration("max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")

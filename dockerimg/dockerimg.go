@@ -446,6 +446,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-outside-hostname="+config.OutsideHostname,
 		"-outside-os="+config.OutsideOS,
 		"-outside-working-dir="+config.OutsideWorkingDir,
+		"-open=false",
 	)
 	if config.SkabandAddr != "" {
 		cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)
