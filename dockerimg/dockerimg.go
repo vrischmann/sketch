@@ -311,9 +311,9 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		// We open the browser after the init config because the above waits for the web server to be serving.
 		if config.OpenBrowser {
 			if config.SkabandAddr != "" {
-				browser.Open(ctx, fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID))
+				browser.Open(fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID))
 			} else {
-				browser.Open(ctx, "http://"+localAddr)
+				browser.Open("http://" + localAddr)
 			}
 		}
 	}()

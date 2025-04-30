@@ -2,7 +2,6 @@
 package browser
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,15 +13,15 @@ import (
 // - 'open' for macOS
 // - 'cmd /c start' for Windows
 // - 'xdg-open' for Linux and other Unix-like systems
-func Open(ctx context.Context, url string) {
+func Open(url string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.CommandContext(ctx, "open", url)
+		cmd = exec.Command("open", url)
 	case "windows":
-		cmd = exec.CommandContext(ctx, "cmd", "/c", "start", url)
+		cmd = exec.Command("cmd", "/c", "start", url)
 	default: // Linux and other Unix-like systems
-		cmd = exec.CommandContext(ctx, "xdg-open", url)
+		cmd = exec.Command("xdg-open", url)
 	}
 	if b, err := cmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open browser: %v: %s\n", err, b)

@@ -308,7 +308,7 @@ func run() error {
 
 	// Open the web UI URL in the system browser if requested
 	if *openBrowser {
-		browser.Open(ctx, ps1URL)
+		browser.Open(ps1URL)
 	}
 
 	// Create the termui instance
