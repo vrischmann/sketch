@@ -1,7 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ConnectionStatus, DataManager } from "../data";
-import { AgentMessage, State } from "../types";
+import { AgentMessage, GitCommit, State } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
 import "./sketch-charts";
 import "./sketch-chat-input";
@@ -28,11 +28,77 @@ export class SketchAppShell extends LitElement {
   @state()
   currentCommitHash: string = "";
 
+  // Last commit information
+  @state()
+  lastCommit: { hash: string; pushedBranch?: string } | null = null;
+
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
   // other components or the containing web page (...unless you want it to do that).
   static styles = css`
+    /* Last commit display styling */
+    .last-commit {
+      display: flex;
+      align-items: center;
+      padding: 3px 8px;
+      background: #f0f7ff;
+      border: 1px solid #c8e1ff;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #0366d6;
+      cursor: pointer;
+      position: relative;
+      margin: 0 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+      transition: background-color 0.2s ease;
+    }
+    
+    .last-commit:hover {
+      background-color: #dbedff;
+    }
+    
+    .last-commit::before {
+      content: "Last Commit: ";
+      color: #666;
+      margin-right: 4px;
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+    }
+    
+    .copied-indicator {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(40, 167, 69, 0.9);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-family: system-ui, sans-serif;
+      animation: fadeInOut 2s ease;
+      pointer-events: none;
+    }
+    
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    
+    .commit-branch-indicator {
+      color: #28a745;
+    }
+    
+    .commit-hash-indicator {
+      color: #0366d6;
+    }
     :host {
       display: block;
       font-family:
@@ -180,6 +246,10 @@ export class SketchAppShell extends LitElement {
   // Header bar: Network connection status details
   @property()
   connectionStatus: ConnectionStatus = "disconnected";
+  
+  // Track if the last commit info has been copied
+  @state()
+  lastCommitCopied: boolean = false;
 
   @property()
   connectionErrorMessage: string = "";
@@ -267,6 +337,11 @@ export class SketchAppShell extends LitElement {
 
     // Initialize the data manager
     this.dataManager.initialize();
+    
+    // Process existing messages for commit info
+    if (this.messages && this.messages.length > 0) {
+      this.updateLastCommitInfo(this.messages);
+    }
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -492,6 +567,9 @@ export class SketchAppShell extends LitElement {
 
     // Update messages
     this.messages = aggregateAgentMessages(this.messages, newMessages);
+    
+    // Process new messages to find commit messages
+    this.updateLastCommitInfo(newMessages);
   }
 
   private handleConnectionStatusChanged(
@@ -509,6 +587,48 @@ export class SketchAppShell extends LitElement {
    * Handle stop button click
    * Sends a request to the server to stop the current operation
    */
+  // Update last commit information when new messages arrive
+  private updateLastCommitInfo(newMessages: AgentMessage[]): void {
+    if (!newMessages || newMessages.length === 0) return;
+    
+    // Process messages in chronological order (latest last)
+    for (const message of newMessages) {
+      if (message.type === 'commit' && message.commits && message.commits.length > 0) {
+        // Get the first commit from the list
+        const commit = message.commits[0];
+        if (commit) {
+          this.lastCommit = {
+            hash: commit.hash,
+            pushedBranch: commit.pushed_branch
+          };
+          this.lastCommitCopied = false;
+        }
+      }
+    }
+  }
+
+  // Copy commit info to clipboard
+  private copyCommitInfo(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!this.lastCommit) return;
+    
+    const textToCopy = this.lastCommit.pushedBranch || this.lastCommit.hash.substring(0, 8);
+    
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        this.lastCommitCopied = true;
+        // Reset the copied state after 2 seconds
+        setTimeout(() => {
+          this.lastCommitCopied = false;
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Failed to copy commit info:', err);
+      });
+  }
+  
   private async _handleStopClick(): Promise<void> {
     try {
       const response = await fetch("cancel", {
@@ -594,6 +714,15 @@ export class SketchAppShell extends LitElement {
         <sketch-container-status
           .state=${this.containerState}
         ></sketch-container-status>
+        
+        ${this.lastCommit ? html`
+          <div class="last-commit" @click=${(e: MouseEvent) => this.copyCommitInfo(e)} title="Click to copy">
+            ${this.lastCommitCopied ? html`<span class="copied-indicator">Copied!</span>` : ''}
+            ${this.lastCommit.pushedBranch 
+              ? html`<span class="commit-branch-indicator">${this.lastCommit.pushedBranch}</span>` 
+              : html`<span class="commit-hash-indicator">${this.lastCommit.hash.substring(0, 8)}</span>`}
+          </div>
+        ` : ''}
 
         <div class="refresh-control">
           <button
@@ -688,6 +817,11 @@ export class SketchAppShell extends LitElement {
         this.messageStatus = "Polling for updates...";
       }
     });
+    
+    // Process any existing messages to find commit information
+    if (this.messages && this.messages.length > 0) {
+      this.updateLastCommitInfo(this.messages);
+    }
   }
 }
 
