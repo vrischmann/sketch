@@ -1,19 +1,14 @@
-# Simplified Commit Queue
-#
-# (Force) push to "queue-main-$USER" a potential change, and
-# this job will push it main if it passes pre-commit and tests,
-# which will run in parallel. The push may fail if the commit
-# cannot be pushed cleanly because it needs to be rebased, which
-# will happen especially if another developer pushes a change at
-# roughly the same time.
-#
-# Please keep this file in sync with queue-dev.yml.
+# This is a copy of queue-main.yml, but with a different branch pattern.
+# It does not push the result anywhere; it logs instead.
+# It is meant for people changing how the commit queue works:
+# You can hack on the workflows, push to queue-dev-$USER, and iterate.
+# Please keep this file in sync with queue-main.yml.
 
-name: Main Branch Commit Queue
+name: Dev Commit Queue
 on:
   push:
     branches:
-      - "queue-main-*"
+      - "queue-dev-*"
 
 permissions: read-all
 
@@ -53,6 +48,6 @@ jobs:
             COMMIT_TO_PUSH="${{ needs.formatting.outputs.commit_sha }}"
           fi
 
-          git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "${COMMIT_TO_PUSH}":main
+          echo "Would push to main: ${COMMIT_TO_PUSH}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
