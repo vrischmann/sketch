@@ -11,6 +11,21 @@ export class SketchCallStatus extends LitElement {
   toolCalls: string[] = [];
 
   static styles = css`
+    @keyframes gentle-pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.15);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
     .call-status-container {
       display: flex;
       align-items: center;
@@ -38,6 +53,7 @@ export class SketchCallStatus extends LitElement {
     .llm-indicator.active {
       background-color: #fef3c7; /* Light yellow */
       color: #f59e0b; /* Yellow/amber when active */
+      animation: gentle-pulse 1.5s infinite ease-in-out;
     }
 
     /* Tool indicator (wrench) */
@@ -49,6 +65,7 @@ export class SketchCallStatus extends LitElement {
     .tool-indicator.active {
       background-color: #dbeafe; /* Light blue */
       color: #3b82f6; /* Blue when active */
+      animation: gentle-pulse 1.5s infinite ease-in-out;
     }
 
     svg {
