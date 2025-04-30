@@ -6,7 +6,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="5ddad5f1e105aea5cff88f638a4e2377a20797b71fe352a3d4361af3d2ec8411"
+LABEL sketch_context="485cdfc1a8195b86dabf60d2f857498b190bc51c8b0b6b358ce5e26e34514e86"
 COPY . /app
 
 WORKDIR /app

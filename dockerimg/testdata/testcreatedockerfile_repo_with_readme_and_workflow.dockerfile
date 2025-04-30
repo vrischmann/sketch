@@ -6,13 +6,12 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="a8fa928cd209a4990326ce7f0996bc72ce496d9fb09d69c6409923f6773285ec"
+LABEL sketch_context="8f895f63fac0092de6bca4d6d9db358659720fc653b500b097761b558decb1de"
 COPY . /app
 
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi
 
-RUN npm install -g corepack || true
-RUN corepack enable || true
+RUN npm install -g corepack && corepack enable || true
 
 CMD ["/bin/sketch"]

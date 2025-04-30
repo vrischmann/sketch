@@ -47,7 +47,7 @@ const defaultBaseImg = "golang:1.24.2-alpine3.21"
 // If/when we do this, add them into the list of available tools in bash.go.
 const dockerfileBaseTmpl = `FROM {{.From}}
 
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim
+RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim grep
 
 ENV GOTOOLCHAIN=auto
 ENV GOPATH=/go
