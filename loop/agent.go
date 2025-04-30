@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"cmp"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -261,6 +262,7 @@ type Agent struct {
 	startedAt      time.Time
 	originalBudget ant.Budget
 	title          string
+	branchName     string
 	codereview     *claudetool.CodeReviewer
 	// Outside information
 	outsideHostname   string
@@ -366,11 +368,12 @@ func (a *Agent) GitOrigin() string {
 	return a.gitOrigin
 }
 
-// SetTitle sets the title of the conversation.
-func (a *Agent) SetTitle(title string) {
+// SetTitleBranch sets the title and branch name of the conversation.
+func (a *Agent) SetTitleBranch(title, branchName string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.title = title
+	a.branchName = branchName
 	// Notify all listeners that the state has changed
 	for _, ch := range a.listeners {
 		close(ch)
@@ -661,29 +664,50 @@ func (a *Agent) initConvo() *ant.Convo {
 }
 
 func (a *Agent) titleTool() *ant.Tool {
-	// titleTool creates the title tool that sets the conversation title.
 	title := &ant.Tool{
 		Name:        "title",
-		Description: `Use this tool early in the conversation, BEFORE MAKING ANY GIT COMMITS, to summarize what the chat is about briefly.`,
+		Description: `Sets the conversation title and creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`,
 		InputSchema: json.RawMessage(`{
 	"type": "object",
 	"properties": {
 		"title": {
 			"type": "string",
-			"description": "A brief title summarizing what this chat is about"
+			"description": "A concise, descriptive title summarizing what this conversation is about"
+		},
+		"branch_name": {
+			"type": "string",
+			"description": "A 2-3 word alphanumeric hyphenated slug for the git branch name"
 		}
 	},
-	"required": ["title"]
+	"required": ["title", "branch_name"]
 }`),
 		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
 			var params struct {
-				Title string `json:"title"`
+				Title      string `json:"title"`
+				BranchName string `json:"branch_name"`
 			}
 			if err := json.Unmarshal(input, &params); err != nil {
 				return "", err
 			}
-			a.SetTitle(params.Title)
-			return fmt.Sprintf("Title set to: %s", params.Title), nil
+			// It's unfortunate to not allow title changes,
+			// but it avoids having multiple branches.
+			t := a.Title()
+			if t != "" {
+				return "", fmt.Errorf("title already set to: %s", t)
+			}
+
+			if params.BranchName == "" {
+				return "", fmt.Errorf("branch_name parameter cannot be empty")
+			}
+			if params.Title == "" {
+				return "", fmt.Errorf("title parameter cannot be empty")
+			}
+
+			branchName := "sketch/" + cleanBranchName(params.BranchName)
+			a.SetTitleBranch(params.Title, branchName)
+
+			response := fmt.Sprintf("Title set to %q, branch name set to %q", params.Title, branchName)
+			return response, nil
 		},
 	}
 	return title
@@ -1076,11 +1100,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 			commits = append(commits, headCommit)
 		}
 
-		cleanTitle := titleToBranch(a.title)
-		if cleanTitle == "" {
-			cleanTitle = a.config.SessionID
-		}
-		branch := "sketch/" + cleanTitle
+		branch := cmp.Or(a.branchName, "sketch/"+a.config.SessionID)
 
 		// TODO: I don't love the force push here. We could see if the push is a fast-forward, and,
 		// if it's not, we could make a backup with a unique name (perhaps append a timestamp) and
@@ -1106,7 +1126,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 	return commits, nil
 }
 
-func titleToBranch(s string) string {
+func cleanBranchName(s string) string {
 	return strings.Map(func(r rune) rune {
 		// lowercase
 		if r >= 'A' && r <= 'Z' {
