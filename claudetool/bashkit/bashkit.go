@@ -95,3 +95,52 @@ func hasGitConfigUsernameEmailChanges(cmd *syntax.CallExpr) bool {
 	// user.name/user.email is followed by a value
 	return true
 }
+
+// WillRunGitCommit checks if the provided bash script will run 'git commit'.
+// It returns true if any command in the script is a git commit command.
+func WillRunGitCommit(bashScript string) (bool, error) {
+	r := strings.NewReader(bashScript)
+	parser := syntax.NewParser()
+	file, err := parser.Parse(r, "")
+	if err != nil {
+		// Parsing failed, but let's not consider this an error for the same reasons as in Check
+		return false, nil
+	}
+
+	willCommit := false
+
+	syntax.Walk(file, func(node syntax.Node) bool {
+		callExpr, ok := node.(*syntax.CallExpr)
+		if !ok {
+			return true
+		}
+		if isGitCommitCommand(callExpr) {
+			willCommit = true
+			return false
+		}
+		return true
+	})
+
+	return willCommit, nil
+}
+
+// isGitCommitCommand checks if a command is 'git commit'.
+func isGitCommitCommand(cmd *syntax.CallExpr) bool {
+	if len(cmd.Args) < 2 {
+		return false
+	}
+
+	// First argument must be 'git'
+	if cmd.Args[0].Lit() != "git" {
+		return false
+	}
+
+	// Look for 'commit' in any position after 'git'
+	for i := 1; i < len(cmd.Args); i++ {
+		if cmd.Args[i].Lit() == "commit" {
+			return true
+		}
+	}
+
+	return false
+}
