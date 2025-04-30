@@ -143,7 +143,7 @@ func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
 
 		switch resp.Type {
 		case loop.AgentMessageType:
-			ui.AppendChatMessage(chatMessage{thinking: thinking, idx: resp.Idx, sender: "🕴️", content: resp.Content})
+			ui.AppendChatMessage(chatMessage{thinking: thinking, idx: resp.Idx, sender: "🕴️ ", content: resp.Content})
 		case loop.ToolUseMessageType:
 			ui.LogToolUse(resp)
 		case loop.ErrorMessageType:
@@ -360,7 +360,7 @@ func (ui *termUI) initializeTerminalUI(ctx context.Context) error {
 				if strings.TrimSpace(msg.content) == "" {
 					break
 				}
-				s := fmt.Sprintf("%s  %s\n", msg.sender, msg.content)
+				s := fmt.Sprintf("%s %s\n", msg.sender, msg.content)
 				// Update prompt before writing, because otherwise it doesn't redraw the prompt.
 				ui.updatePrompt(msg.thinking)
 				ui.trm.Write([]byte(s))
