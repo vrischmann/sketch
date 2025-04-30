@@ -232,9 +232,10 @@ func (ui *termUI) inputLoop(ctx context.Context) error {
 					branches = append(branches, branch)
 				}
 
+				initialCommitRef := getGitRefName(ui.agent.InitialCommit())
 				if len(branches) == 1 {
 					ui.AppendSystemMessage("\n🔄 Branch pushed during session: %s", branches[0])
-					ui.AppendSystemMessage("🍒 To add those changes to your branch: git cherry-pick %s..%s", ui.agent.InitialCommit(), branches[0])
+					ui.AppendSystemMessage("🍒 To add those changes to your branch: git cherry-pick %s..%s", initialCommitRef, branches[0])
 				} else {
 					ui.AppendSystemMessage("\n🔄 Branches pushed during session:")
 					for _, branch := range branches {
@@ -242,7 +243,7 @@ func (ui *termUI) inputLoop(ctx context.Context) error {
 					}
 					ui.AppendSystemMessage("\n🍒 To add all those changes to your branch:")
 					for _, branch := range branches {
-						ui.AppendSystemMessage("git cherry-pick %s..%s", ui.agent.InitialCommit(), branch)
+						ui.AppendSystemMessage("git cherry-pick %s..%s", initialCommitRef, branch)
 					}
 				}
 			}
@@ -387,4 +388,30 @@ func (ui *termUI) AppendChatMessage(msg chatMessage) {
 // but still need to be shown to the user.
 func (ui *termUI) AppendSystemMessage(fmtString string, args ...any) {
 	ui.termLogCh <- fmt.Sprintf(fmtString, args...)
+}
+
+// getGitRefName returns a readable git ref for sha, falling back to the original sha on error.
+func getGitRefName(sha string) string {
+	// branch or tag name
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", sha)
+	branchName, err := cmd.Output()
+	if err == nil {
+		branchStr := strings.TrimSpace(string(branchName))
+		// If we got a branch name that's not HEAD, use it
+		if branchStr != "" && branchStr != "HEAD" {
+			return branchStr
+		}
+	}
+
+	// short SHA
+	cmd = exec.Command("git", "rev-parse", "--short", sha)
+	shortSha, err := cmd.Output()
+	if err == nil {
+		shortStr := strings.TrimSpace(string(shortSha))
+		if shortStr != "" {
+			return shortStr
+		}
+	}
+
+	return sha
 }
