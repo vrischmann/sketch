@@ -613,7 +613,7 @@ func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, res
 	if resp.StopReason == ant.StopReasonToolUse {
 		var toolCalls []ToolCall
 		for _, part := range resp.Content {
-			if part.Type == "tool_use" {
+			if part.Type == ant.ContentTypeToolUse {
 				toolCalls = append(toolCalls, ToolCall{
 					Name:       part.ToolName,
 					Input:      string(part.ToolInput),
@@ -997,13 +997,13 @@ func (a *Agent) GatherMessages(ctx context.Context, block bool) ([]ant.Content, 
 		case <-ctx.Done():
 			return m, ctx.Err()
 		case msg := <-a.inbox:
-			m = append(m, ant.Content{Type: "text", Text: msg})
+			m = append(m, ant.StringContent(msg))
 		}
 	}
 	for {
 		select {
 		case msg := <-a.inbox:
-			m = append(m, ant.Content{Type: "text", Text: msg})
+			m = append(m, ant.StringContent(msg))
 		default:
 			return m, nil
 		}
@@ -1087,7 +1087,7 @@ func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, e
 	}
 
 	userMessage := ant.Message{
-		Role:    "user",
+		Role:    ant.MessageRoleUser,
 		Content: msgs,
 	}
 
@@ -1211,19 +1211,19 @@ func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.C
 
 	// Inject any auto-generated messages from quality checks
 	for _, msg := range autoqualityMessages {
-		msgs = append(msgs, ant.Content{Type: "text", Text: msg})
+		msgs = append(msgs, ant.StringContent(msg))
 	}
 
 	// Handle cancellation by appending a message about it
 	if cancelled {
-		msgs = append(msgs, ant.Content{Type: "text", Text: cancelToolUseMessage})
+		msgs = append(msgs, ant.StringContent(cancelToolUseMessage))
 		// EndOfTurn is false here so that the client of this agent keeps processing
 		// further messages; the conversation is not over.
 		a.pushToOutbox(ctx, AgentMessage{Type: ErrorMessageType, Content: userCancelMessage, EndOfTurn: false})
 	} else if err := a.convo.OverBudget(); err != nil {
 		// Handle budget issues by appending a message about it
 		budgetMsg := "We've exceeded our budget. Please ask the user to confirm before continuing by ending the turn."
-		msgs = append(msgs, ant.Content{Type: "text", Text: budgetMsg})
+		msgs = append(msgs, ant.StringContent(budgetMsg))
 		a.pushToOutbox(ctx, budgetMessage(fmt.Errorf("warning: %w (ask to keep trying, if you'd like)", err)))
 	}
 
@@ -1233,7 +1233,7 @@ func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.C
 	// Send the combined message to continue the conversation
 	a.stateMachine.Transition(ctx, StateSendingToolResults, "Sending tool results back to LLM")
 	resp, err := a.convo.SendMessage(ant.Message{
-		Role:    "user",
+		Role:    ant.MessageRoleUser,
 		Content: results,
 	})
 	if err != nil {
@@ -1268,7 +1268,7 @@ func collectTextContent(msg *ant.MessageResponse) string {
 	// Collect all text content
 	var allText strings.Builder
 	for _, content := range msg.Content {
-		if content.Type == "text" && content.Text != "" {
+		if content.Type == ant.ContentTypeText && content.Text != "" {
 			if allText.Len() > 0 {
 				allText.WriteString("\n\n")
 			}
@@ -1604,10 +1604,7 @@ func (a *Agent) SuggestReprompt(ctx context.Context) (string, error) {
 
 	Reply with ONLY the reprompt text.
 	`
-	userMessage := ant.Message{
-		Role:    "user",
-		Content: []ant.Content{{Type: "text", Text: msg}},
-	}
+	userMessage := ant.UserStringMessage(msg)
 	// By doing this in a subconversation, the agent doesn't call tools (because
 	// there aren't any), and there's not a concurrency risk with on-going other
 	// outstanding conversations.

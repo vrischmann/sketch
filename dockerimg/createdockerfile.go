@@ -251,15 +251,9 @@ In particular:
 	}
 
 	for _, name := range slices.Sorted(maps.Keys(initFiles)) {
-		msg.Content = append(msg.Content, ant.Content{
-			Type: ant.ContentTypeText,
-			Text: fmt.Sprintf("Here is the contents %s:\n<file>\n%s\n</file>\n\n", name, initFiles[name]),
-		})
+		msg.Content = append(msg.Content, ant.StringContent(fmt.Sprintf("Here is the contents %s:\n<file>\n%s\n</file>\n\n", name, initFiles[name])))
 	}
-	msg.Content = append(msg.Content, ant.Content{
-		Type: ant.ContentTypeText,
-		Text: "Now call the dockerfile tool.",
-	})
+	msg.Content = append(msg.Content, ant.StringContent("Now call the dockerfile tool."))
 	res, err := convo.SendMessage(msg)
 	if err != nil {
 		return "", err

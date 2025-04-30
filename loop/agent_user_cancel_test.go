@@ -21,12 +21,7 @@ func TestLoop_OneTurn_Basic(t *testing.T) {
 			inbox:  make(chan string, 1),
 			outbox: make(chan AgentMessage, 1),
 		}
-		userMsg := ant.Message{
-			Role: "user",
-			Content: []ant.Content{
-				{Type: "text", Text: "hi"},
-			},
-		}
+		userMsg := ant.UserStringMessage("hi")
 		userMsgResponse := &ant.MessageResponse{}
 		mockConvo.ExpectCall("SendMessage", userMsg).Return(userMsgResponse, nil)
 
@@ -55,9 +50,9 @@ func TestLoop_ToolCall_Basic(t *testing.T) {
 			outbox: make(chan AgentMessage, 1),
 		}
 		userMsg := ant.Message{
-			Role: "user",
+			Role: ant.MessageRoleUser,
 			Content: []ant.Content{
-				{Type: "text", Text: "hi"},
+				{Type: ant.ContentTypeText, Text: "hi"},
 			},
 		}
 		userMsgResponse := &ant.MessageResponse{
@@ -86,7 +81,7 @@ func TestLoop_ToolCall_Basic(t *testing.T) {
 			},
 		}
 		toolUseResultsMsg := ant.Message{
-			Role:    "user",
+			Role:    ant.MessageRoleUser,
 			Content: toolUseContents,
 		}
 		toolUseResponse := &ant.MessageResponse{
@@ -132,12 +127,7 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents(t *testing.T) {
 			inbox:  make(chan string, 1),
 			outbox: make(chan AgentMessage, 10), // don't let anything block on outbox.
 		}
-		userMsg := ant.Message{
-			Role: "user",
-			Content: []ant.Content{
-				{Type: "text", Text: "hi"},
-			},
-		}
+		userMsg := ant.UserStringMessage("hi")
 		userMsgResponse := &ant.MessageResponse{
 			StopReason: ant.StopReasonToolUse,
 			Content: []ant.Content{
@@ -153,12 +143,7 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents(t *testing.T) {
 				OutputTokens: 200,
 			},
 		}
-		toolUseResultsMsg := ant.Message{
-			Role: "user",
-			Content: []ant.Content{
-				{Type: "text", Text: cancelToolUseMessage},
-			},
-		}
+		toolUseResultsMsg := ant.UserStringMessage(cancelToolUseMessage)
 		toolUseResponse := &ant.MessageResponse{
 			StopReason: ant.StopReasonEndTurn,
 			Content: []ant.Content{
@@ -223,9 +208,9 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 			outbox: make(chan AgentMessage, 10), // don't let anything block on outbox.
 		}
 		userMsg := ant.Message{
-			Role: "user",
+			Role: ant.MessageRoleUser,
 			Content: []ant.Content{
-				{Type: "text", Text: "hi"},
+				{Type: ant.ContentTypeText, Text: "hi"},
 			},
 		}
 		userMsgResponse := &ant.MessageResponse{
@@ -244,9 +229,9 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 			},
 		}
 		toolUseResultsMsg := ant.Message{
-			Role: "user",
+			Role: ant.MessageRoleUser,
 			Content: []ant.Content{
-				{Type: "text", Text: cancelToolUseMessage},
+				{Type: ant.ContentTypeText, Text: cancelToolUseMessage},
 			},
 		}
 		toolUseResultResponse := &ant.MessageResponse{
@@ -263,9 +248,9 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 			},
 		}
 		userFollowUpMsg := ant.Message{
-			Role: "user",
+			Role: ant.MessageRoleUser,
 			Content: []ant.Content{
-				{Type: "text", Text: "that was the wrong thing to do"},
+				{Type: ant.ContentTypeText, Text: "that was the wrong thing to do"},
 			},
 		}
 		userFollowUpResponse := &ant.MessageResponse{
@@ -339,12 +324,7 @@ func TestInnerLoop_UserCancels(t *testing.T) {
 
 		// Define test message
 		// This simulates something that would result in claude  responding with tool_use responses.
-		userMsg := ant.Message{
-			Role: "user",
-			Content: []ant.Content{
-				{Type: "text", Text: "use test_tool for something"},
-			},
-		}
+		userMsg := ant.UserStringMessage("use test_tool for something")
 		// Mock initial response with tool use
 		userMsgResponse := &ant.MessageResponse{
 			StopReason: ant.StopReasonToolUse,
@@ -370,11 +350,8 @@ func TestInnerLoop_UserCancels(t *testing.T) {
 			},
 		}
 		canceledToolUseMsg := ant.Message{
-			Role: "user",
-			Content: append(canceledToolUseContents, ant.Content{
-				Type: ant.ContentTypeText,
-				Text: cancelToolUseMessage,
-			}),
+			Role:    ant.MessageRoleUser,
+			Content: append(canceledToolUseContents, ant.StringContent(cancelToolUseMessage)),
 		}
 		// Set up expected behaviors
 		waitForSendMessage := make(chan any)

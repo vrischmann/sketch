@@ -492,7 +492,7 @@ func (m *mockConvoInterface) SendMessage(message ant.Message) (*ant.MessageRespo
 }
 
 func (m *mockConvoInterface) SendUserTextMessage(s string, otherContents ...ant.Content) (*ant.MessageResponse, error) {
-	return m.SendMessage(ant.Message{Role: "user", Content: []ant.Content{{Type: "text", Text: s}}})
+	return m.SendMessage(ant.UserStringMessage(s))
 }
 
 func (m *mockConvoInterface) ToolResultContents(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
@@ -503,7 +503,7 @@ func (m *mockConvoInterface) ToolResultContents(ctx context.Context, resp *ant.M
 }
 
 func (m *mockConvoInterface) ToolResultCancelContents(resp *ant.MessageResponse) ([]ant.Content, error) {
-	return []ant.Content{{Type: "text", Text: "Tool use cancelled"}}, nil
+	return []ant.Content{ant.StringContent("Tool use cancelled")}, nil
 }
 
 func (m *mockConvoInterface) CancelToolUse(toolUseID string, cause error) error {
@@ -544,7 +544,7 @@ func TestAgentProcessTurnStateTransitions(t *testing.T) {
 		return &ant.MessageResponse{
 			StopReason: ant.StopReasonEndTurn,
 			Content: []ant.Content{
-				{Type: "text", Text: "This is a test response"},
+				ant.StringContent("This is a test response"),
 			},
 		}, nil
 	}
@@ -619,8 +619,8 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 			return &ant.MessageResponse{
 				StopReason: ant.StopReasonToolUse,
 				Content: []ant.Content{
-					{Type: "text", Text: "I'll use a tool"},
-					{Type: "tool_use", ToolName: "test_tool", ToolInput: []byte("{}"), ID: "test_id"},
+					ant.StringContent("I'll use a tool"),
+					{Type: ant.ContentTypeToolUse, ToolName: "test_tool", ToolInput: []byte("{}"), ID: "test_id"},
 				},
 			}, nil
 		}
@@ -628,14 +628,14 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 		return &ant.MessageResponse{
 			StopReason: ant.StopReasonEndTurn,
 			Content: []ant.Content{
-				{Type: "text", Text: "Finished using the tool"},
+				ant.StringContent("Finished using the tool"),
 			},
 		}, nil
 	}
 
 	// Tool result content handler
 	mockConvo.ToolResultContentsFunc = func(ctx context.Context, resp *ant.MessageResponse) ([]ant.Content, error) {
-		return []ant.Content{{Type: "text", Text: "Tool executed successfully"}}, nil
+		return []ant.Content{ant.StringContent("Tool executed successfully")}, nil
 	}
 
 	// Track state transitions

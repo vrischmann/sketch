@@ -504,7 +504,7 @@ func (c *Convo) Depth() int {
 func (c *Convo) SendUserTextMessage(s string, otherContents ...Content) (*MessageResponse, error) {
 	contents := slices.Clone(otherContents)
 	if s != "" {
-		contents = append(contents, Content{Type: ContentTypeText, Text: s})
+		contents = append(contents, StringContent(s))
 	}
 	msg := Message{
 		Role:    MessageRoleUser,
@@ -517,7 +517,7 @@ func (c *Convo) messageRequest(msg Message) *MessageRequest {
 	system := []SystemContent{}
 	if c.SystemPrompt != "" {
 		var d SystemContent
-		d = SystemContent{Type: "text", Text: c.SystemPrompt}
+		d = SystemContent{Type: ContentTypeText, Text: c.SystemPrompt}
 		if c.PromptCaching {
 			d.CacheControl = json.RawMessage(`{"type":"ephemeral"}`)
 		}
@@ -1021,4 +1021,12 @@ func (c *Convo) overBudget() error {
 		err = errors.Join(err, fmt.Errorf("%d responses received, budget is %d. %s", usage.Responses, c.Budget.MaxResponses, cont))
 	}
 	return err
+}
+
+// UserStringMessage creates a user message with a single text content item.
+func UserStringMessage(text string) Message {
+	return Message{
+		Role:    MessageRoleUser,
+		Content: []Content{StringContent(text)},
+	}
 }
