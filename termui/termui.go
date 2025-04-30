@@ -305,8 +305,8 @@ func (ui *termUI) updatePrompt(thinking bool) {
 		// Emoji don't seem to work here? Messes up my terminal.
 		t = "*"
 	}
-	p := fmt.Sprintf("%s/ %s($%0.2f/%0.2f)%s> ",
-		ui.httpURL, ui.agent.WorkingDir(), ui.agent.TotalUsage().TotalCostUSD, ui.agent.OriginalBudget().MaxDollars, t)
+	p := fmt.Sprintf("%s ($%0.2f/%0.2f)%s> ",
+		ui.httpURL, ui.agent.TotalUsage().TotalCostUSD, ui.agent.OriginalBudget().MaxDollars, t)
 	ui.trm.SetPrompt(p)
 }
 
