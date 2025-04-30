@@ -698,8 +698,13 @@ export class SketchAppShell extends LitElement {
     const hasPermission = await this.checkNotificationPermission();
     if (!hasPermission) return;
 
-    // Only show notifications for agent messages with end_of_turn=true
-    if (message.type !== "agent" || !message.end_of_turn) return;
+    // Only show notifications for agent messages with end_of_turn=true and no parent_conversation_id
+    if (
+      message.type !== "agent" ||
+      !message.end_of_turn ||
+      message.parent_conversation_id
+    )
+      return;
 
     // Create a title that includes the sketch title
     const notificationTitle = `Sketch: ${this.title || "untitled"}`;
@@ -765,7 +770,11 @@ export class SketchAppShell extends LitElement {
     // Check for agent messages with end_of_turn=true and show notifications
     if (newMessages && newMessages.length > 0 && !isFirstFetch) {
       for (const message of newMessages) {
-        if (message.type === "agent" && message.end_of_turn) {
+        if (
+          message.type === "agent" &&
+          message.end_of_turn &&
+          !message.parent_conversation_id
+        ) {
           this.showEndOfTurnNotification(message);
           break; // Only show one notification per batch of messages
         }
