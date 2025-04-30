@@ -19,7 +19,7 @@ func main() {
 	}
 	defer os.RemoveAll(dir)
 
-	name, dockerfile, hash := dockerimg.DefaultImage()
+	name, dockerfile, tag := dockerimg.DefaultImage()
 	if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte(dockerfile), 0o666); err != nil {
 		panic(err)
 	}
@@ -40,23 +40,24 @@ func main() {
 		}
 	}
 
+	path := name + ":" + tag
+
 	run("colima", "start")
 	run("docker", "buildx", "create", "--name", "arm", "--use", "--driver", "docker-container", "--bootstrap")
 	run("docker", "buildx", "use", "arm")
-	run("docker", "buildx", "build", "--platform", "linux/arm64", "-t", name+"arm64", "--push", ".")
+	run("docker", "buildx", "build", "--platform", "linux/arm64", "-t", path+"arm64", "--push", ".")
 	run("docker", "buildx", "rm", "arm")
 	run("colima", "start", "--profile=intel", "--arch=x86_64", "--vm-type=vz", "--vz-rosetta", "--memory=4", "--disk=15")
 	run("docker", "context", "use", "colima-intel")
 	run("docker", "buildx", "create", "--name", "intel", "--use", "--driver", "docker-container", "--bootstrap")
 	run("docker", "buildx", "use", "intel")
-	run("docker", "buildx", "build", "--platform", "linux/amd64", "-t", name+"amd64", "--push", ".")
+	run("docker", "buildx", "build", "--platform", "linux/amd64", "-t", path+"amd64", "--push", ".")
 	run("docker", "buildx", "rm", "intel")
 	run("docker", "context", "use", "colima")
 	run("colima", "stop", "--profile=intel")
 	run(
 		"docker", "buildx", "imagetools", "create",
-		"--annotation", "index:org.opencontainers.image.revision="+hash,
-		"-t", name, name+"arm64", name+"amd64",
+		"-t", path, path+"arm64", path+"amd64",
 	)
-	run("docker", "buildx", "imagetools", "inspect", name)
+	run("docker", "buildx", "imagetools", "inspect", path)
 }

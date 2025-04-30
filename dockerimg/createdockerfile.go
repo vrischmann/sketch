@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"net/http"
@@ -22,40 +23,38 @@ func hashInitFiles(initFiles map[string]string) string {
 	for _, path := range slices.Sorted(maps.Keys(initFiles)) {
 		fmt.Fprintf(h, "%s\n%s\n\n", path, initFiles[path])
 	}
-	fmt.Fprintf(h, "docker template 1\n%s\n", dockerfileCustomTmpl)
-	fmt.Fprintf(h, "docker template 2\n%s\n", dockerfileDefaultTmpl)
+	fmt.Fprintf(h, "docker template\n%s\n", dockerfileDefaultTmpl)
 	return hex.EncodeToString(h.Sum(nil))
 }
 
 // DefaultImage is intended to ONLY be used by the pushdockerimg.go script.
-func DefaultImage() (name, dockerfile, hash string) {
-	buf := new(bytes.Buffer)
-	err := template.Must(template.New("dockerfile").Parse(dockerfileBaseTmpl)).Execute(buf, map[string]string{
-		"From": defaultBaseImg,
-	})
-	if err != nil {
-		panic(err)
-	}
-	return dockerfileDefaultImg, buf.String(), hashInitFiles(nil)
+func DefaultImage() (name, dockerfile, tag string) {
+	return dockerImgName, dockerfileBase, dockerfileBaseHash()
 }
 
-const dockerfileDefaultImg = "ghcr.io/boldsoftware/sketch:v1"
+const dockerImgRepo = "boldsoftware/sketch"
+const dockerImgName = "ghcr.io/" + dockerImgRepo
 
-const defaultBaseImg = "golang:1.24.2-alpine3.21"
+func dockerfileBaseHash() string {
+	h := sha256.New()
+	io.WriteString(h, dockerfileBase)
+	return hex.EncodeToString(h.Sum(nil))[:32]
+}
 
-// TODO: add semgrep, prettier -- they require node/npm/etc which is more complicated than apk
-// If/when we do this, add them into the list of available tools in bash.go.
-const dockerfileBaseTmpl = `FROM {{.From}}
+const dockerfileBase = `FROM golang:1.24-bookworm
 
-RUN apk add bash git make jq sqlite gcc musl-dev linux-headers npm nodejs go github-cli ripgrep fzf python3 curl vim grep
+RUN set -eux; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		git jq sqlite3 npm nodejs gh ripgrep fzf python3 curl vim
 
-ENV GOTOOLCHAIN=auto
-ENV GOPATH=/go
 ENV PATH="$GOPATH/bin:$PATH"
 
 RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN go install golang.org/x/tools/gopls@latest
 RUN go install mvdan.cc/gofumpt@latest
+
+ENV GOTOOLCHAIN=auto
 
 RUN mkdir -p /root/.cache/sketch/webui
 `
@@ -67,7 +66,6 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="{{.InitFilesHash}}"
 COPY . /app
 
 WORKDIR /app{{.SubDir}}
@@ -78,13 +76,64 @@ RUN if [ -f go.mod ]; then go mod download; fi
 CMD ["/bin/sketch"]
 `
 
-// dockerfileCustomTmpl is the dockerfile template used when the LLM
-// chooses a custom base image.
-const dockerfileCustomTmpl = dockerfileBaseTmpl + dockerfileFragment
+var dockerfileDefaultTmpl = "FROM " + dockerImgName + ":" + dockerfileBaseHash() + "\n" + dockerfileFragment
 
-// dockerfileDefaultTmpl is the dockerfile used when the LLM went with
-// the defaultBaseImg. In this case, we use a pre-canned image.
-const dockerfileDefaultTmpl = "FROM " + dockerfileDefaultImg + "\n" + dockerfileFragment
+func readPublishedTags() ([]string, error) {
+	req, err := http.NewRequest("GET", "https://ghcr.io/token?service=ghcr.io&scope=repository:"+dockerImgRepo+":pull", nil)
+	if err != nil {
+		return nil, fmt.Errorf("token: %w", err)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("token: %w", err)
+	}
+	body, err := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil || res.StatusCode != 200 {
+		return nil, fmt.Errorf("token: %d: %s: %w", res.StatusCode, body, err)
+	}
+	var tokenBody struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(body, &tokenBody); err != nil {
+		return nil, fmt.Errorf("token: %w: %s", err, body)
+	}
+
+	req, err = http.NewRequest("GET", "https://ghcr.io/v2/"+dockerImgRepo+"/tags/list", nil)
+	if err != nil {
+		return nil, fmt.Errorf("tags: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+tokenBody.Token)
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("tags: %w", err)
+	}
+	body, err = io.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil || res.StatusCode != 200 {
+		return nil, fmt.Errorf("tags: %d: %s: %w", res.StatusCode, body, err)
+	}
+	var tags struct {
+		Tags []string `json:"tags"`
+	}
+	if err := json.Unmarshal(body, &tags); err != nil {
+		return nil, fmt.Errorf("tags: %w: %s", err, body)
+	}
+	return tags.Tags, nil
+}
+
+func checkTagExists(tag string) error {
+	tags, err := readPublishedTags()
+	if err != nil {
+		return fmt.Errorf("check tag exists: %w", err)
+	}
+	for _, t := range tags {
+		if t == tag {
+			return nil // found it
+		}
+	}
+	return fmt.Errorf("check tag exists: %q not found in %v", tag, tags)
+}
 
 // createDockerfile creates a Dockerfile for a git repo.
 // It expects the relevant initFiles to have been provided.
@@ -97,7 +146,7 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
 		subPathWorkingDir = "/" + subPathWorkingDir
 	}
 	toolCalled := false
-	var dockerfileFROM, dockerfileExtraCmds string
+	var dockerfileExtraCmds string
 	runDockerfile := func(ctx context.Context, input json.RawMessage) (string, error) {
 		// TODO: unmarshal straight into a struct
 		var m map[string]any
@@ -105,10 +154,6 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
 			return "", fmt.Errorf(`input=%[1]v (%[1]T), wanted a map[string]any, got: %w`, input, err)
 		}
 		var ok bool
-		dockerfileFROM, ok = m["from"].(string)
-		if !ok {
-			return "", fmt.Errorf(`input["from"]=%[1]v (%[1]T), wanted a string`, m["path"])
-		}
 		dockerfileExtraCmds, ok = m["extra_cmds"].(string)
 		if !ok {
 			return "", fmt.Errorf(`input["extra_cmds"]=%[1]v (%[1]T), wanted a string`, m["path"])
@@ -129,12 +174,8 @@ func createDockerfile(ctx context.Context, httpc *http.Client, antURL, antAPIKey
 		Run:         runDockerfile,
 		InputSchema: ant.MustSchema(`{
   "type": "object",
-  "required": ["from", "extra_cmds"],
+  "required": ["extra_cmds"],
   "properties": {
-    "from": {
-	  "type": "string",
-	  "description": "The alpine base image provided to the dockerfile FROM command"
-	},
     "extra_cmds": {
       "type": "string",
       "description": "Extra commands to add to the dockerfile."
@@ -164,19 +205,14 @@ Call the dockerfile tool to create a Dockerfile.
 The parameters to dockerfile fill out the From and ExtraCmds
 template variables in the following Go template:
 
-` + "```\n" + dockerfileCustomTmpl + "\n```" + `
+` + "```\n" + dockerfileBase + dockerfileFragment + "\n```" + `
 
 In particular:
-- Assume it is primarily a Go project. For a minimal env, prefer ` + defaultBaseImg + ` as a base image.
-- If any python is needed at all, switch to using a python alpine image as a the base and apk add go.
-  Favor using uv, and use one of these base images, depending on the preferred python version:
-    ghcr.io/astral-sh/uv:python3.13-alpine
-    ghcr.io/astral-sh/uv:python3.12-alpine
-    ghcr.io/astral-sh/uv:python3.11-alpine
-- When using pip to install packages, use: uv pip install --system.
+- Assume it is primarily a Go project.
 - Python env setup is challenging and often no required, so any RUN commands involving python tooling should be written to let docker build continue if there is a failure.
 - Include any tools particular to this repository that can be inferred from the given context.
-- Append || true to any apk add commands in case the package does not exist.
+- Append || true to any apt-get install commands in case the package does not exist.
+- MINIMIZE the number of extra_cmds generated. Straightforward environments do not need any.
 - Do NOT expose any ports.
 - Do NOT generate any CMD or ENTRYPOINT extra commands.
 `,
@@ -210,20 +246,18 @@ In particular:
 		return "", fmt.Errorf("no dockerfile returned")
 	}
 
-	tmpl := dockerfileCustomTmpl
-	if dockerfileFROM == defaultBaseImg {
-		// Because the LLM has chosen the image we recommended, we
-		// can use a pre-canned image of our entire template, which
-		// saves a lot of build time.
-		tmpl = dockerfileDefaultTmpl
+	tmpl := dockerfileDefaultTmpl
+	if tag := dockerfileBaseHash(); checkTagExists(tag) != nil {
+		// In development, if you edit dockerfileBase but don't release
+		// (as is reasonable for testing things!) the hash won't exist
+		// yet. In that case, we skip the sketch image and build it ourselves.
+		fmt.Printf("published container tag %s:%s missing; building locally\n", dockerImgName, tag)
+		tmpl = dockerfileBase + dockerfileFragment
 	}
-
 	buf := new(bytes.Buffer)
 	err = template.Must(template.New("dockerfile").Parse(tmpl)).Execute(buf, map[string]string{
-		"From":          dockerfileFROM,
-		"ExtraCmds":     dockerfileExtraCmds,
-		"InitFilesHash": hashInitFiles(initFiles),
-		"SubDir":        subPathWorkingDir,
+		"ExtraCmds": dockerfileExtraCmds,
+		"SubDir":    subPathWorkingDir,
 	})
 	if err != nil {
 		return "", fmt.Errorf("dockerfile template failed: %w", err)
