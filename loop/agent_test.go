@@ -88,7 +88,7 @@ func TestAgentLoop(t *testing.T) {
 	agent.UserMessage(ctx, userMessage)
 
 	// Process a single loop iteration to avoid long-running tests
-	agent.InnerLoop(ctx)
+	agent.processTurn(ctx)
 
 	// Collect responses with a timeout
 	var responses []AgentMessage

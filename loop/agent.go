@@ -815,12 +815,12 @@ func (a *Agent) Loop(ctxOuter context.Context) {
 			ctxInner, cancel := context.WithCancelCause(ctxOuter)
 			a.cancelInnerLoopMu.Lock()
 			// Set .cancelInnerLoop so the user can cancel whatever is happening
-			// inside InnerLoop(ctxInner) without canceling this outer Loop execution.
+			// inside the conversation loop without canceling this outer Loop execution.
 			// This CancelInnerLoop func is intended be called from other goroutines,
 			// hence the mutex.
 			a.cancelInnerLoop = cancel
 			a.cancelInnerLoopMu.Unlock()
-			a.InnerLoop(ctxInner)
+			a.processTurn(ctxInner) // Renamed from InnerLoop to better reflect its purpose
 			cancel(nil)
 		}
 	}
@@ -873,15 +873,17 @@ func (a *Agent) GatherMessages(ctx context.Context, block bool) ([]ant.Content, 
 	}
 }
 
-func (a *Agent) InnerLoop(ctx context.Context) {
+// processTurn handles a single conversation turn with the user
+func (a *Agent) processTurn(ctx context.Context) {
 	// Reset the start of turn time
 	a.startOfTurn = time.Now()
 
-	// Wait for at least one message from the user.
-	msgs, err := a.GatherMessages(ctx, true)
-	if err != nil { // e.g. the context was canceled while blocking in GatherMessages
+	// Process initial user message
+	initialResp, err := a.processUserMessage(ctx)
+	if err != nil {
 		return
 	}
+
 	// We do this as we go, but let's also do it at the end of the turn
 	defer func() {
 		if _, err := a.handleGitCommits(ctx); err != nil {
@@ -890,119 +892,174 @@ func (a *Agent) InnerLoop(ctx context.Context) {
 		}
 	}()
 
+	// Main response loop - continue as long as the model is using tools
+	resp := initialResp
+	for {
+		// Check if we are over budget
+		if err := a.overBudget(ctx); err != nil {
+			return
+		}
+
+		// If the model is not requesting to use a tool, we're done
+		if resp.StopReason != ant.StopReasonToolUse {
+			break
+		}
+
+		// Handle tool execution
+		continueConversation, toolResp := a.handleToolExecution(ctx, resp)
+		if !continueConversation {
+			return
+		}
+
+		// Set the response for the next iteration
+		resp = toolResp
+	}
+}
+
+// processUserMessage waits for user messages and sends them to the model
+func (a *Agent) processUserMessage(ctx context.Context) (*ant.MessageResponse, error) {
+	// Wait for at least one message from the user
+	msgs, err := a.GatherMessages(ctx, true)
+	if err != nil { // e.g. the context was canceled while blocking in GatherMessages
+		return nil, err
+	}
+
 	userMessage := ant.Message{
 		Role:    "user",
 		Content: msgs,
 	}
-	// convo.SendMessage does the actual network call to send this to anthropic. This blocks until the response is ready.
-	// TODO: pass ctx to SendMessage, and figure out how to square that ctx with convo's own .Ctx.  Who owns the scope of this call?
+
+	// Send message to the model
 	resp, err := a.convo.SendMessage(userMessage)
 	if err != nil {
 		a.pushToOutbox(ctx, errorMessage(err))
-		return
+		return nil, err
 	}
-	for {
-		// TODO: here and below where we check the budget,
-		// we should review the UX: is it clear what happened?
-		// is it clear how to resume?
-		// should we let the user set a new budget?
-		if err := a.overBudget(ctx); err != nil {
-			return
-		}
-		if resp.StopReason != ant.StopReasonToolUse {
-			break
-		}
-		var results []ant.Content
-		cancelled := false
-		select {
-		case <-ctx.Done():
-			// Don't actually run any of the tools, but rather build a response
-			// for each tool_use message letting the LLM know that user canceled it.
-			results, err = a.convo.ToolResultCancelContents(resp)
-			if err != nil {
-				a.pushToOutbox(ctx, errorMessage(err))
-			}
-			cancelled = true
-		default:
-			ctx = claudetool.WithWorkingDir(ctx, a.workingDir)
-			// fall-through, when the user has not canceled the inner loop:
-			results, err = a.convo.ToolResultContents(ctx, resp)
-			if ctx.Err() != nil { // e.g. the user canceled the operation
-				cancelled = true
-			} else if err != nil {
-				a.pushToOutbox(ctx, errorMessage(err))
-			}
-		}
 
-		// Check for git commits. Currently we do this here, after we collect
-		// tool results, since that's when we know commits could have happened.
-		// We could instead do this when the turn ends, but I think it makes sense
-		// to do this as we go.
-		newCommits, err := a.handleGitCommits(ctx)
+	return resp, nil
+}
+
+// handleToolExecution processes a tool use request from the model
+func (a *Agent) handleToolExecution(ctx context.Context, resp *ant.MessageResponse) (bool, *ant.MessageResponse) {
+	var results []ant.Content
+	cancelled := false
+
+	// Check if the operation was cancelled by the user
+	select {
+	case <-ctx.Done():
+		// Don't actually run any of the tools, but rather build a response
+		// for each tool_use message letting the LLM know that user canceled it.
+		var err error
+		results, err = a.convo.ToolResultCancelContents(resp)
 		if err != nil {
-			// Just log the error, don't stop execution
-			slog.WarnContext(ctx, "Failed to check for new git commits", "error", err)
+			a.pushToOutbox(ctx, errorMessage(err))
 		}
-		var autoqualityMessages []string
-		if len(newCommits) == 1 {
-			formatted := a.codereview.Autoformat(ctx)
-			if len(formatted) > 0 {
-				msg := fmt.Sprintf(`
+		cancelled = true
+	default:
+		// Add working directory to context for tool execution
+		ctx = claudetool.WithWorkingDir(ctx, a.workingDir)
+
+		// Execute the tools
+		var err error
+		results, err = a.convo.ToolResultContents(ctx, resp)
+		if ctx.Err() != nil { // e.g. the user canceled the operation
+			cancelled = true
+		} else if err != nil {
+			a.pushToOutbox(ctx, errorMessage(err))
+		}
+	}
+
+	// Process git commits that may have occurred during tool execution
+	autoqualityMessages := a.processGitChanges(ctx)
+
+	// Check budget again after tool execution
+	if err := a.overBudget(ctx); err != nil {
+		return false, nil
+	}
+
+	// Continue the conversation with tool results and any user messages
+	return a.continueTurnWithToolResults(ctx, results, autoqualityMessages, cancelled)
+}
+
+// processGitChanges checks for new git commits and runs autoformatters if needed
+func (a *Agent) processGitChanges(ctx context.Context) []string {
+	// Check for git commits after tool execution
+	newCommits, err := a.handleGitCommits(ctx)
+	if err != nil {
+		// Just log the error, don't stop execution
+		slog.WarnContext(ctx, "Failed to check for new git commits", "error", err)
+		return nil
+	}
+
+	// Run autoformatters if there was exactly one new commit
+	var autoqualityMessages []string
+	if len(newCommits) == 1 {
+		formatted := a.codereview.Autoformat(ctx)
+		if len(formatted) > 0 {
+			msg := fmt.Sprintf(`
 I ran autoformatters and they updated these files:
 
 %s
 
 Please amend your latest git commit with these changes and then continue with what you were doing.`,
-					strings.Join(formatted, "\n"),
-				)[1:]
-				a.pushToOutbox(ctx, AgentMessage{
-					Type:      AutoMessageType,
-					Content:   msg,
-					Timestamp: time.Now(),
-				})
-				autoqualityMessages = append(autoqualityMessages, msg)
-			}
-		}
-
-		if err := a.overBudget(ctx); err != nil {
-			return
-		}
-
-		// Include, along with the tool results (which must go first for whatever reason),
-		// any messages that the user has sent along while the tool_use was executing concurrently.
-		msgs, err = a.GatherMessages(ctx, false)
-		if err != nil {
-			return
-		}
-		// Inject any auto-generated messages from quality checks.
-		for _, msg := range autoqualityMessages {
-			msgs = append(msgs, ant.Content{Type: "text", Text: msg})
-		}
-		if cancelled {
-			msgs = append(msgs, ant.Content{Type: "text", Text: cancelToolUseMessage})
-			// EndOfTurn is false here so that the client of this agent keeps processing
-			// messages from WaitForMessage() and gets the response from the LLM (usually
-			// something like "okay, I'll wait further instructions", but the user should
-			// be made aware of it regardless).
-			a.pushToOutbox(ctx, AgentMessage{Type: ErrorMessageType, Content: userCancelMessage, EndOfTurn: false})
-		} else if err := a.convo.OverBudget(); err != nil {
-			budgetMsg := "We've exceeded our budget. Please ask the user to confirm before continuing by ending the turn."
-			msgs = append(msgs, ant.Content{Type: "text", Text: budgetMsg})
-			a.pushToOutbox(ctx, budgetMessage(fmt.Errorf("warning: %w (ask to keep trying, if you'd like)", err)))
-		}
-		results = append(results, msgs...)
-		resp, err = a.convo.SendMessage(ant.Message{
-			Role:    "user",
-			Content: results,
-		})
-		if err != nil {
-			a.pushToOutbox(ctx, errorMessage(fmt.Errorf("error: failed to continue conversation: %s", err.Error())))
-			break
-		}
-		if cancelled {
-			return
+				strings.Join(formatted, "\n"),
+			)[1:]
+			a.pushToOutbox(ctx, AgentMessage{
+				Type:      AutoMessageType,
+				Content:   msg,
+				Timestamp: time.Now(),
+			})
+			autoqualityMessages = append(autoqualityMessages, msg)
 		}
 	}
+
+	return autoqualityMessages
+}
+
+// continueTurnWithToolResults continues the conversation with tool results
+func (a *Agent) continueTurnWithToolResults(ctx context.Context, results []ant.Content, autoqualityMessages []string, cancelled bool) (bool, *ant.MessageResponse) {
+	// Get any messages the user sent while tools were executing
+	msgs, err := a.GatherMessages(ctx, false)
+	if err != nil {
+		return false, nil
+	}
+
+	// Inject any auto-generated messages from quality checks
+	for _, msg := range autoqualityMessages {
+		msgs = append(msgs, ant.Content{Type: "text", Text: msg})
+	}
+
+	// Handle cancellation by appending a message about it
+	if cancelled {
+		msgs = append(msgs, ant.Content{Type: "text", Text: cancelToolUseMessage})
+		// EndOfTurn is false here so that the client of this agent keeps processing
+		// messages from WaitForMessage() and gets the response from the LLM
+		a.pushToOutbox(ctx, AgentMessage{Type: ErrorMessageType, Content: userCancelMessage, EndOfTurn: false})
+	} else if err := a.convo.OverBudget(); err != nil {
+		// Handle budget issues by appending a message about it
+		budgetMsg := "We've exceeded our budget. Please ask the user to confirm before continuing by ending the turn."
+		msgs = append(msgs, ant.Content{Type: "text", Text: budgetMsg})
+		a.pushToOutbox(ctx, budgetMessage(fmt.Errorf("warning: %w (ask to keep trying, if you'd like)", err)))
+	}
+
+	// Combine tool results with user messages
+	results = append(results, msgs...)
+
+	// Send the combined message to continue the conversation
+	resp, err := a.convo.SendMessage(ant.Message{
+		Role:    "user",
+		Content: results,
+	})
+	if err != nil {
+		a.pushToOutbox(ctx, errorMessage(fmt.Errorf("error: failed to continue conversation: %s", err.Error())))
+		return true, nil // Return true to continue the conversation, but with no response
+	}
+
+	if cancelled {
+		return false, nil
+	}
+
+	return true, resp
 }
 
 func (a *Agent) overBudget(ctx context.Context) error {
