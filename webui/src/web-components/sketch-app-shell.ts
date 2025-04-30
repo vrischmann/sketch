@@ -266,12 +266,38 @@ export class SketchAppShell extends LitElement {
       background-color: #c82333 !important;
     }
 
-    .poll-updates,
+    .poll-updates {
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+
     .notifications-toggle {
       display: flex;
       align-items: center;
       font-size: 12px;
       margin-right: 10px;
+      cursor: pointer;
+    }
+
+    .bell-icon {
+      width: 20px;
+      height: 20px;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bell-disabled::before {
+      content: "";
+      position: absolute;
+      width: 2px;
+      height: 24px;
+      background-color: #dc3545;
+      transform: rotate(45deg);
+      transform-origin: center center;
     }
   `;
 
@@ -285,7 +311,11 @@ export class SketchAppShell extends LitElement {
 
   // Track notification preferences
   @state()
-  notificationsEnabled: boolean = true;
+  notificationsEnabled: boolean = false;
+
+  // Track if the window is focused to control notifications
+  @state()
+  private _windowFocused: boolean = document.hasFocus();
 
   @property()
   connectionErrorMessage: string = "";
@@ -347,6 +377,8 @@ export class SketchAppShell extends LitElement {
     this._handleStopClick = this._handleStopClick.bind(this);
     this._handleNotificationsToggle =
       this._handleNotificationsToggle.bind(this);
+    this._handleWindowFocus = this._handleWindowFocus.bind(this);
+    this._handleWindowBlur = this._handleWindowBlur.bind(this);
 
     // Load notification preference from localStorage
     try {
@@ -375,6 +407,10 @@ export class SketchAppShell extends LitElement {
     // Add event listeners
     window.addEventListener("view-mode-select", this._handleViewModeSelect);
     window.addEventListener("show-commit-diff", this._handleShowCommitDiff);
+
+    // Add window focus/blur listeners for controlling notifications
+    window.addEventListener("focus", this._handleWindowFocus);
+    window.addEventListener("blur", this._handleWindowBlur);
 
     // register event listeners
     this.dataManager.addEventListener(
@@ -406,6 +442,8 @@ export class SketchAppShell extends LitElement {
     // Remove event listeners
     window.removeEventListener("view-mode-select", this._handleViewModeSelect);
     window.removeEventListener("show-commit-diff", this._handleShowCommitDiff);
+    window.removeEventListener("focus", this._handleWindowFocus);
+    window.removeEventListener("blur", this._handleWindowBlur);
 
     // unregister data manager event listeners
     this.dataManager.removeEventListener(
@@ -616,10 +654,9 @@ export class SketchAppShell extends LitElement {
     return false;
   }
 
-  // Handle notifications toggle change
-  private _handleNotificationsToggle(event: Event): void {
-    const toggleCheckbox = event.target as HTMLInputElement;
-    this.notificationsEnabled = toggleCheckbox.checked;
+  // Handle notifications toggle click
+  private _handleNotificationsToggle(): void {
+    this.notificationsEnabled = !this.notificationsEnabled;
 
     // If enabling notifications, check permissions
     if (this.notificationsEnabled) {
@@ -637,12 +674,25 @@ export class SketchAppShell extends LitElement {
     }
   }
 
+  // Handle window focus event
+  private _handleWindowFocus(): void {
+    this._windowFocused = true;
+  }
+
+  // Handle window blur event
+  private _handleWindowBlur(): void {
+    this._windowFocused = false;
+  }
+
   // Show notification for message with EndOfTurn=true
   private async showEndOfTurnNotification(
     message: AgentMessage,
   ): Promise<void> {
     // Don't show notifications if they're disabled
     if (!this.notificationsEnabled) return;
+
+    // Don't show notifications if the window is focused
+    if (this._windowFocused) return;
 
     // Check if we have permission to show notifications
     const hasPermission = await this.checkNotificationPermission();
@@ -664,7 +714,7 @@ export class SketchAppShell extends LitElement {
     try {
       new Notification(notificationTitle, {
         body: messagePreview,
-        icon: "/static/favicon.ico", // Use sketch favicon if available
+        icon: "https://sketch.dev/favicon.ico", // Use sketch.dev favicon for notification
       });
     } catch (error) {
       console.error("Error showing notification:", error);
@@ -915,14 +965,31 @@ export class SketchAppShell extends LitElement {
             <label for="pollToggle">Poll</label>
           </div>
 
-          <div class="notifications-toggle">
-            <input
-              type="checkbox"
-              id="notificationsToggle"
-              ?checked=${this.notificationsEnabled}
-              @change=${this._handleNotificationsToggle}
-            />
-            <label for="notificationsToggle">Notifications</label>
+          <div
+            class="notifications-toggle"
+            @click=${this._handleNotificationsToggle}
+            title="${this.notificationsEnabled
+              ? "Disable"
+              : "Enable"} notifications"
+          >
+            <div
+              class="bell-icon ${!this.notificationsEnabled
+                ? "bell-disabled"
+                : ""}"
+            >
+              <!-- Bell SVG icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                viewBox="0 0 16 16"
+              >
+                <path
+                  d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"
+                />
+              </svg>
+            </div>
           </div>
 
           <sketch-network-status
