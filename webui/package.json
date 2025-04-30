@@ -16,7 +16,7 @@
     "demo:mermaid": "vite --open src/web-components/demo/mermaid-test/index.html",
     "dev": "vite --port 5173 --strictPort --host 127.0.0.1",
     "format": "prettier ./src --write",
-    "gentypes": "go run ../../cmd/go2ts -o src/types.ts",
+    "gentypes": "go run ../cmd/go2ts -o src/types.ts",
     "build": "go run ../cmd/go2ts -o src/types.ts && tsc",
     "watch": "tsc --watch",
     "test": "tsc && npm run test:playwright",

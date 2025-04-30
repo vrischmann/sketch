@@ -66,13 +66,13 @@ type State struct {
 	SSHError             string               `json:"ssh_error,omitempty"`
 	InContainer          bool                 `json:"in_container"`
 	FirstMessageIndex    int                  `json:"first_message_index"`
-
-	OutsideHostname   string `json:"outside_hostname,omitempty"`
-	InsideHostname    string `json:"inside_hostname,omitempty"`
-	OutsideOS         string `json:"outside_os,omitempty"`
-	InsideOS          string `json:"inside_os,omitempty"`
-	OutsideWorkingDir string `json:"outside_working_dir,omitempty"`
-	InsideWorkingDir  string `json:"inside_working_dir,omitempty"`
+	AgentState           string               `json:"agent_state,omitempty"`
+	OutsideHostname      string               `json:"outside_hostname,omitempty"`
+	InsideHostname       string               `json:"inside_hostname,omitempty"`
+	OutsideOS            string               `json:"outside_os,omitempty"`
+	InsideOS             string               `json:"inside_os,omitempty"`
+	OutsideWorkingDir    string               `json:"outside_working_dir,omitempty"`
+	InsideWorkingDir     string               `json:"inside_working_dir,omitempty"`
 }
 
 type InitRequest struct {
@@ -394,6 +394,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			SSHError:             s.sshError,
 			InContainer:          agent.IsInContainer(),
 			FirstMessageIndex:    agent.FirstMessageIndex(),
+			AgentState:           agent.CurrentStateName(),
 		}
 
 		// Create a JSON encoder with indentation for pretty-printing

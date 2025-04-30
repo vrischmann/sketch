@@ -76,6 +76,7 @@ export interface State {
 	ssh_error?: string;
 	in_container: boolean;
 	first_message_index: number;
+	agent_state?: string;
 	outside_hostname?: string;
 	inside_hostname?: string;
 	outside_os?: string;

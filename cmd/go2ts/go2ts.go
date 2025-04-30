@@ -3,7 +3,7 @@
 //
 // Exmaple:
 //
-//	go run cmd/go2ts -o webui/src/types.ts
+//	go run ./cmd/go2ts -o webui/src/types.ts
 package main
 
 import (

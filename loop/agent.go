@@ -105,6 +105,8 @@ type CodingAgent interface {
 	IsInContainer() bool
 	// FirstMessageIndex returns the index of the first message in the current conversation
 	FirstMessageIndex() int
+
+	CurrentStateName() string
 }
 
 type CodingAgentMessageType string
@@ -331,6 +333,17 @@ type Agent struct {
 
 	// Track outstanding tool calls by ID with their names
 	outstandingToolCalls map[string]string
+}
+
+// Assert that Agent satisfies the CodingAgent interface.
+var _ CodingAgent = &Agent{}
+
+// StateName implements CodingAgent.
+func (a *Agent) CurrentStateName() string {
+	if a.stateMachine == nil {
+		return ""
+	}
+	return a.stateMachine.currentState.String()
 }
 
 func (a *Agent) URL() string { return a.url }

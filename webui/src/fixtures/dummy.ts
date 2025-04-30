@@ -375,4 +375,5 @@ export const initialState: State = {
   outstanding_tool_calls: [],
   in_container: true,
   first_message_index: 0,
+  agent_state: "WaitingForUserInput",
 };

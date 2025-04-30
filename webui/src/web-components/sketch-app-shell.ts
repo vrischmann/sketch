@@ -1038,6 +1038,7 @@ export class SketchAppShell extends LitElement {
           ></sketch-network-status>
 
           <sketch-call-status
+            .agentState=${this.containerState?.agent_state}
             .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
             .toolCalls=${this.containerState?.outstanding_tool_calls || []}
           ></sketch-call-status>
