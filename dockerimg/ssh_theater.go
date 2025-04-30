@@ -28,7 +28,7 @@ const keyBitSize = 2048
 //
 // In your ~/.ssh/config file, add the following line:
 //
-// Include $HOME/.sketch/ssh_config
+// Include $HOME/.config/sketch/ssh_config
 //
 // where $HOME is your home directory.
 type SSHTheater struct {
@@ -66,7 +66,7 @@ func NewSSHTheather(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
 
 // newSSHTheatherWithDeps creates a new SSHTheater with the specified dependencies
 func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg KeyGenerator) (*SSHTheater, error) {
-	base := filepath.Join(os.Getenv("HOME"), ".sketch")
+	base := filepath.Join(os.Getenv("HOME"), ".config", "sketch")
 	if _, err := fs.Stat(base); err != nil {
 		if err := fs.Mkdir(base, 0o777); err != nil {
 			return nil, fmt.Errorf("couldn't create %s: %w", base, err)
@@ -125,7 +125,7 @@ func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg
 }
 
 func CheckForIncludeWithFS(fs FileSystem) error {
-	sketchSSHPathInclude := "Include " + filepath.Join(os.Getenv("HOME"), ".sketch", "ssh_config")
+	sketchSSHPathInclude := "Include " + filepath.Join(os.Getenv("HOME"), ".config", "sketch", "ssh_config")
 	defaultSSHPath := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
 	f, _ := fs.OpenFile(filepath.Join(os.Getenv("HOME"), ".ssh", "config"), os.O_RDONLY, 0)
 	if f == nil {
