@@ -760,8 +760,10 @@ func (a *Agent) titleTool() *ant.Tool {
 			if params.Title == "" {
 				return "", fmt.Errorf("title parameter cannot be empty")
 			}
-
-			branchName := "sketch/" + cleanBranchName(params.BranchName)
+			if params.BranchName != cleanBranchName(params.BranchName) {
+				return "", fmt.Errorf("branch_name parameter must be alphanumeric hyphenated slug")
+			}
+			branchName := "sketch/" + params.BranchName
 			if branchExists(a.workingDir, branchName) {
 				return "", fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
 			}
