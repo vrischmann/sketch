@@ -36,6 +36,12 @@ jobs:
       - name: Go generate
         run: |
           go generate ./...
+          # if go generate created a diff
+          if ! git diff --exit-code; then
+            echo "go generate created a diff"
+            git diff
+            exit 1
+          fi
 
       - name: Run tests
         run: |
