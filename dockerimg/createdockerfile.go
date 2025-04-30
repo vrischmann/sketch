@@ -32,8 +32,10 @@ func DefaultImage() (name, dockerfile, tag string) {
 	return dockerImgName, dockerfileBase, dockerfileBaseHash()
 }
 
-const dockerImgRepo = "boldsoftware/sketch"
-const dockerImgName = "ghcr.io/" + dockerImgRepo
+const (
+	dockerImgRepo = "boldsoftware/sketch"
+	dockerImgName = "ghcr.io/" + dockerImgRepo
+)
 
 func dockerfileBaseHash() string {
 	h := sha256.New()

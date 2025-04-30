@@ -7,9 +7,6 @@ export class SketchNetworkStatus extends LitElement {
   connection: string;
 
   @property()
-  message: string;
-
-  @property()
   error: string;
 
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
@@ -21,37 +18,6 @@ export class SketchNetworkStatus extends LitElement {
     .status-container {
       display: flex;
       align-items: center;
-    }
-
-    .polling-indicator {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 4px;
-      background-color: #ccc;
-    }
-
-    .polling-indicator.active {
-      background-color: #4caf50;
-      animation: pulse 1.5s infinite;
-    }
-
-    .polling-indicator.error {
-      background-color: #f44336;
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-      100% {
-        opacity: 1;
-      }
     }
 
     .status-text {
@@ -74,23 +40,15 @@ export class SketchNetworkStatus extends LitElement {
     super.disconnectedCallback();
   }
 
-  indicator() {
-    if (this.connection === "disabled") {
-      return "";
-    }
-    return this.connection === "connected" ? "active" : "error";
-  }
-
   render() {
+    // Only render if there's an error to display
+    if (!this.error) {
+      return html``;
+    }
+
     return html`
       <div class="status-container">
-        <span
-          id="pollingIndicator"
-          class="polling-indicator ${this.indicator()}"
-        ></span>
-        <span id="statusText" class="status-text"
-          >${this.error || this.message}</span
-        >
+        <span id="statusText" class="status-text">${this.error}</span>
       </div>
     `;
   }

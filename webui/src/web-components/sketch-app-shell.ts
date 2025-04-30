@@ -230,7 +230,8 @@ export class SketchAppShell extends LitElement {
       margin-right: 50px;
     }
 
-    .restart-button {
+    .restart-button,
+    .stop-button {
       background: #2196f3;
       color: white;
       border: none;
@@ -239,6 +240,9 @@ export class SketchAppShell extends LitElement {
       cursor: pointer;
       font-size: 12px;
       margin-right: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .restart-button:hover {
@@ -251,27 +255,42 @@ export class SketchAppShell extends LitElement {
       opacity: 0.6;
     }
 
-    .refresh-button {
-      background: #4caf50;
+    .stop-button {
+      background: #dc3545;
       color: white;
-      border: none;
-      padding: 4px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      margin-right: 5px;
     }
 
-    .stop-button:hover {
-      background-color: #c82333 !important;
+    .stop-button:hover:not(:disabled) {
+      background-color: #c82333;
     }
 
-    .poll-updates {
-      display: flex;
-      align-items: center;
-      font-size: 12px;
-      margin-right: 10px;
+    .stop-button:disabled {
+      background-color: #e9a8ad;
+      cursor: not-allowed;
+      opacity: 0.7;
     }
+
+    .stop-button:disabled:hover {
+      background-color: #e9a8ad;
+    }
+
+    .button-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    @media (max-width: 1400px) {
+      .button-text {
+        display: none;
+      }
+
+      .restart-button,
+      .stop-button {
+        padding: 6px;
+      }
+    }
+
+    /* Removed poll-updates class */
 
     .notifications-toggle {
       display: flex;
@@ -319,9 +338,6 @@ export class SketchAppShell extends LitElement {
 
   @property()
   connectionErrorMessage: string = "";
-
-  @property()
-  messageStatus: string = "";
 
   // Chat messages
   @property({ attribute: false })
@@ -729,18 +745,8 @@ export class SketchAppShell extends LitElement {
   private handleDataChanged(eventData: {
     state: State;
     newMessages: AgentMessage[];
-    isFirstFetch?: boolean;
   }): void {
-    const { state, newMessages, isFirstFetch } = eventData;
-
-    // Check if this is the first data fetch or if there are new messages
-    if (isFirstFetch) {
-      this.messageStatus = "Initial messages loaded";
-    } else if (newMessages && newMessages.length > 0) {
-      this.messageStatus = "Updated just now";
-    } else {
-      this.messageStatus = "No new messages";
-    }
+    const { state, newMessages } = eventData;
 
     // Update state if we received it
     if (state) {
@@ -768,7 +774,7 @@ export class SketchAppShell extends LitElement {
     this.updateLastCommitInfo(newMessages);
 
     // Check for agent messages with end_of_turn=true and show notifications
-    if (newMessages && newMessages.length > 0 && !isFirstFetch) {
+    if (newMessages && newMessages.length > 0) {
       for (const message of newMessages) {
         if (
           message.type === "agent" &&
@@ -858,10 +864,9 @@ export class SketchAppShell extends LitElement {
         );
       }
 
-      this.messageStatus = "Stop request sent";
+      // Stop request sent
     } catch (error) {
       console.error("Error stopping operation:", error);
-      this.messageStatus = "Failed to stop operation";
     }
   }
 
@@ -927,13 +932,13 @@ export class SketchAppShell extends LitElement {
           <h2 id="chatTitle" class="chat-title">${this.title}</h2>
         </div>
 
-        <!-- Views section with tabs -->
-        <sketch-view-mode-select></sketch-view-mode-select>
-
-        <!-- Container status info -->
+        <!-- Container status info moved above tabs -->
         <sketch-container-status
           .state=${this.containerState}
         ></sketch-container-status>
+
+        <!-- Views section with tabs - repositioned -->
+        <sketch-view-mode-select></sketch-view-mode-select>
 
         ${this.lastCommit
           ? html`
@@ -963,23 +968,49 @@ export class SketchAppShell extends LitElement {
             ?disabled=${this.containerState.message_count === 0}
             @click=${this.openRestartModal}
           >
-            Restart
+            <svg
+              class="button-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            <span class="button-text">Restart</span>
           </button>
-          <button id="stopButton" class="refresh-button stop-button">
-            Stop
+          <button
+            id="stopButton"
+            class="stop-button"
+            ?disabled=${(this.containerState?.outstanding_llm_calls || 0) ===
+              0 &&
+            (this.containerState?.outstanding_tool_calls || []).length === 0}
+          >
+            <svg
+              class="button-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="6" y="6" width="12" height="12" />
+            </svg>
+            <span class="button-text">Stop</span>
           </button>
-
-          <div class="poll-updates">
-            <input type="checkbox" id="pollToggle" checked />
-            <label for="pollToggle">Poll</label>
-          </div>
 
           <div
             class="notifications-toggle"
             @click=${this._handleNotificationsToggle}
             title="${this.notificationsEnabled
               ? "Disable"
-              : "Enable"} notifications"
+              : "Enable"} notifications when the agent completes its turn"
           >
             <div
               class="bell-icon ${!this.notificationsEnabled
@@ -1002,7 +1033,6 @@ export class SketchAppShell extends LitElement {
           </div>
 
           <sketch-network-status
-            message=${this.messageStatus}
             connection=${this.connectionStatus}
             error=${this.connectionErrorMessage}
           ></sketch-network-status>
@@ -1096,18 +1126,8 @@ export class SketchAppShell extends LitElement {
       }
     });
 
-    const pollToggleCheckbox = this.renderRoot?.querySelector(
-      "#pollToggle",
-    ) as HTMLInputElement;
-    pollToggleCheckbox?.addEventListener("change", () => {
-      this.dataManager.setPollingEnabled(pollToggleCheckbox.checked);
-      if (!pollToggleCheckbox.checked) {
-        this.connectionStatus = "disabled";
-        this.messageStatus = "Polling stopped";
-      } else {
-        this.messageStatus = "Polling for updates...";
-      }
-    });
+    // Always enable polling by default
+    this.dataManager.setPollingEnabled(true);
 
     // Process any existing messages to find commit information
     if (this.messages && this.messages.length > 0) {

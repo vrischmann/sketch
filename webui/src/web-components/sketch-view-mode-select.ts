@@ -35,6 +35,16 @@ export class SketchViewModeSelect extends LitElement {
       white-space: nowrap;
     }
 
+    @media (max-width: 1400px) {
+      .tab-btn span:not(.tab-icon) {
+        display: none;
+      }
+
+      .tab-btn {
+        padding: 8px 10px;
+      }
+    }
+
     .tab-btn:not(:last-child) {
       border-right: 1px solid #eee;
     }

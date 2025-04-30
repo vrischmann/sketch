@@ -74,8 +74,7 @@ export class SketchContainerStatus extends LitElement {
     }
 
     [title] {
-      cursor: help;
-      text-decoration: underline dotted;
+      cursor: default;
     }
 
     .cost {
@@ -180,11 +179,33 @@ export class SketchContainerStatus extends LitElement {
     }
 
     .vscode-link {
+      color: white;
+      text-decoration: none;
+      background-color: #0066b8;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .vscode-link:hover {
+      background-color: #005091;
+    }
+
+    .vscode-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .github-link {
       color: #2962ff;
       text-decoration: none;
     }
 
-    .vscode-link:hover {
+    .github-link:hover {
       text-decoration: underline;
     }
   `;
@@ -212,33 +233,25 @@ export class SketchContainerStatus extends LitElement {
   }
 
   formatHostname() {
+    // Only display outside hostname
     const outsideHostname = this.state?.outside_hostname;
-    const insideHostname = this.state?.inside_hostname;
 
-    if (!outsideHostname || !insideHostname) {
+    if (!outsideHostname) {
       return this.state?.hostname;
     }
 
-    if (outsideHostname === insideHostname) {
-      return outsideHostname;
-    }
-
-    return `${outsideHostname}:${insideHostname}`;
+    return outsideHostname;
   }
 
   formatWorkingDir() {
+    // Only display outside working directory
     const outsideWorkingDir = this.state?.outside_working_dir;
-    const insideWorkingDir = this.state?.inside_working_dir;
 
-    if (!outsideWorkingDir || !insideWorkingDir) {
+    if (!outsideWorkingDir) {
       return this.state?.working_dir;
     }
 
-    if (outsideWorkingDir === insideWorkingDir) {
-      return outsideWorkingDir;
-    }
-
-    return `${outsideWorkingDir}:${insideWorkingDir}`;
+    return outsideWorkingDir;
   }
 
   getHostnameTooltip() {
@@ -298,6 +311,33 @@ export class SketchContainerStatus extends LitElement {
     return `sketch-${this.state?.session_id}`;
   }
 
+  // Format GitHub repository URL to org/repo format
+  formatGitHubRepo(url) {
+    if (!url) return null;
+
+    // Common GitHub URL patterns
+    const patterns = [
+      // HTTPS URLs
+      /https:\/\/github\.com\/([^/]+)\/([^/\s.]+)(?:\.git)?/,
+      // SSH URLs
+      /git@github\.com:([^/]+)\/([^/\s.]+)(?:\.git)?/,
+      // Git protocol
+      /git:\/\/github\.com\/([^/]+)\/([^/\s.]+)(?:\.git)?/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        return {
+          formatted: `${match[1]}/${match[2]}`,
+          url: `https://github.com/${match[1]}/${match[2]}`,
+        };
+      }
+    }
+
+    return null;
+  }
+
   renderSSHSection() {
     // Only show SSH section if we're in a Docker container and have session ID
     if (!this.state?.session_id) {
@@ -312,7 +352,7 @@ export class SketchContainerStatus extends LitElement {
     if (!this.state?.ssh_available) {
       return html`
         <div class="ssh-section">
-          <h3>SSH Connection</h3>
+          <h3>Connect to Container</h3>
           <div class="ssh-warning">
             SSH connections are not available:
             ${this.state?.ssh_error || "SSH configuration is missing"}
@@ -323,7 +363,7 @@ export class SketchContainerStatus extends LitElement {
 
     return html`
       <div class="ssh-section">
-        <h3>SSH Connection</h3>
+        <h3>Connect to Container</h3>
         <div class="ssh-command">
           <div class="ssh-command-text">${sshCommand}</div>
           <button
@@ -343,7 +383,23 @@ export class SketchContainerStatus extends LitElement {
           </button>
         </div>
         <div class="ssh-command">
-          <a href="${vscodeURL}" class="vscode-link">${vscodeURL}</a>
+          <a href="${vscodeURL}" class="vscode-link" title="${vscodeURL}">
+            <svg
+              class="vscode-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M16.5 9.4 7.55 4.24a.35.35 0 0 0-.41.01l-1.23.93a.35.35 0 0 0-.14.29v13.04c0 .12.07.23.17.29l1.24.93c.13.1.31.09.43-.01L16.5 14.6l-6.39 4.82c-.16.12-.38.12-.55.01l-1.33-1.01a.35.35 0 0 1-.14-.28V5.88c0-.12.07-.23.18-.29l1.23-.93c.14-.1.32-.1.46 0l6.54 4.92-6.54 4.92c-.14.1-.32.1-.46 0l-1.23-.93a.35.35 0 0 1-.18-.29V5.88c0-.12.07-.23.17-.29l1.33-1.01c.16-.12.39-.11.55.01l6.39 4.81z"
+              />
+            </svg>
+            <span>Open in VSCode</span>
+          </a>
         </div>
       </div>
     `;
@@ -381,9 +437,30 @@ export class SketchContainerStatus extends LitElement {
             ${this.state?.git_origin
               ? html`
                   <div class="info-item">
-                    <span id="gitOrigin" class="info-value"
-                      >${this.state?.git_origin}</span
-                    >
+                    ${(() => {
+                      const github = this.formatGitHubRepo(
+                        this.state?.git_origin,
+                      );
+                      if (github) {
+                        return html`
+                          <a
+                            href="${github.url}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="github-link"
+                            title="${this.state?.git_origin}"
+                          >
+                            ${github.formatted}
+                          </a>
+                        `;
+                      } else {
+                        return html`
+                          <span id="gitOrigin" class="info-value"
+                            >${this.state?.git_origin}</span
+                          >
+                        `;
+                      }
+                    })()}
                   </div>
                 `
               : ""}
