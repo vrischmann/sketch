@@ -23,6 +23,8 @@ import (
 //go:embed package.json package-lock.json src tsconfig.json
 var embedded embed.FS
 
+//go:generate go run ../cmd/go2ts -o src/types.ts
+
 func embeddedHash() (string, error) {
 	h := sha256.New()
 	err := fs.WalkDir(embedded, ".", func(path string, d fs.DirEntry, err error) error {

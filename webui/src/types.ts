@@ -62,24 +62,24 @@ export interface CumulativeUsage {
 export interface State {
 	message_count: number;
 	total_usage?: CumulativeUsage | null;
-	hostname: string;
-	working_dir: string;
 	initial_commit: string;
 	title: string;
 	branch_name?: string;
+	hostname: string;
+	working_dir: string;
 	os: string;
+	git_origin?: string;
+	outstanding_llm_calls: number;
+	outstanding_tool_calls: string[] | null;
+	session_id: string;
+	ssh_available: boolean;
+	ssh_error?: string;
 	outside_hostname?: string;
 	inside_hostname?: string;
 	outside_os?: string;
 	inside_os?: string;
 	outside_working_dir?: string;
 	inside_working_dir?: string;
-	git_origin?: string;
-	outstanding_llm_calls: number;
-	outstanding_tool_calls: string[];
-	session_id: string;
-	ssh_available: boolean;
-	ssh_error?: string;
 }
 
 export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto';
