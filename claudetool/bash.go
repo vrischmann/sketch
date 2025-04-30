@@ -17,13 +17,31 @@ import (
 	"sketch.dev/claudetool/bashkit"
 )
 
-// The Bash tool executes shell commands with bash -c and optional timeout
-var Bash = &ant.Tool{
-	Name:        bashName,
-	Description: strings.TrimSpace(bashDescription),
-	InputSchema: ant.MustSchema(bashInputSchema),
-	Run:         BashRun,
+// PermissionCallback is a function type for checking if a command is allowed to run
+type PermissionCallback func(command string) error
+
+// BashTool is a struct for executing shell commands with bash -c and optional timeout
+type BashTool struct {
+	// CheckPermission is called before running any command, if set
+	CheckPermission PermissionCallback
 }
+
+// NewBashTool creates a new Bash tool with optional permission callback
+func NewBashTool(checkPermission PermissionCallback) *ant.Tool {
+	tool := &BashTool{
+		CheckPermission: checkPermission,
+	}
+
+	return &ant.Tool{
+		Name:        bashName,
+		Description: strings.TrimSpace(bashDescription),
+		InputSchema: ant.MustSchema(bashInputSchema),
+		Run:         tool.Run,
+	}
+}
+
+// The Bash tool executes shell commands with bash -c and optional timeout
+var Bash = NewBashTool(nil)
 
 const (
 	bashName        = "bash"
@@ -96,15 +114,23 @@ func (i *bashInput) timeout() time.Duration {
 	}
 }
 
-func BashRun(ctx context.Context, m json.RawMessage) (string, error) {
+func (b *BashTool) Run(ctx context.Context, m json.RawMessage) (string, error) {
 	var req bashInput
 	if err := json.Unmarshal(m, &req); err != nil {
 		return "", fmt.Errorf("failed to unmarshal bash command input: %w", err)
 	}
+
 	// do a quick permissions check (NOT a security barrier)
 	err := bashkit.Check(req.Command)
 	if err != nil {
 		return "", err
+	}
+
+	// Custom permission callback if set
+	if b.CheckPermission != nil {
+		if err := b.CheckPermission(req.Command); err != nil {
+			return "", err
+		}
 	}
 
 	// If Background is set to true, use executeBackgroundBash
@@ -277,4 +303,10 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 		StdoutFile: stdoutFile,
 		StderrFile: stderrFile,
 	}, nil
+}
+
+// BashRun is the legacy function for testing compatibility
+func BashRun(ctx context.Context, m json.RawMessage) (string, error) {
+	// Use the default Bash tool which has no permission callback
+	return Bash.Run(ctx, m)
 }

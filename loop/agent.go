@@ -18,6 +18,7 @@ import (
 
 	"sketch.dev/ant"
 	"sketch.dev/claudetool"
+	"sketch.dev/claudetool/bashkit"
 )
 
 const (
@@ -646,11 +647,41 @@ func (a *Agent) initConvo() *ant.Convo {
 
 	convo.SystemPrompt = fmt.Sprintf(agentSystemPrompt, editPrompt, a.config.ClientGOOS, a.config.ClientGOARCH, a.workingDir, a.repoRoot, a.initialCommit)
 
+	// Define a permission callback for the bash tool to check if the branch name is set before allowing git commits
+	bashPermissionCheck := func(command string) error {
+		// Check if branch name is set
+		a.mu.Lock()
+		branchSet := a.branchName != ""
+		a.mu.Unlock()
+
+		// If branch is set, all commands are allowed
+		if branchSet {
+			return nil
+		}
+
+		// If branch is not set, check if this is a git commit command
+		willCommit, err := bashkit.WillRunGitCommit(command)
+		if err != nil {
+			// If there's an error checking, we should allow the command to proceed
+			return nil
+		}
+
+		// If it's a git commit and branch is not set, return an error
+		if willCommit {
+			return fmt.Errorf("you must use the title tool before making git commits")
+		}
+
+		return nil
+	}
+
+	// Create a custom bash tool with the permission check
+	bashTool := claudetool.NewBashTool(bashPermissionCheck)
+
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display
 	// template in termui/termui.go has pretty-printing support for all tools.
 	convo.Tools = []*ant.Tool{
-		claudetool.Bash, claudetool.Keyword,
+		bashTool, claudetool.Keyword,
 		claudetool.Think, a.titleTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
 		a.codereview.Tool(),
 	}
