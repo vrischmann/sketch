@@ -68,7 +68,6 @@ func NewSSHTheather(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
 func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg KeyGenerator) (*SSHTheater, error) {
 	base := filepath.Join(os.Getenv("HOME"), ".config", "sketch")
 	if _, err := fs.Stat(base); err != nil {
-
 		if err := fs.MkdirAll(base, 0o777); err != nil {
 			return nil, fmt.Errorf("couldn't create %s: %w", base, err)
 		}
