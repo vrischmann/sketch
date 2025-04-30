@@ -270,7 +270,7 @@ export class SketchTimeline extends LitElement {
             return html`<sketch-timeline-message
               .message=${message}
               .previousMessage=${previousMessage}
-              .open=${index == this.messages.length - 1}
+              .open=${false}
             ></sketch-timeline-message>`;
           })}
         </div>
