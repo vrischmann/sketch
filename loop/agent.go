@@ -1107,20 +1107,21 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 }
 
 func titleToBranch(s string) string {
-	// Convert to lowercase
-	s = strings.ToLower(s)
-
-	// Replace spaces with hyphens
-	s = strings.ReplaceAll(s, " ", "-")
-
-	// Remove any character that isn't a-z or hyphen
-	var result strings.Builder
-	for _, r := range s {
-		if (r >= 'a' && r <= 'z') || r == '-' {
-			result.WriteRune(r)
+	return strings.Map(func(r rune) rune {
+		// lowercase
+		if r >= 'A' && r <= 'Z' {
+			return r + 'a' - 'A'
 		}
-	}
-	return result.String()
+		// replace spaces with dashes
+		if r == ' ' {
+			return '-'
+		}
+		// allow alphanumerics and dashes
+		if (r >= 'a' && r <= 'z') || r == '-' || (r >= '0' && r <= '9') {
+			return r
+		}
+		return -1
+	}, s)
 }
 
 // parseGitLog parses the output of git log with format '%H%x00%s%x00%b%x00'
