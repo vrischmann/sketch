@@ -78,31 +78,19 @@ jobs:
           git config --global user.email "bot@sketch.dev"
           git add .
 
-          # If this is a queue-main branch, check commit count and decide whether to amend
-          if [[ "${{ github.ref }}" == refs/heads/queue-main-* ]]; then
-            # Ensure we have origin/main available
-            git fetch origin main
+          git fetch origin main
+          MERGE_BASE=$(git merge-base HEAD origin/main)
+          COMMIT_COUNT=$(git rev-list --count $MERGE_BASE..HEAD)
 
-            # Find merge-base with origin/main
-            MERGE_BASE=$(git merge-base HEAD origin/main)
-
-            # Count commits since merge-base
-            COMMIT_COUNT=$(git rev-list --count $MERGE_BASE..HEAD)
-
-            if [ "$COMMIT_COUNT" -eq 1 ]; then
-              echo "Found exactly one commit since merge-base with origin/main. Amending the commit."
-              git commit --amend --no-edit
-            else
-              echo "Found multiple commits ($COMMIT_COUNT) since merge-base with origin/main. Creating a new commit."
-              git commit -m "all: fix formatting"
-            fi
-
-            # Push the changes
-            git push -f https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/boldsoftware/sketch.git HEAD
+          if [ "$COMMIT_COUNT" -eq 1 ]; then
+            echo "Found exactly one commit since merge-base with origin/main. Amending the commit."
+            git commit --amend --no-edit
           else
-            # For non-queue-main branches, simply add a new commit
+            echo "Found multiple commits ($COMMIT_COUNT) since merge-base with origin/main. Creating a new commit."
             git commit -m "all: fix formatting"
           fi
+
+          git push -f https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git HEAD
 
       - name: Get commit SHA
         id: get_commit
