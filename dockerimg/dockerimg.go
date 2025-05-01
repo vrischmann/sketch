@@ -177,7 +177,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 
 	// Create the sketch container
 	if err := createDockerContainer(ctx, cntrName, hostPort, relPath, imgName, config); err != nil {
-		return err
+		return fmt.Errorf("failed to create docker container: %w", err)
 	}
 
 	// Copy the sketch linux binary into the container
@@ -415,14 +415,16 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 }
 
 func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, imgName string, config ContainerConfig) error {
-	//, config.SessionID, config.GitUsername, config.GitEmail, config.SkabandAddr
-	// sessionID, gitUsername, gitEmail, skabandAddr string
 	cmdArgs := []string{
 		"create",
 		"-it",
 		"--name", cntrName,
 		"-p", hostPort + ":80", // forward container port 80 to a host port
 		"-e", "ANTHROPIC_API_KEY=" + config.AntAPIKey,
+	}
+
+	for _, envVar := range getEnvForwardingFromGitConfig(ctx) {
+		cmdArgs = append(cmdArgs, "-e", envVar)
 	}
 	if config.AntURL != "" {
 		cmdArgs = append(cmdArgs, "-e", "ANT_URL="+config.AntURL)
@@ -807,4 +809,28 @@ func moveFile(src, dst string) error {
 	os.Chmod(dst, stat.Mode())
 
 	return os.Remove(src)
+}
+
+// getEnvForwardingFromGitConfig retrieves environment variables to pass through to Docker
+// from git config using the sketch.envfwd multi-valued key.
+func getEnvForwardingFromGitConfig(ctx context.Context) []string {
+	outb, err := exec.CommandContext(ctx, "git", "config", "--get-all", "sketch.envfwd").CombinedOutput()
+	out := string(outb)
+	if err != nil {
+		if strings.Contains(out, "key does not exist") {
+			return nil
+		}
+		slog.ErrorContext(ctx, "failed to get sketch.envfwd from git config", "err", err, "output", out)
+		return nil
+	}
+
+	var envVars []string
+	for envVar := range strings.Lines(out) {
+		envVar = strings.TrimSpace(envVar)
+		if envVar == "" {
+			continue
+		}
+		envVars = append(envVars, envVar+"="+os.Getenv(envVar))
+	}
+	return envVars
 }
