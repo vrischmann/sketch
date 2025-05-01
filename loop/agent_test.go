@@ -94,7 +94,8 @@ func TestAgentLoop(t *testing.T) {
 
 	// Collect responses with a timeout
 	var responses []AgentMessage
-	ctx2, _ := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+	ctx2, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+	defer cancel()
 	done := false
 	it := agent.NewIterator(ctx2, 0)
 
@@ -212,7 +213,7 @@ func TestAgentProcessTurnWithNilResponse(t *testing.T) {
 	agent := &Agent{
 		convo:                mockConvo,
 		inbox:                make(chan string, 10),
-		outbox:               make(chan AgentMessage, 10),
+		subscribers:          []chan *AgentMessage{},
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 	}
@@ -227,25 +228,21 @@ func TestAgentProcessTurnWithNilResponse(t *testing.T) {
 	// Call processTurn - it should exit early without panic when initialResp is nil
 	agent.processTurn(ctx)
 
-	// Verify the error message was added to outbox
-	select {
-	case msg := <-agent.outbox:
+	// Verify error message was added to history
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
+	// There should be exactly one message
+	if len(agent.history) != 1 {
+		t.Errorf("Expected exactly one message, got %d", len(agent.history))
+	} else {
+		msg := agent.history[0]
 		if msg.Type != ErrorMessageType {
 			t.Errorf("Expected error message, got message type: %s", msg.Type)
 		}
 		if !strings.Contains(msg.Content, "simulating nil response") {
 			t.Errorf("Expected error message to contain 'simulating nil response', got: %s", msg.Content)
 		}
-	case <-time.After(time.Second):
-		t.Error("Timed out waiting for error message in outbox")
-	}
-
-	// No more messages should be in the outbox since processTurn should exit early
-	select {
-	case msg := <-agent.outbox:
-		t.Errorf("Expected no more messages in outbox, but got: %+v", msg)
-	case <-time.After(100 * time.Millisecond):
-		// This is the expected outcome - no more messages
 	}
 }
 
@@ -347,7 +344,7 @@ func TestAgentProcessTurnWithNilResponseNilError(t *testing.T) {
 	agent := &Agent{
 		convo:                mockConvo,
 		inbox:                make(chan string, 10),
-		outbox:               make(chan AgentMessage, 10),
+		subscribers:          []chan *AgentMessage{},
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 	}
@@ -371,17 +368,21 @@ func TestAgentProcessTurnWithNilResponseNilError(t *testing.T) {
 		t.Logf("As expected, processTurn returned error: %v", err)
 	}
 
-	// Verify an error message was sent to the outbox
-	select {
-	case msg := <-agent.outbox:
+	// Verify error message was added to history
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
+	// There should be exactly one message
+	if len(agent.history) != 1 {
+		t.Errorf("Expected exactly one message, got %d", len(agent.history))
+	} else {
+		msg := agent.history[0]
 		if msg.Type != ErrorMessageType {
 			t.Errorf("Expected error message type, got: %s", msg.Type)
 		}
 		if !strings.Contains(msg.Content, "unexpected nil response") {
 			t.Errorf("Expected error about nil response, got: %s", msg.Content)
 		}
-	case <-time.After(time.Second):
-		t.Error("Timed out waiting for error message in outbox")
 	}
 }
 
@@ -521,13 +522,13 @@ func TestAgentProcessTurnStateTransitions(t *testing.T) {
 		convo:                mockConvo,
 		config:               AgentConfig{Context: ctx},
 		inbox:                make(chan string, 10),
-		outbox:               make(chan AgentMessage, 10),
 		ready:                make(chan struct{}),
 		seenCommits:          make(map[string]bool),
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 		stateMachine:         NewStateMachine(),
 		startOfTurn:          time.Now(),
+		subscribers:          []chan *AgentMessage{},
 	}
 
 	// Verify initial state
@@ -598,13 +599,13 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 		convo:                mockConvo,
 		config:               AgentConfig{Context: ctx},
 		inbox:                make(chan string, 10),
-		outbox:               make(chan AgentMessage, 10),
 		ready:                make(chan struct{}),
 		seenCommits:          make(map[string]bool),
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 		stateMachine:         NewStateMachine(),
 		startOfTurn:          time.Now(),
+		subscribers:          []chan *AgentMessage{},
 	}
 
 	// Add a message to the inbox so we don't block in GatherMessages
