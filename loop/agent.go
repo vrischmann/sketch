@@ -833,7 +833,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	// template in termui/termui.go has pretty-printing support for all tools.
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
-		claudetool.Think, a.titleTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
+		claudetool.Think, a.preCommitTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
 		a.codereview.Tool(), a.multipleChoiceTool(),
 	}
 	if a.config.UseAnthropicEdit {
@@ -917,10 +917,16 @@ func branchExists(dir, branchName string) bool {
 	return false
 }
 
-func (a *Agent) titleTool() *llm.Tool {
-	title := &llm.Tool{
-		Name:        "title",
-		Description: `Sets the conversation title and creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`,
+func (a *Agent) preCommitTool() *llm.Tool {
+	name := "title"
+	description := `Sets the conversation title and creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`
+	if experiment.Enabled("precommit") {
+		name = "precommit"
+		description = `Sets the conversation title, creates a git branch for tracking work, and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
+	}
+	preCommit := &llm.Tool{
+		Name:        name,
+		Description: description,
 		InputSchema: json.RawMessage(`{
 	"type": "object",
 	"properties": {
@@ -944,7 +950,7 @@ func (a *Agent) titleTool() *llm.Tool {
 				return "", err
 			}
 			// It's unfortunate to not allow title changes,
-			// but it avoids having multiple branches.
+			// but it avoids accidentally generating multiple branches.
 			t := a.Title()
 			if t != "" {
 				return "", fmt.Errorf("title already set to: %s", t)
@@ -967,10 +973,21 @@ func (a *Agent) titleTool() *llm.Tool {
 			a.SetTitleBranch(params.Title, branchName)
 
 			response := fmt.Sprintf("Title set to %q, branch name set to %q", params.Title, branchName)
+
+			if experiment.Enabled("precommit") {
+				styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
+				if err != nil {
+					slog.DebugContext(ctx, "failed to get commit message style hint", "err", err)
+				}
+				if len(styleHint) > 0 {
+					response += "\n\n" + styleHint
+				}
+			}
+
 			return response, nil
 		},
 	}
-	return title
+	return preCommit
 }
 
 func (a *Agent) Ready() <-chan struct{} {
