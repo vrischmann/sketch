@@ -655,7 +655,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git remote add: %s: %v", out, err)
 		}
-		cmd = exec.CommandContext(ctx, "git", "fetch", "sketch-host")
+		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
 		cmd.Dir = ini.WorkingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git fetch: %s: %w", out, err)
@@ -1505,7 +1505,7 @@ func (a *Agent) initGitRevision(ctx context.Context, workingDir, revision string
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("git stash: %s: %v", out, err)
 	}
-	cmd = exec.CommandContext(ctx, "git", "fetch", "sketch-host")
+	cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
 	cmd.Dir = workingDir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("git fetch: %s: %w", out, err)
