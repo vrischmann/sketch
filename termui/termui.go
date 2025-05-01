@@ -421,6 +421,9 @@ func (ui *termUI) AppendSystemMessage(fmtString string, args ...any) {
 
 // getGitRefName returns a readable git ref for sha, falling back to the original sha on error.
 func getGitRefName(sha string) string {
+	// Best-effort git fetch --prune to ensure we have the latest refs
+	exec.Command("git", "fetch", "--prune").Run()
+
 	// local branch or tag name
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", sha)
 	branchName, err := cmd.Output()
