@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/http"
@@ -63,9 +64,10 @@ func TestAgentLoop(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
 	cfg := AgentConfig{
 		Context:      ctx,
-		APIKey:       os.Getenv("ANTHROPIC_API_KEY"),
+		APIKey:       apiKey,
 		HTTPC:        client,
 		Budget:       budget,
 		GitUsername:  "Test Agent",

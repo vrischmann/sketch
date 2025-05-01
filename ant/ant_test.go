@@ -1,6 +1,7 @@
 package ant
 
 import (
+	"cmp"
 	"context"
 	"math"
 	"net/http"
@@ -22,7 +23,8 @@ func TestBasicConvo(t *testing.T) {
 		return nil
 	})
 
-	convo := NewConvo(ctx, os.Getenv("ANTHROPIC_API_KEY"))
+	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
+	convo := NewConvo(ctx, apiKey)
 	convo.HTTPC = rr.Client()
 
 	const name = "Cornelius"

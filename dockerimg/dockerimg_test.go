@@ -1,6 +1,7 @@
 package dockerimg
 
 import (
+	"cmp"
 	"context"
 	"flag"
 	"io/fs"
@@ -10,7 +11,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/google/go-cmp/cmp"
+	gcmp "github.com/google/go-cmp/cmp"
 	"sketch.dev/httprr"
 )
 
@@ -87,7 +88,8 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := createDockerfile(ctx, rr.Client(), "", os.Getenv("ANTHROPIC_API_KEY"), initFiles, "")
+			apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
+			result, err := createDockerfile(ctx, rr.Client(), "", apiKey, initFiles, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -106,7 +108,7 @@ jobs:
 				t.Fatal(err)
 			}
 			want := string(wantBytes)
-			if diff := cmp.Diff(want, result); diff != "" {
+			if diff := gcmp.Diff(want, result); diff != "" {
 				t.Errorf("dockerfile does not match. got:\n----\n%s\n----\n\ndiff: %s", result, diff)
 			}
 		})
