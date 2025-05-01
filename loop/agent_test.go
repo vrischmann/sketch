@@ -94,26 +94,16 @@ func TestAgentLoop(t *testing.T) {
 
 	// Collect responses with a timeout
 	var responses []AgentMessage
-	timeout := time.After(10 * time.Second)
+	ctx2, _ := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
 	done := false
+	it := agent.NewIterator(ctx2, 0)
 
 	for !done {
-		select {
-		case <-timeout:
-			t.Log("Timeout reached while waiting for agent responses")
+		msg := it.Next()
+		t.Logf("Received message: Type=%s, EndOfTurn=%v, Content=%q", msg.Type, msg.EndOfTurn, msg.Content)
+		responses = append(responses, *msg)
+		if msg.EndOfTurn {
 			done = true
-		default:
-			select {
-			case msg := <-agent.outbox:
-				t.Logf("Received message: Type=%s, EndOfTurn=%v, Content=%q", msg.Type, msg.EndOfTurn, msg.Content)
-				responses = append(responses, msg)
-				if msg.EndOfTurn {
-					done = true
-				}
-			default:
-				// No more messages available right now
-				time.Sleep(100 * time.Millisecond)
-			}
 		}
 	}
 

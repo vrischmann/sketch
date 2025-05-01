@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // TestGitCommitTracking tests the git commit tracking functionality
@@ -67,7 +66,6 @@ func TestGitCommitTracking(t *testing.T) {
 	agent := &Agent{
 		workingDir:    tempDir,
 		repoRoot:      tempDir, // Set repoRoot to same as workingDir for this test
-		outbox:        make(chan AgentMessage, 100),
 		seenCommits:   make(map[string]bool),
 		initialCommit: initialCommit,
 	}
@@ -97,13 +95,7 @@ func TestGitCommitTracking(t *testing.T) {
 	}
 
 	// Check if we received a commit message
-	var commitMsg AgentMessage
-	select {
-	case commitMsg = <-agent.outbox:
-		// We got a message
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timed out waiting for commit message")
-	}
+	var commitMsg AgentMessage = agent.history[len(agent.history)-1]
 
 	// Verify the commit message
 	if commitMsg.Type != CommitMessageType {
@@ -162,7 +154,6 @@ func TestGitCommitTracking(t *testing.T) {
 	}
 
 	// Reset the outbox channel and seen commits map
-	agent.outbox = make(chan AgentMessage, 100)
 	agent.seenCommits = make(map[string]bool)
 
 	// Call handleGitCommits again - it should still work but only show at most 100 commits
@@ -172,12 +163,7 @@ func TestGitCommitTracking(t *testing.T) {
 	}
 
 	// Check if we received a commit message
-	select {
-	case commitMsg = <-agent.outbox:
-		// We got a message
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timed out waiting for commit message")
-	}
+	commitMsg = agent.history[len(agent.history)-1]
 
 	// Should have at most 100 commits due to the -n 100 limit in git log
 	if len(commitMsg.Commits) > 100 {

@@ -117,7 +117,7 @@ func (ui *termUI) Run(ctx context.Context) error {
 	return nil
 }
 
-func (ui *termUI) LogToolUse(resp loop.AgentMessage) {
+func (ui *termUI) LogToolUse(resp *loop.AgentMessage) {
 	inputData := map[string]any{}
 	if err := json.Unmarshal([]byte(resp.ToolInput), &inputData); err != nil {
 		ui.AppendSystemMessage("error: %v", err)
@@ -132,6 +132,7 @@ func (ui *termUI) LogToolUse(resp loop.AgentMessage) {
 }
 
 func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
+	it := ui.agent.NewIterator(ctx, 0)
 	bold := color.New(color.Bold).SprintFunc()
 	for {
 		select {
@@ -139,7 +140,10 @@ func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
 			return
 		default:
 		}
-		resp := ui.agent.WaitForMessage(ctx)
+		resp := it.Next()
+		if resp == nil {
+			return
+		}
 		// Typically a user message will start the thinking and a (top-level
 		// conversation) end of turn will stop it.
 		thinking := !(resp.EndOfTurn && resp.ParentConversationID == nil)

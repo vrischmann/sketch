@@ -329,10 +329,14 @@ func run() error {
 	}
 
 	if *oneShot {
+		it := agent.NewIterator(ctx, 0)
 		for {
-			m := agent.WaitForMessage(ctx)
+			m := it.Next()
+			if m == nil {
+				return nil
+			}
 			if m.Content != "" {
-				fmt.Printf("💬 %s %s: %s\n", m.Timestamp.Format("15:04:05"), m.Type, m.Content)
+				fmt.Printf("[%d] 💬 %s %s: %s\n", m.Idx, m.Timestamp.Format("15:04:05"), m.Type, m.Content)
 			}
 			if m.EndOfTurn && m.ParentConversationID == nil {
 				fmt.Printf("Total cost: $%0.2f\n", agent.TotalUsage().TotalCostUSD)

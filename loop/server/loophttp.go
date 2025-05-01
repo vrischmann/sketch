@@ -349,9 +349,10 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if pollParam == "true" {
 			ch := make(chan string)
 			go func() {
-				// This is your blocking operation
-				agent.WaitForMessageCount(r.Context(), clientMessageCount)
+				it := agent.NewIterator(r.Context(), clientMessageCount)
+				it.Next()
 				close(ch)
+				it.Close()
 			}()
 			select {
 			case <-r.Context().Done():
