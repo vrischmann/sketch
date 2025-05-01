@@ -32,7 +32,7 @@ var (
 {{if eq .msg.ToolName "think" -}}
  🧠 {{.input.thoughts -}}
 {{else if eq .msg.ToolName "keyword_search" -}}
- 🔍 {{ .input.query}}: {{.input.keywords -}}
+ 🔍 {{ .input.query}}: {{.input.search_terms -}}
 {{else if eq .msg.ToolName "bash" -}}
  🖥️{{if .input.background}}🔄{{end}}  {{ .input.command -}}
 {{else if eq .msg.ToolName "patch" -}}
