@@ -1112,7 +1112,7 @@ export class SketchAppShell extends LitElement {
     ) as HTMLButtonElement;
     stopButton?.addEventListener("click", async () => {
       try {
-        const response = await fetch("/cancel", {
+        const response = await fetch("cancel", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
