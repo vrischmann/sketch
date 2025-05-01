@@ -141,6 +141,17 @@ export class SketchChatInput extends LitElement {
       // Initialize the input height
       this.adjustChatSpacing();
     }
+
+    // Add window.onload handler to ensure the input is focused when the page fully loads
+    window.addEventListener(
+      "load",
+      () => {
+        if (this.chatInput) {
+          this.chatInput.focus();
+        }
+      },
+      { once: true },
+    );
   }
 
   render() {
