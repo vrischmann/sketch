@@ -694,6 +694,7 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 	if err != nil {
 		return "", fmt.Errorf("failed to read Dockerfile: %w", err)
 	}
+	// TODO: this is sometimes a repeat of earlier. Remove the earlier call?
 	fmt.Fprintf(stdout, "Dockerfile:\n%s\n", string(dockerfileContent))
 
 	err = run(ctx, "docker build", cmd)

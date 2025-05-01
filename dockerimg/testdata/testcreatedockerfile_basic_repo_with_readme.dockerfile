@@ -1,4 +1,4 @@
-FROM ghcr.io/boldsoftware/sketch:8ad6c62da599d2e478ef79d6ef563630
+FROM ghcr.io/boldsoftware/sketch:86ef7a672f85139e73f38d4cdf78d95f
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -6,12 +6,12 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
-LABEL sketch_context="afa0b82fd799233b6a1a96e027ea08f77f5727c5565b49d4455d3f58b19b3d8d"
+LABEL sketch_context="2f264f73c8a474c0901bf67b0b1ae2ffe24afc4aceabc27435efbd70ed4c36ab"
 COPY . /app
 
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi
 
-# No additional setup required for this simple Go test project
+# No additional setup needed for this simple Go test project
 
 CMD ["/bin/sketch"]

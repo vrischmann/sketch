@@ -45,18 +45,43 @@ func dockerfileBaseHash() string {
 
 const dockerfileBase = `FROM golang:1.24-bookworm
 
-RUN set -eux; \
+# attempt to keep package installs lean
+RUN printf '%s\n' \
+      'path-exclude=/usr/share/man/*' \
+      'path-exclude=/usr/share/doc/*' \
+      'path-exclude=/usr/share/doc-base/*' \
+      'path-exclude=/usr/share/info/*' \
+      'path-exclude=/usr/share/locale/*' \
+      'path-exclude=/usr/share/groff/*' \
+      'path-exclude=/usr/share/lintian/*' \
+      'path-exclude=/usr/share/zoneinfo/*' \
+    > /etc/dpkg/dpkg.cfg.d/01_nodoc
+
+RUN --mount=type=cache,target=/var/cache/apt \
+	set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		git jq sqlite3 npm nodejs gh ripgrep fzf python3 curl vim
 
+# Strip out docs from debian.
+RUN rm -rf /usr/share/{doc,doc-base,info,lintian,man,groff,locale,zoneinfo}/*
+
 ENV PATH="$GOPATH/bin:$PATH"
 
-RUN go install golang.org/x/tools/cmd/goimports@latest
-RUN go install golang.org/x/tools/gopls@latest
-RUN go install mvdan.cc/gofumpt@latest
+# While these binaries install generally useful supporting packages,
+# the specific versions are rarely what a user wants so there is no
+# point polluting the base image module with them.
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+	--mount=type=cache,target=/root/.cache/go-build \
+	set -eux; \
+	go install golang.org/x/tools/cmd/goimports@latest; \
+	go install golang.org/x/tools/gopls@latest; \
+	go install mvdan.cc/gofumpt@latest; \
+	go clean -cache -testcache
 
 ENV GOTOOLCHAIN=auto
+ENV SKETCH=1
 
 RUN mkdir -p /root/.cache/sketch/webui
 `
