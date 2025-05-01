@@ -76,6 +76,9 @@ type termUI struct {
 	oldState *term.State
 	// Tracks branches that were pushed during the session
 	pushedBranches map[string]struct{}
+
+	// Pending message count, for graceful shutdown
+	messageWaitGroup sync.WaitGroup
 }
 
 type chatMessage struct {
@@ -262,6 +265,8 @@ Special commands:
 			ui.mu.Unlock()
 
 			ui.AppendSystemMessage("\n👋 Goodbye!")
+			// Wait for all pending messages to be processed before exiting
+			ui.messageWaitGroup.Wait()
 			return nil
 		case "stop", "cancel", "abort":
 			ui.agent.CancelTurn(fmt.Errorf("user canceled the operation"))
@@ -366,18 +371,24 @@ func (ui *termUI) initializeTerminalUI(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case msg := <-ui.chatMsgCh:
-				// Sometimes claude doesn't say anything when it runs tools.
-				// No need to output anything in that case.
-				if strings.TrimSpace(msg.content) == "" {
-					break
-				}
-				s := fmt.Sprintf("%s %s\n", msg.sender, msg.content)
-				// Update prompt before writing, because otherwise it doesn't redraw the prompt.
-				ui.updatePrompt(msg.thinking)
-				ui.trm.Write([]byte(s))
+				func() {
+					defer ui.messageWaitGroup.Done()
+					// Sometimes claude doesn't say anything when it runs tools.
+					// No need to output anything in that case.
+					if strings.TrimSpace(msg.content) == "" {
+						return
+					}
+					s := fmt.Sprintf("%s %s\n", msg.sender, msg.content)
+					// Update prompt before writing, because otherwise it doesn't redraw the prompt.
+					ui.updatePrompt(msg.thinking)
+					ui.trm.Write([]byte(s))
+				}()
 			case logLine := <-ui.termLogCh:
-				b := []byte(logLine + "\n")
-				ui.trm.Write(b)
+				func() {
+					defer ui.messageWaitGroup.Done()
+					b := []byte(logLine + "\n")
+					ui.trm.Write(b)
+				}()
 			}
 		}
 	}()
@@ -393,12 +404,14 @@ func (ui *termUI) RestoreOldState() error {
 
 // AppendChatMessage is for showing responses the user's request, conversational dialog etc
 func (ui *termUI) AppendChatMessage(msg chatMessage) {
+	ui.messageWaitGroup.Add(1)
 	ui.chatMsgCh <- msg
 }
 
 // AppendSystemMessage is for debug information, errors and such that are not part of the "conversation" per se,
 // but still need to be shown to the user.
 func (ui *termUI) AppendSystemMessage(fmtString string, args ...any) {
+	ui.messageWaitGroup.Add(1)
 	ui.termLogCh <- fmt.Sprintf(fmtString, args...)
 }
 
