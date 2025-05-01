@@ -68,6 +68,7 @@ ARG GIT_USER_NAME
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME"
 
+LABEL sketch_context="{{.InitFilesHash}}"
 COPY . /app
 
 WORKDIR /app{{.SubDir}}
@@ -258,8 +259,9 @@ In particular:
 	}
 	buf := new(bytes.Buffer)
 	err = template.Must(template.New("dockerfile").Parse(tmpl)).Execute(buf, map[string]string{
-		"ExtraCmds": dockerfileExtraCmds,
-		"SubDir":    subPathWorkingDir,
+		"ExtraCmds":     dockerfileExtraCmds,
+		"SubDir":        subPathWorkingDir,
+		"InitFilesHash": hashInitFiles(initFiles),
 	})
 	if err != nil {
 		return "", fmt.Errorf("dockerfile template failed: %w", err)
