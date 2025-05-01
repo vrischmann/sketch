@@ -1,7 +1,7 @@
 // A command line tool for generating typescript type declarations from go
 // struct types.
 //
-// Exmaple:
+// Example:
 //
 //	go run ./cmd/go2ts -o webui/src/types.ts
 package main
