@@ -985,7 +985,7 @@ func (a *Agent) processTurn(ctx context.Context) error {
 		}
 	}()
 
-	// Main response loop - continue as long as the model is using tools
+	// Main response loop - continue as long as the model is using tools or a tool use fails.
 	resp := initialResp
 	for {
 		// Check if we are over budget
@@ -1007,6 +1007,10 @@ func (a *Agent) processTurn(ctx context.Context) error {
 		continueConversation, toolResp := a.handleToolExecution(ctx, resp)
 		if !continueConversation {
 			return nil
+		}
+
+		if toolResp == nil {
+			return fmt.Errorf("cannot continue conversation with a nil tool response")
 		}
 
 		// Set the response for the next iteration
