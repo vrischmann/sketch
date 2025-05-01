@@ -12,8 +12,5 @@ demo:
 check:
 	npm test
 
-update-snapshots:
-	npm run update-snapshots
-
 clean:
 	rm -rf node_modules

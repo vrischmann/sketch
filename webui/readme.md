@@ -34,14 +34,6 @@ make demo
 
 This will launch a local web server that serves the demo pages for the web components. You can edit the TypeScript files, and the changes will be reflected in real-time.
 
-### Snapshot tests
-
-We use aria snapshot tests to verify the rendering of our components. To update snapshots, run:
-
-```bash
-make update-snapshots
-```
-
 #### VSCode
 
 If you are using Visual Studio Code, you can use the `Launch Chrome against localhost` launch configuration to run the demo server. This configuration is set up to automatically open a sketch page with dummy data in Chrome when you start debugging, supporting hot module reloading and breakpoints.
