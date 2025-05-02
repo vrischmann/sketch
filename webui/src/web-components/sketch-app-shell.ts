@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { ConnectionStatus, DataManager } from "../data";
 import { AgentMessage, GitCommit, State } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
-import "./sketch-charts";
+
 import "./sketch-chat-input";
 import "./sketch-container-status";
 import "./sketch-diff-view";
@@ -18,13 +18,13 @@ import "./sketch-restart-modal";
 import { createRef, ref } from "lit/directives/ref.js";
 import { SketchChatInput } from "./sketch-chat-input";
 
-type ViewMode = "chat" | "diff" | "charts" | "terminal";
+type ViewMode = "chat" | "diff" | "terminal";
 
 @customElement("sketch-app-shell")
 export class SketchAppShell extends LitElement {
-  // Current view mode (chat, diff, charts, terminal)
+  // Current view mode (chat, diff, terminal)
   @state()
-  viewMode: "chat" | "diff" | "charts" | "terminal" = "chat";
+  viewMode: "chat" | "diff" | "terminal" = "chat";
 
   // Current commit hash for diff view
   @state()
@@ -197,7 +197,6 @@ export class SketchAppShell extends LitElement {
     /* Individual view styles */
     .chat-view,
     .diff-view,
-    .chart-view,
     .terminal-view {
       display: none; /* Hidden by default */
       width: 100%;
@@ -488,7 +487,7 @@ export class SketchAppShell extends LitElement {
     }
   }
 
-  updateUrlForViewMode(mode: "chat" | "diff" | "charts" | "terminal"): void {
+  updateUrlForViewMode(mode: "chat" | "diff" | "terminal"): void {
     // Get the current URL without search parameters
     const url = new URL(window.location.href);
 
@@ -524,7 +523,7 @@ export class SketchAppShell extends LitElement {
    * Handle view mode selection event
    */
   private _handleViewModeSelect(event: CustomEvent) {
-    const mode = event.detail.mode as "chat" | "diff" | "charts" | "terminal";
+    const mode = event.detail.mode as "chat" | "diff" | "terminal";
     this.toggleViewMode(mode, true);
   }
 
@@ -565,7 +564,7 @@ export class SketchAppShell extends LitElement {
   }
 
   /**
-   * Toggle between different view modes: chat, diff, charts, terminal
+   * Toggle between different view modes: chat, diff, terminal
    */
   private toggleViewMode(mode: ViewMode, updateHistory: boolean): void {
     // Don't do anything if the mode is already active
@@ -587,13 +586,12 @@ export class SketchAppShell extends LitElement {
       );
       const chatView = this.shadowRoot?.querySelector(".chat-view");
       const diffView = this.shadowRoot?.querySelector(".diff-view");
-      const chartView = this.shadowRoot?.querySelector(".chart-view");
+
       const terminalView = this.shadowRoot?.querySelector(".terminal-view");
 
       // Remove active class from all views
       chatView?.classList.remove("view-active");
       diffView?.classList.remove("view-active");
-      chartView?.classList.remove("view-active");
       terminalView?.classList.remove("view-active");
 
       // Add/remove diff-active class on view container
@@ -619,9 +617,7 @@ export class SketchAppShell extends LitElement {
             (diffViewComp as any).loadDiffContent();
           }
           break;
-        case "charts":
-          chartView?.classList.add("view-active");
-          break;
+
         case "terminal":
           terminalView?.classList.add("view-active");
           break;
@@ -639,12 +635,6 @@ export class SketchAppShell extends LitElement {
         });
         viewModeSelect.dispatchEvent(event);
       }
-
-      // FIXME: This is a hack to get vega chart in sketch-charts.ts to work properly
-      // When the chart is in the background, its container has a width of 0, so vega
-      // renders width 0 and only changes that width on a resize event.
-      // See https://github.com/vega/react-vega/issues/85#issuecomment-1826421132
-      window.dispatchEvent(new Event("resize"));
     });
   }
 
@@ -1073,13 +1063,7 @@ export class SketchAppShell extends LitElement {
               .commitHash=${this.currentCommitHash}
             ></sketch-diff-view>
           </div>
-          <div
-            class="chart-view ${this.viewMode === "charts"
-              ? "view-active"
-              : ""}"
-          >
-            <sketch-charts .messages=${this.messages}></sketch-charts>
-          </div>
+
           <div
             class="terminal-view ${this.viewMode === "terminal"
               ? "view-active"
