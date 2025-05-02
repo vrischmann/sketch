@@ -335,6 +335,7 @@ func createMessage(ctx context.Context, httpc *http.Client, url, apiKey string, 
 			// and then add some additional time for backoff.
 			sleep := time.Minute + backoff[min(attempts, len(backoff)-1)] + time.Duration(rand.Int64N(int64(time.Second)))
 			slog.WarnContext(ctx, "anthropic_request_rate_limited", "response", string(buf), "sleep", sleep)
+			time.Sleep(sleep)
 		// case resp.StatusCode == 400:
 		// TODO: parse ErrorResponse, make (*ErrorResponse) implement error
 		default:
