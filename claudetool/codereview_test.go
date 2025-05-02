@@ -140,6 +140,10 @@ func processTestFiles(t *testing.T, archive *txtar.Archive, dir string, update b
 			}
 			want := string(file.Data)
 
+			commitCleaner := strings.NewReplacer(initialCommit, "INITIAL_COMMIT_HASH")
+			got = commitCleaner.Replace(got)
+			want = commitCleaner.Replace(want)
+
 			if update {
 				archive.Files[i].Data = []byte(got)
 				break

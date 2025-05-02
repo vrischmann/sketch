@@ -26,7 +26,7 @@ Break test
 -- .run_test --
 # Errors
 
-Test regressions detected between initial commit (8c6c71d0beac5e27b87dfc3f2fd9d274b62c3d3a) and HEAD:
+Test regressions detected between initial commit (INITIAL_COMMIT_HASH) and HEAD:
 
 1: sketch.dev/foo.TestP: Was passing, now failing
 

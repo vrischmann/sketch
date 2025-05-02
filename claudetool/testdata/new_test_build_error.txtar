@@ -21,7 +21,7 @@ Add test with build error
 -- .run_test --
 # Errors
 
-Test regressions detected between initial commit (cf75ed70e940ce33a17a70b1894ad053b67731c0) and HEAD:
+Test regressions detected between initial commit (INITIAL_COMMIT_HASH) and HEAD:
 
 1: sketch.dev: Previously had no tests, now has build/vet errors
 

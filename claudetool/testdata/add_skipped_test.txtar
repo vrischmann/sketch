@@ -21,7 +21,7 @@ Add skipped test
 -- .run_test --
 # Errors
 
-Test regressions detected between initial commit (2cdfdc5009e364add9a263909472f85eb08480ed) and HEAD:
+Test regressions detected between initial commit (INITIAL_COMMIT_HASH) and HEAD:
 
 1: sketch.dev.TestP: New test is skipped
 
