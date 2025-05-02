@@ -111,6 +111,14 @@ var (
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
+	TogetherQwen3 = Model{
+		UserName:  "together-qwen3",
+		ModelName: "Qwen/Qwen3-235B-A22B-fp8-tput",
+		URL:       TogetherURL,
+		Cost:      ModelCost{Input: 20, Output: 60},
+		APIKeyEnv: TogetherAPIKeyEnv,
+	}
+
 	LlamaCPP = Model{
 		UserName:  "llama.cpp",
 		ModelName: "llama.cpp local model",
@@ -149,6 +157,7 @@ var ModelsRegistry = []Model{
 	TogetherLlama4Maverick,
 	TogetherLlama3_3_70B,
 	TogetherMistralSmall,
+	TogetherQwen3,
 	LlamaCPP,
 	FireworksDeepseekV3,
 }
