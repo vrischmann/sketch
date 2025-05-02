@@ -19,7 +19,8 @@
     "gentypes": "go run ../cmd/go2ts -o src/types.ts",
     "build": "go run ../cmd/go2ts -o src/types.ts && tsc",
     "watch": "tsc --watch",
-    "test": "tsc && npm run test:playwright",
+    "test": "tsc && CI=1 npm run test:playwright",
+    "test:interactive": "tsc && npm run test:playwright",
     "test:playwright": "playwright test -c playwright-ct.config.ts"
   },
   "dependencies": {
