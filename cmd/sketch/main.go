@@ -465,13 +465,11 @@ func setupLogging(oneShot, verbose, unsafe bool) (slog.Handler, *os.File, error)
 		if unsafe {
 			fmt.Printf("structured logs: %v\n", logFile.Name())
 		}
-		slogHandler = slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})
-		slogHandler = skribe.AttrsWrap(slogHandler)
-	} else {
-		// Log straight to stdout, no task_id
-		slogHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
-		// No AttrsWrap here as it adds line noise
 	}
+
+	// Always send slogs to the logFile.
+	slogHandler = slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})
+	slogHandler = skribe.AttrsWrap(slogHandler)
 
 	return slogHandler, logFile, nil
 }
