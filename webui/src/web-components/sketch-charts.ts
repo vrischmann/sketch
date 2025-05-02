@@ -76,6 +76,9 @@ export class SketchCharts extends LitElement {
     this.chartData = [];
   }
 
+  @state()
+  private dollarsPerHour: number | null = null;
+
   private calculateCumulativeCostData(
     messages: AgentMessage[],
   ): { timestamp: Date; cost: number }[] {
@@ -96,6 +99,23 @@ export class SketchCharts extends LitElement {
           cost: cumulativeCost,
         });
       }
+    }
+
+    // Calculate dollars per hour if we have at least two data points
+    if (data.length >= 2) {
+      const startTime = data[0].timestamp;
+      const endTime = data[data.length - 1].timestamp;
+      const totalHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+      const totalCost = data[data.length - 1].cost;
+      
+      // Only calculate if we have a valid time span
+      if (totalHours > 0) {
+        this.dollarsPerHour = totalCost / totalHours;
+      } else {
+        this.dollarsPerHour = null;
+      }
+    } else {
+      this.dollarsPerHour = null;
     }
 
     return data;
@@ -418,7 +438,7 @@ export class SketchCharts extends LitElement {
     return html`
       <div class="chart-container" id="chartContainer">
         <div class="chart-section">
-          <h3>Dollar Usage Over Time</h3>
+          <h3>Dollar Usage Over Time${this.dollarsPerHour !== null ? html` (Avg: $${this.dollarsPerHour.toFixed(2)}/hr)` : ''}</h3>
           <div class="chart-content">
             ${this.chartData.length > 0
               ? html`<vega-embed .spec=${costSpec}></vega-embed>`
