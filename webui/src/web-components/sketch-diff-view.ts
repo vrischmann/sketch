@@ -512,6 +512,19 @@ export class SketchDiffView extends LitElement {
       cancelButton.onclick = () => this.closeDiffCommentBox();
     }
 
+    // Add keydown event listener to handle Escape key
+    if (commentInput) {
+      commentInput.addEventListener("keydown", (event) => {
+        // If Escape key is pressed
+        if (event.key === "Escape") {
+          // If the comment input is empty, dismiss the comment box
+          if (commentInput.value.trim() === "") {
+            this.closeDiffCommentBox();
+          }
+        }
+      });
+    }
+
     // Focus on the comment input
     if (commentInput) {
       commentInput.focus();
