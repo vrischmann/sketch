@@ -16,3 +16,8 @@ which has a list of types to translate.
 A few tests record/replay calls to LLMs. As necessary (e.g.,
 if changing the system prompt or tool definitions), rebuild the
 test data by running update_tests.sh in the relevant directory.
+
+## Debugging JS Classes
+
+Something like "document.querySelectorAll('sketch-app-shell')[0].dataManager.messages.map(x => x.idx)"
+in the browser JS console works to pull out the custom components implementing the web ui.
