@@ -85,6 +85,7 @@ test("renders end-of-turn marker correctly", async ({ mount }) => {
 test("formats timestamps correctly", async ({ mount }) => {
   const message = createMockMessage({
     timestamp: "2023-05-15T12:00:00Z",
+    type: "agent",
   });
 
   const component = await mount(SketchTimelineMessage, {
@@ -93,15 +94,36 @@ test("formats timestamps correctly", async ({ mount }) => {
     },
   });
 
-  await expect(component.locator(".message-timestamp")).toBeVisible();
-  // Should include a formatted date like "May 15, 2023"
-  await expect(component.locator(".message-timestamp")).toContainText(
+  // Toggle the info panel to view timestamps
+  await component.locator(".info-icon").click();
+  await expect(component.locator(".message-info-panel")).toBeVisible();
+
+  // Find the timestamp in the info panel
+  const timeInfoRow = component.locator(".info-row", { hasText: "Time:" });
+  await expect(timeInfoRow).toBeVisible();
+  await expect(timeInfoRow.locator(".info-value")).toContainText(
     "May 15, 2023",
   );
-  // Should include elapsed time
-  await expect(component.locator(".message-timestamp")).toContainText(
-    "(1.50s)",
-  );
+  // For end-of-turn messages, duration is shown separately
+  const endOfTurnMessage = createMockMessage({
+    timestamp: "2023-05-15T12:00:00Z",
+    type: "agent",
+    end_of_turn: true,
+  });
+
+  const endOfTurnComponent = await mount(SketchTimelineMessage, {
+    props: {
+      message: endOfTurnMessage,
+    },
+  });
+
+  // For end-of-turn messages, duration is shown in the end-of-turn indicator
+  await expect(
+    endOfTurnComponent.locator(".end-of-turn-indicator"),
+  ).toBeVisible();
+  await expect(
+    endOfTurnComponent.locator(".end-of-turn-indicator"),
+  ).toContainText("1.5s");
 });
 
 test("renders markdown content correctly", async ({ mount }) => {
@@ -148,14 +170,24 @@ test("displays usage information when available", async ({ mount }) => {
     },
   });
 
-  await expect(component.locator(".message-usage")).toBeVisible();
-  await expect(component.locator(".message-usage")).toContainText(
-    "200".toLocaleString(),
-  ); // In (150 + 50 cache)
-  await expect(component.locator(".message-usage")).toContainText(
-    "300".toLocaleString(),
-  ); // Out
-  await expect(component.locator(".message-usage")).toContainText("$0.03"); // Cost
+  // Toggle the info panel to view usage information
+  await component.locator(".info-icon").click();
+  await expect(component.locator(".message-info-panel")).toBeVisible();
+
+  // Find the tokens info in the info panel
+  const tokensInfoRow = component.locator(".info-row", { hasText: "Tokens:" });
+  await expect(tokensInfoRow).toBeVisible();
+  await expect(tokensInfoRow).toContainText("Input: " + "150".toLocaleString());
+  await expect(tokensInfoRow).toContainText(
+    "Cache read: " + "50".toLocaleString(),
+  );
+  // Check for output tokens
+  await expect(tokensInfoRow).toContainText(
+    "Output: " + "300".toLocaleString(),
+  );
+
+  // Check for cost
+  await expect(tokensInfoRow).toContainText("Cost: $0.03");
 });
 
 test("renders commit information correctly", async ({ mount }) => {
@@ -179,8 +211,10 @@ test("renders commit information correctly", async ({ mount }) => {
   });
 
   await expect(component.locator(".commits-container")).toBeVisible();
-  await expect(component.locator(".commits-header")).toBeVisible();
-  await expect(component.locator(".commits-header")).toContainText("1 new");
+  await expect(component.locator(".commit-notification")).toBeVisible();
+  await expect(component.locator(".commit-notification")).toContainText(
+    "1 new",
+  );
 
   await expect(component.locator(".commit-hash")).toBeVisible();
   await expect(component.locator(".commit-hash")).toHaveText("12345678"); // First 8 chars

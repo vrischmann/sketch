@@ -1,6 +1,6 @@
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, render } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { AgentMessage } from "../types";
 import { marked, MarkedOptions, Renderer, Tokens } from "marked";
 import mermaid from "mermaid";
@@ -16,6 +16,9 @@ export class SketchTimelineMessage extends LitElement {
   @property()
   open: boolean = false;
 
+  @state()
+  showInfo: boolean = false;
+
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
@@ -23,31 +26,76 @@ export class SketchTimelineMessage extends LitElement {
   static styles = css`
     .message {
       position: relative;
-      margin-bottom: 5px;
-      padding-left: 30px;
+      margin-bottom: 6px;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
     }
 
-    .message-icon {
-      position: absolute;
-      left: 10px;
-      top: 0;
-      transform: translateX(-50%);
-      width: 16px;
-      height: 16px;
-      border-radius: 3px;
-      text-align: center;
-      line-height: 16px;
-      color: #fff;
-      font-size: 10px;
+    .message-container {
+      display: flex;
+      position: relative;
+      width: 100%;
+    }
+
+    .message-metadata-left {
+      flex: 0 0 80px;
+      padding: 3px 5px;
+      text-align: right;
+      font-size: 11px;
+      color: #777;
+      align-self: flex-start;
+    }
+
+    .message-metadata-right {
+      flex: 0 0 80px;
+      padding: 3px 5px;
+      text-align: left;
+      font-size: 11px;
+      color: #777;
+      align-self: flex-start;
+    }
+
+    .message-bubble-container {
+      flex: 1;
+      display: flex;
+      max-width: calc(100% - 160px);
+    }
+
+    .user .message-bubble-container {
+      justify-content: flex-end;
+    }
+
+    .agent .message-bubble-container,
+    .tool .message-bubble-container,
+    .error .message-bubble-container {
+      justify-content: flex-start;
     }
 
     .message-content {
       position: relative;
-      padding: 5px 10px;
-      background: #fff;
-      border-radius: 3px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      border-left: 3px solid transparent;
+      padding: 6px 10px;
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      max-width: 80%;
+      width: fit-content;
+      min-width: min-content;
+    }
+
+    /* User message styling */
+    .user .message-content {
+      background-color: #2196f3;
+      color: white;
+      border-bottom-right-radius: 5px;
+    }
+
+    /* Agent message styling */
+    .agent .message-content,
+    .tool .message-content,
+    .error .message-content {
+      background-color: #f1f1f1;
+      color: black;
+      border-bottom-left-radius: 5px;
     }
 
     /* Copy button styles */
@@ -70,51 +118,73 @@ export class SketchTimelineMessage extends LitElement {
       opacity: 1;
     }
 
-    .copy-button {
-      background-color: rgba(255, 255, 255, 0.9);
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      color: #555;
-      cursor: pointer;
-      font-size: 12px;
-      padding: 2px 8px;
-      transition: all 0.2s ease;
-    }
-
-    .copy-button:hover {
-      background-color: #f0f0f0;
-      color: #333;
-    }
-
-    /* Removed arrow decoration for a more compact look */
-
-    .message-header {
+    .message-actions {
       display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-bottom: 3px;
-      font-size: 12px;
+      gap: 6px;
+    }
+
+    .copy-icon,
+    .info-icon {
+      background-color: transparent;
+      border: none;
+      color: rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      padding: 3px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      transition: all 0.15s ease;
+    }
+
+    .user .copy-icon,
+    .user .info-icon {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .copy-icon:hover,
+    .info-icon:hover {
+      background-color: rgba(0, 0, 0, 0.08);
+    }
+
+    .user .copy-icon:hover,
+    .user .info-icon:hover {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Message metadata styling */
+    .message-type {
+      font-weight: bold;
+      font-size: 11px;
     }
 
     .message-timestamp {
+      display: block;
       font-size: 10px;
       color: #888;
-      font-style: italic;
-      margin-left: 3px;
+      margin-top: 2px;
+    }
+
+    .message-duration {
+      display: block;
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
     }
 
     .message-usage {
+      display: block;
       font-size: 10px;
       color: #888;
-      margin-left: 3px;
+      margin-top: 3px;
     }
 
     .conversation-id {
       font-family: monospace;
       font-size: 12px;
       padding: 2px 4px;
-      background-color: #f0f0f0;
-      border-radius: 3px;
       margin-left: auto;
     }
 
@@ -132,18 +202,37 @@ export class SketchTimelineMessage extends LitElement {
 
     .message-text {
       overflow-x: auto;
-      margin-bottom: 3px;
-      font-family: monospace;
-      padding: 3px 5px;
-      background: rgb(236, 236, 236);
-      border-radius: 6px;
+      margin-bottom: 0;
+      font-family: sans-serif;
+      padding: 2px 0;
       user-select: text;
       cursor: text;
       -webkit-user-select: text;
       -moz-user-select: text;
       -ms-user-select: text;
-      font-size: 13px;
-      line-height: 1.3;
+      font-size: 14px;
+      line-height: 1.35;
+      text-align: left;
+    }
+
+    /* Style for code blocks within messages */
+    .message-text pre,
+    .message-text code {
+      font-family: monospace;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+      padding: 2px 4px;
+      overflow-x: auto;
+      max-width: 100%;
+      white-space: pre-wrap; /* Allow wrapping for very long lines */
+      word-break: break-all; /* Break words at any character */
+      box-sizing: border-box; /* Include padding in width calculation */
+    }
+
+    .user .message-text pre,
+    .user .message-text code {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
     }
 
     .tool-details {
@@ -219,150 +308,87 @@ export class SketchTimelineMessage extends LitElement {
     }
 
     /* Commit message styling */
-    .message.commit {
-      background-color: #f0f7ff;
-      border-left: 4px solid #0366d6;
-    }
-
     .commits-container {
       margin-top: 10px;
-      padding: 5px;
     }
 
-    .commits-header {
-      font-weight: bold;
-      margin-bottom: 5px;
-      color: #24292e;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .commit-notification {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      font-weight: 500;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
-    .commit-boxes-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .commit-box {
-      border: 1px solid #d1d5da;
-      border-radius: 4px;
+    .commit-card {
+      background-color: #f5f5f5;
+      border-radius: 8px;
       overflow: hidden;
-      background-color: #ffffff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      max-width: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .commit-preview {
-      padding: 8px 12px;
-      font-family: monospace;
-      background-color: #f6f8fa;
-      border-bottom: 1px dashed #d1d5da;
+      margin-bottom: 6px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      padding: 6px 8px;
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .commit-preview:hover {
-      background-color: #eef2f6;
+      gap: 8px;
     }
 
     .commit-hash {
       color: #0366d6;
       font-weight: bold;
+      font-family: monospace;
       cursor: pointer;
-      margin-right: 8px;
       text-decoration: none;
-      position: relative;
+      background-color: rgba(3, 102, 214, 0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
     }
 
     .commit-hash:hover {
-      text-decoration: underline;
-    }
-
-    .commit-hash:hover::after {
-      content: "📋";
-      font-size: 10px;
-      position: absolute;
-      top: -8px;
-      right: -12px;
-      opacity: 0.7;
-    }
-
-    .branch-wrapper {
-      margin-right: 8px;
-      color: #555;
+      background-color: rgba(3, 102, 214, 0.15);
     }
 
     .commit-branch {
       color: #28a745;
       font-weight: 500;
       cursor: pointer;
-      text-decoration: none;
-      position: relative;
+      font-family: monospace;
+      background-color: rgba(40, 167, 69, 0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
     }
 
     .commit-branch:hover {
-      text-decoration: underline;
+      background-color: rgba(40, 167, 69, 0.15);
     }
 
-    .commit-branch:hover::after {
-      content: "📋";
-      font-size: 10px;
-      position: absolute;
-      top: -8px;
-      right: -12px;
-      opacity: 0.7;
-    }
-
-    .commit-preview {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .commit-details {
-      padding: 8px 12px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .commit-details pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .commit-details.is-hidden {
-      display: none;
-    }
-
-    .pushed-branch {
-      color: #28a745;
-      font-weight: 500;
-      margin-left: 6px;
+    .commit-subject {
+      font-size: 13px;
+      color: #333;
+      flex-grow: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .commit-diff-button {
-      padding: 3px 6px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      background-color: #f7f7f7;
-      color: #24292e;
+      padding: 3px 8px;
+      border: none;
+      border-radius: 4px;
+      background-color: #0366d6;
+      color: white;
       font-size: 11px;
       cursor: pointer;
       transition: all 0.2s ease;
+      display: block;
       margin-left: auto;
     }
 
     .commit-diff-button:hover {
-      background-color: #e7e7e7;
-      border-color: #aaa;
+      background-color: #0256b4;
     }
 
     /* Tool call cards */
@@ -373,39 +399,65 @@ export class SketchTimelineMessage extends LitElement {
       margin-top: 8px;
     }
 
-    /* Message type styles */
-
-    .user .message-icon {
-      background-color: #2196f3;
-    }
-
-    .agent .message-icon {
-      background-color: #4caf50;
-    }
-
-    .tool .message-icon {
-      background-color: #ff9800;
-    }
-
-    .error .message-icon {
-      background-color: #f44336;
+    /* Error message specific styling */
+    .error .message-content {
+      background-color: #ffebee;
+      border-left: 3px solid #f44336;
     }
 
     .end-of-turn {
       margin-bottom: 15px;
     }
 
-    .end-of-turn::after {
-      content: "End of Turn";
-      position: absolute;
-      left: 15px;
-      bottom: -10px;
-      transform: translateX(-50%);
+    .end-of-turn-indicator {
+      display: block;
+      font-size: 11px;
+      color: #777;
+      padding: 2px 0;
+      margin-top: 8px;
+      text-align: right;
+      font-style: italic;
+    }
+
+    .user .end-of-turn-indicator {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Message info panel styling */
+    .message-info-panel {
+      margin-top: 8px;
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.03);
+      border-radius: 6px;
+      font-size: 12px;
+      transition: all 0.2s ease;
+      border-left: 2px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .user .message-info-panel {
+      background-color: rgba(255, 255, 255, 0.15);
+      border-left: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .info-row {
+      margin-bottom: 3px;
+      display: flex;
+    }
+
+    .info-label {
+      font-weight: bold;
+      margin-right: 5px;
+      min-width: 60px;
+    }
+
+    .info-value {
+      flex: 1;
+    }
+
+    .conversation-id {
+      font-family: monospace;
       font-size: 10px;
-      color: #666;
-      background: #f0f0f0;
-      padding: 1px 4px;
-      border-radius: 3px;
+      word-break: break-all;
     }
 
     .markdown-content {
@@ -415,8 +467,44 @@ export class SketchTimelineMessage extends LitElement {
     }
 
     .markdown-content p {
-      margin-block-start: 0.5em;
-      margin-block-end: 0.5em;
+      margin-block-start: 0.3em;
+      margin-block-end: 0.3em;
+    }
+
+    .markdown-content p:first-child {
+      margin-block-start: 0;
+    }
+
+    .markdown-content p:last-child {
+      margin-block-end: 0;
+    }
+
+    /* Styling for markdown elements */
+    .markdown-content a {
+      color: inherit;
+      text-decoration: underline;
+    }
+
+    .user .markdown-content a {
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    .markdown-content ul,
+    .markdown-content ol {
+      padding-left: 1.5em;
+      margin: 0.5em 0;
+    }
+
+    .markdown-content blockquote {
+      border-left: 3px solid rgba(0, 0, 0, 0.2);
+      padding-left: 1em;
+      margin-left: 0.5em;
+      font-style: italic;
+    }
+
+    .user .markdown-content blockquote {
+      border-left: 3px solid rgba(255, 255, 255, 0.4);
     }
 
     /* Mermaid diagram styling */
@@ -592,6 +680,26 @@ export class SketchTimelineMessage extends LitElement {
     }
   }
 
+  // Format duration from nanoseconds to a human-readable string
+  _formatDuration(nanoseconds: number | null | undefined): string {
+    if (!nanoseconds) return "0s";
+
+    const seconds = nanoseconds / 1e9;
+
+    if (seconds < 60) {
+      return `${seconds.toFixed(1)}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}min ${remainingSeconds.toFixed(0)}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const remainingSeconds = seconds % 3600;
+      const minutes = Math.floor(remainingSeconds / 60);
+      return `${hours}h ${minutes}min`;
+    }
+  }
+
   showCommit(commitHash: string) {
     this.dispatchEvent(
       new CustomEvent("show-commit-diff", {
@@ -600,6 +708,11 @@ export class SketchTimelineMessage extends LitElement {
         detail: { commitHash },
       }),
     );
+  }
+
+  _toggleInfo(e: Event) {
+    e.stopPropagation();
+    this.showInfo = !this.showInfo;
   }
 
   copyToClipboard(text: string, event: Event) {
@@ -661,78 +774,190 @@ export class SketchTimelineMessage extends LitElement {
   }
 
   render() {
+    // Calculate if this is an end of turn message with no parent conversation ID
+    const isEndOfTurn =
+      this.message?.end_of_turn && !this.message?.parent_conversation_id;
+
     return html`
       <div
-        class="message ${this.message?.type} ${this.message?.end_of_turn
+        class="message ${this.message?.type} ${isEndOfTurn
           ? "end-of-turn"
           : ""}"
       >
-        ${this.previousMessage?.type != this.message?.type
-          ? html`<div class="message-icon">
-              ${this.message?.type.toUpperCase()[0]}
-            </div>`
-          : ""}
-        <div class="message-content">
-          <div class="message-header">
-            <span class="message-type">${this.message?.type}</span>
-            <span class="message-timestamp"
-              >${this.formatTimestamp(this.message?.timestamp)}
-              ${this.message?.elapsed
-                ? html`(${(this.message?.elapsed / 1e9).toFixed(2)}s)`
-                : ""}</span
-            >
-            ${this.message?.usage
-              ? html` <span class="message-usage">
-                  <span title="Input tokens"
-                    >In:
-                    ${this.formatNumber(
-                      (this.message?.usage?.input_tokens || 0) +
-                        (this.message?.usage?.cache_read_input_tokens || 0) +
-                        (this.message?.usage?.cache_creation_input_tokens || 0),
-                    )}</span
+        <div class="message-container">
+          <!-- Left area (empty for simplicity) -->
+          <div class="message-metadata-left"></div>
+
+          <!-- Message bubble -->
+          <div class="message-bubble-container">
+            <div class="message-content">
+              <div class="message-text-container">
+                <div class="message-actions">
+                  ${copyButton(this.message?.content)}
+                  <button
+                    class="info-icon"
+                    title="Show message details"
+                    @click=${this._toggleInfo}
                   >
-                  <span title="Output tokens"
-                    >Out:
-                    ${this.formatNumber(
-                      this.message?.usage?.output_tokens,
-                    )}</span
-                  >
-                  <span title="Message cost"
-                    >(${this.formatCurrency(
-                      this.message?.usage?.cost_usd,
-                    )})</span
-                  >
-                </span>`
-              : ""}
-          </div>
-          <div class="message-text-container">
-            <div class="message-actions">
-              ${copyButton(this.message?.content)}
-            </div>
-            ${this.message?.content
-              ? html`
-                  <div class="message-text markdown-content">
-                    ${unsafeHTML(this.renderMarkdown(this.message?.content))}
-                  </div>
-                `
-              : ""}
-          </div>
-          <sketch-tool-calls
-            .toolCalls=${this.message?.tool_calls}
-            .open=${this.open}
-          ></sketch-tool-calls>
-          ${this.message?.commits
-            ? html`
-                <div class="commits-container">
-                  <div class="commits-header">
-                    ${this.message.commits.length} new
-                    commit${this.message.commits.length > 1 ? "s" : ""} detected
-                  </div>
-                  ${this.message.commits.map((commit) => {
-                    return html`
-                      <div class="commit-boxes-row">
-                        <div class="commit-box">
-                          <div class="commit-preview">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                  </button>
+                </div>
+                ${this.message?.content
+                  ? html`
+                      <div class="message-text markdown-content">
+                        ${unsafeHTML(
+                          this.renderMarkdown(this.message?.content),
+                        )}
+                      </div>
+                    `
+                  : ""}
+
+                <!-- End of turn indicator inside the bubble -->
+                ${isEndOfTurn && this.message?.elapsed
+                  ? html`
+                      <div class="end-of-turn-indicator">
+                        end of turn
+                        (${this._formatDuration(this.message?.elapsed)})
+                      </div>
+                    `
+                  : ""}
+
+                <!-- Info panel that can be toggled -->
+                ${this.showInfo
+                  ? html`
+                      <div class="message-info-panel">
+                        <div class="info-row">
+                          <span class="info-label">Type:</span>
+                          <span class="info-value">${this.message?.type}</span>
+                        </div>
+                        <div class="info-row">
+                          <span class="info-label">Time:</span>
+                          <span class="info-value"
+                            >${this.formatTimestamp(
+                              this.message?.timestamp,
+                              "",
+                            )}</span
+                          >
+                        </div>
+                        ${this.message?.elapsed
+                          ? html`
+                              <div class="info-row">
+                                <span class="info-label">Duration:</span>
+                                <span class="info-value"
+                                  >${this._formatDuration(
+                                    this.message?.elapsed,
+                                  )}</span
+                                >
+                              </div>
+                            `
+                          : ""}
+                        ${this.message?.usage
+                          ? html`
+                              <div class="info-row">
+                                <span class="info-label">Tokens:</span>
+                                <span class="info-value">
+                                  ${this.message?.usage
+                                    ? html`
+                                        <div>
+                                          Input:
+                                          ${this.formatNumber(
+                                            this.message?.usage?.input_tokens ||
+                                              0,
+                                          )}
+                                        </div>
+                                        ${this.message?.usage
+                                          ?.cache_creation_input_tokens
+                                          ? html`
+                                              <div>
+                                                Cache creation:
+                                                ${this.formatNumber(
+                                                  this.message?.usage
+                                                    ?.cache_creation_input_tokens,
+                                                )}
+                                              </div>
+                                            `
+                                          : ""}
+                                        ${this.message?.usage
+                                          ?.cache_read_input_tokens
+                                          ? html`
+                                              <div>
+                                                Cache read:
+                                                ${this.formatNumber(
+                                                  this.message?.usage
+                                                    ?.cache_read_input_tokens,
+                                                )}
+                                              </div>
+                                            `
+                                          : ""}
+                                        <div>
+                                          Output:
+                                          ${this.formatNumber(
+                                            this.message?.usage?.output_tokens,
+                                          )}
+                                        </div>
+                                        <div>
+                                          Cost:
+                                          ${this.formatCurrency(
+                                            this.message?.usage?.cost_usd,
+                                          )}
+                                        </div>
+                                      `
+                                    : "N/A"}
+                                </span>
+                              </div>
+                            `
+                          : ""}
+                        ${this.message?.conversation_id
+                          ? html`
+                              <div class="info-row">
+                                <span class="info-label">Conversation ID:</span>
+                                <span class="info-value conversation-id"
+                                  >${this.message?.conversation_id}</span
+                                >
+                              </div>
+                            `
+                          : ""}
+                      </div>
+                    `
+                  : ""}
+              </div>
+
+              <!-- Tool calls - only shown for agent messages -->
+              ${this.message?.type === "agent"
+                ? html`
+                    <sketch-tool-calls
+                      .toolCalls=${this.message?.tool_calls}
+                      .open=${this.open}
+                    ></sketch-tool-calls>
+                  `
+                : ""}
+
+              <!-- Commits section (redesigned as bubbles) -->
+              ${this.message?.commits
+                ? html`
+                    <div class="commits-container">
+                      <div class="commit-notification">
+                        ${this.message.commits.length} new
+                        commit${this.message.commits.length > 1 ? "s" : ""}
+                        detected
+                      </div>
+                      ${this.message.commits.map((commit) => {
+                        return html`
+                          <div class="commit-card">
                             <span
                               class="commit-hash"
                               title="Click to copy: ${commit.hash}"
@@ -746,18 +971,16 @@ export class SketchTimelineMessage extends LitElement {
                             </span>
                             ${commit.pushed_branch
                               ? html`
-                                  <span class="branch-wrapper">
-                                    (<span
-                                      class="commit-branch pushed-branch"
-                                      title="Click to copy: ${commit.pushed_branch}"
-                                      @click=${(e) =>
-                                        this.copyToClipboard(
-                                          commit.pushed_branch,
-                                          e,
-                                        )}
-                                      >${commit.pushed_branch}</span
-                                    >)
-                                  </span>
+                                  <span
+                                    class="commit-branch pushed-branch"
+                                    title="Click to copy: ${commit.pushed_branch}"
+                                    @click=${(e) =>
+                                      this.copyToClipboard(
+                                        commit.pushed_branch,
+                                        e,
+                                      )}
+                                    >${commit.pushed_branch}</span
+                                  >
                                 `
                               : ``}
                             <span class="commit-subject"
@@ -770,16 +993,16 @@ export class SketchTimelineMessage extends LitElement {
                               View Diff
                             </button>
                           </div>
-                          <div class="commit-details is-hidden">
-                            <pre>${commit.body}</pre>
-                          </div>
-                        </div>
-                      </div>
-                    `;
-                  })}
-                </div>
-              `
-            : ""}
+                        `;
+                      })}
+                    </div>
+                  `
+                : ""}
+            </div>
+          </div>
+
+          <!-- Right side (empty for consistency) -->
+          <div class="message-metadata-right"></div>
         </div>
       </div>
     `;
@@ -787,11 +1010,39 @@ export class SketchTimelineMessage extends LitElement {
 }
 
 function copyButton(textToCopy: string) {
-  // Add click event listener to handle copying
-  const buttonClass = "copy-button";
-  const buttonContent = "Copy";
-  const successContent = "Copied!";
-  const failureContent = "Failed";
+  // Use an icon of overlapping rectangles for copy
+  const buttonClass = "copy-icon";
+
+  // SVG for copy icon (two overlapping rectangles)
+  const copyIcon = html`<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>`;
+
+  // SVG for success check mark
+  const successIcon = html`<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M20 6L9 17l-5-5"></path>
+  </svg>`;
 
   const ret = html`<button
     class="${buttonClass}"
@@ -799,24 +1050,27 @@ function copyButton(textToCopy: string) {
     @click=${(e: Event) => {
       e.stopPropagation();
       const copyButton = e.currentTarget as HTMLButtonElement;
+      const originalInnerHTML = copyButton.innerHTML;
       navigator.clipboard
         .writeText(textToCopy)
         .then(() => {
-          copyButton.textContent = successContent;
+          copyButton.innerHTML = "";
+          const successElement = document.createElement("div");
+          copyButton.appendChild(successElement);
+          render(successIcon, successElement);
           setTimeout(() => {
-            copyButton.textContent = buttonContent;
+            copyButton.innerHTML = originalInnerHTML;
           }, 2000);
         })
         .catch((err) => {
           console.error("Failed to copy text: ", err);
-          copyButton.textContent = failureContent;
           setTimeout(() => {
-            copyButton.textContent = buttonContent;
+            copyButton.innerHTML = originalInnerHTML;
           }, 2000);
         });
     }}
   >
-    ${buttonContent}
+    ${copyIcon}
   </button>`;
 
   return ret;

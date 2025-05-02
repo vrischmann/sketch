@@ -11,6 +11,16 @@ export class SketchTimeline extends LitElement {
   @property({ attribute: false })
   messages: AgentMessage[] = [];
 
+  // Active state properties to show thinking indicator
+  @property({ attribute: false })
+  agentState: string | null = null;
+
+  @property({ attribute: false })
+  llmCalls: number = 0;
+
+  @property({ attribute: false })
+  toolCalls: string[] = [];
+
   // Track if we should scroll to the bottom
   @state()
   private scrollingState: "pinToLatest" | "floating" = "pinToLatest";
@@ -38,30 +48,20 @@ export class SketchTimeline extends LitElement {
     .timeline-container {
       width: 100%;
       position: relative;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 0 15px;
+      box-sizing: border-box;
     }
 
-    /* Timeline styles that should remain unchanged */
+    /* Chat-like timeline styles */
     .timeline {
       position: relative;
       margin: 10px 0;
       scroll-behavior: smooth;
     }
 
-    .timeline::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 15px;
-      width: 2px;
-      background: #e0e0e0;
-      border-radius: 1px;
-    }
-
-    /* Hide the timeline vertical line when there are no messages */
-    .timeline.empty::before {
-      display: none;
-    }
+    /* Remove the vertical timeline line */
 
     #scroll-container {
       overflow: auto;
@@ -113,6 +113,64 @@ export class SketchTimeline extends LitElement {
       line-height: 1.6;
       font-size: 1rem;
       text-align: left;
+    }
+
+    /* Thinking indicator styles */
+    .thinking-indicator {
+      padding-left: 85px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      display: flex;
+    }
+
+    .thinking-bubble {
+      background-color: #f1f1f1;
+      border-radius: 15px;
+      padding: 10px 15px;
+      max-width: 80px;
+      color: black;
+      position: relative;
+      border-bottom-left-radius: 5px;
+    }
+
+    .thinking-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 14px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background-color: #888;
+      border-radius: 50%;
+      opacity: 0.6;
+    }
+
+    .dot:nth-child(1) {
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    .dot:nth-child(2) {
+      animation: pulse 1.5s infinite ease-in-out 0.3s;
+    }
+
+    .dot:nth-child(3) {
+      animation: pulse 1.5s infinite ease-in-out 0.6s;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 0.4;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.2);
+      }
     }
   `;
 
@@ -257,6 +315,9 @@ export class SketchTimeline extends LitElement {
     }
 
     // Otherwise render the regular timeline with messages
+    const isThinking =
+      this.llmCalls > 0 || (this.toolCalls && this.toolCalls.length > 0);
+
     return html`
       <div id="scroll-container">
         <div class="timeline-container">
@@ -271,6 +332,19 @@ export class SketchTimeline extends LitElement {
               .open=${false}
             ></sketch-timeline-message>`;
           })}
+          ${isThinking
+            ? html`
+                <div class="thinking-indicator">
+                  <div class="thinking-bubble">
+                    <div class="thinking-dots">
+                      <div class="dot"></div>
+                      <div class="dot"></div>
+                      <div class="dot"></div>
+                    </div>
+                  </div>
+                </div>
+              `
+            : ""}
         </div>
       </div>
       <div

@@ -1,5 +1,5 @@
 import { css, html, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { ToolCall } from "../types";
 import "./sketch-tool-card";
@@ -12,24 +12,27 @@ export class SketchToolCalls extends LitElement {
   @property()
   open: boolean = false;
 
+  @state()
+  expanded: boolean = false;
+
   static styles = css`
     /* Tool calls container styles */
     .tool-calls-container {
-      /* Container for all tool calls */
-    }
-
-    /* Header for tool calls section */
-    .tool-calls-header {
-      /* Empty header - just small spacing */
+      margin-top: 8px;
+      padding-top: 4px;
     }
 
     /* Card container */
     .tool-call-card {
       display: flex;
       flex-direction: column;
-      background-color: white;
+      background-color: rgba(255, 255, 255, 0.6);
+      border-radius: 6px;
+      margin-bottom: 6px;
       overflow: hidden;
       cursor: pointer;
+      border-left: 2px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     /* Status indicators for tool calls */
@@ -51,6 +54,10 @@ export class SketchToolCalls extends LitElement {
       100% {
         transform: rotate(360deg);
       }
+    }
+
+    .tool-call-cards-container {
+      display: block;
     }
   `;
 
@@ -124,23 +131,24 @@ export class SketchToolCalls extends LitElement {
   }
 
   render() {
+    if (!this.toolCalls || this.toolCalls.length === 0) {
+      return html``;
+    }
+
     return html`<div class="tool-calls-container">
-      <div class="tool-calls-header"></div>
       <div class="tool-call-cards-container">
-        ${this.toolCalls
-          ? repeat(this.toolCalls, this.toolUseKey, (toolCall, idx) => {
-              let lastCall = false;
-              if (idx == this.toolCalls?.length - 1) {
-                lastCall = true;
-              }
-              return html`<div
-                id="${toolCall.tool_call_id}"
-                class="tool-call-card ${toolCall.name}"
-              >
-                ${this.cardForToolCall(toolCall, lastCall && this.open)}
-              </div>`;
-            })
-          : ""}
+        ${repeat(this.toolCalls, this.toolUseKey, (toolCall, idx) => {
+          let lastCall = false;
+          if (idx == this.toolCalls?.length - 1) {
+            lastCall = true;
+          }
+          return html`<div
+            id="${toolCall.tool_call_id}"
+            class="tool-call-card ${toolCall.name}"
+          >
+            ${this.cardForToolCall(toolCall, lastCall && this.open)}
+          </div>`;
+        })}
       </div>
     </div>`;
   }

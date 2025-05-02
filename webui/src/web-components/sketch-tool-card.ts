@@ -1,6 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { ToolCall, MultipleChoiceOption, MultipleChoiceParams } from "../types";
 import { marked, MarkedOptions } from "marked";
 
@@ -29,23 +29,100 @@ export class SketchToolCard extends LitElement {
   @property()
   open: boolean;
 
+  @state()
+  detailsVisible: boolean = false;
+
   static styles = css`
     .tool-call {
       display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .tool-row {
+      display: flex;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px 6px 12px;
       align-items: center;
-      gap: 8px;
+      gap: 8px; /* Reduce gap slightly to accommodate longer tool names */
+      cursor: pointer;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden; /* Changed to hidden to prevent horizontal scrolling */
+    }
+
+    .tool-row:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .tool-name {
+      font-family: monospace;
+      font-weight: 500;
+      color: #444;
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 3px;
+      padding: 2px 6px;
+      flex-shrink: 0;
+      min-width: 45px;
+      /* Remove max-width to prevent truncation */
+      font-size: 12px;
+      text-align: center;
+      /* Remove overflow/ellipsis to ensure names are fully visible */
       white-space: nowrap;
     }
 
+    .tool-success {
+      color: #5cb85c;
+      font-size: 14px;
+    }
+
+    .tool-error {
+      color: #d9534f;
+      font-size: 14px;
+    }
+
+    .tool-pending {
+      color: #f0ad4e;
+      font-size: 14px;
+    }
+
+    .summary-text {
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      flex-grow: 1;
+      flex-shrink: 1;
+      color: #444;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 0 4px;
+      min-width: 50px;
+      max-width: calc(
+        100% - 250px
+      ); /* More space for tool-name and tool-status */
+      display: inline-block; /* Ensure proper truncation */
+    }
+
+    .tool-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+      flex-shrink: 0;
+      min-width: 120px; /* Increased width to prevent cutoff */
+      justify-content: flex-end;
+      padding-right: 8px;
+    }
+
     .tool-call-status {
-      margin-right: 4px;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .tool-call-status.spinner {
       animation: spin 1s infinite linear;
-      display: inline-block;
-      width: 1em;
     }
 
     @keyframes spin {
@@ -57,89 +134,61 @@ export class SketchToolCard extends LitElement {
       }
     }
 
-    .title {
-      font-style: italic;
+    .elapsed {
+      font-size: 11px;
+      color: #777;
+      white-space: nowrap;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .tool-details {
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.02);
+      margin-top: 1px;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      display: none;
+      font-family: monospace;
+      font-size: 12px;
+      color: #333;
+      border-radius: 0 0 4px 4px;
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden; /* Hide overflow at container level */
+    }
+
+    .tool-details.visible {
+      display: block;
+    }
+
+    .expand-indicator {
+      color: #aaa;
+      font-size: 10px;
+      width: 12px;
+      display: inline-block;
+      text-align: center;
     }
 
     .cancel-button {
-      background: rgb(76, 175, 80);
-      color: white;
-      border: none;
-      padding: 4px 10px;
-      border-radius: 4px;
       cursor: pointer;
-      font-size: 12px;
-      margin: 5px;
+      color: white;
+      background-color: #d9534f;
+      border: none;
+      border-radius: 3px;
+      font-size: 11px;
+      padding: 2px 6px;
+      white-space: nowrap;
+      min-width: 50px;
     }
 
     .cancel-button:hover {
-      background: rgb(200, 35, 51) !important;
+      background-color: #c9302c;
     }
 
-    .codereview-OK {
-      color: green;
-    }
-
-    details {
-      border-radius: 4px;
-      padding: 0.25em;
-      margin: 0.25em;
-      display: flex;
-      flex-direction: column;
-      align-items: start;
-    }
-
-    details summary {
-      list-style: none;
-      &::before {
-        cursor: hand;
-        font-family: monospace;
-        content: "+";
-        color: white;
-        background-color: darkgray;
-        border-radius: 1em;
-        padding-left: 0.5em;
-        margin: 0.25em;
-        min-width: 1em;
-      }
-      [open] &::before {
-        content: "-";
-      }
-    }
-
-    details summary:hover {
-      list-style: none;
-      &::before {
-        background-color: gray;
-      }
-    }
-    summary {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      justify-content: flex-start;
-      align-items: baseline;
-    }
-
-    summary .tool-name {
-      font-family: monospace;
-      color: white;
-      background: rgb(124 145 160);
-      border-radius: 4px;
-      padding: 0.25em;
-      margin: 0.25em;
-      white-space: pre;
-    }
-
-    .summary-text {
-      padding: 0.25em;
-      display: flex;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    details[open] .summary-text {
-      /*display: none;*/
+    .cancel-button[disabled] {
+      background-color: #999;
+      cursor: not-allowed;
     }
 
     .tool-error-message {
@@ -147,11 +196,8 @@ export class SketchToolCard extends LitElement {
       color: #aa0909;
     }
 
-    .elapsed {
-      font-size: 10px;
-      color: #888;
-      font-style: italic;
-      margin-left: 3px;
+    .codereview-OK {
+      color: green;
     }
   `;
 
@@ -194,16 +240,28 @@ export class SketchToolCard extends LitElement {
     }
   };
 
-  render() {
-    const toolCallStatus = this.toolCall?.result_message
-      ? this.toolCall?.result_message.tool_error
-        ? html`🙈
-            <span class="tool-error-message"
-              >${this.toolCall?.result_message.tool_result}</span
-            >`
-        : ""
-      : "⏳";
+  _toggleDetails(e: Event) {
+    e.stopPropagation();
+    this.detailsVisible = !this.detailsVisible;
+  }
 
+  render() {
+    // Determine the status indicator based on the tool call result
+    let statusIcon;
+    if (!this.toolCall?.result_message) {
+      // Pending status with spinner
+      statusIcon = html`<span class="tool-call-status spinner tool-pending"
+        >⏳</span
+      >`;
+    } else if (this.toolCall?.result_message.tool_error) {
+      // Error status
+      statusIcon = html`<span class="tool-call-status tool-error">⚠️</span>`;
+    } else {
+      // Success status
+      statusIcon = html`<span class="tool-call-status tool-success">✓</span>`;
+    }
+
+    // Cancel button for pending operations
     const cancelButton = this.toolCall?.result_message
       ? ""
       : html`<button
@@ -218,32 +276,29 @@ export class SketchToolCard extends LitElement {
           Cancel
         </button>`;
 
-    const status = html`<span
-      class="tool-call-status ${this.toolCall?.result_message ? "" : "spinner"}"
-      >${toolCallStatus}</span
-    >`;
-
-    const elapsed = html`${this.toolCall?.result_message?.elapsed
+    // Elapsed time display
+    const elapsed = this.toolCall?.result_message?.elapsed
       ? html`<span class="elapsed"
-          >${(this.toolCall?.result_message?.elapsed / 1e9).toFixed(2)}s
-          elapsed</span
+          >${(this.toolCall?.result_message?.elapsed / 1e9).toFixed(1)}s</span
         >`
-      : ""}`;
+      : html`<span class="elapsed"></span>`; // Empty span to maintain layout
 
-    const ret = html`<div class="tool-call">
-      <details ?open=${this.open}>
-        <summary>
-          <span class="tool-name">${this.toolCall?.name}</span>
-          <span class="summary-text"><slot name="summary"></slot></span>
-          ${status} ${cancelButton} ${elapsed}
-        </summary>
+    // Initialize details visibility based on open property
+    if (this.open && !this.detailsVisible) {
+      this.detailsVisible = true;
+    }
+
+    return html`<div class="tool-call">
+      <div class="tool-row" @click=${this._toggleDetails}>
+        <span class="tool-name">${this.toolCall?.name}</span>
+        <span class="summary-text"><slot name="summary"></slot></span>
+        <div class="tool-status">${statusIcon} ${elapsed} ${cancelButton}</div>
+      </div>
+      <div class="tool-details ${this.detailsVisible ? "visible" : ""}">
         <slot name="input"></slot>
         <slot name="result"></slot>
-      </details>
-    </div> `;
-    if (true) {
-      return ret;
-    }
+      </div>
+    </div>`;
   }
 }
 
@@ -261,24 +316,57 @@ export class SketchToolCardBash extends LitElement {
       color: black;
       padding: 0.5em;
       border-radius: 4px;
+      white-space: pre-wrap; /* Always wrap long lines */
+      word-break: break-word; /* Use break-word for a more readable break */
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-wrap: break-word; /* Additional property for better wrapping */
     }
     .summary-text {
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
       font-family: monospace;
+    }
+
+    .command-wrapper {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
     }
     .input {
       display: flex;
+      width: 100%;
+      flex-direction: column; /* Change to column layout */
     }
     .input pre {
       width: 100%;
       margin-bottom: 0;
       border-radius: 4px 4px 0 0;
+      box-sizing: border-box; /* Include padding in width calculation */
     }
     .result pre {
       margin-top: 0;
       color: #555;
       border-radius: 0 0 4px 4px;
+      width: 100%; /* Ensure it uses full width */
+      box-sizing: border-box; /* Include padding in width calculation */
+      overflow-wrap: break-word; /* Ensure long words wrap */
+    }
+
+    /* Add a special class for long output that should be scrollable on hover */
+    .result pre.scrollable-on-hover {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    /* Container for tool call results with proper text wrapping */
+    .tool-call-result-container {
+      width: 100%;
+      position: relative;
     }
     .background-badge {
       display: inline-block;
@@ -292,8 +380,11 @@ export class SketchToolCardBash extends LitElement {
       vertical-align: middle;
     }
     .command-wrapper {
-      display: flex;
-      align-items: center;
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   `;
 
@@ -318,19 +409,23 @@ export class SketchToolCardBash extends LitElement {
     <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
     <span slot="summary" class="summary-text">
       <div class="command-wrapper">
-        🖥️ ${backgroundIcon}${inputData?.command}
+        ${backgroundIcon}${inputData?.command}
       </div>
     </span>
     <div slot="input" class="input">
-      <pre>🖥️ ${backgroundIcon}${inputData?.command}</pre>
+      <div class="tool-call-result-container">
+        <pre>${backgroundIcon}${inputData?.command}</pre>
+      </div>
     </div>
     ${
       this.toolCall?.result_message
         ? html` ${this.toolCall?.result_message.tool_result
             ? html`<div slot="result" class="result">
-                <pre class="tool-call-result">
+                <div class="tool-call-result-container">
+                  <pre class="tool-call-result">
 ${this.toolCall?.result_message.tool_result}</pre
-                >
+                  >
+                </div>
               </div>`
             : ""}`
         : ""
@@ -587,12 +682,15 @@ export class SketchToolCardTitle extends LitElement {
   render() {
     const inputData = JSON.parse(this.toolCall?.input || "{}");
     return html`
-      <span class="summary-text">
-        Setting title to
-        <b>${inputData.title}</b>
-        and branch to
-        <pre>sketch/${inputData.branch_name}</pre>
-      </span>
+      <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
+        <span slot="summary" class="summary-text">
+          Title: "${inputData.title}" | Branch: sketch/${inputData.branch_name}
+        </span>
+        <div slot="input">
+          <div>Set title to: <b>${inputData.title}</b></div>
+          <div>Set branch to: <code>sketch/${inputData.branch_name}</code></div>
+        </div>
+      </sketch-tool-card>
     `;
   }
 }

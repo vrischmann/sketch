@@ -12,7 +12,7 @@
   "scripts": {
     "playwright-install": "playwright install",
     "check": "tsc --noEmit",
-    "demo": "vite --open src/web-components/demo/index.html",
+    "demo": "vite --open /src/web-components/demo/index.html",
     "demo:mermaid": "vite --open src/web-components/demo/mermaid-test/index.html",
     "dev": "vite --port 5173 --strictPort --host 127.0.0.1",
     "format": "prettier ./src --write",

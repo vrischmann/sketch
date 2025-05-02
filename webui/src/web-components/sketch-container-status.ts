@@ -1,4 +1,4 @@
-import { State } from "../types";
+import { State, AgentMessage } from "../types";
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { formatNumber } from "../utils";
@@ -13,11 +13,92 @@ export class SketchContainerStatus extends LitElement {
   @state()
   showDetails: boolean = false;
 
+  @state()
+  lastCommit: { hash: string; pushedBranch?: string } | null = null;
+
+  @state()
+  lastCommitCopied: boolean = false;
+
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
   // other components or the containing web page (...unless you want it to do that).
   static styles = css`
+    /* Last commit display styling */
+    .last-commit {
+      display: flex;
+      flex-direction: column;
+      padding: 3px 8px;
+      cursor: pointer;
+      position: relative;
+      margin: 4px 0;
+      transition: color 0.2s ease;
+    }
+
+    .last-commit:hover {
+      color: #0366d6;
+    }
+
+    .last-commit-title {
+      color: #666;
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .last-commit-hash {
+      font-family: monospace;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Styles for the last commit in main grid */
+    .last-commit-column {
+      justify-content: flex-start;
+    }
+
+    .info-label {
+      color: #666;
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .last-commit-main {
+      cursor: pointer;
+      position: relative;
+      padding-top: 0;
+    }
+
+    .last-commit-main:hover {
+      color: #0366d6;
+    }
+
+    .main-grid-commit {
+      font-family: monospace;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .commit-hash-indicator {
+      color: #666;
+    }
+
+    .commit-branch-indicator {
+      color: #28a745;
+    }
+
+    .no-commit-indicator {
+      color: #999;
+      font-style: italic;
+      font-size: 12px;
+    }
+
     .info-container {
       display: flex;
       align-items: center;
@@ -71,6 +152,7 @@ export class SketchContainerStatus extends LitElement {
     .info-value {
       font-size: 11px;
       font-weight: 600;
+      word-break: break-all;
     }
 
     [title] {
@@ -115,8 +197,10 @@ export class SketchContainerStatus extends LitElement {
     }
 
     .main-info-grid {
-      display: flex;
-      gap: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      width: 100%;
     }
 
     .info-column {
@@ -230,6 +314,58 @@ export class SketchContainerStatus extends LitElement {
     event.stopPropagation();
     this.showDetails = !this.showDetails;
     this.requestUpdate();
+  }
+
+  /**
+   * Update the last commit information based on messages
+   */
+  public updateLastCommitInfo(newMessages: AgentMessage[]): void {
+    if (!newMessages || newMessages.length === 0) return;
+
+    // Process messages in chronological order (latest last)
+    for (const message of newMessages) {
+      if (
+        message.type === "commit" &&
+        message.commits &&
+        message.commits.length > 0
+      ) {
+        // Get the first commit from the list
+        const commit = message.commits[0];
+        if (commit) {
+          this.lastCommit = {
+            hash: commit.hash,
+            pushedBranch: commit.pushed_branch,
+          };
+          this.lastCommitCopied = false;
+        }
+      }
+    }
+  }
+
+  /**
+   * Copy commit info to clipboard when clicked
+   */
+  private copyCommitInfo(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.lastCommit) return;
+
+    const textToCopy =
+      this.lastCommit.pushedBranch || this.lastCommit.hash.substring(0, 8);
+
+    navigator.clipboard
+      .writeText(textToCopy)
+      .then(() => {
+        this.lastCommitCopied = true;
+        // Reset the copied state after 2 seconds
+        setTimeout(() => {
+          this.lastCommitCopied = false;
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy commit info:", err);
+      });
   }
 
   formatHostname() {
@@ -472,6 +608,31 @@ export class SketchContainerStatus extends LitElement {
               >
             </div>
           </div>
+
+          <!-- Third column: Last Commit -->
+          <div class="info-column last-commit-column">
+            <div class="info-item">
+              <span class="info-label">Last Commit</span>
+            </div>
+            <div
+              class="info-item last-commit-main"
+              @click=${(e: MouseEvent) => this.copyCommitInfo(e)}
+              title="Click to copy"
+            >
+              ${this.lastCommitCopied
+                ? html`<span class="copied-indicator">Copied!</span>`
+                : ""}
+              ${this.lastCommit
+                ? this.lastCommit.pushedBranch
+                  ? html`<span class="commit-branch-indicator main-grid-commit"
+                      >${this.lastCommit.pushedBranch}</span
+                    >`
+                  : html`<span class="commit-hash-indicator main-grid-commit"
+                      >${this.lastCommit.hash.substring(0, 8)}</span
+                    >`
+                : html`<span class="no-commit-indicator">N/A</span>`}
+            </div>
+          </div>
         </div>
 
         <!-- Info toggle button -->
@@ -485,6 +646,8 @@ export class SketchContainerStatus extends LitElement {
 
         <!-- Expanded info panel -->
         <div class="info-expanded ${this.showDetails ? "active" : ""}">
+          <!-- Last Commit section moved to main grid -->
+
           <div class="detailed-info-grid">
             <div class="info-item">
               <span class="info-label">Commit:</span>
@@ -496,6 +659,12 @@ export class SketchContainerStatus extends LitElement {
               <span class="info-label">Msgs:</span>
               <span id="messageCount" class="info-value"
                 >${this.state?.message_count}</span
+              >
+            </div>
+            <div class="info-item">
+              <span class="info-label">Session ID:</span>
+              <span id="sessionId" class="info-value"
+                >${this.state?.session_id || "N/A"}</span
               >
             </div>
             <div class="info-item">

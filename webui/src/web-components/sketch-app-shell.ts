@@ -32,46 +32,15 @@ export class SketchAppShell extends LitElement {
 
   // Last commit information
   @state()
-  lastCommit: { hash: string; pushedBranch?: string } | null = null;
+
+  // Reference to the container status element
+  containerStatusElement: any = null;
 
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
   // other components or the containing web page (...unless you want it to do that).
   static styles = css`
-    /* Last commit display styling */
-    .last-commit {
-      display: flex;
-      align-items: center;
-      padding: 3px 8px;
-      background: #f0f7ff;
-      border: 1px solid #c8e1ff;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      color: #0366d6;
-      cursor: pointer;
-      position: relative;
-      margin: 0 10px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 180px;
-      transition: background-color 0.2s ease;
-    }
-
-    .last-commit:hover {
-      background-color: #dbedff;
-    }
-
-    .last-commit::before {
-      content: "Last Commit: ";
-      color: #666;
-      margin-right: 4px;
-      font-family: system-ui, sans-serif;
-      font-size: 11px;
-    }
-
     .copied-indicator {
       position: absolute;
       top: -20px;
@@ -326,7 +295,7 @@ export class SketchAppShell extends LitElement {
 
   // Track if the last commit info has been copied
   @state()
-  lastCommitCopied: boolean = false;
+  // lastCommitCopied moved to sketch-container-status
 
   // Track notification preferences
   @state()
@@ -386,6 +355,9 @@ export class SketchAppShell extends LitElement {
   constructor() {
     super();
 
+    // Reference to the container status element
+    this.containerStatusElement = null;
+
     // Binding methods to this
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
@@ -411,6 +383,12 @@ export class SketchAppShell extends LitElement {
   // See https://lit.dev/docs/components/lifecycle/
   connectedCallback() {
     super.connectedCallback();
+
+    // Get reference to the container status element
+    setTimeout(() => {
+      this.containerStatusElement =
+        this.shadowRoot?.getElementById("container-status");
+    }, 0);
 
     // Initialize client-side nav history.
     const url = new URL(window.location.href);
@@ -451,7 +429,12 @@ export class SketchAppShell extends LitElement {
 
     // Process existing messages for commit info
     if (this.messages && this.messages.length > 0) {
-      this.updateLastCommitInfo(this.messages);
+      // Update last commit info via container status component
+      setTimeout(() => {
+        if (this.containerStatusElement) {
+          this.containerStatusElement.updateLastCommitInfo(this.messages);
+        }
+      }, 100);
     }
   }
 
@@ -775,7 +758,10 @@ export class SketchAppShell extends LitElement {
     this.messages = aggregateAgentMessages(this.messages, newMessages);
 
     // Process new messages to find commit messages
-    this.updateLastCommitInfo(newMessages);
+    // Update last commit info via container status component
+    if (this.containerStatusElement) {
+      this.containerStatusElement.updateLastCommitInfo(newMessages);
+    }
 
     // Check for agent messages with end_of_turn=true and show notifications
     if (newMessages && newMessages.length > 0) {
@@ -801,54 +787,6 @@ export class SketchAppShell extends LitElement {
 
     // Update document title when connection status changes
     this.updateDocumentTitle();
-  }
-
-  // Update last commit information when new messages arrive
-  private updateLastCommitInfo(newMessages: AgentMessage[]): void {
-    if (!newMessages || newMessages.length === 0) return;
-
-    // Process messages in chronological order (latest last)
-    for (const message of newMessages) {
-      if (
-        message.type === "commit" &&
-        message.commits &&
-        message.commits.length > 0
-      ) {
-        // Get the first commit from the list
-        const commit = message.commits[0];
-        if (commit) {
-          this.lastCommit = {
-            hash: commit.hash,
-            pushedBranch: commit.pushed_branch,
-          };
-          this.lastCommitCopied = false;
-        }
-      }
-    }
-  }
-
-  // Copy commit info to clipboard
-  private copyCommitInfo(event: MouseEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!this.lastCommit) return;
-
-    const textToCopy =
-      this.lastCommit.pushedBranch || this.lastCommit.hash.substring(0, 8);
-
-    navigator.clipboard
-      .writeText(textToCopy)
-      .then(() => {
-        this.lastCommitCopied = true;
-        // Reset the copied state after 2 seconds
-        setTimeout(() => {
-          this.lastCommitCopied = false;
-        }, 2000);
-      })
-      .catch((err) => {
-        console.error("Failed to copy commit info:", err);
-      });
   }
 
   private async _handleStopClick(): Promise<void> {
@@ -936,31 +874,13 @@ export class SketchAppShell extends LitElement {
         <!-- Container status info moved above tabs -->
         <sketch-container-status
           .state=${this.containerState}
+          id="container-status"
         ></sketch-container-status>
 
-        <!-- Views section with tabs - repositioned -->
-        <sketch-view-mode-select></sketch-view-mode-select>
+        <!-- Last Commit section moved to sketch-container-status -->
 
-        ${this.lastCommit
-          ? html`
-              <div
-                class="last-commit"
-                @click=${(e: MouseEvent) => this.copyCommitInfo(e)}
-                title="Click to copy"
-              >
-                ${this.lastCommitCopied
-                  ? html`<span class="copied-indicator">Copied!</span>`
-                  : ""}
-                ${this.lastCommit.pushedBranch
-                  ? html`<span class="commit-branch-indicator"
-                      >${this.lastCommit.pushedBranch}</span
-                    >`
-                  : html`<span class="commit-hash-indicator"
-                      >${this.lastCommit.hash.substring(0, 8)}</span
-                    >`}
-              </div>
-            `
-          : ""}
+        <!-- Views section with tabs -->
+        <sketch-view-mode-select></sketch-view-mode-select>
 
         <div class="refresh-control">
           <button
@@ -1054,6 +974,9 @@ export class SketchAppShell extends LitElement {
             <sketch-timeline
               .messages=${this.messages}
               .scrollContainer=${this.scrollContainerRef}
+              .agentState=${this.containerState?.agent_state}
+              .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
+              .toolCalls=${this.containerState?.outstanding_tool_calls || []}
             ></sketch-timeline>
           </div>
           <div
@@ -1124,7 +1047,10 @@ export class SketchAppShell extends LitElement {
 
     // Process any existing messages to find commit information
     if (this.messages && this.messages.length > 0) {
-      this.updateLastCommitInfo(this.messages);
+      // Update last commit info via container status component
+      if (this.containerStatusElement) {
+        this.containerStatusElement.updateLastCommitInfo(this.messages);
+      }
     }
   }
 }

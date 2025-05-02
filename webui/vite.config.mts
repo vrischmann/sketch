@@ -11,5 +11,29 @@ export default defineConfig({
       include: ["./src/**/*.ts"],
       presets: [presets.lit],
     }),
+    // Custom plugin for handling the root path redirect
+    {
+      name: "configure-server",
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === "/") {
+            res.writeHead(302, {
+              Location: "/src/web-components/demo/index.html",
+            });
+            res.end();
+            return;
+          }
+          next();
+        });
+      },
+    },
   ],
+  server: {
+    // Define a middleware to handle the root path redirects
+    middlewareMode: false,
+    fs: {
+      // Allow serving files from these directories
+      allow: ["/app/webui"],
+    },
+  },
 });
