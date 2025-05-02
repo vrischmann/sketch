@@ -1,4 +1,4 @@
-import { AgentMessage } from "./types";
+import { AgentMessage, State } from "./types";
 import { formatNumber } from "./utils";
 
 /**
@@ -9,43 +9,27 @@ export type DataManagerEventType = "dataChanged" | "connectionStatusChanged";
 /**
  * Connection status types
  */
-export type ConnectionStatus = "connected" | "disconnected" | "disabled";
+export type ConnectionStatus =
+  | "connected"
+  | "connecting"
+  | "disconnected"
+  | "disabled";
 
 /**
- * State interface
- */
-export interface TimelineState {
-  hostname?: string;
-  working_dir?: string;
-  initial_commit?: string;
-  message_count?: number;
-  title?: string;
-  total_usage?: {
-    input_tokens: number;
-    output_tokens: number;
-    cache_read_input_tokens: number;
-    cache_creation_input_tokens: number;
-    total_cost_usd: number;
-  };
-  outstanding_llm_calls?: number;
-  outstanding_tool_calls?: string[];
-}
-
-/**
- * DataManager - Class to manage timeline data, fetching, and polling
+ * DataManager - Class to manage timeline data, fetching, and SSE streaming
  */
 export class DataManager {
   // State variables
-  private lastMessageCount: number = 0;
-  private nextFetchIndex: number = 0;
-  private currentFetchStartIndex: number = 0;
-  private currentPollController: AbortController | null = null;
-  private isFetchingMessages: boolean = false;
-  private isPollingEnabled: boolean = true;
-  private isFirstLoad: boolean = true;
-  private connectionStatus: ConnectionStatus = "disabled";
   private messages: AgentMessage[] = [];
-  private timelineState: TimelineState | null = null;
+  private timelineState: State | null = null;
+  private isFirstLoad: boolean = true;
+  private lastHeartbeatTime: number = 0;
+  private connectionStatus: ConnectionStatus = "disconnected";
+  private eventSource: EventSource | null = null;
+  private reconnectTimer: number | null = null;
+  private reconnectAttempt: number = 0;
+  private maxReconnectDelayMs: number = 60000; // Max delay of 60 seconds
+  private baseReconnectDelayMs: number = 1000; // Start with 1 second
 
   // Event listeners
   private eventListeners: Map<
@@ -57,22 +41,179 @@ export class DataManager {
     // Initialize empty arrays for each event type
     this.eventListeners.set("dataChanged", []);
     this.eventListeners.set("connectionStatusChanged", []);
+
+    // Check connection status periodically
+    setInterval(() => this.checkConnectionStatus(), 5000);
   }
 
   /**
-   * Initialize the data manager and fetch initial data
+   * Initialize the data manager and connect to the SSE stream
    */
   public async initialize(): Promise<void> {
-    try {
-      // Initial data fetch
-      await this.fetchData();
-      // Start polling for updates only if initial fetch succeeds
-      this.startPolling();
-    } catch (error) {
-      console.error("Initial data fetch failed, will retry via polling", error);
-      // Still start polling to recover
-      this.startPolling();
+    // Connect to the SSE stream
+    this.connect();
+  }
+
+  /**
+   * Connect to the SSE stream
+   */
+  private connect(): void {
+    // If we're already connecting or connected, don't start another connection attempt
+    if (
+      this.eventSource &&
+      (this.connectionStatus === "connecting" ||
+        this.connectionStatus === "connected")
+    ) {
+      return;
     }
+
+    // Close any existing connection
+    this.closeEventSource();
+
+    // Update connection status to connecting
+    this.updateConnectionStatus("connecting", "Connecting...");
+
+    // Determine the starting point for the stream based on what we already have
+    const fromIndex =
+      this.messages.length > 0
+        ? this.messages[this.messages.length - 1].idx + 1
+        : 0;
+
+    // Create a new EventSource connection
+    this.eventSource = new EventSource(`stream?from=${fromIndex}`);
+
+    // Set up event handlers
+    this.eventSource.addEventListener("open", () => {
+      console.log("SSE stream opened");
+      this.reconnectAttempt = 0; // Reset reconnect attempt counter on successful connection
+      this.updateConnectionStatus("connected");
+      this.lastHeartbeatTime = Date.now(); // Set initial heartbeat time
+    });
+
+    this.eventSource.addEventListener("error", (event) => {
+      console.error("SSE stream error:", event);
+      this.closeEventSource();
+      this.updateConnectionStatus("disconnected", "Connection lost");
+      this.scheduleReconnect();
+    });
+
+    // Handle incoming messages
+    this.eventSource.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data) as AgentMessage;
+      this.processNewMessage(message);
+    });
+
+    // Handle state updates
+    this.eventSource.addEventListener("state", (event) => {
+      const state = JSON.parse(event.data) as State;
+      this.timelineState = state;
+      this.emitEvent("dataChanged", { state, newMessages: [] });
+    });
+
+    // Handle heartbeats
+    this.eventSource.addEventListener("heartbeat", () => {
+      this.lastHeartbeatTime = Date.now();
+      // Make sure connection status is updated if it wasn't already
+      if (this.connectionStatus !== "connected") {
+        this.updateConnectionStatus("connected");
+      }
+    });
+  }
+
+  /**
+   * Close the current EventSource connection
+   */
+  private closeEventSource(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+  }
+
+  /**
+   * Schedule a reconnection attempt with exponential backoff
+   */
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    // Calculate backoff delay with exponential increase and maximum limit
+    const delay = Math.min(
+      this.baseReconnectDelayMs * Math.pow(1.5, this.reconnectAttempt),
+      this.maxReconnectDelayMs,
+    );
+
+    console.log(
+      `Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempt + 1})`,
+    );
+
+    // Increment reconnect attempt counter
+    this.reconnectAttempt++;
+
+    // Schedule the reconnect
+    this.reconnectTimer = window.setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, delay);
+  }
+
+  /**
+   * Check heartbeat status to determine if connection is still active
+   */
+  private checkConnectionStatus(): void {
+    if (this.connectionStatus !== "connected") {
+      return; // Only check if we think we're connected
+    }
+
+    const timeSinceLastHeartbeat = Date.now() - this.lastHeartbeatTime;
+    if (timeSinceLastHeartbeat > 90000) {
+      // 90 seconds without heartbeat
+      console.warn(
+        "No heartbeat received in 90 seconds, connection appears to be lost",
+      );
+      this.closeEventSource();
+      this.updateConnectionStatus(
+        "disconnected",
+        "Connection timed out (no heartbeat)",
+      );
+      this.scheduleReconnect();
+    }
+  }
+
+  /**
+   * Process a new message from the SSE stream
+   */
+  private processNewMessage(message: AgentMessage): void {
+    // Find the message's position in the array
+    const existingIndex = this.messages.findIndex((m) => m.idx === message.idx);
+
+    if (existingIndex >= 0) {
+      // This shouldn't happen - we should never receive duplicates
+      console.error(
+        `Received duplicate message with idx ${message.idx}`,
+        message,
+      );
+      return;
+    } else {
+      // Add the new message to our array
+      this.messages.push(message);
+      // Sort messages by idx to ensure they're in the correct order
+      this.messages.sort((a, b) => a.idx - b.idx);
+    }
+
+    // Mark that we've completed first load
+    if (this.isFirstLoad) {
+      this.isFirstLoad = false;
+    }
+
+    // Emit an event that data has changed
+    this.emitEvent("dataChanged", {
+      state: this.timelineState,
+      newMessages: [message],
+      isFirstFetch: false,
+    });
   }
 
   /**
@@ -85,7 +226,7 @@ export class DataManager {
   /**
    * Get the current state
    */
-  public getState(): TimelineState | null {
+  public getState(): State | null {
     return this.timelineState;
   }
 
@@ -101,13 +242,6 @@ export class DataManager {
    */
   public getIsFirstLoad(): boolean {
     return this.isFirstLoad;
-  }
-
-  /**
-   * Get the currentFetchStartIndex
-   */
-  public getCurrentFetchStartIndex(): number {
-    return this.currentFetchStartIndex;
   }
 
   /**
@@ -146,257 +280,171 @@ export class DataManager {
   }
 
   /**
-   * Set polling enabled/disabled state
-   */
-  public setPollingEnabled(enabled: boolean): void {
-    this.isPollingEnabled = enabled;
-
-    if (enabled) {
-      this.startPolling();
-    } else {
-      this.stopPolling();
-    }
-  }
-
-  /**
-   * Start polling for updates
-   */
-  public startPolling(): void {
-    this.stopPolling(); // Stop any existing polling
-
-    // Start long polling
-    this.longPoll();
-  }
-
-  /**
-   * Stop polling for updates
-   */
-  public stopPolling(): void {
-    // Abort any ongoing long poll request
-    if (this.currentPollController) {
-      this.currentPollController.abort();
-      this.currentPollController = null;
-    }
-
-    // If polling is disabled by user, set connection status to disabled
-    if (!this.isPollingEnabled) {
-      this.updateConnectionStatus("disabled");
-    }
-  }
-
-  /**
    * Update the connection status
    */
-  private updateConnectionStatus(status: ConnectionStatus): void {
+  private updateConnectionStatus(
+    status: ConnectionStatus,
+    message?: string,
+  ): void {
     if (this.connectionStatus !== status) {
       this.connectionStatus = status;
-      this.emitEvent("connectionStatusChanged", status);
+      this.emitEvent("connectionStatusChanged", status, message || "");
     }
   }
 
   /**
-   * Long poll for updates
+   * Send a message to the agent
    */
-  private async longPoll(): Promise<void> {
-    // Abort any existing poll request
-    if (this.currentPollController) {
-      this.currentPollController.abort();
-      this.currentPollController = null;
+  public async send(message: string): Promise<boolean> {
+    // Attempt to connect if we're not already connected
+    if (
+      this.connectionStatus !== "connected" &&
+      this.connectionStatus !== "connecting"
+    ) {
+      this.connect();
     }
-
-    // If polling is disabled, don't start a new poll
-    if (!this.isPollingEnabled) {
-      return;
-    }
-
-    let timeoutId: number | undefined;
 
     try {
-      // Create a new abort controller for this request
-      this.currentPollController = new AbortController();
-      const signal = this.currentPollController.signal;
-
-      // Get the URL with the current message count
-      const pollUrl = `state?poll=true&seen=${this.lastMessageCount}`;
-
-      // Make the long poll request
-      // Use explicit timeout to handle stalled connections (120s)
-      const controller = new AbortController();
-      timeoutId = window.setTimeout(() => controller.abort(), 120000);
-
-      interface CustomFetchOptions extends RequestInit {
-        [Symbol.toStringTag]?: unknown;
-      }
-
-      const fetchOptions: CustomFetchOptions = {
-        signal: controller.signal,
-        // Use the original signal to allow manual cancellation too
-        get [Symbol.toStringTag]() {
-          if (signal.aborted) controller.abort();
-          return "";
+      const response = await fetch("chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      };
+        body: JSON.stringify({ message }),
+      });
 
-      try {
-        const response = await fetch(pollUrl, fetchOptions);
-        // Clear the timeout since we got a response
-        clearTimeout(timeoutId);
-
-        // Parse the JSON response
-        const _data = await response.json();
-
-        // If we got here, data has changed, so fetch the latest data
-        await this.fetchData();
-
-        // Start a new long poll (if polling is still enabled)
-        if (this.isPollingEnabled) {
-          this.longPoll();
-        }
-      } catch (error) {
-        // Handle fetch errors inside the inner try block
-        clearTimeout(timeoutId);
-        throw error; // Re-throw to be caught by the outer catch block
-      }
-    } catch (error: unknown) {
-      // Clean up timeout if we're handling an error
-      if (timeoutId) clearTimeout(timeoutId);
-
-      // Don't log or treat manual cancellations as errors
-      const isErrorWithName = (
-        err: unknown,
-      ): err is { name: string; message?: string } =>
-        typeof err === "object" && err !== null && "name" in err;
-
-      if (
-        isErrorWithName(error) &&
-        error.name === "AbortError" &&
-        this.currentPollController?.signal.aborted
-      ) {
-        console.log("Polling cancelled by user");
-        return;
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
-      // Handle different types of errors with specific messages
-      let errorMessage = "Not connected";
-
-      if (isErrorWithName(error)) {
-        if (error.name === "AbortError") {
-          // This was our timeout abort
-          errorMessage = "Connection timeout - not connected";
-          console.error("Long polling timeout");
-        } else if (error.name === "SyntaxError") {
-          // JSON parsing error
-          errorMessage = "Invalid response from server - not connected";
-          console.error("JSON parsing error:", error);
-        } else if (
-          error.name === "TypeError" &&
-          error.message?.includes("NetworkError")
-        ) {
-          // Network connectivity issues
-          errorMessage = "Network connection lost - not connected";
-          console.error("Network error during polling:", error);
-        } else {
-          // Generic error
-          console.error("Long polling error:", error);
-        }
-      }
-
-      // Disable polling on error
-      this.isPollingEnabled = false;
-
-      // Update connection status to disconnected
-      this.updateConnectionStatus("disconnected");
-
-      // Emit an event that we're disconnected with the error message
-      this.emitEvent(
-        "connectionStatusChanged",
-        this.connectionStatus,
-        errorMessage,
-      );
+      return true;
+    } catch (error) {
+      console.error("Error sending message:", error);
+      return false;
     }
   }
 
   /**
-   * Fetch timeline data
+   * Cancel the current conversation
    */
-  public async fetchData(): Promise<void> {
-    // If we're already fetching messages, don't start another fetch
-    if (this.isFetchingMessages) {
-      console.log("Already fetching messages, skipping request");
-      return;
-    }
-
-    this.isFetchingMessages = true;
-
+  public async cancel(): Promise<boolean> {
     try {
-      // Fetch state first
-      const stateResponse = await fetch("state");
-      const state = await stateResponse.json();
-      this.timelineState = state;
-
-      // Check if new messages are available
-      if (
-        state.message_count === this.lastMessageCount &&
-        this.lastMessageCount > 0
-      ) {
-        // No new messages, early return
-        this.isFetchingMessages = false;
-        this.emitEvent("dataChanged", { state, newMessages: [] });
-        return;
-      }
-
-      // Fetch messages with a start parameter
-      this.currentFetchStartIndex = this.nextFetchIndex;
-      const messagesResponse = await fetch(
-        `messages?start=${this.nextFetchIndex}`,
-      );
-      const newMessages = (await messagesResponse.json()) || [];
-
-      // Store messages in our array
-      if (this.nextFetchIndex === 0) {
-        // If this is the first fetch, replace the entire array
-        this.messages = [...newMessages];
-      } else {
-        // Otherwise append the new messages
-        this.messages = [...this.messages, ...newMessages];
-      }
-
-      // Update connection status to connected
-      this.updateConnectionStatus("connected");
-
-      // Update the last message index for next fetch
-      if (newMessages && newMessages.length > 0) {
-        this.nextFetchIndex += newMessages.length;
-      }
-
-      // Update the message count
-      this.lastMessageCount = state?.message_count ?? 0;
-
-      // Mark that we've completed first load
-      if (this.isFirstLoad) {
-        this.isFirstLoad = false;
-      }
-
-      // Emit an event that data has changed
-      this.emitEvent("dataChanged", {
-        state,
-        newMessages,
-        isFirstFetch: this.nextFetchIndex === newMessages.length,
+      const response = await fetch("cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: "User cancelled" }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      return true;
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error cancelling conversation:", error);
+      return false;
+    }
+  }
 
-      // Update connection status to disconnected
-      this.updateConnectionStatus("disconnected");
+  /**
+   * Cancel a specific tool call
+   */
+  public async cancelToolUse(toolCallId: string): Promise<boolean> {
+    try {
+      const response = await fetch("cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reason: "User cancelled tool use",
+          tool_call_id: toolCallId,
+        }),
+      });
 
-      // Emit an event that we're disconnected
-      this.emitEvent(
-        "connectionStatusChanged",
-        this.connectionStatus,
-        "Not connected",
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error cancelling tool use:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Restart the conversation
+   */
+  public async restart(
+    revision: string,
+    initialPrompt: string,
+  ): Promise<boolean> {
+    try {
+      const response = await fetch("restart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          revision,
+          initial_prompt: initialPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error restarting conversation:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Download the conversation data
+   */
+  public downloadConversation(): void {
+    window.location.href = "download";
+  }
+
+  /**
+   * Get a suggested reprompt
+   */
+  public async getSuggestedReprompt(): Promise<string | null> {
+    try {
+      const response = await fetch("suggest-reprompt");
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.prompt;
+    } catch (error) {
+      console.error("Error getting suggested reprompt:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get description for a commit
+   */
+  public async getCommitDescription(revision: string): Promise<string | null> {
+    try {
+      const response = await fetch(
+        `commit-description?revision=${encodeURIComponent(revision)}`,
       );
-    } finally {
-      this.isFetchingMessages = false;
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.description;
+    } catch (error) {
+      console.error("Error getting commit description:", error);
+      return null;
     }
   }
 }

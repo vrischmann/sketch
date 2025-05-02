@@ -898,21 +898,6 @@ export class SketchAppShell extends LitElement {
         const errorData = await response.text();
         throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
-
-      // TOOD(philip): If the data manager is getting messages out of order, there's a bug?
-      // Reset data manager state to force a full refresh after sending a message
-      // This ensures we get all messages in the correct order
-      // Use private API for now - TODO: add a resetState() method to DataManager
-      (this.dataManager as any).nextFetchIndex = 0;
-      (this.dataManager as any).currentFetchStartIndex = 0;
-
-      // // If in diff view, switch to conversation view
-      // if (this.viewMode === "diff") {
-      //   await this.toggleViewMode("chat");
-      // }
-
-      // Refresh the timeline data to show the new message
-      await this.dataManager.fetchData();
     } catch (error) {
       console.error("Error sending chat message:", error);
       const statusText = document.getElementById("statusText");
@@ -1032,16 +1017,16 @@ export class SketchAppShell extends LitElement {
             </div>
           </div>
 
-          <sketch-network-status
-            connection=${this.connectionStatus}
-            error=${this.connectionErrorMessage}
-          ></sketch-network-status>
-
           <sketch-call-status
             .agentState=${this.containerState?.agent_state}
             .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
             .toolCalls=${this.containerState?.outstanding_tool_calls || []}
           ></sketch-call-status>
+
+          <sketch-network-status
+            connection=${this.connectionStatus}
+            error=${this.connectionErrorMessage}
+          ></sketch-network-status>
         </div>
       </div>
 
@@ -1126,9 +1111,6 @@ export class SketchAppShell extends LitElement {
         console.error("Error cancelling operation:", error);
       }
     });
-
-    // Always enable polling by default
-    this.dataManager.setPollingEnabled(true);
 
     // Process any existing messages to find commit information
     if (this.messages && this.messages.length > 0) {
