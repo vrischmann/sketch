@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 // Open opens the specified URL in the system's default browser.
@@ -14,6 +15,9 @@ import (
 // - 'cmd /c start' for Windows
 // - 'xdg-open' for Linux and other Unix-like systems
 func Open(url string) {
+	if strings.TrimSpace(url) == "" {
+		return
+	}
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
