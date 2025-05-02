@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/richardlehane/crock32"
 	"sketch.dev/ant"
@@ -36,43 +37,14 @@ func main() {
 	}
 }
 
+// run is the main entry point that parses flags and dispatches to the appropriate
+// execution path based on whether we're running in a container or not.
 func run() error {
-	addr := flag.String("addr", "localhost:0", "local debug HTTP server address")
-	skabandAddr := flag.String("skaband-addr", "https://sketch.dev", "URL of the skaband server")
-	unsafe := flag.Bool("unsafe", false, "run directly without a docker container")
-	openBrowser := flag.Bool("open", true, "open sketch URL in system browser")
-	httprrFile := flag.String("httprr", "", "if set, record HTTP interactions to file")
-	maxIterations := flag.Uint64("max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
-	maxWallTime := flag.Duration("max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
-	maxDollars := flag.Float64("max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
-	oneShot := flag.Bool("one-shot", false, "exit after the first turn without termui")
-	prompt := flag.String("prompt", "", "prompt to send to sketch")
-	verbose := flag.Bool("verbose", false, "enable verbose output")
-	version := flag.Bool("version", false, "print the version and exit")
-	workingDir := flag.String("C", "", "when set, change to this directory before running")
-	sshPort := flag.Int("ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
-	forceRebuild := flag.Bool("force-rebuild-container", false, "rebuild Docker container")
-	initialCommit := flag.String("initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
+	// Parse command-line flags
+	flagArgs := parseCLIFlags()
 
-	// Flags geared towards sketch developers or sketch internals:
-	gitUsername := flag.String("git-username", "", "(internal) username for git commits")
-	gitEmail := flag.String("git-email", "", "(internal) email for git commits")
-	sessionID := flag.String("session-id", newSessionID(), "(internal) unique session-id for a sketch process")
-	record := flag.Bool("httprecord", true, "(debugging) Record trace (if httprr is set)")
-	noCleanup := flag.Bool("nocleanup", false, "(debugging) do not clean up docker containers on exit")
-	containerLogDest := flag.String("save-container-logs", "", "(debugging) host path to save container logs to on exit")
-	outsideHostname := flag.String("outside-hostname", "", "(internal) hostname on the outside system")
-	outsideOS := flag.String("outside-os", "", "(internal) OS on the outside system")
-	outsideWorkingDir := flag.String("outside-working-dir", "", "(internal) working dir on the outside system")
-	sketchBinaryLinux := flag.String("sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
-
-	flag.Parse()
-
-	if *unsafe && *initialCommit != "HEAD" {
-		return fmt.Errorf("cannot use -initial-commit with -unsafe, they are incompatible")
-	}
-
-	if *version {
+	// Handle version flag early
+	if flagArgs.version {
 		bi, ok := debug.ReadBuildInfo()
 		if ok {
 			fmt.Printf("%s@%v\n", bi.Path, bi.Main.Version)
@@ -82,150 +54,257 @@ func run() error {
 
 	// Add a global "session_id" to all logs using this context.
 	// A "session" is a single full run of the agent.
-	ctx := skribe.ContextWithAttr(context.Background(), slog.String("session_id", *sessionID))
+	ctx := skribe.ContextWithAttr(context.Background(), slog.String("session_id", flagArgs.sessionID))
 
-	var slogHandler slog.Handler
-	var err error
-	var logFile *os.File
-	if !*oneShot && !*verbose {
-		// Log to a file
-		logFile, err = os.CreateTemp("", "sketch-cli-log-*")
-		if err != nil {
-			return fmt.Errorf("cannot create log file: %v", err)
-		}
-		if *unsafe {
-			fmt.Printf("structured logs: %v\n", logFile.Name())
-		}
+	// Configure logging
+	slogHandler, logFile, err := setupLogging(flagArgs.oneShot, flagArgs.verbose, flagArgs.unsafe)
+	if err != nil {
+		return err
+	}
+	if logFile != nil {
 		defer logFile.Close()
-		slogHandler = slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})
-		slogHandler = skribe.AttrsWrap(slogHandler)
-	} else {
-		// Log straight to stdout, no task_id
-		// TODO: verbosity controls?
-		slogHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
-		// TODO: we skipped "AttrsWrap" here because it adds a bunch of line noise. do we want it anyway?
 	}
 	slog.SetDefault(slog.New(slogHandler))
 
-	if *workingDir != "" {
-		if err := os.Chdir(*workingDir); err != nil {
-			return fmt.Errorf("sketch: cannot change directory to %q: %v", *workingDir, err)
+	// Change to working directory if specified
+	if flagArgs.workingDir != "" {
+		if err := os.Chdir(flagArgs.workingDir); err != nil {
+			return fmt.Errorf("sketch: cannot change directory to %q: %v", flagArgs.workingDir, err)
 		}
 	}
 
-	if *gitUsername == "" {
-		*gitUsername = defaultGitUsername()
+	// Set default git username and email if not provided
+	if flagArgs.gitUsername == "" {
+		flagArgs.gitUsername = defaultGitUsername()
 	}
-	if *gitEmail == "" {
-		*gitEmail = defaultGitEmail()
+	if flagArgs.gitEmail == "" {
+		flagArgs.gitEmail = defaultGitEmail()
 	}
 
+	// Detect if we're running inside Docker
 	inDocker := false
 	if _, err := os.Stat("/.dockerenv"); err == nil {
 		inDocker = true
 	}
-	inInsideSketch := inDocker && *outsideHostname != ""
 
-	if !inDocker {
-		msgs, err := hostReqsCheck(*unsafe)
-		if *verbose {
-			fmt.Println("Host requirement checks:")
-			for _, m := range msgs {
-				fmt.Println(m)
-			}
-		}
-		if err != nil {
-			return err
-		}
+	// Detect if we're inside the sketch container with access to outside environment
+	inInsideSketch := inDocker && flagArgs.outsideHostname != ""
+
+	// Validate initial commit and unsafe flag combination
+	if flagArgs.unsafe && flagArgs.initialCommit != "HEAD" {
+		return fmt.Errorf("cannot use -initial-commit with -unsafe, they are incompatible")
 	}
 
-	var pubKey, antURL, apiKey string
-	if *skabandAddr == "" {
+	// Dispatch to the appropriate execution path
+	if inDocker {
+		// We're running inside the Docker container
+		return runInContainerMode(ctx, flagArgs, inInsideSketch, logFile)
+	} else if flagArgs.unsafe {
+		// We're running directly on the host in unsafe mode
+		return runInUnsafeMode(ctx, flagArgs, logFile)
+	} else {
+		// We're running on the host and need to launch a container
+		return runInHostMode(ctx, flagArgs)
+	}
+}
+
+// CLIFlags holds all command-line arguments
+type CLIFlags struct {
+	addr              string
+	skabandAddr       string
+	unsafe            bool
+	openBrowser       bool
+	httprrFile        string
+	maxIterations     uint64
+	maxWallTime       time.Duration
+	maxDollars        float64
+	oneShot           bool
+	prompt            string
+	verbose           bool
+	version           bool
+	workingDir        string
+	sshPort           int
+	forceRebuild      bool
+	initialCommit     string
+	gitUsername       string
+	gitEmail          string
+	sessionID         string
+	record            bool
+	noCleanup         bool
+	containerLogDest  string
+	outsideHostname   string
+	outsideOS         string
+	outsideWorkingDir string
+	sketchBinaryLinux string
+}
+
+// parseCLIFlags parses all command-line flags and returns a CLIFlags struct
+func parseCLIFlags() CLIFlags {
+	var flags CLIFlags
+
+	flag.StringVar(&flags.addr, "addr", "localhost:0", "local debug HTTP server address")
+	flag.StringVar(&flags.skabandAddr, "skaband-addr", "https://sketch.dev", "URL of the skaband server")
+	flag.BoolVar(&flags.unsafe, "unsafe", false, "run directly without a docker container")
+	flag.BoolVar(&flags.openBrowser, "open", true, "open sketch URL in system browser")
+	flag.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
+	flag.Uint64Var(&flags.maxIterations, "max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
+	flag.DurationVar(&flags.maxWallTime, "max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
+	flag.Float64Var(&flags.maxDollars, "max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
+	flag.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
+	flag.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
+	flag.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
+	flag.BoolVar(&flags.version, "version", false, "print the version and exit")
+	flag.StringVar(&flags.workingDir, "C", "", "when set, change to this directory before running")
+	flag.IntVar(&flags.sshPort, "ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
+	flag.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
+	flag.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
+
+	// Flags geared towards sketch developers or sketch internals:
+	flag.StringVar(&flags.gitUsername, "git-username", "", "(internal) username for git commits")
+	flag.StringVar(&flags.gitEmail, "git-email", "", "(internal) email for git commits")
+	flag.StringVar(&flags.sessionID, "session-id", newSessionID(), "(internal) unique session-id for a sketch process")
+	flag.BoolVar(&flags.record, "httprecord", true, "(debugging) Record trace (if httprr is set)")
+	flag.BoolVar(&flags.noCleanup, "nocleanup", false, "(debugging) do not clean up docker containers on exit")
+	flag.StringVar(&flags.containerLogDest, "save-container-logs", "", "(debugging) host path to save container logs to on exit")
+	flag.StringVar(&flags.outsideHostname, "outside-hostname", "", "(internal) hostname on the outside system")
+	flag.StringVar(&flags.outsideOS, "outside-os", "", "(internal) OS on the outside system")
+	flag.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
+	flag.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
+
+	flag.Parse()
+	return flags
+}
+
+// runInHostMode handles execution on the host machine, which typically involves
+// checking host requirements and launching a Docker container.
+func runInHostMode(ctx context.Context, flags CLIFlags) error {
+	// Check host requirements
+	msgs, err := hostReqsCheck(flags.unsafe)
+	if flags.verbose {
+		fmt.Println("Host requirement checks:")
+		for _, m := range msgs {
+			fmt.Println(m)
+		}
+	}
+	if err != nil {
+		return err
+	}
+
+	// Get credentials and connect to skaband if needed
+	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
+	if err != nil {
+		return err
+	}
+	pubKey, antURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID)
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("sketch: cannot determine current working directory: %v", err)
+	}
+
+	// Configure stdout/stderr for container launch
+	var stdout, stderr io.Writer
+	var outbuf, errbuf *bytes.Buffer
+	if flags.verbose {
+		stdout, stderr = os.Stdout, os.Stderr
+	} else {
+		outbuf, errbuf = &bytes.Buffer{}, &bytes.Buffer{}
+		stdout, stderr = outbuf, errbuf
+	}
+
+	// Configure and launch the container
+	config := dockerimg.ContainerConfig{
+		SessionID:         flags.sessionID,
+		LocalAddr:         flags.addr,
+		SkabandAddr:       flags.skabandAddr,
+		AntURL:            antURL,
+		AntAPIKey:         apiKey,
+		Path:              cwd,
+		GitUsername:       flags.gitUsername,
+		GitEmail:          flags.gitEmail,
+		OpenBrowser:       flags.openBrowser,
+		NoCleanup:         flags.noCleanup,
+		ContainerLogDest:  flags.containerLogDest,
+		SketchBinaryLinux: flags.sketchBinaryLinux,
+		SketchPubKey:      pubKey,
+		SSHPort:           flags.sshPort,
+		ForceRebuild:      flags.forceRebuild,
+		OutsideHostname:   getHostname(),
+		OutsideOS:         runtime.GOOS,
+		OutsideWorkingDir: cwd,
+		OneShot:           flags.oneShot,
+		Prompt:            flags.prompt,
+		InitialCommit:     flags.initialCommit,
+	}
+
+	if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
+		if flags.verbose {
+			fmt.Fprintf(os.Stderr, "dockerimg.LaunchContainer failed: %v\ndockerimg.LaunchContainer stderr:\n%s\ndockerimg.LaunchContainer stdout:\n%s\n", err, errbuf.String(), outbuf.String())
+		}
+		return err
+	}
+
+	return nil
+}
+
+// runInContainerMode handles execution inside the Docker container.
+// The inInsideSketch parameter indicates whether we're inside the sketch container
+// with access to outside environment variables.
+func runInContainerMode(ctx context.Context, flags CLIFlags, inInsideSketch bool, logFile *os.File) error {
+	// Get credentials from environment
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	pubKey := os.Getenv("SKETCH_PUB_KEY")
+	antURL, err := skabandclient.LocalhostToDockerInternal(os.Getenv("ANT_URL"))
+	if err != nil && os.Getenv("ANT_URL") != "" {
+		return err
+	}
+
+	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, inInsideSketch, logFile)
+}
+
+// runInUnsafeMode handles execution on the host machine without Docker.
+// This mode is used when the -unsafe flag is provided.
+func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
+	// Check if we need to get the API key from environment
+	var apiKey, antURL, pubKey string
+
+	if flags.skabandAddr == "" {
+		// Direct mode with Anthropic API key
 		apiKey = os.Getenv("ANTHROPIC_API_KEY")
 		if apiKey == "" {
 			return fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set")
 		}
 	} else {
-		if inDocker {
-			apiKey = os.Getenv("ANTHROPIC_API_KEY")
-			pubKey = os.Getenv("SKETCH_PUB_KEY")
-			antURL, err = skabandclient.LocalhostToDockerInternal(os.Getenv("ANT_URL"))
-			if err != nil {
-				return err
-			}
-		} else {
-			privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
-			if err != nil {
-				return err
-			}
-			pubKey, antURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, *skabandAddr, *sessionID)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if !*unsafe {
-		cwd, err := os.Getwd()
+		// Connect to skaband
+		privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
 		if err != nil {
-			return fmt.Errorf("sketch: cannot determine current working directory: %v", err)
-		}
-		// TODO: this is a bit of a mess.
-		// The "stdout" and "stderr" used here are "just" for verbose logs from LaunchContainer.
-		// LaunchContainer has to attach the termui, and does that directly to os.Stdout/os.Stderr
-		// regardless of what is attached here.
-		// This is probably wrong. Instead of having a big "if verbose" switch here, the verbosity
-		// switches should be inside LaunchContainer and os.Stdout/os.Stderr should be passed in
-		// here (with the parameters being kept for future testing).
-		var stdout, stderr io.Writer
-		var outbuf, errbuf *bytes.Buffer
-		if *verbose {
-			stdout, stderr = os.Stdout, os.Stderr
-		} else {
-			outbuf, errbuf = &bytes.Buffer{}, &bytes.Buffer{}
-			stdout, stderr = outbuf, errbuf
-		}
-
-		config := dockerimg.ContainerConfig{
-			SessionID:         *sessionID,
-			LocalAddr:         *addr,
-			SkabandAddr:       *skabandAddr,
-			AntURL:            antURL,
-			AntAPIKey:         apiKey,
-			Path:              cwd,
-			GitUsername:       *gitUsername,
-			GitEmail:          *gitEmail,
-			OpenBrowser:       *openBrowser,
-			NoCleanup:         *noCleanup,
-			ContainerLogDest:  *containerLogDest,
-			SketchBinaryLinux: *sketchBinaryLinux,
-			SketchPubKey:      pubKey,
-			SSHPort:           *sshPort,
-			ForceRebuild:      *forceRebuild,
-			OutsideHostname:   getHostname(),
-			OutsideOS:         runtime.GOOS,
-			OutsideWorkingDir: cwd,
-			OneShot:           *oneShot,
-			Prompt:            *prompt,
-			InitialCommit:     *initialCommit,
-		}
-		if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
-			if *verbose {
-				fmt.Fprintf(os.Stderr, "dockerimg.LaunchContainer failed: %v\ndockerimg.LaunchContainer stderr:\n%s\ndockerimg.LaunchContainer stdout:\n%s\n", err, errbuf.String(), outbuf.String())
-			}
 			return err
 		}
-		return nil
+		pubKey, antURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID)
+		if err != nil {
+			return err
+		}
 	}
 
+	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, false, logFile)
+}
+
+// setupAndRunAgent handles the common logic for setting up and running the agent
+// in both container and unsafe modes.
+func setupAndRunAgent(ctx context.Context, flags CLIFlags, antURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
+	// Configure HTTP client with optional recording
 	var client *http.Client
-	if *httprrFile != "" {
+	if flags.httprrFile != "" {
 		var err error
 		var rr *httprr.RecordReplay
-		if *record {
-			rr, err = httprr.OpenForRecording(*httprrFile, http.DefaultTransport)
+		if flags.record {
+			rr, err = httprr.OpenForRecording(flags.httprrFile, http.DefaultTransport)
 		} else {
-			rr, err = httprr.Open(*httprrFile, http.DefaultTransport)
+			rr, err = httprr.Open(flags.httprrFile, http.DefaultTransport)
 		}
 		if err != nil {
 			return fmt.Errorf("httprr: %v", err)
@@ -238,35 +317,40 @@ func run() error {
 		})
 		client = rr.Client()
 	}
+
+	// Get current working directory
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
+	// Create and configure the agent
 	agentConfig := loop.AgentConfig{
 		Context:           ctx,
 		AntURL:            antURL,
 		APIKey:            apiKey,
 		HTTPC:             client,
-		Budget:            ant.Budget{MaxResponses: *maxIterations, MaxWallTime: *maxWallTime, MaxDollars: *maxDollars},
-		GitUsername:       *gitUsername,
-		GitEmail:          *gitEmail,
-		SessionID:         *sessionID,
+		Budget:            ant.Budget{MaxResponses: flags.maxIterations, MaxWallTime: flags.maxWallTime, MaxDollars: flags.maxDollars},
+		GitUsername:       flags.gitUsername,
+		GitEmail:          flags.gitEmail,
+		SessionID:         flags.sessionID,
 		ClientGOOS:        runtime.GOOS,
 		ClientGOARCH:      runtime.GOARCH,
 		UseAnthropicEdit:  os.Getenv("SKETCH_ANTHROPIC_EDIT") == "1",
-		OutsideHostname:   *outsideHostname,
-		OutsideOS:         *outsideOS,
-		OutsideWorkingDir: *outsideWorkingDir,
-		InDocker:          inDocker,
+		OutsideHostname:   flags.outsideHostname,
+		OutsideOS:         flags.outsideOS,
+		OutsideWorkingDir: flags.outsideWorkingDir,
+		InDocker:          true, // This is true when we're in container mode or simulating it in unsafe mode
 	}
 	agent := loop.NewAgent(agentConfig)
 
+	// Create the server
 	srv, err := server.New(agent, logFile)
 	if err != nil {
 		return err
 	}
 
+	// Initialize the agent (only needed when not inside sketch with outside hostname)
 	if !inInsideSketch {
 		ini := loop.AgentInit{
 			WorkingDir: wd,
@@ -279,16 +363,18 @@ func run() error {
 	// Start the agent
 	go agent.Loop(ctx)
 
-	// Start the local HTTP server.
-	ln, err := net.Listen("tcp", *addr)
+	// Start the local HTTP server
+	ln, err := net.Listen("tcp", flags.addr)
 	if err != nil {
 		return fmt.Errorf("cannot create debug server listener: %v", err)
 	}
 	go (&http.Server{Handler: srv}).Serve(ln)
+
+	// Determine the URL to display
 	var ps1URL string
-	if *skabandAddr != "" {
-		ps1URL = fmt.Sprintf("%s/s/%s", *skabandAddr, *sessionID)
-	} else if !inDocker {
+	if flags.skabandAddr != "" {
+		ps1URL = fmt.Sprintf("%s/s/%s", flags.skabandAddr, flags.sessionID)
+	} else if !agentConfig.InDocker {
 		// Do not tell users about the port inside the container, let the
 		// process running on the host report this.
 		ps1URL = fmt.Sprintf("http://%s", ln.Addr())
@@ -302,12 +388,12 @@ func run() error {
 	}
 
 	// Use prompt if provided
-	if *prompt != "" {
-		agent.UserMessage(ctx, *prompt)
+	if flags.prompt != "" {
+		agent.UserMessage(ctx, flags.prompt)
 	}
 
 	// Open the web UI URL in the system browser if requested
-	if *openBrowser {
+	if flags.openBrowser {
 		browser.Open(ps1URL)
 	}
 
@@ -315,9 +401,9 @@ func run() error {
 	s := termui.New(agent, ps1URL)
 
 	// Start skaband connection loop if needed
-	if *skabandAddr != "" {
+	if flags.skabandAddr != "" {
 		connectFn := func(connected bool) {
-			if *verbose {
+			if flags.verbose {
 				if connected {
 					s.AppendSystemMessage("skaband connected")
 				} else {
@@ -325,10 +411,11 @@ func run() error {
 				}
 			}
 		}
-		go skabandclient.DialAndServeLoop(ctx, *skabandAddr, *sessionID, pubKey, srv, connectFn)
+		go skabandclient.DialAndServeLoop(ctx, flags.skabandAddr, flags.sessionID, pubKey, srv, connectFn)
 	}
 
-	if *oneShot {
+	// Handle one-shot mode
+	if flags.oneShot {
 		it := agent.NewIterator(ctx, 0)
 		for {
 			m := it.Next()
@@ -345,6 +432,7 @@ func run() error {
 		}
 	}
 
+	// Run the terminal UI
 	defer func() {
 		r := recover()
 		if err := s.RestoreOldState(); err != nil {
@@ -359,6 +447,33 @@ func run() error {
 	}
 
 	return nil
+}
+
+// setupLogging configures the logging system based on command-line flags.
+// Returns the slog handler and optionally a log file (which should be closed by the caller).
+func setupLogging(oneShot, verbose, unsafe bool) (slog.Handler, *os.File, error) {
+	var slogHandler slog.Handler
+	var logFile *os.File
+	var err error
+
+	if !oneShot && !verbose {
+		// Log to a file
+		logFile, err = os.CreateTemp("", "sketch-cli-log-*")
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot create log file: %v", err)
+		}
+		if unsafe {
+			fmt.Printf("structured logs: %v\n", logFile.Name())
+		}
+		slogHandler = slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})
+		slogHandler = skribe.AttrsWrap(slogHandler)
+	} else {
+		// Log straight to stdout, no task_id
+		slogHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+		// No AttrsWrap here as it adds line noise
+	}
+
+	return slogHandler, logFile, nil
 }
 
 // newSessionID generates a new 10-byte random Session ID.
