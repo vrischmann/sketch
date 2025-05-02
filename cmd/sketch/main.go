@@ -103,14 +103,8 @@ func run() error {
 		flagArgs.gitEmail = defaultGitEmail()
 	}
 
-	// Detect if we're running inside Docker
-	inDocker := false
-	if _, err := os.Stat("/.dockerenv"); err == nil {
-		inDocker = true
-	}
-
-	// Detect if we're inside the sketch container with access to outside environment
-	inInsideSketch := inDocker && flagArgs.outsideHostname != ""
+	// Detect if we're inside the sketch container
+	inInsideSketch := flagArgs.outsideHostname != ""
 
 	// Validate initial commit and unsafe flag combination
 	if flagArgs.unsafe && flagArgs.initialCommit != "HEAD" {
@@ -118,9 +112,9 @@ func run() error {
 	}
 
 	// Dispatch to the appropriate execution path
-	if inDocker {
+	if inInsideSketch {
 		// We're running inside the Docker container
-		return runInContainerMode(ctx, flagArgs, inInsideSketch, logFile)
+		return runInContainerMode(ctx, flagArgs, logFile)
 	} else if flagArgs.unsafe {
 		// We're running directly on the host in unsafe mode
 		return runInUnsafeMode(ctx, flagArgs, logFile)
@@ -280,16 +274,16 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 // runInContainerMode handles execution inside the Docker container.
 // The inInsideSketch parameter indicates whether we're inside the sketch container
 // with access to outside environment variables.
-func runInContainerMode(ctx context.Context, flags CLIFlags, inInsideSketch bool, logFile *os.File) error {
+func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
 	// Get credentials from environment
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	apiKey := os.Getenv("SKETCH_ANTHROPIC_API_KEY")
 	pubKey := os.Getenv("SKETCH_PUB_KEY")
-	antURL, err := skabandclient.LocalhostToDockerInternal(os.Getenv("ANT_URL"))
-	if err != nil && os.Getenv("ANT_URL") != "" {
+	antURL, err := skabandclient.LocalhostToDockerInternal(os.Getenv("SKETCH_ANT_URL"))
+	if err != nil && os.Getenv("SKETCH_ANT_URL") != "" {
 		return err
 	}
 
-	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, inInsideSketch, logFile)
+	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, true, logFile)
 }
 
 // runInUnsafeMode handles execution on the host machine without Docker.

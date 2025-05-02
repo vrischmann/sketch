@@ -421,14 +421,14 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-it",
 		"--name", cntrName,
 		"-p", hostPort + ":80", // forward container port 80 to a host port
-		"-e", "ANTHROPIC_API_KEY=" + config.AntAPIKey,
+		"-e", "SKETCH_ANTHROPIC_API_KEY=" + config.AntAPIKey,
 	}
 
 	for _, envVar := range getEnvForwardingFromGitConfig(ctx) {
 		cmdArgs = append(cmdArgs, "-e", envVar)
 	}
 	if config.AntURL != "" {
-		cmdArgs = append(cmdArgs, "-e", "ANT_URL="+config.AntURL)
+		cmdArgs = append(cmdArgs, "-e", "SKETCH_ANT_URL="+config.AntURL)
 	}
 	if config.SketchPubKey != "" {
 		cmdArgs = append(cmdArgs, "-e", "SKETCH_PUB_KEY="+config.SketchPubKey)
