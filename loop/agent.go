@@ -597,7 +597,7 @@ func (a *Agent) OnResponse(ctx context.Context, convo *ant.Convo, id string, res
 	}
 
 	endOfTurn := false
-	if resp.StopReason != ant.StopReasonToolUse {
+	if resp.StopReason != ant.StopReasonToolUse && convo.Parent == nil {
 		endOfTurn = true
 	}
 	m := AgentMessage{
