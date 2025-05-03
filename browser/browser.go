@@ -2,8 +2,7 @@
 package browser
 
 import (
-	"fmt"
-	"os"
+	"log/slog"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -28,6 +27,6 @@ func Open(url string) {
 		cmd = exec.Command("xdg-open", url)
 	}
 	if b, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open browser: %v: %s\n", err, b)
+		slog.Debug("failed to open browser", "err", err, "url", url, "output", string(b))
 	}
 }
