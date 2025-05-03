@@ -277,7 +277,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		fmt.Println(err.Error())
 		// continue - ssh config is not required for the rest of sketch to function locally.
 	} else {
-		cst, err := NewSSHTheather(cntrName, sshHost, sshPort)
+		cst, err := NewSSHTheater(cntrName, sshHost, sshPort)
 		if err != nil {
 			return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
 		}

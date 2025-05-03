@@ -673,7 +673,7 @@ func TestRealSSHTheatherInit(t *testing.T) {
 	defer os.Setenv("HOME", oldHome)
 
 	// Create the theater
-	theater, err := NewSSHTheather("test-container", "localhost", "2222")
+	theater, err := NewSSHTheater("test-container", "localhost", "2222")
 	if err != nil {
 		t.Fatalf("Failed to create real SSHTheather: %v", err)
 	}

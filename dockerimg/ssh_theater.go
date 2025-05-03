@@ -50,7 +50,7 @@ type SSHTheater struct {
 	kg KeyGenerator
 }
 
-// NewSSHTheather will set up everything so that you can use ssh on localhost to connect to
+// NewSSHTheater will set up everything so that you can use ssh on localhost to connect to
 // the sketch container.  Call #Clean when you are done with the container to remove the
 // various entries it created in its known_hosts and ssh_config files. Also note that
 // this will generate key pairs for both the ssh server identity and the user identity, if
@@ -61,7 +61,7 @@ type SSHTheater struct {
 // If this doesn't return an error, you should be able to run "ssh <cntrName>"
 // in a terminal on your host machine to open a shell into the container without having
 // to manually accept changes to your known_hosts file etc.
-func NewSSHTheather(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
+func NewSSHTheater(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
 	return newSSHTheatherWithDeps(cntrName, sshHost, sshPort, &RealFileSystem{}, &RealKeyGenerator{})
 }
 
