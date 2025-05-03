@@ -128,7 +128,6 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		if err != nil {
 			return err
 		}
-		defer os.Remove(linuxSketchBin) // in case of errors
 	}
 
 	cntrName := "sketch-" + config.SessionID
@@ -185,7 +184,6 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 	if out, err := combinedOutput(ctx, "docker", "cp", linuxSketchBin, cntrName+":/bin/sketch"); err != nil {
 		return fmt.Errorf("docker cp: %s, %w", out, err)
 	}
-	os.Remove(linuxSketchBin) // in normal operations, the code below blocks, so actively delete now
 
 	// Make sure that the webui is built so we can copy the results to the container.
 	_, err = webui.Build()
@@ -344,15 +342,13 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 
 func combinedOutput(ctx context.Context, cmdName string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, cmdName, args...)
-	// Really only needed for the "go build" command for the linux sketch binary
-	cmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
 	start := time.Now()
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		slog.ErrorContext(ctx, cmdName, slog.Duration("elapsed", time.Now().Sub(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
+		slog.ErrorContext(ctx, cmdName, slog.Duration("elapsed", time.Since(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	} else {
-		slog.DebugContext(ctx, cmdName, slog.Duration("elapsed", time.Now().Sub(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
+		slog.DebugContext(ctx, cmdName, slog.Duration("elapsed", time.Since(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	}
 	return out, err
 }
@@ -361,9 +357,9 @@ func run(ctx context.Context, cmdName string, cmd *exec.Cmd) error {
 	start := time.Now()
 	err := cmd.Run()
 	if err != nil {
-		slog.ErrorContext(ctx, cmdName, slog.Duration("elapsed", time.Now().Sub(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
+		slog.ErrorContext(ctx, cmdName, slog.Duration("elapsed", time.Since(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	} else {
-		slog.DebugContext(ctx, cmdName, slog.Duration("elapsed", time.Now().Sub(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
+		slog.DebugContext(ctx, cmdName, slog.Duration("elapsed", time.Since(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	}
 	return err
 }
@@ -505,26 +501,17 @@ func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		slog.ErrorContext(ctx, "go", slog.Duration("elapsed", time.Now().Sub(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
+		slog.ErrorContext(ctx, "go", slog.Duration("elapsed", time.Since(start)), slog.String("err", err.Error()), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 		return "", fmt.Errorf("failed to build linux sketch binary: %s: %w", out, err)
 	} else {
-		slog.DebugContext(ctx, "go", slog.Duration("elapsed", time.Now().Sub(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
+		slog.DebugContext(ctx, "go", slog.Duration("elapsed", time.Since(start)), slog.String("path", cmd.Path), slog.String("args", fmt.Sprintf("%v", skribe.Redact(cmd.Args))))
 	}
 
-	var src string
 	if runtime.GOOS != "linux" {
-		src = filepath.Join(linuxGopath, "bin", "linux_"+runtime.GOARCH, "sketch")
-	} else {
-		// If we are already on Linux, there's no extra platform name in the path
-		src = filepath.Join(linuxGopath, "bin", "sketch")
+		return filepath.Join(linuxGopath, "bin", "linux_"+runtime.GOARCH, "sketch"), nil
 	}
-
-	dst := filepath.Join(path, "tmp-sketch-binary-linux")
-	if err := moveFile(src, dst); err != nil {
-		return "", err
-	}
-
-	return dst, nil
+	// If we are already on Linux, there's no extra platform name in the path
+	return filepath.Join(linuxGopath, "bin", "sketch"), nil
 }
 
 func getContainerPort(ctx context.Context, cntrName, cntrPort string) (string, error) {
@@ -779,43 +766,6 @@ and try running sketch again.
 	gitDir := strings.TrimSpace(string(out)) // location of .git dir, often as a relative path
 	absGitDir := filepath.Join(path, gitDir)
 	return filepath.Dir(absGitDir), err
-}
-
-// moveFile is like Python's shutil.move, in that it tries a rename, and, if that fails,
-// copies and deletes
-func moveFile(src, dst string) error {
-	if err := os.Rename(src, dst); err == nil {
-		return nil
-	}
-
-	stat, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer sourceFile.Close()
-
-	destFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, sourceFile)
-	if err != nil {
-		return err
-	}
-
-	sourceFile.Close()
-	destFile.Close()
-
-	os.Chmod(dst, stat.Mode())
-
-	return os.Remove(src)
 }
 
 // getEnvForwardingFromGitConfig retrieves environment variables to pass through to Docker
