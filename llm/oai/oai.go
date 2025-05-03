@@ -424,7 +424,7 @@ func toLLMContents(msg openai.ChatCompletionMessage) []llm.Content {
 }
 
 // toLLMUsage converts usage information from OpenAI to llm.Usage.
-func (s *Service) toLLMUsage(model string, au openai.Usage) llm.Usage {
+func (s *Service) toLLMUsage(au openai.Usage) llm.Usage {
 	// fmt.Printf("raw usage: %+v / %v / %v\n", au, au.PromptTokensDetails, au.CompletionTokensDetails)
 	in := uint64(au.PromptTokens)
 	var inc uint64
@@ -455,7 +455,7 @@ func (s *Service) toLLMResponse(r *openai.ChatCompletionResponse) *llm.Response 
 			ID:    r.ID,
 			Model: r.Model,
 			Role:  llm.MessageRoleAssistant,
-			Usage: s.toLLMUsage(r.Model, r.Usage),
+			Usage: s.toLLMUsage(r.Usage),
 		}
 	}
 
@@ -468,7 +468,7 @@ func (s *Service) toLLMResponse(r *openai.ChatCompletionResponse) *llm.Response 
 		Role:       toRoleFromString(choice.Message.Role),
 		Content:    toLLMContents(choice.Message),
 		StopReason: toStopReason(string(choice.FinishReason)),
-		Usage:      s.toLLMUsage(r.Model, r.Usage),
+		Usage:      s.toLLMUsage(r.Usage),
 	}
 }
 
