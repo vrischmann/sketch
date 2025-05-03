@@ -91,7 +91,8 @@ ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
 
 RUN git config --global user.email "$GIT_USER_EMAIL" && \
-    git config --global user.name "$GIT_USER_NAME"
+    git config --global user.name "$GIT_USER_NAME" && \
+    git config --global http.postBuffer 524288000
 
 LABEL sketch_context="{{.InitFilesHash}}"
 COPY . /app
