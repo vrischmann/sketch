@@ -30,19 +30,6 @@ func checkDocker() (string, error) {
 	return fmt.Sprintf("%s %s", path, strings.TrimSpace(string(output))), nil
 }
 
-func checkColima() (string, error) {
-	path, err := exec.LookPath("colima")
-	if err != nil {
-		return "", fmt.Errorf("cannot find `colima` binary; run: brew install docker colima && colima start")
-	}
-	cmd := exec.Command(path, "version")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("colima version check failed: %w\n%s\n", err, string(output))
-	}
-	return fmt.Sprintf("%s %s", path, strings.TrimSpace(string(output))), nil
-}
-
 func checkNPM() (string, error) {
 	path, err := exec.LookPath("npm")
 	if err != nil {
@@ -67,11 +54,6 @@ func hostReqsCheck(isUnsafe bool) ([]string, error) {
 	// Only check for Docker if we're not in unsafe mode
 	if !isUnsafe {
 		cfs = append(cfs, checkDocker)
-	}
-
-	// Only check for Colima on macOS and in safe mode
-	if runtime.GOOS == "darwin" && !isUnsafe {
-		cfs = append(cfs, checkColima)
 	}
 
 	// Always check for NPM
