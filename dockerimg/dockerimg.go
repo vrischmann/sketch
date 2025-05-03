@@ -585,9 +585,10 @@ func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gi
 		initMsgByteReader.Reset(initMsg)
 		res, err = http.DefaultClient.Do(req)
 		if err != nil {
-			// In addition to "connection refused", we also occasionally see "EOF" errors that can succeed on retries.
-			if i < 100 && (strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "EOF")) {
-				slog.DebugContext(ctx, "postContainerInitConfig retrying", slog.Int("retry", i), slog.String("err", err.Error()))
+			if i < 100 {
+				if i%10 == 0 {
+					slog.DebugContext(ctx, "postContainerInitConfig retrying", slog.Int("retry", i), slog.String("err", err.Error()))
+				}
 				continue
 			}
 			return fmt.Errorf("failed to %s/init sketch in container, NOT retrying: err: %v", localURL, err)
