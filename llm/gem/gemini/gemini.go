@@ -30,6 +30,7 @@ type Candidate struct {
 
 type Content struct {
 	Parts []Part `json:"parts"`
+	Role  string `json:"role,omitempty"`
 }
 
 // Part is a part of the content.

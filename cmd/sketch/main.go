@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"sketch.dev/llm"
+	"sketch.dev/llm/gem"
 	"sketch.dev/llm/oai"
 
 	"github.com/richardlehane/crock32"
@@ -57,6 +58,7 @@ func run() error {
 	if flagArgs.listModels {
 		fmt.Println("Available models:")
 		fmt.Println("- claude (default, uses Anthropic service)")
+		fmt.Println("- gemini (uses Google Gemini 2.5 Pro service)")
 		for _, name := range oai.ListModels() {
 			note := ""
 			if name != "gpt4.1" {
@@ -67,10 +69,10 @@ func run() error {
 		return nil
 	}
 
-	// For now, only Claude is supported in container mode.
+	// Claude and Gemini are supported in container mode
 	// TODO: finish support--thread through API keys, add server support
-	isClaude := flagArgs.modelName == "claude" || flagArgs.modelName == ""
-	if !isClaude && (!flagArgs.unsafe || flagArgs.skabandAddr != "") {
+	isContainerSupported := flagArgs.modelName == "claude" || flagArgs.modelName == "" || flagArgs.modelName == "gemini"
+	if !isContainerSupported && (!flagArgs.unsafe || flagArgs.skabandAddr != "") {
 		return fmt.Errorf("only -model=claude is supported in safe mode right now, use -unsafe -skaband-addr=''")
 	}
 
@@ -536,6 +538,7 @@ func defaultGitEmail() string {
 
 // selectLLMService creates an LLM service based on the specified model name.
 // If modelName is empty or "claude", it uses the Anthropic service.
+// If modelName is "gemini", it uses the Gemini service.
 // Otherwise, it tries to use the OpenAI service with the specified model.
 // Returns an error if the model name is not recognized or if required configuration is missing.
 func selectLLMService(client *http.Client, modelName string, antURL, apiKey string) (llm.Service, error) {
@@ -546,6 +549,18 @@ func selectLLMService(client *http.Client, modelName string, antURL, apiKey stri
 		return &ant.Service{
 			HTTPC:  client,
 			URL:    antURL,
+			APIKey: apiKey,
+		}, nil
+	}
+
+	if modelName == "gemini" {
+		apiKey = os.Getenv(gem.GeminiAPIKeyEnv)
+		if apiKey == "" {
+			return nil, fmt.Errorf("missing API key for Gemini model, set %s environment variable", gem.GeminiAPIKeyEnv)
+		}
+		return &gem.Service{
+			HTTPC:  client,
+			Model:  gem.DefaultModel,
 			APIKey: apiKey,
 		}, nil
 	}
