@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/gliderlabs/ssh"
+	"github.com/pkg/sftp"
 	gossh "golang.org/x/crypto/ssh"
 )
 
@@ -72,6 +74,9 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) e
 			"tcpip-forward":        forwardHandler.HandleSSHRequest,
 			"cancel-tcpip-forward": forwardHandler.HandleSSHRequest,
 		},
+		SubsystemHandlers: map[string]ssh.SubsystemHandler{
+			"sftp": handleSftp,
+		},
 		HostSigners: []ssh.Signer{signer},
 		PublicKeyHandler: func(ctx ssh.Context, key ssh.PublicKey) bool {
 			// Check if the provided key matches any of our allowed keys
@@ -91,6 +96,27 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) e
 	server.ChannelHandlers["direct-tcpip"] = ssh.DirectTCPIPHandler
 
 	return server.ListenAndServe()
+}
+
+func handleSftp(sess ssh.Session) {
+	debugStream := io.Discard
+	serverOptions := []sftp.ServerOption{
+		sftp.WithDebug(debugStream),
+	}
+	server, err := sftp.NewServer(
+		sess,
+		serverOptions...,
+	)
+	if err != nil {
+		log.Printf("sftp server init error: %s\n", err)
+		return
+	}
+	if err := server.Serve(); err == io.EOF {
+		server.Close()
+		fmt.Println("sftp client exited session.")
+	} else if err != nil {
+		fmt.Println("sftp server completed with error:", err)
+	}
 }
 
 func handlePTYSession(ctx context.Context, s ssh.Session, ptyReq ssh.Pty, winCh <-chan ssh.Window) {
