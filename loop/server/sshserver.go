@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -75,7 +74,9 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) e
 			"cancel-tcpip-forward": forwardHandler.HandleSSHRequest,
 		},
 		SubsystemHandlers: map[string]ssh.SubsystemHandler{
-			"sftp": handleSftp,
+			"sftp": func(s ssh.Session) {
+				handleSftp(ctx, s)
+			},
 		},
 		HostSigners: []ssh.Signer{signer},
 		PublicKeyHandler: func(ctx ssh.Context, key ssh.PublicKey) bool {
@@ -98,7 +99,7 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte) e
 	return server.ListenAndServe()
 }
 
-func handleSftp(sess ssh.Session) {
+func handleSftp(ctx context.Context, sess ssh.Session) {
 	debugStream := io.Discard
 	serverOptions := []sftp.ServerOption{
 		sftp.WithDebug(debugStream),
@@ -108,14 +109,13 @@ func handleSftp(sess ssh.Session) {
 		serverOptions...,
 	)
 	if err != nil {
-		log.Printf("sftp server init error: %s\n", err)
+		slog.ErrorContext(ctx, "sftp server init error", slog.Any("err", err))
 		return
 	}
 	if err := server.Serve(); err == io.EOF {
 		server.Close()
-		fmt.Println("sftp client exited session.")
 	} else if err != nil {
-		fmt.Println("sftp server completed with error:", err)
+		slog.ErrorContext(ctx, "sftp server completed with error", slog.Any("err", err))
 	}
 }
 
