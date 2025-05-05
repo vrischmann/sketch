@@ -11,6 +11,7 @@ import (
 // State represents the possible states of the Agent state machine
 type State int
 
+//go:generate go tool golang.org/x/tools/cmd/stringer -type=State -trimprefix=State
 const (
 	// StateUnknown is the default state
 	StateUnknown State = iota
@@ -47,48 +48,6 @@ const (
 	// StateError occurs when an error occurred during processing
 	StateError
 )
-
-// String returns a string representation of the State for logging and debugging
-func (s State) String() string {
-	switch s {
-	case StateUnknown:
-		return "Unknown"
-	case StateReady:
-		return "Ready"
-	case StateWaitingForUserInput:
-		return "WaitingForUserInput"
-	case StateSendingToLLM:
-		return "SendingToLLM"
-	case StateProcessingLLMResponse:
-		return "ProcessingLLMResponse"
-	case StateEndOfTurn:
-		return "EndOfTurn"
-	case StateToolUseRequested:
-		return "ToolUseRequested"
-	case StateCheckingForCancellation:
-		return "CheckingForCancellation"
-	case StateRunningTool:
-		return "RunningTool"
-	case StateCheckingGitCommits:
-		return "CheckingGitCommits"
-	case StateRunningAutoformatters:
-		return "RunningAutoformatters"
-	case StateCheckingBudget:
-		return "CheckingBudget"
-	case StateGatheringAdditionalMessages:
-		return "GatheringAdditionalMessages"
-	case StateSendingToolResults:
-		return "SendingToolResults"
-	case StateCancelled:
-		return "Cancelled"
-	case StateBudgetExceeded:
-		return "BudgetExceeded"
-	case StateError:
-		return "Error"
-	default:
-		return fmt.Sprintf("Unknown(%d)", int(s))
-	}
-}
 
 // TransitionEvent represents an event that causes a state transition
 type TransitionEvent struct {
@@ -329,8 +288,8 @@ func (sm *StateMachine) TransitionWithEvent(ctx context.Context, newState State,
 
 	// Log the transition
 	slog.InfoContext(ctx, "State transition",
-		"from", sm.previousState,
-		"to", sm.currentState,
+		"from", sm.previousState.String(),
+		"to", sm.currentState.String(),
 		"event", event.Description,
 		"duration", duration)
 
@@ -483,8 +442,8 @@ func (sm *StateMachine) ForceTransition(ctx context.Context, newState State, rea
 
 	// Log the transition
 	slog.WarnContext(ctx, "Forced state transition",
-		"from", sm.previousState,
-		"to", sm.currentState,
+		"from", sm.previousState.String(),
+		"to", sm.currentState.String(),
 		"reason", reason,
 		"duration", duration)
 
