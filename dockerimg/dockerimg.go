@@ -417,10 +417,13 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, imgName string, config ContainerConfig) error {
 	cmdArgs := []string{
 		"create",
-		"-it",
+		"-i",
 		"--name", cntrName,
 		"-p", hostPort + ":80", // forward container port 80 to a host port
 		"-e", "SKETCH_ANTHROPIC_API_KEY=" + config.AntAPIKey,
+	}
+	if !config.OneShot {
+		cmdArgs = append(cmdArgs, "-t")
 	}
 
 	for _, envVar := range getEnvForwardingFromGitConfig(ctx) {
