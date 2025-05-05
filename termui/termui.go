@@ -58,7 +58,7 @@ var (
 	toolUseTmpl = template.Must(template.New("tool_use").Parse(toolUseTemplTxt))
 )
 
-type termUI struct {
+type TermUI struct {
 	stdin  *os.File
 	stdout *os.File
 	stderr *os.File
@@ -93,8 +93,8 @@ type chatMessage struct {
 	thinking bool
 }
 
-func New(agent loop.CodingAgent, httpURL string) *termUI {
-	return &termUI{
+func New(agent loop.CodingAgent, httpURL string) *TermUI {
+	return &TermUI{
 		agent:          agent,
 		stdin:          os.Stdin,
 		stdout:         os.Stdout,
@@ -106,7 +106,7 @@ func New(agent loop.CodingAgent, httpURL string) *termUI {
 	}
 }
 
-func (ui *termUI) Run(ctx context.Context) error {
+func (ui *TermUI) Run(ctx context.Context) error {
 	fmt.Println(`🌐 ` + ui.httpURL + `/`)
 	fmt.Println(`💬 type 'help' for help`)
 	fmt.Println()
@@ -122,7 +122,7 @@ func (ui *termUI) Run(ctx context.Context) error {
 	return nil
 }
 
-func (ui *termUI) LogToolUse(resp *loop.AgentMessage) {
+func (ui *TermUI) LogToolUse(resp *loop.AgentMessage) {
 	inputData := map[string]any{}
 	if err := json.Unmarshal([]byte(resp.ToolInput), &inputData); err != nil {
 		ui.AppendSystemMessage("error: %v", err)
@@ -136,7 +136,7 @@ func (ui *termUI) LogToolUse(resp *loop.AgentMessage) {
 	ui.AppendSystemMessage("%s\n", buf.String())
 }
 
-func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
+func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
 	it := ui.agent.NewIterator(ctx, 0)
 	bold := color.New(color.Bold).SprintFunc()
 	for {
@@ -186,7 +186,7 @@ func (ui *termUI) receiveMessagesLoop(ctx context.Context) {
 	}
 }
 
-func (ui *termUI) inputLoop(ctx context.Context) error {
+func (ui *TermUI) inputLoop(ctx context.Context) error {
 	for {
 		line, err := ui.trm.ReadLine()
 		if errors.Is(err, io.EOF) {
@@ -323,7 +323,7 @@ Special commands:
 	}
 }
 
-func (ui *termUI) updatePrompt(thinking bool) {
+func (ui *TermUI) updatePrompt(thinking bool) {
 	var t string
 
 	if thinking {
@@ -335,7 +335,7 @@ func (ui *termUI) updatePrompt(thinking bool) {
 	ui.trm.SetPrompt(p)
 }
 
-func (ui *termUI) initializeTerminalUI(ctx context.Context) error {
+func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 	ui.mu.Lock()
 	defer ui.mu.Unlock()
 
@@ -405,21 +405,21 @@ func (ui *termUI) initializeTerminalUI(ctx context.Context) error {
 	return nil
 }
 
-func (ui *termUI) RestoreOldState() error {
+func (ui *TermUI) RestoreOldState() error {
 	ui.mu.Lock()
 	defer ui.mu.Unlock()
 	return term.Restore(int(ui.stdin.Fd()), ui.oldState)
 }
 
 // AppendChatMessage is for showing responses the user's request, conversational dialog etc
-func (ui *termUI) AppendChatMessage(msg chatMessage) {
+func (ui *TermUI) AppendChatMessage(msg chatMessage) {
 	ui.messageWaitGroup.Add(1)
 	ui.chatMsgCh <- msg
 }
 
 // AppendSystemMessage is for debug information, errors and such that are not part of the "conversation" per se,
 // but still need to be shown to the user.
-func (ui *termUI) AppendSystemMessage(fmtString string, args ...any) {
+func (ui *TermUI) AppendSystemMessage(fmtString string, args ...any) {
 	ui.messageWaitGroup.Add(1)
 	ui.termLogCh <- fmt.Sprintf(fmtString, args...)
 }
