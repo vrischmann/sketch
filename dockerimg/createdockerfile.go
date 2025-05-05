@@ -44,6 +44,8 @@ func dockerfileBaseHash() string {
 	return hex.EncodeToString(h.Sum(nil))[:32]
 }
 
+const tmpSketchDockerfile = "tmp-sketch-dockerfile"
+
 const dockerfileBase = `FROM golang:1.24-bookworm
 
 # Switch from dash to bash by default.
@@ -97,6 +99,7 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
 
 LABEL sketch_context="{{.InitFilesHash}}"
 COPY . /app
+RUN rm -f /app/` + tmpSketchDockerfile + `
 
 WORKDIR /app{{.SubDir}}
 RUN if [ -f go.mod ]; then go mod download; fi

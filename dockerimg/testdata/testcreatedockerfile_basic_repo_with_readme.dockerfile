@@ -7,8 +7,9 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME" && \
     git config --global http.postBuffer 524288000
 
-LABEL sketch_context="1f68d38855871143c58b80c7f052e42141dd82d9a1214074ee734f758f463b8a"
+LABEL sketch_context="3226456072fc35733ff1b5e0f1a4dfc06bceafcf8824dbbb80face06aa167285"
 COPY . /app
+RUN rm -f /app/tmp-sketch-dockerfile
 
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi
@@ -16,12 +17,8 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-# Install common development tools
-RUN go install github.com/rakyll/gotest@latest || true
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
-
-# If there's a requirements.txt file for Python deps, install them (continue on error)
-RUN if [ -f requirements.txt ]; then pip3 install -r requirements.txt || true; fi
+# No additional commands needed for this simple Go test project
+# The base Dockerfile already includes all necessary Go development tools
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

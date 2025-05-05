@@ -7,8 +7,9 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME" && \
     git config --global http.postBuffer 524288000
 
-LABEL sketch_context="26cda6870ba9562802f4a56d488b5f48d95d8ec7834ba62f043bbd50a2a18c1e"
+LABEL sketch_context="79b4c82f0c892e5f79900afb235c0ab50044626be5d6d43b774f6f5da9537800"
 COPY . /app
+RUN rm -f /app/tmp-sketch-dockerfile
 
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi
@@ -16,21 +17,15 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-# Install Python 3.11 and pip
+# Install Python 3.11 (if not already the default version) and set it up
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3.11 python3.11-dev python3.11-venv python3-pip || true
-
-# Set up Python alternatives to make 3.11 the default
-RUN if command -v update-alternatives &> /dev/null; then \
-      update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 || true; \
-    fi
-
-# Install DVC tool
-RUN pip3 install dvc || true
-
-# Clean up apt cache
-RUN apt-get clean && \
+    apt-get install -y --no-install-recommends python3.11 python3.11-venv python3-pip || true && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 || true && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install DVC tool as mentioned in README
+RUN pip3 install dvc || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

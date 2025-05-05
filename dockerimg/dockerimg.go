@@ -662,7 +662,7 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, antURL, antAPIKey
 		if err != nil {
 			return "", fmt.Errorf("create dockerfile: %w", err)
 		}
-		dockerfilePath = filepath.Join(cwd, "tmp-sketch-dockerfile")
+		dockerfilePath = filepath.Join(cwd, tmpSketchDockerfile)
 		if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0o666); err != nil {
 			return "", err
 		}

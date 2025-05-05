@@ -7,8 +7,9 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME" && \
     git config --global http.postBuffer 524288000
 
-LABEL sketch_context="0d20ac4f1aa15306cab8f2accccb1498af2c67137ca60d0b858981e4beeec3ff"
+LABEL sketch_context="32ece3b0a507af8cac1fec473edc43346e765c027651b7a02724dbf70e75c76c"
 COPY . /app
+RUN rm -f /app/tmp-sketch-dockerfile
 
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi
@@ -17,6 +18,9 @@ RUN if [ -f go.mod ]; then go mod download; fi
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
 RUN apt-get update && apt-get install -y --no-install-recommends graphviz || true
+
+# Python tooling setup - designed to continue even if there are failures
+RUN pip3 install --upgrade pip || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
