@@ -1,4 +1,4 @@
-package claudetool
+package codereview
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package claudetool
+package codereview
 
 import (
 	"bytes"
@@ -313,9 +313,7 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 // Each line has the format: '/path/to/file.go:448:22-26: unused parameter: path'
 func parseGoplsOutput(root string, output []byte) []GoplsIssue {
 	var issues []GoplsIssue
-	lines := strings.Split(string(output), "\n")
-
-	for _, line := range lines {
+	for line := range strings.Lines(string(output)) {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -381,8 +379,7 @@ func looksLikeGoplsIssues(output []byte) bool {
 
 	// Check if output has at least one line that looks like a gopls issue
 	// A gopls issue looks like: '/path/to/file.go:123:45-67: message'
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
+	for line := range strings.Lines(string(output)) {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

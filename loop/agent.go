@@ -20,6 +20,7 @@ import (
 	"sketch.dev/browser"
 	"sketch.dev/claudetool"
 	"sketch.dev/claudetool/bashkit"
+	"sketch.dev/claudetool/codereview"
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
 	"sketch.dev/llm/conversation"
@@ -292,7 +293,7 @@ type Agent struct {
 	originalBudget    conversation.Budget
 	title             string
 	branchName        string
-	codereview        *claudetool.CodeReviewer
+	codereview        *codereview.CodeReviewer
 	// State machine to track agent state
 	stateMachine *StateMachine
 	// Outside information
@@ -775,13 +776,13 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.initialCommit = commitHash
 
-		llmCodeReview := claudetool.NoLLMReview
+		llmCodeReview := codereview.NoLLMReview
 		if experiment.Enabled("llm_review") {
-			llmCodeReview = claudetool.DoLLMReview
+			llmCodeReview = codereview.DoLLMReview
 		}
-		codereview, err := claudetool.NewCodeReviewer(ctx, a.repoRoot, a.initialCommit, llmCodeReview)
+		codereview, err := codereview.NewCodeReviewer(ctx, a.repoRoot, a.initialCommit, llmCodeReview)
 		if err != nil {
-			return fmt.Errorf("Agent.Init: claudetool.NewCodeReviewer: %w", err)
+			return fmt.Errorf("Agent.Init: codereview.NewCodeReviewer: %w", err)
 		}
 		a.codereview = codereview
 

@@ -71,8 +71,8 @@ type keywordInput struct {
 //go:embed keyword_system_prompt.txt
 var keywordSystemPrompt string
 
-// findRepoRoot attempts to find the git repository root from the current directory
-func findRepoRoot(wd string) (string, error) {
+// FindRepoRoot attempts to find the git repository root from the current directory
+func FindRepoRoot(wd string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	cmd.Dir = wd
 	out, err := cmd.Output()
@@ -89,7 +89,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 		return "", err
 	}
 	wd := WorkingDir(ctx)
-	root, err := findRepoRoot(wd)
+	root, err := FindRepoRoot(wd)
 	if err == nil {
 		wd = root
 	}

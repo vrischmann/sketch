@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"sketch.dev/claudetool"
+	"sketch.dev/claudetool/codereview"
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
 )
@@ -16,7 +16,7 @@ import (
 // not as reliable as it could be. Historically, we've found that Claude ignores
 // the tool results here, so we don't tell the tool to say "hey, really check this"
 // at the moment, though we've tried.
-func makeDoneTool(codereview *claudetool.CodeReviewer, gitUsername, gitEmail string) *llm.Tool {
+func makeDoneTool(codereview *codereview.CodeReviewer, gitUsername, gitEmail string) *llm.Tool {
 	description := doneDescription
 	if experiment.Enabled("not_done") {
 		description = backtrackDoneDescription
