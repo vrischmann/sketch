@@ -119,11 +119,6 @@ export class SketchToolCalls extends LitElement {
 
   // toolUseKey return value should change, if the toolCall gets a response.
   toolUseKey(toolCall: ToolCall): string {
-    console.log(
-      "toolUseKey",
-      toolCall.tool_call_id,
-      toolCall.result_message?.idx,
-    );
     if (!toolCall.result_message) {
       return toolCall.tool_call_id;
     }
