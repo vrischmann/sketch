@@ -17,7 +17,7 @@ import (
 func makeDoneTool(codereview *claudetool.CodeReviewer, gitUsername, gitEmail string) *llm.Tool {
 	return &llm.Tool{
 		Name:        "done",
-		Description: `Use this tool when you have achieved the user's goal. The parameters form a checklist which you should evaluate.`,
+		Description: doneDescription,
 		InputSchema: json.RawMessage(doneChecklistJSONSchema(gitUsername, gitEmail)),
 		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
 			// Cannot be done with a messy git.
@@ -52,6 +52,7 @@ func doneChecklistJSONSchema(gitUsername, gitEmail string) string {
 
 // TODO: this is ugly, maybe JSON-encode a deeply nested map[string]any instead? also ugly.
 const (
+	doneDescription               = `Use this tool when you have achieved the user's goal. The parameters form a checklist which you should evaluate.`
 	doneChecklistJSONSchemaPrefix = `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Checklist",
