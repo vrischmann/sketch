@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"sketch.dev/experiment"
 	"sketch.dev/llm"
 	"sketch.dev/llm/gem"
 	"sketch.dev/llm/oai"
@@ -72,6 +73,15 @@ func run() error {
 	isContainerSupported := flagArgs.modelName == "claude" || flagArgs.modelName == "" || flagArgs.modelName == "gemini"
 	if !isContainerSupported && (!flagArgs.unsafe || flagArgs.skabandAddr != "") {
 		return fmt.Errorf("only -model=claude is supported in safe mode right now, use -unsafe -skaband-addr=''")
+	}
+
+	if err := flagArgs.experimentFlag.Process(); err != nil {
+		fmt.Fprintf(os.Stderr, "error parsing experimental flags: %v\n", err)
+		os.Exit(1)
+	}
+	if experiment.Enabled("list") {
+		experiment.Fprint(os.Stdout)
+		os.Exit(0)
 	}
 
 	// Add a global "session_id" to all logs using this context.
@@ -146,6 +156,7 @@ type CLIFlags struct {
 	initialCommit     string
 	gitUsername       string
 	gitEmail          string
+	experimentFlag    experiment.Flag
 	sessionID         string
 	record            bool
 	noCleanup         bool
@@ -192,6 +203,7 @@ func parseCLIFlags() CLIFlags {
 	flag.StringVar(&flags.outsideOS, "outside-os", "", "(internal) OS on the outside system")
 	flag.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
 	flag.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
+	flag.Var(&flags.experimentFlag, "x", "enable experimental features (comma-separated list or repeat flag; use 'list' to show all)")
 
 	flag.Parse()
 	return flags
