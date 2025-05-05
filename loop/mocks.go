@@ -218,3 +218,22 @@ func (m *MockConvo) AssertExpectations(t *testing.T) {
 		}
 	}
 }
+
+// CancelToolUse cancels a tool use
+func (m *MockConvo) CancelToolUse(toolUseID string, cause error) error {
+	m.recordCall("CancelToolUse", toolUseID, cause)
+	exp, ok := m.findMatchingExpectation("CancelToolUse", toolUseID, cause)
+	if !ok {
+		m.t.Errorf("unexpected call to CancelToolUse: %s, %v", toolUseID, cause)
+		return nil
+	}
+
+	var retErr error
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err, ok := exp.result[0].(error); ok {
+		retErr = err
+	}
+
+	return retErr
+}

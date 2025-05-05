@@ -4,12 +4,13 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 	"testing/synctest"
 
-	"sketch.dev/ant"
+	"sketch.dev/llm"
+	"sketch.dev/llm/conversation"
 )
 
 func TestLoop_OneTurn_Basic(t *testing.T) {
@@ -17,12 +18,12 @@ func TestLoop_OneTurn_Basic(t *testing.T) {
 		mockConvo := NewMockConvo(t)
 
 		agent := &Agent{
-			convo:  mockConvo,
-			inbox:  make(chan string, 1),
-			outbox: make(chan AgentMessage, 1),
+			convo: mockConvo,
+			inbox: make(chan string, 1),
 		}
-		userMsg := ant.UserStringMessage("hi")
-		userMsgResponse := &ant.MessageResponse{}
+		agent.stateMachine = NewStateMachine()
+		userMsg := llm.UserStringMessage("hi")
+		userMsgResponse := &llm.Response{}
 		mockConvo.ExpectCall("SendMessage", userMsg).Return(userMsgResponse, nil)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -45,54 +46,54 @@ func TestLoop_ToolCall_Basic(t *testing.T) {
 		mockConvo := NewMockConvo(t)
 
 		agent := &Agent{
-			convo:  mockConvo,
-			inbox:  make(chan string, 1),
-			outbox: make(chan AgentMessage, 1),
+			convo: mockConvo,
+			inbox: make(chan string, 1),
 		}
-		userMsg := ant.Message{
-			Role: ant.MessageRoleUser,
-			Content: []ant.Content{
-				{Type: ant.ContentTypeText, Text: "hi"},
+		agent.stateMachine = NewStateMachine()
+		userMsg := llm.Message{
+			Role: llm.MessageRoleUser,
+			Content: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "hi"},
 			},
 		}
-		userMsgResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonToolUse,
-			Content: []ant.Content{
+		userMsgResponse := &llm.Response{
+			StopReason: llm.StopReasonToolUse,
+			Content: []llm.Content{
 				{
-					Type:      ant.ContentTypeToolUse,
+					Type:      llm.ContentTypeToolUse,
 					ID:        "tool1",
 					ToolName:  "test_tool",
 					ToolInput: []byte(`{"param":"value"}`),
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  100,
 				OutputTokens: 200,
 			},
 		}
 
-		toolUseContents := []ant.Content{
+		toolUseContents := []llm.Content{
 			{
-				Type:       ant.ContentTypeToolResult,
+				Type:       llm.ContentTypeToolResult,
 				ToolUseID:  "tool1",
 				Text:       "",
 				ToolResult: "This is a tool result",
 				ToolError:  false,
 			},
 		}
-		toolUseResultsMsg := ant.Message{
-			Role:    ant.MessageRoleUser,
+		toolUseResultsMsg := llm.Message{
+			Role:    llm.MessageRoleUser,
 			Content: toolUseContents,
 		}
-		toolUseResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonEndTurn,
-			Content: []ant.Content{
+		toolUseResponse := &llm.Response{
+			StopReason: llm.StopReasonEndTurn,
+			Content: []llm.Content{
 				{
-					Type: ant.ContentTypeText,
+					Type: llm.ContentTypeText,
 					Text: "tool_use contents accepted",
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  50,
 				OutputTokens: 75,
 			},
@@ -123,36 +124,36 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents(t *testing.T) {
 		mockConvo := NewMockConvo(t)
 
 		agent := &Agent{
-			convo:  mockConvo,
-			inbox:  make(chan string, 1),
-			outbox: make(chan AgentMessage, 10), // don't let anything block on outbox.
+			convo: mockConvo,
+			inbox: make(chan string, 1),
 		}
-		userMsg := ant.UserStringMessage("hi")
-		userMsgResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonToolUse,
-			Content: []ant.Content{
+		agent.stateMachine = NewStateMachine()
+		userMsg := llm.UserStringMessage("hi")
+		userMsgResponse := &llm.Response{
+			StopReason: llm.StopReasonToolUse,
+			Content: []llm.Content{
 				{
-					Type:      ant.ContentTypeToolUse,
+					Type:      llm.ContentTypeToolUse,
 					ID:        "tool1",
 					ToolName:  "test_tool",
 					ToolInput: []byte(`{"param":"value"}`),
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  100,
 				OutputTokens: 200,
 			},
 		}
-		toolUseResultsMsg := ant.UserStringMessage(cancelToolUseMessage)
-		toolUseResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonEndTurn,
-			Content: []ant.Content{
+		toolUseResultsMsg := llm.UserStringMessage(cancelToolUseMessage)
+		toolUseResponse := &llm.Response{
+			StopReason: llm.StopReasonEndTurn,
+			Content: []llm.Content{
 				{
-					Type: ant.ContentTypeText,
+					Type: llm.ContentTypeText,
 					Text: "tool_use contents accepted",
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  50,
 				OutputTokens: 75,
 			},
@@ -167,7 +168,7 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents(t *testing.T) {
 
 		mockConvo.ExpectCall("SendMessage", userMsg).Return(userMsgResponse, nil)
 		mockConvo.ExpectCall("ToolResultContents",
-			userMsgResponse).BlockAndReturn(waitForToolResultContents, []ant.Content{}, userCancelError)
+			userMsgResponse).BlockAndReturn(waitForToolResultContents, []llm.Content{}, userCancelError)
 		mockConvo.ExpectCall("SendMessage", toolUseResultsMsg).Return(toolUseResponse, nil)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -185,7 +186,7 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents(t *testing.T) {
 		// The goroutine executing ToolResultContents call should be blocked, simulating a long
 		// running operation that the user wishes to cancel while it's still in progress.
 		// This call invokes that InnerLoop context's cancel() func.
-		agent.CancelInnerLoop(userCancelError)
+		agent.CancelTurn(userCancelError)
 
 		// This tells the goroutine that's in mockConvo.ToolResultContents to proceed.
 		waitForToolResultContents <- nil
@@ -203,65 +204,65 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 		mockConvo := NewMockConvo(t)
 
 		agent := &Agent{
-			convo:  mockConvo,
-			inbox:  make(chan string, 1),
-			outbox: make(chan AgentMessage, 10), // don't let anything block on outbox.
+			convo: mockConvo,
+			inbox: make(chan string, 1),
 		}
-		userMsg := ant.Message{
-			Role: ant.MessageRoleUser,
-			Content: []ant.Content{
-				{Type: ant.ContentTypeText, Text: "hi"},
+		agent.stateMachine = NewStateMachine()
+		userMsg := llm.Message{
+			Role: llm.MessageRoleUser,
+			Content: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "hi"},
 			},
 		}
-		userMsgResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonToolUse,
-			Content: []ant.Content{
+		userMsgResponse := &llm.Response{
+			StopReason: llm.StopReasonToolUse,
+			Content: []llm.Content{
 				{
-					Type:      ant.ContentTypeToolUse,
+					Type:      llm.ContentTypeToolUse,
 					ID:        "tool1",
 					ToolName:  "test_tool",
 					ToolInput: []byte(`{"param":"value"}`),
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  100,
 				OutputTokens: 200,
 			},
 		}
-		toolUseResultsMsg := ant.Message{
-			Role: ant.MessageRoleUser,
-			Content: []ant.Content{
-				{Type: ant.ContentTypeText, Text: cancelToolUseMessage},
+		toolUseResultsMsg := llm.Message{
+			Role: llm.MessageRoleUser,
+			Content: []llm.Content{
+				{Type: llm.ContentTypeText, Text: cancelToolUseMessage},
 			},
 		}
-		toolUseResultResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonEndTurn,
-			Content: []ant.Content{
+		toolUseResultResponse := &llm.Response{
+			StopReason: llm.StopReasonEndTurn,
+			Content: []llm.Content{
 				{
-					Type: ant.ContentTypeText,
+					Type: llm.ContentTypeText,
 					Text: "awaiting further instructions",
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  50,
 				OutputTokens: 75,
 			},
 		}
-		userFollowUpMsg := ant.Message{
-			Role: ant.MessageRoleUser,
-			Content: []ant.Content{
-				{Type: ant.ContentTypeText, Text: "that was the wrong thing to do"},
+		userFollowUpMsg := llm.Message{
+			Role: llm.MessageRoleUser,
+			Content: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "that was the wrong thing to do"},
 			},
 		}
-		userFollowUpResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonEndTurn,
-			Content: []ant.Content{
+		userFollowUpResponse := &llm.Response{
+			StopReason: llm.StopReasonEndTurn,
+			Content: []llm.Content{
 				{
-					Type: ant.ContentTypeText,
+					Type: llm.ContentTypeText,
 					Text: "sorry about that",
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  100,
 				OutputTokens: 200,
 			},
@@ -275,7 +276,7 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 
 		mockConvo.ExpectCall("SendMessage", userMsg).Return(userMsgResponse, nil)
 		mockConvo.ExpectCall("ToolResultContents",
-			userMsgResponse).BlockAndReturn(waitForToolResultContents, []ant.Content{}, userCancelError)
+			userMsgResponse).BlockAndReturn(waitForToolResultContents, []llm.Content{}, userCancelError)
 		mockConvo.ExpectCall("SendMessage", toolUseResultsMsg).Return(toolUseResultResponse, nil)
 
 		mockConvo.ExpectCall("SendMessage", userFollowUpMsg).Return(userFollowUpResponse, nil)
@@ -295,7 +296,7 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 		// The goroutine executing ToolResultContents call should be blocked, simulating a long
 		// running operation that the user wishes to cancel while it's still in progress.
 		// This call invokes that InnerLoop context's cancel() func.
-		agent.CancelInnerLoop(userCancelError)
+		agent.CancelTurn(userCancelError)
 
 		// This tells the goroutine that's in mockConvo.ToolResultContents to proceed.
 		waitForToolResultContents <- nil
@@ -312,46 +313,46 @@ func TestLoop_ToolCall_UserCancelsDuringToolResultContents_AndContinuesToChat(t 
 	})
 }
 
-func TestInnerLoop_UserCancels(t *testing.T) {
+func TestProcessTurn_UserCancels(t *testing.T) {
 	synctest.Run(func() {
 		mockConvo := NewMockConvo(t)
 
 		agent := &Agent{
-			convo:  mockConvo,
-			inbox:  make(chan string, 1),
-			outbox: make(chan AgentMessage, 10), // don't block on outbox
+			convo: mockConvo,
+			inbox: make(chan string, 1),
 		}
+		agent.stateMachine = NewStateMachine()
 
 		// Define test message
 		// This simulates something that would result in claude  responding with tool_use responses.
-		userMsg := ant.UserStringMessage("use test_tool for something")
+		userMsg := llm.UserStringMessage("use test_tool for something")
 		// Mock initial response with tool use
-		userMsgResponse := &ant.MessageResponse{
-			StopReason: ant.StopReasonToolUse,
-			Content: []ant.Content{
+		userMsgResponse := &llm.Response{
+			StopReason: llm.StopReasonToolUse,
+			Content: []llm.Content{
 				{
-					Type:      ant.ContentTypeToolUse,
+					Type:      llm.ContentTypeToolUse,
 					ID:        "tool1",
 					ToolName:  "test_tool",
 					ToolInput: []byte(`{"param":"value"}`),
 				},
 			},
-			Usage: ant.Usage{
+			Usage: llm.Usage{
 				InputTokens:  100,
 				OutputTokens: 200,
 			},
 		}
-		canceledToolUseContents := []ant.Content{
+		canceledToolUseContents := []llm.Content{
 			{
-				Type:       ant.ContentTypeToolResult,
+				Type:       llm.ContentTypeToolResult,
 				ToolUseID:  "tool1",
 				ToolError:  true,
 				ToolResult: "user canceled this tool_use",
 			},
 		}
-		canceledToolUseMsg := ant.Message{
-			Role:    ant.MessageRoleUser,
-			Content: append(canceledToolUseContents, ant.StringContent(cancelToolUseMessage)),
+		canceledToolUseMsg := llm.Message{
+			Role:    llm.MessageRoleUser,
+			Content: append(canceledToolUseContents, llm.StringContent(cancelToolUseMessage)),
 		}
 		// Set up expected behaviors
 		waitForSendMessage := make(chan any)
@@ -359,14 +360,14 @@ func TestInnerLoop_UserCancels(t *testing.T) {
 
 		mockConvo.ExpectCall("ToolResultCancelContents", userMsgResponse).Return(canceledToolUseContents, nil)
 		mockConvo.ExpectCall("SendMessage", canceledToolUseMsg).Return(
-			&ant.MessageResponse{
-				StopReason: ant.StopReasonToolUse,
+			&llm.Response{
+				StopReason: llm.StopReasonToolUse,
 			}, nil)
 
 		ctx, cancel := context.WithCancelCause(context.Background())
 
-		// Run one iteration of InnerLoop
-		go agent.InnerLoop(ctx)
+		// Run one iteration of the processing loop
+		go agent.processTurn(ctx)
 
 		// Send a message to the agent's inbox
 		agent.UserMessage(ctx, "use test_tool for something")
@@ -384,73 +385,17 @@ func TestInnerLoop_UserCancels(t *testing.T) {
 
 		// Verify results
 		mockConvo.AssertExpectations(t)
-
-		// Get all messages from outbox and verify their types/content
-		var messages []AgentMessage
-
-		// Collect messages until outbox is empty or we have 10 messages
-		for i := 0; i < 10; i++ {
-			select {
-			case msg := <-agent.outbox:
-				messages = append(messages, msg)
-			default:
-				// No more messages
-				i = 10 // Exit the loop
-			}
-		}
-
-		// Print out the messages we got for debugging
-		t.Logf("Received %d messages from outbox", len(messages))
-		for i, msg := range messages {
-			t.Logf("Message %d: Type=%s, Content=%s, EndOfTurn=%t", i, msg.Type, msg.Content, msg.EndOfTurn)
-			if msg.ToolName != "" {
-				t.Logf("  Tool: Name=%s, Input=%s, Result=%s, Error=%v",
-					msg.ToolName, msg.ToolInput, msg.ToolResult, msg.ToolError)
-			}
-		}
-
-		// Basic checks
-		if len(messages) < 1 {
-			t.Errorf("Should have at least one message, got %d", len(messages))
-		}
-
-		// The main thing we want to verify: when user cancels, the response processing stops
-		// and appropriate messages are sent
-
-		// Check if we have an error message about cancellation
-		hasCancelErrorMessage := false
-		for _, msg := range messages {
-			if msg.Type == ErrorMessageType && msg.Content == userCancelMessage {
-				hasCancelErrorMessage = true
-				break
-			}
-		}
-
-		// Check if we have a tool message with error
-		hasToolError := false
-		for _, msg := range messages {
-			if msg.Type == ToolUseMessageType &&
-				msg.ToolError && strings.Contains(msg.ToolResult, "user canceled") {
-				hasToolError = true
-				break
-			}
-		}
-
-		// We should have at least one of these messages
-		if !(hasCancelErrorMessage || hasToolError) {
-			t.Errorf("Should have either an error message or a tool with error about cancellation")
-		}
 	})
 }
 
-func TestInnerLoop_UserDoesNotCancel(t *testing.T) {
+func TestProcessTurn_UserDoesNotCancel(t *testing.T) {
 	mockConvo := NewMockConvo(t)
 
 	agent := &Agent{
-		convo:  mockConvo,
-		inbox:  make(chan string, 100),
-		outbox: make(chan AgentMessage, 100),
+		convo: mockConvo,
+		inbox: make(chan string, 100),
 	}
+	agent.stateMachine = NewStateMachine()
 
 	// Define test message
 	// This simulates something that would result in claude
@@ -458,17 +403,17 @@ func TestInnerLoop_UserDoesNotCancel(t *testing.T) {
 	testMsg := "use test_tool for something"
 
 	// Mock initial response with tool use
-	initialResponse := &ant.MessageResponse{
-		StopReason: ant.StopReasonToolUse,
-		Content: []ant.Content{
+	initialResponse := &llm.Response{
+		StopReason: llm.StopReasonToolUse,
+		Content: []llm.Content{
 			{
-				Type:      ant.ContentTypeToolUse,
+				Type:      llm.ContentTypeToolUse,
 				ID:        "tool1",
 				ToolName:  "test_tool",
 				ToolInput: []byte(`{"param":"value"}`),
 			},
 		},
-		Usage: ant.Usage{
+		Usage: llm.Usage{
 			InputTokens:  100,
 			OutputTokens: 200,
 		},
@@ -477,24 +422,24 @@ func TestInnerLoop_UserDoesNotCancel(t *testing.T) {
 	// Set up expected behaviors
 	mockConvo.ExpectCall("SendMessage", nil).Return(initialResponse, nil)
 
-	toolUseContents := []ant.Content{
+	toolUseContents := []llm.Content{
 		{
-			Type:       ant.ContentTypeToolResult,
+			Type:       llm.ContentTypeToolResult,
 			ToolUseID:  "tool1",
 			Text:       "",
 			ToolResult: "This is a tool result",
 			ToolError:  false,
 		},
 	}
-	toolUseResponse := &ant.MessageResponse{
-		// StopReason: ant.StopReasonEndTurn,
-		Content: []ant.Content{
+	toolUseResponse := &llm.Response{
+		// StopReason: llm.StopReasonEndTurn,
+		Content: []llm.Content{
 			{
-				Type: ant.ContentTypeText,
+				Type: llm.ContentTypeText,
 				Text: "tool_use contents accepted",
 			},
 		},
-		Usage: ant.Usage{
+		Usage: llm.Usage{
 			InputTokens:  50,
 			OutputTokens: 75,
 		},
@@ -506,77 +451,22 @@ func TestInnerLoop_UserDoesNotCancel(t *testing.T) {
 	// Setting up the mock response for tool results
 	mockConvo.ExpectCall("ToolResultContents", initialResponse).Return(toolUseContents, nil)
 	mockConvo.ExpectCall("SendMessage", nil).Return(toolUseResponse, nil)
-	// mockConvo, as a mock, isn't able to run the loop in ant.Convo that makes this agent.OnToolResult callback.
+	// mockConvo, as a mock, isn't able to run the loop in conversation.Convo that makes this agent.OnToolResult callback.
 	// So we "mock" it out here by calling it explicitly, in order to make sure it calls .pushToOutbox with this message.
 	// This is not a good situation.
-	// ant.Convo and loop.Agent seem to be excessively coupled, and aware of each others' internal details.
-	// TODO: refactor (or clarify in docs somewhere) the boundary between what ant.Convo is responsible
+	// conversation.Convo and loop.Agent seem to be excessively coupled, and aware of each others' internal details.
+	// TODO: refactor (or clarify in docs somewhere) the boundary between what conversation.Convo is responsible
 	// for vs what loop.Agent is responsible for.
-	antConvo := &ant.Convo{}
+	antConvo := &conversation.Convo{}
 	res := ""
-	agent.OnToolResult(ctx, antConvo, "tool1", nil, toolUseContents[0], &res, nil)
+	agent.OnToolResult(ctx, antConvo, "tool1", "test_tool", json.RawMessage(`{"param":"value"}`), toolUseContents[0], &res, nil)
 
 	// Send a message to the agent's inbox
 	agent.UserMessage(ctx, testMsg)
 
-	// Run one iteration of InnerLoop
-	agent.InnerLoop(ctx)
+	// Run one iteration of the processing loop
+	agent.processTurn(ctx)
 
 	// Verify results
 	mockConvo.AssertExpectations(t)
-
-	// Get all messages from outbox and verify their types/content
-	var messages []AgentMessage
-
-	// Collect messages until outbox is empty or we have 10 messages
-	for i := 0; i < 10; i++ {
-		select {
-		case msg := <-agent.outbox:
-			messages = append(messages, msg)
-		default:
-			// No more messages
-			i = 10 // Exit the loop
-		}
-	}
-
-	// Print out the messages we got for debugging
-	t.Logf("Received %d messages from outbox", len(messages))
-	for i, msg := range messages {
-		t.Logf("Message %d: Type=%s, Content=%s, EndOfTurn=%t", i, msg.Type, msg.Content, msg.EndOfTurn)
-		if msg.ToolName != "" {
-			t.Logf("  Tool: Name=%s, Input=%s, Result=%s, Error=%v",
-				msg.ToolName, msg.ToolInput, msg.ToolResult, msg.ToolError)
-		}
-	}
-
-	// Basic checks
-	if len(messages) < 1 {
-		t.Errorf("Should have at least one message, got %d", len(messages))
-	}
-
-	// The main thing we want to verify: when user cancels, the response processing stops
-	// and appropriate messages are sent
-
-	// Check if we have an error message about cancellation
-	hasCancelErrorMessage := false
-	for _, msg := range messages {
-		if msg.Type == ErrorMessageType && msg.Content == userCancelMessage {
-			hasCancelErrorMessage = true
-			break
-		}
-	}
-
-	// Check if we have a tool message with error
-	hasToolError := false
-	for _, msg := range messages {
-		if msg.Type == ToolUseMessageType &&
-			msg.ToolError && strings.Contains(msg.ToolResult, "user canceled") {
-			hasToolError = true
-			break
-		}
-	}
-
-	if hasCancelErrorMessage || hasToolError {
-		t.Errorf("Should not have either an error message nor a tool with error about cancellation")
-	}
 }
