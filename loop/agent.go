@@ -491,10 +491,11 @@ func (a *Agent) OpenBrowser(url string) {
 	}
 	// We're in Docker, need to send a request to the Git server
 	// to signal that the outer process should open the browser.
+	// We don't get to specify a URL, because we are untrusted.
 	httpc := &http.Client{Timeout: 5 * time.Second}
-	resp, err := httpc.Post(a.outsideHTTP+"/browser", "text/plain", strings.NewReader(url))
+	resp, err := httpc.Post(a.outsideHTTP+"/browser", "text/plain", nil)
 	if err != nil {
-		slog.Debug("browser launch request connection failed", "err", err, "url", url)
+		slog.Debug("browser launch request connection failed", "err", err)
 		return
 	}
 	defer resp.Body.Close()

@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"sketch.dev/browser"
@@ -311,13 +312,14 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		}
 
 		// We open the browser after the init config because the above waits for the web server to be serving.
-		if config.OpenBrowser {
-			if config.SkabandAddr != "" {
-				browser.Open(fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID))
-			} else {
-				browser.Open("http://" + localAddr)
-			}
+		ps1URL := "http://" + localAddr
+		if config.SkabandAddr != "" {
+			ps1URL = fmt.Sprintf("%s/s/%s", config.SkabandAddr, config.SessionID)
 		}
+		if config.OpenBrowser {
+			browser.Open(ps1URL)
+		}
+		gitSrv.ps1URL.Store(&ps1URL)
 	}()
 
 	go func() {
@@ -372,6 +374,7 @@ type gitServer struct {
 	gitPort string
 	srv     *http.Server
 	pass    string
+	ps1URL  atomic.Pointer[string]
 }
 
 func (gs *gitServer) shutdown(ctx context.Context) {
@@ -396,10 +399,11 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 	}
 	ret.gitLn = gitLn
 
-	browserC := make(chan string, 1) // channel of URLs to open in browser
+	browserC := make(chan bool, 1) // channel of browser open requests
+
 	go func() {
-		for url := range browserC {
-			browser.Open(url)
+		for range browserC {
+			browser.Open(*ret.ps1URL.Load())
 		}
 	}()
 
