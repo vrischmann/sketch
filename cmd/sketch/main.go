@@ -233,7 +233,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	if err != nil {
 		return err
 	}
-	pubKey, antURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+	pubKey, modelURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
 	if err != nil {
 		return err
 	}
@@ -249,8 +249,9 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		SessionID:         flags.sessionID,
 		LocalAddr:         flags.addr,
 		SkabandAddr:       flags.skabandAddr,
-		AntURL:            antURL,
-		AntAPIKey:         apiKey,
+		Model:             flags.modelName,
+		ModelURL:          modelURL,
+		ModelAPIKey:       apiKey,
 		Path:              cwd,
 		GitUsername:       flags.gitUsername,
 		GitEmail:          flags.gitEmail,

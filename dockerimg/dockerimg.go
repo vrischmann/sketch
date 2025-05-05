@@ -39,11 +39,14 @@ type ContainerConfig struct {
 	// SkabandAddr is the address of the skaband service if available
 	SkabandAddr string
 
-	// AntURL is the URL of the LLM service.
-	AntURL string
+	// Model is the name of the LLM model to use.
+	Model string
 
-	// AntAPIKey is the API key for LLM service.
-	AntAPIKey string
+	// ModelURL is the URL of the LLM service.
+	ModelURL string
+
+	// ModelAPIKey is the API key for LLM service.
+	ModelAPIKey string
 
 	// Path is the local filesystem path to use
 	Path string
@@ -124,7 +127,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		return err
 	}
 
-	imgName, err := findOrBuildDockerImage(ctx, config.Path, gitRoot, config.AntURL, config.AntAPIKey, config.ForceRebuild, config.Verbose)
+	imgName, err := findOrBuildDockerImage(ctx, config.Path, gitRoot, config.Model, config.ModelURL, config.ModelAPIKey, config.ForceRebuild, config.Verbose)
 	if err != nil {
 		return err
 	}
@@ -427,7 +430,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-i",
 		"--name", cntrName,
 		"-p", hostPort + ":80", // forward container port 80 to a host port
-		"-e", "SKETCH_ANTHROPIC_API_KEY=" + config.AntAPIKey,
+		"-e", "SKETCH_ANTHROPIC_API_KEY=" + config.ModelAPIKey,
 	}
 	if !config.OneShot {
 		cmdArgs = append(cmdArgs, "-t")
@@ -436,8 +439,8 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	for _, envVar := range getEnvForwardingFromGitConfig(ctx) {
 		cmdArgs = append(cmdArgs, "-e", envVar)
 	}
-	if config.AntURL != "" {
-		cmdArgs = append(cmdArgs, "-e", "SKETCH_ANT_URL="+config.AntURL)
+	if config.ModelURL != "" {
+		cmdArgs = append(cmdArgs, "-e", "SKETCH_ANT_URL="+config.ModelURL)
 	}
 	if config.SketchPubKey != "" {
 		cmdArgs = append(cmdArgs, "-e", "SKETCH_PUB_KEY="+config.SketchPubKey)
@@ -466,6 +469,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-outside-working-dir="+config.OutsideWorkingDir,
 		"-open=false",
 	)
+	if config.Model != "" {
+		cmdArgs = append(cmdArgs, "-model="+config.Model)
+	}
 	if config.SkabandAddr != "" {
 		cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)
 	}
@@ -613,7 +619,7 @@ func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gi
 	return nil
 }
 
-func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, antURL, antAPIKey string, forceRebuild, verbose bool) (imgName string, err error) {
+func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, modelAPIKey string, forceRebuild, verbose bool) (imgName string, err error) {
 	h := sha256.Sum256([]byte(gitRoot))
 	imgName = "sketch-" + hex.EncodeToString(h[:6])
 
@@ -666,10 +672,19 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, antURL, antAPIKey
 			return imgName, nil
 		}
 
+		if model == "gemini" {
+			if strings.HasSuffix(modelURL, "/gemmsgs") {
+				// Horrible hack! Switch back to anthropic for container building.
+				modelURL = strings.Replace(modelURL, "/gemmsgs", "/antmsgs", 1)
+			} else {
+				return "", fmt.Errorf("building docker image with gemini model is not supported yet; start with -model=anthropic first then use gemini")
+			}
+		}
+
 		start := time.Now()
 		srv := &ant.Service{
-			URL:    antURL,
-			APIKey: antAPIKey,
+			URL:    modelURL,
+			APIKey: modelAPIKey,
 			HTTPC:  http.DefaultClient,
 		}
 		dockerfile, err := createDockerfile(ctx, srv, initFiles, subPathWorkingDir)
