@@ -21,3 +21,17 @@ test data by running update_tests.sh in the relevant directory.
 
 Something like "document.querySelectorAll('sketch-app-shell')[0].dataManager.messages.map(x => x.idx)"
 in the browser JS console works to pull out the custom components implementing the web ui.
+
+## Recursively running Sketch
+
+If you are editing Sketch from within Sketch, you can use the following to give
+Sketch a place to store its skaband client key across sessions, allowing the
+agent to iterate on itself.
+
+```
+# Outside
+mkdir -p ~/.inside-cache/webui
+go run ./cmd/sketch -docker-args "-v $HOME/.inside-cache:/root/.cache/sketch"
+# Inside
+go run ./cmd/sketch -unsafe
+```
