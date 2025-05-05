@@ -78,7 +78,7 @@ export class SketchToolCard extends LitElement {
     }
 
     .tool-error {
-      color: #d9534f;
+      color: #6c757d;
       font-size: 14px;
     }
 
@@ -193,7 +193,7 @@ export class SketchToolCard extends LitElement {
 
     .tool-error-message {
       font-style: italic;
-      color: #aa0909;
+      color: #6c757d;
     }
 
     .codereview-OK {
@@ -255,7 +255,7 @@ export class SketchToolCard extends LitElement {
       >`;
     } else if (this.toolCall?.result_message.tool_error) {
       // Error status
-      statusIcon = html`<span class="tool-call-status tool-error">⚠️</span>`;
+      statusIcon = html`<span class="tool-call-status tool-error">🔔</span>`;
     } else {
       // Success status
       statusIcon = html`<span class="tool-call-status tool-success">✓</span>`;
@@ -460,7 +460,7 @@ export class SketchToolCardCodeReview extends LitElement {
   getStatusIcon(resultText: string): string {
     if (!resultText) return "";
     if (resultText === "OK") return "✔️";
-    if (resultText.includes("# Errors")) return "⛔";
+    if (resultText.includes("# Errors")) return "⚠️";
     if (resultText.includes("# Info")) return "ℹ️";
     if (resultText.includes("uncommitted changes in repo")) return "🧹";
     if (resultText.includes("no new commits have been added")) return "🐣";
