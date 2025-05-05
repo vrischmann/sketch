@@ -375,6 +375,7 @@ func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 
 	// This is the only place where we should call fe.trm.Write:
 	go func() {
+		var lastMsg *chatMessage
 		for {
 			select {
 			case <-ctx.Done():
@@ -382,19 +383,25 @@ func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 			case msg := <-ui.chatMsgCh:
 				func() {
 					defer ui.messageWaitGroup.Done()
+					// Update prompt before writing, because otherwise it doesn't redraw the prompt.
+					ui.updatePrompt(msg.thinking)
+					lastMsg = &msg
 					// Sometimes claude doesn't say anything when it runs tools.
 					// No need to output anything in that case.
 					if strings.TrimSpace(msg.content) == "" {
 						return
 					}
 					s := fmt.Sprintf("%s %s\n", msg.sender, msg.content)
-					// Update prompt before writing, because otherwise it doesn't redraw the prompt.
-					ui.updatePrompt(msg.thinking)
 					ui.trm.Write([]byte(s))
 				}()
 			case logLine := <-ui.termLogCh:
 				func() {
 					defer ui.messageWaitGroup.Done()
+					if lastMsg != nil {
+						ui.updatePrompt(lastMsg.thinking)
+					} else {
+						ui.updatePrompt(false)
+					}
 					b := []byte(logLine + "\n")
 					ui.trm.Write(b)
 				}()
