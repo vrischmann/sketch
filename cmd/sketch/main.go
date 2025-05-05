@@ -154,6 +154,7 @@ type CLIFlags struct {
 	outsideOS         string
 	outsideWorkingDir string
 	sketchBinaryLinux string
+	dockerArgs        string
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -178,6 +179,7 @@ func parseCLIFlags() CLIFlags {
 	flag.IntVar(&flags.sshPort, "ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	flag.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
 	flag.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
+	flag.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
 
 	// Flags geared towards sketch developers or sketch internals:
 	flag.StringVar(&flags.gitUsername, "git-username", "", "(internal) username for git commits")
@@ -250,6 +252,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		Prompt:            flags.prompt,
 		InitialCommit:     flags.initialCommit,
 		Verbose:           flags.verbose,
+		DockerArgs:        flags.dockerArgs,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {

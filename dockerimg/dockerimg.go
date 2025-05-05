@@ -91,6 +91,9 @@ type ContainerConfig struct {
 
 	// Verbose enables verbose output
 	Verbose bool
+
+	// DockerArgs are additional arguments to pass to the docker create command
+	DockerArgs string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -472,6 +475,17 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.OneShot {
 		cmdArgs = append(cmdArgs, "-one-shot")
 	}
+
+	// Add additional docker arguments if provided
+	if config.DockerArgs != "" {
+		// Parse space-separated docker arguments with support for quotes and escaping
+		args := parseDockerArgs(config.DockerArgs)
+		// Insert arguments after "create" but before other arguments
+		for i := len(args) - 1; i >= 0; i-- {
+			cmdArgs = append(cmdArgs[:1], append([]string{args[i]}, cmdArgs[1:]...)...)
+		}
+	}
+
 	if out, err := combinedOutput(ctx, "docker", cmdArgs...); err != nil {
 		return fmt.Errorf("docker create: %s, %w", out, err)
 	}
@@ -799,4 +813,70 @@ func getEnvForwardingFromGitConfig(ctx context.Context) []string {
 		envVars = append(envVars, envVar+"="+os.Getenv(envVar))
 	}
 	return envVars
+}
+
+// parseDockerArgs parses a string containing space-separated Docker arguments into an array of strings.
+// It handles quoted arguments and escaped characters.
+//
+// Examples:
+//
+//	--memory=2g --cpus=2                 -> ["--memory=2g", "--cpus=2"]
+//	--label="my label" --env=FOO=bar     -> ["--label=my label", "--env=FOO=bar"]
+//	--env="KEY=\"quoted value\""         -> ["--env=KEY=\"quoted value\""]
+func parseDockerArgs(args string) []string {
+	if args = strings.TrimSpace(args); args == "" {
+		return []string{}
+	}
+
+	var result []string
+	var current strings.Builder
+	inQuotes := false
+	escapeNext := false
+	quoteChar := rune(0)
+
+	for _, char := range args {
+		if escapeNext {
+			current.WriteRune(char)
+			escapeNext = false
+			continue
+		}
+
+		if char == '\\' {
+			escapeNext = true
+			continue
+		}
+
+		if char == '"' || char == '\'' {
+			if !inQuotes {
+				inQuotes = true
+				quoteChar = char
+				continue
+			} else if char == quoteChar {
+				inQuotes = false
+				quoteChar = rune(0)
+				continue
+			}
+			// Non-matching quote character inside quotes
+			current.WriteRune(char)
+			continue
+		}
+
+		// Space outside of quotes is an argument separator
+		if char == ' ' && !inQuotes {
+			if current.Len() > 0 {
+				result = append(result, current.String())
+				current.Reset()
+			}
+			continue
+		}
+
+		current.WriteRune(char)
+	}
+
+	// Add the last argument if there is one
+	if current.Len() > 0 {
+		result = append(result, current.String())
+	}
+
+	return result
 }
