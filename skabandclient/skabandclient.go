@@ -186,6 +186,9 @@ func LoadOrCreatePrivateKey(path string) (ed25519.PrivateKey, error) {
 			return nil, err
 		}
 		b, err := encodePrivateKey(privKey)
+		if err != nil {
+			return nil, err
+		}
 		if err := os.WriteFile(path, b, 0o600); err != nil {
 			return nil, err
 		}
@@ -200,7 +203,7 @@ func LoadOrCreatePrivateKey(path string) (ed25519.PrivateKey, error) {
 	return key, nil
 }
 
-func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID string) (pubKey, apiURL, apiKey string, err error) {
+func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID, model string) (pubKey, apiURL, apiKey string, err error) {
 	sig := ed25519.Sign(privKey, []byte(sessionID))
 
 	req, err := http.NewRequest("POST", skabandAddr+"/authclient", nil)
@@ -211,6 +214,7 @@ func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID 
 	req.Header.Set("Public-Key", pubKey)
 	req.Header.Set("Session-ID", sessionID)
 	req.Header.Set("Session-ID-Sig", hex.EncodeToString(sig))
+	req.Header.Set("X-Model", model)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", "", "", fmt.Errorf("skaband login: %w", err)

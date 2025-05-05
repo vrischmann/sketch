@@ -233,7 +233,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	if err != nil {
 		return err
 	}
-	pubKey, antURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID)
+	pubKey, antURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
 	if err != nil {
 		return err
 	}
@@ -303,10 +303,13 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 	var apiKey, antURL, pubKey string
 
 	if flags.skabandAddr == "" {
-		// Direct mode with Anthropic API key
-		apiKey = os.Getenv("ANTHROPIC_API_KEY")
+		envName := "ANTHROPIC_API_KEY"
+		if flags.modelName == "gemini" {
+			envName = gem.GeminiAPIKeyEnv
+		}
+		apiKey = os.Getenv(envName)
 		if apiKey == "" {
-			return fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set")
+			return fmt.Errorf("%s environment variable is not set", envName)
 		}
 	} else {
 		// Connect to skaband
@@ -314,7 +317,7 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 		if err != nil {
 			return err
 		}
-		pubKey, antURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID)
+		pubKey, antURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
 		if err != nil {
 			return err
 		}
@@ -587,9 +590,8 @@ func selectLLMService(client *http.Client, modelName string, antURL, apiKey stri
 	}
 
 	if modelName == "gemini" {
-		apiKey = os.Getenv(gem.GeminiAPIKeyEnv)
 		if apiKey == "" {
-			return nil, fmt.Errorf("missing API key for Gemini model, set %s environment variable", gem.GeminiAPIKeyEnv)
+			return nil, fmt.Errorf("missing %s", gem.GeminiAPIKeyEnv)
 		}
 		return &gem.Service{
 			HTTPC:  client,
