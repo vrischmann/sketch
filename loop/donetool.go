@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"sketch.dev/claudetool"
+	"sketch.dev/experiment"
 	"sketch.dev/llm"
 )
 
@@ -15,11 +17,31 @@ import (
 // the tool results here, so we don't tell the tool to say "hey, really check this"
 // at the moment, though we've tried.
 func makeDoneTool(codereview *claudetool.CodeReviewer, gitUsername, gitEmail string) *llm.Tool {
+	description := doneDescription
+	if experiment.Enabled("not_done") {
+		description = backtrackDoneDescription
+	}
 	return &llm.Tool{
 		Name:        "done",
-		Description: doneDescription,
+		Description: description,
 		InputSchema: json.RawMessage(doneChecklistJSONSchema(gitUsername, gitEmail)),
 		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
+			if experiment.Enabled("not_done") {
+				if strings.Contains(strings.ToLower(string(input)), "cancel done tool call") {
+					return "", fmt.Errorf("cancelled")
+				}
+				m := make(map[string]struct {
+					Status string
+				})
+				if err := json.Unmarshal(input, &m); err != nil {
+					return "", err
+				}
+				for _, checklist := range m {
+					if checklist.Status == "cancel" {
+						return "", fmt.Errorf("cancelled")
+					}
+				}
+			}
 			// Cannot be done with a messy git.
 			if err := codereview.RequireNormalGitState(ctx); err != nil {
 				return "", err
@@ -47,7 +69,13 @@ func doneChecklistJSONSchema(gitUsername, gitEmail string) string {
 	if err != nil {
 		panic(err)
 	}
-	return doneChecklistJSONSchemaPrefix + string(desc) + doneChecklistJSONSchemaSuffix
+	prefix := doneChecklistJSONSchemaPrefix
+	suffix := doneChecklistJSONSchemaSuffix
+	if experiment.Enabled("not_done") {
+		prefix = backtrackDoneChecklistJSONSchemaPrefix
+		suffix = backtrackDoneChecklistJSONSchemaSuffix
+	}
+	return prefix + string(desc) + suffix
 }
 
 // TODO: this is ugly, maybe JSON-encode a deeply nested map[string]any instead? also ugly.
@@ -105,6 +133,63 @@ const (
         "comments": {
           "type": "string",
           "description": "Additional comments or context for this checklist item"
+        }
+      }
+    }
+  }
+}`
+)
+
+const (
+	backtrackDoneDescription               = `This tool marks task completion. Review the checklist items carefully - if any item's status is "cancel" or any thoughts contain "Cancel done tool call", the entire call will be ignored without user notification. Cancellation is free and preferred over inaccurately marking items as "done" or "not applicable".`
+	backtrackDoneChecklistJSONSchemaPrefix = `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Checklist",
+  "description": "A schema for tracking checklist items",
+  "type": "object",
+  "required": ["checklist_items"],
+  "properties": {
+    "checklist_items": {
+      "type": "object",
+      "description": "Collection of checklist items",
+      "properties": {
+        "wrote_tests": {
+          "$ref": "#/definitions/checklistItem",
+          "description": "If code was changed, tests were written or updated."
+        },
+        "passes_tests": {
+          "$ref": "#/definitions/checklistItem",
+          "description": "If any commits were made, tests pass."
+        },
+        "code_reviewed": {
+          "$ref": "#/definitions/checklistItem",
+          "description": "If any commits were made, the codereview tool was run and its output was addressed."
+        },
+        "git_commit": {
+          "$ref": "#/definitions/checklistItem",
+          "description": `
+
+	backtrackDoneChecklistJSONSchemaSuffix = `
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/checklistItem"
+      }
+    }
+  },
+  "definitions": {
+    "checklistItem": {
+      "type": "object",
+      "required": ["thoughts", "status"],
+      "properties": {
+        "thoughts": {
+          "type": "string",
+          "description": "Reflections on this item's status - be honest about any issues"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status - when in doubt, cancel",
+          "enum": ["done", "cancel", "n/a"]
         }
       }
     }

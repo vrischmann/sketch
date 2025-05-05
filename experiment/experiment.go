@@ -27,6 +27,10 @@ var (
 			Name:        "all",
 			Description: "Enable all experiments",
 		},
+		{
+			Name:        "not_done",
+			Description: "Let the model backtrack halfway through a done tool call",
+		},
 	}
 	byName = map[string]*Experiment{}
 )
