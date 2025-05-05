@@ -46,6 +46,9 @@ func dockerfileBaseHash() string {
 
 const dockerfileBase = `FROM golang:1.24-bookworm
 
+# Switch from dash to bash by default.
+SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
+
 # attempt to keep package installs lean
 RUN printf '%s\n' \
       'path-exclude=/usr/share/man/*' \
@@ -58,8 +61,7 @@ RUN printf '%s\n' \
       'path-exclude=/usr/share/zoneinfo/*' \
     > /etc/dpkg/dpkg.cfg.d/01_nodoc
 
-RUN set -eux; \
-	apt-get update; \
+RUN apt-get update; \
 	apt-get install -y --no-install-recommends \
 		git jq sqlite3 npm nodejs gh ripgrep fzf python3 curl vim && \
 	apt-get clean && \
@@ -74,8 +76,7 @@ ENV PATH="$GOPATH/bin:$PATH"
 # the specific versions are rarely what a user wants so there is no
 # point polluting the base image module with them.
 
-RUN set -eux; \
-	go install golang.org/x/tools/cmd/goimports@latest; \
+RUN go install golang.org/x/tools/cmd/goimports@latest; \
 	go install golang.org/x/tools/gopls@latest; \
 	go install mvdan.cc/gofumpt@latest; \
 	go clean -cache -testcache -modcache
@@ -100,7 +101,13 @@ COPY . /app
 WORKDIR /app{{.SubDir}}
 RUN if [ -f go.mod ]; then go mod download; fi
 
+# Switch to lenient shell so we are more likely to get past failing extra_cmds.
+SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
+
 {{.ExtraCmds}}
+
+# Switch back to strict shell after extra_cmds.
+SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 CMD ["/bin/sketch"]
 `
