@@ -340,7 +340,7 @@ func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 	defer ui.mu.Unlock()
 
 	if !term.IsTerminal(int(ui.stdin.Fd())) {
-		return fmt.Errorf("this command requires terminal I/O")
+		return fmt.Errorf("this command requires terminal I/O when termui=true")
 	}
 
 	oldState, err := term.MakeRaw(int(ui.stdin.Fd()))

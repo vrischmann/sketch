@@ -31,6 +31,8 @@ import (
 	"sketch.dev/skabandclient"
 	"sketch.dev/skribe"
 	"sketch.dev/termui"
+
+	"golang.org/x/term"
 )
 
 func main() {
@@ -166,6 +168,7 @@ type CLIFlags struct {
 	outsideWorkingDir string
 	sketchBinaryLinux string
 	dockerArgs        string
+	termUI            bool
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -191,6 +194,7 @@ func parseCLIFlags() CLIFlags {
 	flag.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
 	flag.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
 	flag.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
+	flag.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
 
 	// Flags geared towards sketch developers or sketch internals:
 	flag.StringVar(&flags.gitUsername, "git-username", "", "(internal) username for git commits")
@@ -429,25 +433,40 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, antURL, apiKey, pubKe
 		browser.Open(ps1URL)
 	}
 
-	// Create the termui instance
-	s := termui.New(agent, ps1URL)
+	// Check if terminal UI should be enabled
+	// Disable termui if the flag is explicitly set to false or if we detect no PTY is available
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		flags.termUI = false
+	}
+
+	// Create a variable for terminal UI
+	var s *termui.TermUI
+
+	// Create the termui instance only if needed
+	if flags.termUI {
+		s = termui.New(agent, ps1URL)
+	}
 
 	// Start skaband connection loop if needed
 	if flags.skabandAddr != "" {
 		connectFn := func(connected bool) {
 			if flags.verbose {
 				if connected {
-					s.AppendSystemMessage("skaband connected")
+					if s != nil {
+						s.AppendSystemMessage("skaband connected")
+					}
 				} else {
-					s.AppendSystemMessage("skaband disconnected")
+					if s != nil {
+						s.AppendSystemMessage("skaband disconnected")
+					}
 				}
 			}
 		}
 		go skabandclient.DialAndServeLoop(ctx, flags.skabandAddr, flags.sessionID, pubKey, srv, connectFn)
 	}
 
-	// Handle one-shot mode
-	if flags.oneShot {
+	// Handle one-shot mode or mode without terminal UI
+	if flags.oneShot || s == nil {
 		it := agent.NewIterator(ctx, 0)
 		for {
 			m := it.Next()
@@ -459,9 +478,19 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, antURL, apiKey, pubKe
 			}
 			if m.EndOfTurn && m.ParentConversationID == nil {
 				fmt.Printf("Total cost: $%0.2f\n", agent.TotalUsage().TotalCostUSD)
-				return nil
+				if flags.oneShot {
+					return nil
+				}
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
 			}
 		}
+	}
+	if s == nil {
+		panic("Should have exited above.")
 	}
 
 	// Run the terminal UI
