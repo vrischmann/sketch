@@ -494,6 +494,30 @@ func (r *CodeReviewer) IsInitialCommit(commit string) bool {
 	return commit == r.initialCommit
 }
 
+// requireHEADDescendantOfInitialCommit returns an error if HEAD is not a descendant of r.initialCommit.
+// This serves two purposes:
+//   - ensures we're not still on the initial commit
+//   - ensures we're not on a separate branch or upstream somewhere, which would be confusing
+func (r *CodeReviewer) requireHEADDescendantOfInitialCommit(ctx context.Context) error {
+	head, err := r.CurrentCommit(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Note: Git's merge-base --is-ancestor checks strict ancestry (i.e., <), so a commit is NOT an ancestor of itself.
+	cmd := exec.CommandContext(ctx, "git", "merge-base", "--is-ancestor", r.initialCommit, head)
+	cmd.Dir = r.repoRoot
+	err = cmd.Run()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			// Exit code 1 means not an ancestor
+			return fmt.Errorf("HEAD is not a descendant of the initial commit")
+		}
+		return fmt.Errorf("failed to check whether initial commit is ancestor: %w", err)
+	}
+	return nil
+}
+
 // packagesForFiles returns maps of packages related to the given files:
 // 1. directPkgs: packages that directly contain the changed files
 // 2. allPkgs: all packages that might be affected, including downstream packages that depend on the direct packages

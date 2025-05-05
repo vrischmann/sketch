@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"sketch.dev/claudetool"
@@ -59,11 +60,17 @@ func NewCodeReviewer(ctx context.Context, repoRoot, initialCommit string, llmRev
 	return r, nil
 }
 
-// Autoformat formats all files changed in HEAD.
+// autoformat formats all files changed in HEAD.
 // It returns a list of all files that were formatted.
 // It is best-effort only.
-func (r *CodeReviewer) Autoformat(ctx context.Context) []string {
-	// Refuse to format if HEAD == r.InitialCommit
+func (r *CodeReviewer) autoformat(ctx context.Context) []string {
+	// Refuse to format if initial commit is not an ancestor of HEAD
+	err := r.requireHEADDescendantOfInitialCommit(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "CodeReviewer.Autoformat refusing to format", "err", err)
+		return nil
+	}
+
 	head, err := r.CurrentCommit(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "CodeReviewer.Autoformat unable to get current commit", "err", err)
@@ -72,10 +79,6 @@ func (r *CodeReviewer) Autoformat(ctx context.Context) []string {
 	parent, err := r.ResolveCommit(ctx, "HEAD^1")
 	if err != nil {
 		slog.WarnContext(ctx, "CodeReviewer.Autoformat unable to get parent commit", "err", err)
-		return nil
-	}
-	if head == r.initialCommit {
-		slog.WarnContext(ctx, "CodeReviewer.Autoformat refusing to format because HEAD == InitialCommit")
 		return nil
 	}
 	// Retrieve a list of all files changed
@@ -353,4 +356,82 @@ func (r *CodeReviewer) changedFiles(ctx context.Context, fromCommit, toCommit st
 		files = append(files, path)
 	}
 	return files, nil
+}
+
+// ModTidy runs go mod tidy.
+func (r *CodeReviewer) ModTidy(ctx context.Context) error {
+	err := r.requireHEADDescendantOfInitialCommit(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot run ModTidy: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "go", "mod", "tidy")
+	cmd.Dir = r.repoRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("go mod tidy failed: %w\n%s", err, out)
+	}
+
+	return nil
+}
+
+// RunMechanicalChecks runs all mechanical checks and returns a message describing any changes made.
+func (r *CodeReviewer) RunMechanicalChecks(ctx context.Context) string {
+	var actions []string
+
+	changed := r.autoformat(ctx)
+	if len(changed) > 0 {
+		actions = append(actions, "autoformatters")
+	}
+
+	err := r.ModTidy(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "CodeReviewer.RunMechanicalChecks: ModTidy failed", "err", err)
+	} else {
+		// Figure out which files go mod tidy changed, best effort.
+		// TODO: if we knew the repo was clean going in, this would be easier.
+		statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+		statusCmd.Dir = r.repoRoot
+		statusOut, err := statusCmd.CombinedOutput()
+		if err != nil {
+			slog.WarnContext(ctx, "CodeReviewer.RunMechanicalChecks: unable to get git status", "err", err)
+			return ""
+		}
+
+		madeChanges := false
+		for line := range strings.Lines(string(statusOut)) {
+			if len(line) <= 3 {
+				// empty line, defensiveness to avoid panics
+				continue
+			}
+			file := line[3:]
+			// TODO: this is a rough heuristic, revisit
+			if !strings.Contains(file, "go.") {
+				continue
+			}
+			path := filepath.Join(r.repoRoot, file)
+			changed = append(changed, path)
+			madeChanges = true
+		}
+		if madeChanges {
+			actions = append(actions, "`go mod tidy`")
+		}
+	}
+
+	if len(changed) == 0 {
+		return ""
+	}
+
+	slices.Sort(changed)
+
+	msg := fmt.Sprintf(`I ran %s, which updated these files:
+
+%s
+
+Please amend your latest git commit with these changes and then continue with what you were doing.`,
+		strings.Join(actions, " and "),
+		strings.Join(changed, "\n"),
+	)
+
+	return msg
 }

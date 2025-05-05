@@ -1267,27 +1267,20 @@ func (a *Agent) processGitChanges(ctx context.Context) []string {
 		return nil
 	}
 
-	// Run autoformatters if there was exactly one new commit
+	// Run mechanical checks if there was exactly one new commit.
+	if len(newCommits) != 1 {
+		return nil
+	}
 	var autoqualityMessages []string
-	if len(newCommits) == 1 {
-		a.stateMachine.Transition(ctx, StateRunningAutoformatters, "Running autoformatters on new commit")
-		formatted := a.codereview.Autoformat(ctx)
-		if len(formatted) > 0 {
-			msg := fmt.Sprintf(`
-I ran autoformatters and they updated these files:
-
-%s
-
-Please amend your latest git commit with these changes and then continue with what you were doing.`,
-				strings.Join(formatted, "\n"),
-			)[1:]
-			a.pushToOutbox(ctx, AgentMessage{
-				Type:      AutoMessageType,
-				Content:   msg,
-				Timestamp: time.Now(),
-			})
-			autoqualityMessages = append(autoqualityMessages, msg)
-		}
+	a.stateMachine.Transition(ctx, StateRunningAutoformatters, "Running mechanical checks on new commit")
+	msg := a.codereview.RunMechanicalChecks(ctx)
+	if msg != "" {
+		a.pushToOutbox(ctx, AgentMessage{
+			Type:      AutoMessageType,
+			Content:   msg,
+			Timestamp: time.Now(),
+		})
+		autoqualityMessages = append(autoqualityMessages, msg)
 	}
 
 	return autoqualityMessages

@@ -272,7 +272,7 @@ func runAutoformat(dir, initialCommit string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating code reviewer: %w", err)
 	}
-	formattedFiles := reviewer.Autoformat(ctx)
+	formattedFiles := reviewer.autoformat(ctx)
 	normalizedFiles := make([]string, len(formattedFiles))
 	for i, file := range formattedFiles {
 		normalizedFiles[i] = normalizePaths(file, dir)
