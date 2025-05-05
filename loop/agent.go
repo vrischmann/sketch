@@ -602,6 +602,22 @@ func (a *Agent) OnResponse(ctx context.Context, convo *conversation.Convo, id st
 	endOfTurn := false
 	if resp.StopReason != llm.StopReasonToolUse && convo.Parent == nil {
 		endOfTurn = true
+	} else if resp.StopReason == llm.StopReasonToolUse {
+		// Check if any of the tool calls are for tools that should end the turn
+		for _, part := range resp.Content {
+			if part.Type == llm.ContentTypeToolUse {
+				// Find the tool by name
+				for _, tool := range convo.Tools {
+					if tool.Name == part.ToolName && tool.EndsTurn {
+						endOfTurn = true
+						break
+					}
+				}
+				if endOfTurn {
+					break
+				}
+			}
+		}
 	}
 	m := AgentMessage{
 		Type:      AgentMessageType,
@@ -849,6 +865,7 @@ func (a *Agent) multipleChoiceTool() *llm.Tool {
 	ret := &llm.Tool{
 		Name:        "multiplechoice",
 		Description: "Present the user with an quick way to answer to your question using one of a short list of possible answers you would expect from the user.",
+		EndsTurn:    true,
 		InputSchema: json.RawMessage(`{
   "type": "object",
   "description": "The question and a list of answers you would expect the user to choose from.",

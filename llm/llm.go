@@ -66,6 +66,8 @@ type Tool struct {
 	Type        string
 	Description string
 	InputSchema json.RawMessage
+	// EndsTurn indicates that this tool should cause the model to end its turn when used
+	EndsTurn bool
 
 	// The Run function is automatically called when the tool is used.
 	// Run functions may be called concurrently with each other and themselves.
