@@ -4,6 +4,7 @@ package experiment
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"sync"
 )
@@ -46,7 +47,12 @@ var (
 func Enabled(name string) bool {
 	mu.Lock()
 	defer mu.Unlock()
-	return byName[name].Enabled
+	e, ok := byName[name]
+	if !ok {
+		slog.Error("unknown experiment", "name", name)
+		return false
+	}
+	return e.Enabled
 }
 
 func init() {
