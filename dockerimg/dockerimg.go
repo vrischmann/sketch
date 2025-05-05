@@ -87,11 +87,14 @@ type ContainerConfig struct {
 
 	// Initial commit to use as starting point
 	InitialCommit string
+
+	// Verbose enables verbose output
+	Verbose bool
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
 // It writes status to stdout.
-func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config ContainerConfig) error {
+func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	if _, err := exec.LookPath("docker"); err != nil {
 		if runtime.GOOS == "darwin" {
 			return fmt.Errorf("cannot find `docker` binary; run: brew install docker colima && colima start")
@@ -117,14 +120,14 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 		return err
 	}
 
-	imgName, err := findOrBuildDockerImage(ctx, stdout, stderr, config.Path, gitRoot, config.AntURL, config.AntAPIKey, config.ForceRebuild)
+	imgName, err := findOrBuildDockerImage(ctx, config.Path, gitRoot, config.AntURL, config.AntAPIKey, config.ForceRebuild, config.Verbose)
 	if err != nil {
 		return err
 	}
 
 	linuxSketchBin := config.SketchBinaryLinux
 	if linuxSketchBin == "" {
-		linuxSketchBin, err = buildLinuxSketchBin(ctx, config.Path)
+		linuxSketchBin, err = buildLinuxSketchBin(ctx)
 		if err != nil {
 			return err
 		}
@@ -265,7 +268,7 @@ func LaunchContainer(ctx context.Context, stdout, stderr io.Writer, config Conta
 	}
 	sshHost, sshPort, err := net.SplitHostPort(localSSHAddr)
 	if err != nil {
-		return appendInternalErr(fmt.Errorf("Error splitting ssh host and port: %w", err))
+		return appendInternalErr(fmt.Errorf("failed to split ssh host and port: %w", err))
 	}
 
 	var sshServerIdentity, sshUserIdentity []byte
@@ -468,7 +471,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	return nil
 }
 
-func buildLinuxSketchBin(ctx context.Context, path string) (string, error) {
+func buildLinuxSketchBin(ctx context.Context) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -589,7 +592,7 @@ func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gi
 	return nil
 }
 
-func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, gitRoot, antURL, antAPIKey string, forceRebuild bool) (imgName string, err error) {
+func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, antURL, antAPIKey string, forceRebuild, verbose bool) (imgName string, err error) {
 	h := sha256.Sum256([]byte(gitRoot))
 	imgName = "sketch-" + hex.EncodeToString(h[:6])
 
@@ -658,7 +661,9 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 		}
 		defer os.Remove(dockerfilePath)
 
-		fmt.Fprintf(stderr, "generated Dockerfile in %s:\n\t%s\n\n", time.Since(start).Round(time.Millisecond), strings.Replace(dockerfile, "\n", "\n\t", -1))
+		if verbose {
+			fmt.Fprintf(os.Stderr, "generated Dockerfile in %s:\n\t%s\n\n", time.Since(start).Round(time.Millisecond), strings.Replace(dockerfile, "\n", "\n\t", -1))
+		}
 	}
 
 	var gitUserEmail, gitUserName string
@@ -680,18 +685,15 @@ func findOrBuildDockerImage(ctx context.Context, stdout, stderr io.Writer, cwd, 
 		"-f", dockerfilePath,
 		"--build-arg", "GIT_USER_EMAIL="+gitUserEmail,
 		"--build-arg", "GIT_USER_NAME="+gitUserName,
-		".",
 	)
-	cmd.Dir = gitRoot
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	fmt.Printf("🏗️  building docker image %s... (use -verbose to see build output)\n", imgName)
-	dockerfileContent, err := os.ReadFile(dockerfilePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read Dockerfile: %w", err)
+	if !verbose {
+		cmd.Args = append(cmd.Args, "--progress=quiet")
 	}
-	// TODO: this is sometimes a repeat of earlier. Remove the earlier call?
-	fmt.Fprintf(stdout, "Dockerfile:\n%s\n", string(dockerfileContent))
+	cmd.Args = append(cmd.Args, ".")
+	cmd.Dir = gitRoot
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	fmt.Printf("🏗️  building docker image %s... (use -verbose to see build output)\n", imgName)
 
 	err = run(ctx, "docker build", cmd)
 	if err != nil {

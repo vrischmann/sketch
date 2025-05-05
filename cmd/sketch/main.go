@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log/slog"
 	"math/rand/v2"
 	"net"
@@ -228,16 +226,6 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		return fmt.Errorf("sketch: cannot determine current working directory: %v", err)
 	}
 
-	// Configure stdout/stderr for container launch
-	var stdout, stderr io.Writer
-	var outbuf, errbuf *bytes.Buffer
-	if flags.verbose {
-		stdout, stderr = os.Stdout, os.Stderr
-	} else {
-		outbuf, errbuf = &bytes.Buffer{}, &bytes.Buffer{}
-		stdout, stderr = outbuf, errbuf
-	}
-
 	// Configure and launch the container
 	config := dockerimg.ContainerConfig{
 		SessionID:         flags.sessionID,
@@ -261,11 +249,12 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		OneShot:           flags.oneShot,
 		Prompt:            flags.prompt,
 		InitialCommit:     flags.initialCommit,
+		Verbose:           flags.verbose,
 	}
 
-	if err := dockerimg.LaunchContainer(ctx, stdout, stderr, config); err != nil {
+	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
 		if flags.verbose {
-			fmt.Fprintf(os.Stderr, "dockerimg.LaunchContainer failed: %v\ndockerimg.LaunchContainer stderr:\n%s\ndockerimg.LaunchContainer stdout:\n%s\n", err, errbuf.String(), outbuf.String())
+			fmt.Fprintf(os.Stderr, "dockerimg launch container failed: %v\n", err)
 		}
 		return err
 	}
