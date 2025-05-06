@@ -25,6 +25,7 @@ const (
 // Fields should not be altered concurrently with calling any method on Service.
 type Service struct {
 	HTTPC     *http.Client // defaults to http.DefaultClient if nil
+	URL       string       // Gemini API URL, uses the gemini package default if empty
 	APIKey    string       // must be non-empty
 	Model     string       // defaults to DefaultModel if empty
 	MaxTokens int          // defaults to DefaultMaxTokens if zero
@@ -486,9 +487,10 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 	// Create a Gemini model instance
 	model := gemini.Model{
-		Model:  "models/" + cmp.Or(s.Model, DefaultModel),
-		APIKey: s.APIKey,
-		HTTPC:  cmp.Or(s.HTTPC, http.DefaultClient),
+		Model:    "models/" + cmp.Or(s.Model, DefaultModel),
+		Endpoint: s.URL,
+		APIKey:   s.APIKey,
+		HTTPC:    cmp.Or(s.HTTPC, http.DefaultClient),
 	}
 
 	// Send the request to Gemini with retry logic

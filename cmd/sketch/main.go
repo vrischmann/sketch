@@ -287,14 +287,14 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 // with access to outside environment variables.
 func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
 	// Get credentials from environment
-	apiKey := os.Getenv("SKETCH_ANTHROPIC_API_KEY")
+	apiKey := os.Getenv("SKETCH_MODEL_API_KEY")
 	pubKey := os.Getenv("SKETCH_PUB_KEY")
-	antURL, err := skabandclient.LocalhostToDockerInternal(os.Getenv("SKETCH_ANT_URL"))
-	if err != nil && os.Getenv("SKETCH_ANT_URL") != "" {
+	modelURL, err := skabandclient.LocalhostToDockerInternal(os.Getenv("SKETCH_MODEL_URL"))
+	if err != nil && os.Getenv("SKETCH_MODEL_URL") != "" {
 		return err
 	}
 
-	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, true, logFile)
+	return setupAndRunAgent(ctx, flags, modelURL, apiKey, pubKey, true, logFile)
 }
 
 // runInUnsafeMode handles execution on the host machine without Docker.
@@ -329,7 +329,7 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 
 // setupAndRunAgent handles the common logic for setting up and running the agent
 // in both container and unsafe modes.
-func setupAndRunAgent(ctx context.Context, flags CLIFlags, antURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
+func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
 	// Configure HTTP client with optional recording
 	var client *http.Client
 	if flags.httprrFile != "" {
@@ -357,7 +357,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, antURL, apiKey, pubKe
 		return err
 	}
 
-	llmService, err := selectLLMService(client, flags.modelName, antURL, apiKey)
+	llmService, err := selectLLMService(client, flags.modelName, modelURL, apiKey)
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM service: %w", err)
 	}
@@ -578,14 +578,14 @@ func defaultGitEmail() string {
 // If modelName is "gemini", it uses the Gemini service.
 // Otherwise, it tries to use the OpenAI service with the specified model.
 // Returns an error if the model name is not recognized or if required configuration is missing.
-func selectLLMService(client *http.Client, modelName string, antURL, apiKey string) (llm.Service, error) {
+func selectLLMService(client *http.Client, modelName string, modelURL, apiKey string) (llm.Service, error) {
 	if modelName == "" || modelName == "claude" {
 		if apiKey == "" {
 			return nil, fmt.Errorf("missing ANTHROPIC_API_KEY")
 		}
 		return &ant.Service{
 			HTTPC:  client,
-			URL:    antURL,
+			URL:    modelURL,
 			APIKey: apiKey,
 		}, nil
 	}
@@ -596,6 +596,7 @@ func selectLLMService(client *http.Client, modelName string, antURL, apiKey stri
 		}
 		return &gem.Service{
 			HTTPC:  client,
+			URL:    modelURL,
 			Model:  gem.DefaultModel,
 			APIKey: apiKey,
 		}, nil

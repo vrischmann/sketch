@@ -23,7 +23,7 @@ func TestBasicConvo(t *testing.T) {
 		return nil
 	})
 
-	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
+	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_MODEL_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
 	srv := &ant.Service{
 		APIKey: apiKey,
 		HTTPC:  rr.Client(),

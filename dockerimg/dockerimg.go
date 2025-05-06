@@ -430,7 +430,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-i",
 		"--name", cntrName,
 		"-p", hostPort + ":80", // forward container port 80 to a host port
-		"-e", "SKETCH_ANTHROPIC_API_KEY=" + config.ModelAPIKey,
+		"-e", "SKETCH_MODEL_API_KEY=" + config.ModelAPIKey,
 	}
 	if !config.OneShot {
 		cmdArgs = append(cmdArgs, "-t")
@@ -440,7 +440,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		cmdArgs = append(cmdArgs, "-e", envVar)
 	}
 	if config.ModelURL != "" {
-		cmdArgs = append(cmdArgs, "-e", "SKETCH_ANT_URL="+config.ModelURL)
+		cmdArgs = append(cmdArgs, "-e", "SKETCH_MODEL_URL="+config.ModelURL)
 	}
 	if config.SketchPubKey != "" {
 		cmdArgs = append(cmdArgs, "-e", "SKETCH_PUB_KEY="+config.SketchPubKey)
@@ -675,6 +675,7 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 		if model == "gemini" {
 			if strings.HasSuffix(modelURL, "/gemmsgs") {
 				// Horrible hack! Switch back to anthropic for container building.
+				// We can do this because we are talking to skaband and know the address.
 				modelURL = strings.Replace(modelURL, "/gemmsgs", "/antmsgs", 1)
 			} else {
 				return "", fmt.Errorf("building docker image with gemini model is not supported yet; start with -model=anthropic first then use gemini")
