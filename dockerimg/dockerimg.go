@@ -726,12 +726,12 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 		"-f", dockerfilePath,
 		"--build-arg", "GIT_USER_EMAIL="+gitUserEmail,
 		"--build-arg", "GIT_USER_NAME="+gitUserName,
+		".",
 	)
-	if !verbose {
-		cmd.Args = append(cmd.Args, "--progress=quiet")
-	}
-	cmd.Args = append(cmd.Args, ".")
 	cmd.Dir = gitRoot
+	// We print the docker build output whether or not the user
+	// has selected --verbose. Building an image takes a while
+	// and this gives good context.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	fmt.Printf("🏗️  building docker image %s... (use -verbose to see build output)\n", imgName)
