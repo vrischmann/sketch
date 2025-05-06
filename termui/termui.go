@@ -256,7 +256,7 @@ Special commands:
 					branches = append(branches, branch)
 				}
 
-				initialCommitRef := getGitRefName(ui.agent.InitialCommit())
+				initialCommitRef := getShortSHA(ui.agent.InitialCommit())
 				if len(branches) == 1 {
 					ui.AppendSystemMessage("\n🔄 Branch pushed during session: %s", branches[0])
 					ui.AppendSystemMessage("🍒 To add those changes to your branch: git cherry-pick %s..%s", initialCommitRef, branches[0])
@@ -431,40 +431,9 @@ func (ui *TermUI) AppendSystemMessage(fmtString string, args ...any) {
 	ui.termLogCh <- fmt.Sprintf(fmtString, args...)
 }
 
-// getGitRefName returns a readable git ref for sha, falling back to the original sha on error.
-func getGitRefName(sha string) string {
-	// Best-effort git fetch --prune to ensure we have the latest refs
-	exec.Command("git", "fetch", "--prune", "sketch-host").Run()
-
-	// local branch or tag name
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", sha)
-	branchName, err := cmd.Output()
-	if err == nil {
-		branchStr := strings.TrimSpace(string(branchName))
-		// If we got a branch name that's not HEAD, use it
-		if branchStr != "" && branchStr != "HEAD" {
-			return branchStr
-		}
-	}
-
-	// check sketch-host (outer) remote branches
-	cmd = exec.Command("git", "branch", "-r", "--contains", sha)
-	remoteBranches, err := cmd.Output()
-	if err == nil {
-		for line := range strings.Lines(string(remoteBranches)) {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-			suf, ok := strings.CutPrefix(line, "sketch-host/")
-			if ok {
-				return suf
-			}
-		}
-	}
-
-	// short SHA
-	cmd = exec.Command("git", "rev-parse", "--short", sha)
+// getShortSHA returns the short SHA for the given git reference, falling back to the original SHA on error.
+func getShortSHA(sha string) string {
+	cmd := exec.Command("git", "rev-parse", "--short", sha)
 	shortSha, err := cmd.Output()
 	if err == nil {
 		shortStr := strings.TrimSpace(string(shortSha))
@@ -472,6 +441,5 @@ func getGitRefName(sha string) string {
 			return shortStr
 		}
 	}
-
 	return sha
 }
