@@ -936,14 +936,12 @@ func branchExists(dir, branchName string) bool {
 }
 
 func (a *Agent) preCommitTool() *llm.Tool {
-	name := "title"
 	description := `Sets the conversation title and creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`
 	if experiment.Enabled("precommit") {
-		name = "precommit"
 		description = `Sets the conversation title, creates a git branch for tracking work, and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
 	}
 	preCommit := &llm.Tool{
-		Name:        name,
+		Name:        "title",
 		Description: description,
 		InputSchema: json.RawMessage(`{
 	"type": "object",
