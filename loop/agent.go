@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"sketch.dev/browser"
@@ -807,15 +808,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	convo := conversation.New(ctx, a.config.Service)
 	convo.PromptCaching = true
 	convo.Budget = a.config.Budget
-
-	var editPrompt string
-	if a.config.UseAnthropicEdit {
-		editPrompt = "Then use the str_replace_editor tool to make those edits. For short complete file replacements, you may use the bash tool with cat and heredoc stdin."
-	} else {
-		editPrompt = "Then use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call."
-	}
-
-	convo.SystemPrompt = fmt.Sprintf(agentSystemPrompt, editPrompt, a.config.ClientGOOS, a.config.ClientGOARCH, a.workingDir, a.repoRoot, a.initialCommit)
+	convo.SystemPrompt = a.renderSystemPrompt()
 
 	// Define a permission callback for the bash tool to check if the branch name is set before allowing git commits
 	bashPermissionCheck := func(command string) error {
@@ -1703,4 +1696,45 @@ func (a *Agent) SuggestReprompt(ctx context.Context) (string, error) {
 	}
 	textContent := collectTextContent(resp)
 	return textContent, nil
+}
+
+// systemPromptData contains the data used to render the system prompt template
+type systemPromptData struct {
+	EditPrompt    string
+	ClientGOOS    string
+	ClientGOARCH  string
+	WorkingDir    string
+	RepoRoot      string
+	InitialCommit string
+}
+
+// renderSystemPrompt renders the system prompt template.
+func (a *Agent) renderSystemPrompt() string {
+	// Determine the appropriate edit prompt based on config
+	var editPrompt string
+	if a.config.UseAnthropicEdit {
+		editPrompt = "Then use the str_replace_editor tool to make those edits. For short complete file replacements, you may use the bash tool with cat and heredoc stdin."
+	} else {
+		editPrompt = "Then use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call."
+	}
+
+	data := systemPromptData{
+		EditPrompt:    editPrompt,
+		ClientGOOS:    a.config.ClientGOOS,
+		ClientGOARCH:  a.config.ClientGOARCH,
+		WorkingDir:    a.workingDir,
+		RepoRoot:      a.repoRoot,
+		InitialCommit: a.initialCommit,
+	}
+
+	tmpl, err := template.New("system").Parse(agentSystemPrompt)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse system prompt template: %v", err))
+	}
+	buf := new(strings.Builder)
+	err = tmpl.Execute(buf, data)
+	if err != nil {
+		panic(fmt.Sprintf("failed to execute system prompt template: %v", err))
+	}
+	return buf.String()
 }

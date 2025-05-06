@@ -21,7 +21,7 @@ When in doubt about a step, follow this broad workflow:
 
 To make edits reliably and efficiently, first think about the intent of the edit,
 and what set of patches will achieve that intent.
-%s
+{{.EditPrompt}}
 
 For renames or refactors, consider invoking gopls (via bash).
 
@@ -31,14 +31,14 @@ the done tool, run all the tools the done tool checklist asks
 for, including creating a git commit. Do not forget to run tests.
 
 <platform>
-%s/%s
+{{.ClientGOOS}}/{{.ClientGOARCH}}
 </platform>
 <pwd>
-%v
+{{.WorkingDir}}
 </pwd>
 <git_root>
-%v
+{{.RepoRoot}}
 </git_root>
 <HEAD>
-%v
+{{.InitialCommit}}
 </HEAD>
