@@ -89,7 +89,11 @@ func (f *Flag) String() string {
 
 // Set adds a value to the flag.
 func (f *Flag) Set(value string) error {
-	f.Value = f.Value + "," + value // quadratic, doesn't matter, tiny N
+	if f.Value == "" {
+		f.Value = value
+	} else {
+		f.Value = f.Value + "," + value // quadratic, doesn't matter, tiny N
+	}
 	return nil
 }
 
