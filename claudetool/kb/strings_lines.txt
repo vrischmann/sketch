@@ -1,0 +1,23 @@
+`strings.Lines` — added in Go 1.24
+
+- `func Lines(s string) iter.Seq[string]`
+- Lazily yields successive newline-terminated substrings of `s`. *Includes* the exact trailing `\n`/`\r\n`; if the input ends without a newline the final element is unterminated.
+- Zero copying: each value is just a slice header into `s`, so iteration is O(1) memory.
+
+Idiomatic loop:
+
+```go
+for line := range strings.Lines(buf) {
+    handle(line)
+}
+```
+
+### How it differs from common alternatives
+
+- strings.Split – eager `[]string` allocation; caller chooses the separator (newline usually `"\n"`); separator *removed*, so you lose information about line endings and trailing newline presence.
+- strings.SplitSeq – same lazy `iter.Seq[string]` style as `Lines`, but again the caller supplies the separator and it is dropped; use this for arbitrary delimiters.
+- bufio.Scanner – token-oriented reader for any `io.Reader`. Default split function treats `\n` as the delimiter and strips it, so newline bytes are not preserved. Each token is copied into new memory, and there is a 64 KiB default token-size cap (adjustable). Scanner is the choice when the data is coming from a stream rather than an in-memory string.
+
+Use `strings.Lines` by default when the data is already in a string. (bytes.Lines provides the []byte equivalent.)
+
+Fallback to `Split` if you need a slice of lines in memory, to `SplitSeq` for lazy iteration over other separators, and to `bufio.Scanner` for streaming input where newline bytes are irrelevant.

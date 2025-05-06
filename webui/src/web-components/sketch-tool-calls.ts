@@ -4,6 +4,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { ToolCall } from "../types";
 import "./sketch-tool-card";
 import "./sketch-tool-card-take-screenshot";
+import "./sketch-tool-card-knowledge-base";
 
 @customElement("sketch-tool-calls")
 export class SketchToolCalls extends LitElement {
@@ -127,6 +128,11 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-take-screenshot>`;
+      case "knowledge_base":
+        return html`<sketch-tool-card-knowledge-base
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-knowledge-base>`;
     }
     return html`<sketch-tool-card-generic
       .open=${open}

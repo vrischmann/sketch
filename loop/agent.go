@@ -546,6 +546,10 @@ func (a *Agent) SetBranch(branchName string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.branchName = branchName
+	convo, ok := a.convo.(*conversation.Convo)
+	if ok {
+		convo.ExtraData["branch"] = branchName
+	}
 }
 
 // OnToolCall implements ant.Listener and tracks the start of a tool call.
@@ -888,6 +892,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	convo.PromptCaching = true
 	convo.Budget = a.config.Budget
 	convo.SystemPrompt = a.renderSystemPrompt()
+	convo.ExtraData = map[string]any{"session_id": a.config.SessionID}
 
 	// Define a permission callback for the bash tool to check if the branch name is set before allowing git commits
 	bashPermissionCheck := func(command string) error {
@@ -940,6 +945,10 @@ func (a *Agent) initConvo() *conversation.Convo {
 		bashTool, claudetool.Keyword,
 		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(),
+	}
+
+	if experiment.Enabled("kb") {
+		convo.Tools = append(convo.Tools, claudetool.KnowledgeBase)
 	}
 
 	// One-shot mode is non-interactive, multiple choice requires human response

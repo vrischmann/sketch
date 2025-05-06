@@ -36,6 +36,10 @@ var (
 			Name:        "memory",
 			Description: "Enable memory subsystem (dear_llm.md)",
 		},
+		{
+			Name:        "kb",
+			Description: "Enable knowledge_base tool",
+		},
 	}
 	byName = map[string]*Experiment{}
 )

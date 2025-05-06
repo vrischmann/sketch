@@ -82,6 +82,8 @@ type Convo struct {
 	// Hidden indicates that the output of this conversation should be hidden in the UI.
 	// This is useful for subconversations that can generate noisy, uninteresting output.
 	Hidden bool
+	// ExtraData is extra data to make available to all tool calls.
+	ExtraData map[string]any
 
 	// messages tracks the messages so far in the conversation.
 	messages []llm.Message
