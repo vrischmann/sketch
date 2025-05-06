@@ -18,10 +18,10 @@ import (
 	"text/template"
 	"time"
 
-	"sketch.dev/claudetool/browse"
 	"sketch.dev/browser"
 	"sketch.dev/claudetool"
 	"sketch.dev/claudetool/bashkit"
+	"sketch.dev/claudetool/browse"
 	"sketch.dev/claudetool/codereview"
 	"sketch.dev/experiment"
 	"sketch.dev/llm"

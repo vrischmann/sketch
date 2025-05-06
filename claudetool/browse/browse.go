@@ -39,7 +39,7 @@ func NewBrowseTools(ctx context.Context) *BrowseTools {
 	ctx, cancel := context.WithCancel(ctx)
 
 	// Ensure the screenshot directory exists
-	if err := os.MkdirAll(ScreenshotDir, 0755); err != nil {
+	if err := os.MkdirAll(ScreenshotDir, 0o755); err != nil {
 		log.Printf("Failed to create screenshot directory: %v", err)
 	}
 
@@ -614,7 +614,7 @@ func (b *BrowseTools) SaveScreenshot(data []byte) string {
 
 	// Save the file
 	filePath := filepath.Join(ScreenshotDir, id+".png")
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0o644); err != nil {
 		log.Printf("Failed to save screenshot: %v", err)
 		return ""
 	}

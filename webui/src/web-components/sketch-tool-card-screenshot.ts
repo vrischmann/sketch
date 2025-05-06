@@ -111,17 +111,23 @@ export class SketchToolCardScreenshot extends LitElement {
           Screenshot of ${selector}
         </span>
         <div slot="input" class="selector-info">
-          ${selector !== "(full page)" ? `Taking screenshot of element: ${selector}` : `Taking full page screenshot`}
+          ${selector !== "(full page)"
+            ? `Taking screenshot of element: ${selector}`
+            : `Taking full page screenshot`}
         </div>
         <div slot="result">
           ${hasResult
             ? html`
                 <div class="screenshot-container">
                   ${!this.imageLoaded && !this.loadError
-                    ? html`<div class="loading-indicator">Loading screenshot...</div>`
+                    ? html`<div class="loading-indicator">
+                        Loading screenshot...
+                      </div>`
                     : ""}
                   ${this.loadError
-                    ? html`<div class="error-message">Failed to load screenshot</div>`
+                    ? html`<div class="error-message">
+                        Failed to load screenshot
+                      </div>`
                     : html`
                         <img
                           class="screenshot"
@@ -131,7 +137,9 @@ export class SketchToolCardScreenshot extends LitElement {
                           ?hidden=${!this.imageLoaded}
                         />
                         ${this.imageLoaded
-                          ? html`<div class="screenshot-info">Screenshot ID: ${screenshotId}</div>`
+                          ? html`<div class="screenshot-info">
+                              Screenshot ID: ${screenshotId}
+                            </div>`
                           : ""}
                       `}
                 </div>
