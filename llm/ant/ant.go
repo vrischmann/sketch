@@ -399,7 +399,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 				return nil, err
 			}
 			if response.StopReason == "max_tokens" && !largerMaxTokens {
-				fmt.Printf("Retrying Anthropic API call with larger max tokens size.")
+				slog.InfoContext(ctx, "anthropic_retrying_with_larger_tokens", "message", "Retrying Anthropic API call with larger max tokens size")
 				// Retry with more output tokens.
 				largerMaxTokens = true
 				response.Usage.CostUSD = response.TotalDollars()
