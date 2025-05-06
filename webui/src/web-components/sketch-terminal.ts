@@ -11,6 +11,8 @@ export class SketchTerminal extends LitElement {
   private terminal: Terminal | null = null;
   // Terminal fit addon for handling resize
   private fitAddon: FitAddon | null = null;
+  // Flag to track if terminal has been fully initialized
+  private isInitialized: boolean = false;
   // Terminal EventSource for SSE
   private terminalEventSource: EventSource | null = null;
   // Terminal ID (always 1 for now, will support 1-9 later)
@@ -50,12 +52,18 @@ export class SketchTerminal extends LitElement {
     this.loadXtermlCSS();
     // Setup resize handler
     window.addEventListener("resize", this._resizeHandler);
+    // Listen for view mode changes to detect when terminal becomes visible
+    window.addEventListener(
+      "view-mode-select",
+      this._handleViewModeSelect.bind(this),
+    );
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
 
     window.removeEventListener("resize", this._resizeHandler);
+    window.removeEventListener("view-mode-select", this._handleViewModeSelect);
 
     this.closeTerminalConnections();
 
@@ -67,14 +75,37 @@ export class SketchTerminal extends LitElement {
   }
 
   firstUpdated() {
-    this.initializeTerminal();
+    // Do nothing - we'll initialize the terminal when it becomes visible
   }
 
   _resizeHandler() {
-    if (this.fitAddon) {
+    // Only handle resize if terminal has been initialized
+    if (this.fitAddon && this.isInitialized) {
       this.fitAddon.fit();
       // Send resize information to server
       this.sendTerminalResize();
+    }
+  }
+
+  /**
+   * Handle view mode selection event to detect when terminal becomes visible
+   */
+  private _handleViewModeSelect(event: CustomEvent) {
+    const mode = event.detail.mode as "chat" | "diff" | "terminal";
+    if (mode === "terminal") {
+      // Terminal tab is now visible
+      if (!this.isInitialized) {
+        // First time the terminal is shown - initialize it
+        this.isInitialized = true;
+        setTimeout(() => this.initializeTerminal(), 10);
+      } else if (this.fitAddon) {
+        // Terminal already initialized - just resize it
+        setTimeout(() => {
+          this.fitAddon?.fit();
+          this.sendTerminalResize();
+          this.terminal?.focus();
+        }, 10);
+      }
     }
   }
 
