@@ -270,6 +270,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		InitialCommit:     flags.initialCommit,
 		Verbose:           flags.verbose,
 		DockerArgs:        flags.dockerArgs,
+		ExperimentFlag:    flags.experimentFlag.String(),
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
