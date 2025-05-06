@@ -56,8 +56,9 @@ func Enabled(name string) bool {
 }
 
 func init() {
-	for _, e := range experiments {
-		byName[e.Name] = &e
+	for i := range experiments {
+		e := &experiments[i]
+		byName[e.Name] = e
 	}
 }
 
