@@ -115,7 +115,8 @@ func (f *Flag) Process() error {
 		e.Enabled = true
 	}
 	if byName["all"].Enabled {
-		for _, e := range experiments {
+		for i := range experiments {
+			e := &experiments[i]
 			if e.Name == "list" {
 				continue
 			}
