@@ -601,23 +601,25 @@ func (a *Agent) OnResponse(ctx context.Context, convo *conversation.Convo, id st
 	}
 
 	endOfTurn := false
-	if resp.StopReason != llm.StopReasonToolUse && convo.Parent == nil {
-		endOfTurn = true
-	} else if resp.StopReason == llm.StopReasonToolUse {
-		// Check if any of the tool calls are for tools that should end the turn
-		for _, part := range resp.Content {
-			if part.Type == llm.ContentTypeToolUse {
+	if convo.Parent == nil { // subconvos never end the turn
+		switch resp.StopReason {
+		case llm.StopReasonToolUse:
+			// Check whether any of the tool calls are for tools that should end the turn
+		ToolSearch:
+			for _, part := range resp.Content {
+				if part.Type != llm.ContentTypeToolUse {
+					continue
+				}
 				// Find the tool by name
 				for _, tool := range convo.Tools {
-					if tool.Name == part.ToolName && tool.EndsTurn {
-						endOfTurn = true
-						break
+					if tool.Name == part.ToolName {
+						endOfTurn = tool.EndsTurn
+						break ToolSearch
 					}
 				}
-				if endOfTurn {
-					break
-				}
 			}
+		default:
+			endOfTurn = true
 		}
 	}
 	m := AgentMessage{
