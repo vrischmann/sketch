@@ -40,6 +40,7 @@ jobs:
           go install gotest.tools/gotestsum@latest
           go install mvdan.cc/gofumpt@latest
           go install golang.org/x/tools/cmd/goimports@latest
+          sudo apt-get update && sudo apt-get -y install chromium
 
       - name: Go generate
         run: |
