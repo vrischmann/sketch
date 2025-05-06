@@ -33,7 +33,7 @@ export default defineConfig({
     middlewareMode: false,
     fs: {
       // Allow serving files from these directories
-      allow: ["/app/webui"],
+      allow: ["."],
     },
   },
 });
