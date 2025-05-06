@@ -16,19 +16,17 @@ import (
 )
 
 const (
-	DefaultModel     = "gemini-2.5-pro-preview-03-25"
-	DefaultMaxTokens = 8192
-	GeminiAPIKeyEnv  = "GEMINI_API_KEY"
+	DefaultModel    = "gemini-2.5-pro-preview-03-25"
+	GeminiAPIKeyEnv = "GEMINI_API_KEY"
 )
 
 // Service provides Gemini completions.
 // Fields should not be altered concurrently with calling any method on Service.
 type Service struct {
-	HTTPC     *http.Client // defaults to http.DefaultClient if nil
-	URL       string       // Gemini API URL, uses the gemini package default if empty
-	APIKey    string       // must be non-empty
-	Model     string       // defaults to DefaultModel if empty
-	MaxTokens int          // defaults to DefaultMaxTokens if zero
+	HTTPC  *http.Client // defaults to http.DefaultClient if nil
+	URL    string       // Gemini API URL, uses the gemini package default if empty
+	APIKey string       // must be non-empty
+	Model  string       // defaults to DefaultModel if empty
 }
 
 var _ llm.Service = (*Service)(nil)
