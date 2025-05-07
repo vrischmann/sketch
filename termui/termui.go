@@ -28,7 +28,7 @@ var (
 	// and registered in loop/agent.go.
 	// Add formatting for new tools as they are created.
 	// TODO: should this be part of tool definition to make it harder to forget to set up?
-	toolUseTemplTxt = `{{if .msg.ToolError}}🙈 {{end -}}
+	toolUseTemplTxt = `{{if .msg.ToolError}}〰️ {{end -}}
 {{if eq .msg.ToolName "think" -}}
  🧠 {{.input.thoughts -}}
 {{else if eq .msg.ToolName "keyword_search" -}}

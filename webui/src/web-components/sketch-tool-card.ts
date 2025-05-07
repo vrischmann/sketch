@@ -212,7 +212,7 @@ export class SketchToolCard extends LitElement {
     >`;
     if (this.toolCall?.result_message) {
       statusIcon = this.toolCall?.result_message.tool_error
-        ? html`<span class="tool-call-status tool-error">🔔</span>`
+        ? html`<span class="tool-call-status tool-error">〰️</span>`
         : html`<span class="tool-call-status tool-success">✓</span>`;
     }
 
