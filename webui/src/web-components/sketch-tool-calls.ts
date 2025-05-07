@@ -111,6 +111,11 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-title>`;
+      case "precommit":
+        return html`<sketch-tool-card-precommit
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-precommit>`;
       case "browser_screenshot":
         return html`<sketch-tool-card-screenshot
           .open=${open}

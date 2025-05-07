@@ -507,10 +507,57 @@ export class SketchToolCardTitle extends LitElement {
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
         <span slot="summary" class="summary-text">
-          Title: "${inputData.title}" | Branch: sketch/${inputData.branch_name}
+          Title: "${inputData.title}"
         </span>
         <div slot="input">
           <div>Set title to: <b>${inputData.title}</b></div>
+        </div>
+      </sketch-tool-card>
+    `;
+  }
+}
+
+@customElement("sketch-tool-card-precommit")
+export class SketchToolCardPrecommit extends LitElement {
+  @property()
+  toolCall: ToolCall;
+
+  @property()
+  open: boolean;
+
+  static styles = css`
+    .summary-text {
+      font-style: italic;
+    }
+    pre {
+      display: inline;
+      font-family: monospace;
+      background: rgb(236, 236, 236);
+      padding: 2px 4px;
+      border-radius: 2px;
+      margin: 0;
+    }
+  `;
+  constructor() {
+    super();
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+  }
+
+  render() {
+    const inputData = JSON.parse(this.toolCall?.input || "{}");
+    return html`
+      <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
+        <span slot="summary" class="summary-text">
+          Branch: sketch/${inputData.branch_name}
+        </span>
+        <div slot="input">
           <div>Set branch to: <code>sketch/${inputData.branch_name}</code></div>
         </div>
       </sketch-tool-card>
@@ -692,6 +739,7 @@ declare global {
     "sketch-tool-card-patch": SketchToolCardPatch;
     "sketch-tool-card-think": SketchToolCardThink;
     "sketch-tool-card-title": SketchToolCardTitle;
+    "sketch-tool-card-precommit": SketchToolCardPrecommit;
     "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
   }
 }

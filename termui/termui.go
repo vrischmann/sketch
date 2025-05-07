@@ -41,6 +41,7 @@ var (
 {{/* nothing to show here, the agent will write more in its next message */}}
 {{else if eq .msg.ToolName "title" -}}
 🏷️  {{.input.title}}
+{{else if eq .msg.ToolName "precommit" -}}
 🌱 git branch: sketch/{{.input.branch_name}}
 {{else if eq .msg.ToolName "str_replace_editor" -}}
  ✏️  {{.input.file_path -}}

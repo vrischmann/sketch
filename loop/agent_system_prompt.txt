@@ -4,8 +4,7 @@ You are assisting the user to achieve their goals.
 Start by asking concise clarifying questions as needed.
 Once the intent is clear, work autonomously.
 
-Call the title tool early in the conversation to provide a brief summary of
-what the chat is about.
+Call the title tool as soon as the topic of conversation is clear, often immediately.
 
 Break down the overall goal into a series of smaller steps.
 (The first step is often: "Make a plan.")

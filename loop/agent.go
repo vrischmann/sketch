@@ -525,15 +525,18 @@ func (a *Agent) FirstMessageIndex() int {
 	return a.firstMessageIndex
 }
 
-// SetTitleBranch sets the title and branch name of the conversation.
-func (a *Agent) SetTitleBranch(title, branchName string) {
+// SetTitle sets the title of the conversation.
+func (a *Agent) SetTitle(title string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.title = title
-	a.branchName = branchName
+}
 
-	// TODO: We could potentially notify listeners of a state change, but,
-	// realistically, a new message will be sent for the tool result as well.
+// SetBranch sets the branch name of the conversation.
+func (a *Agent) SetBranch(branchName string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.branchName = branchName
 }
 
 // OnToolCall implements ant.Listener and tracks the start of a tool call.
@@ -832,7 +835,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 		// If it's a git commit and branch is not set, return an error
 		if willCommit {
-			return fmt.Errorf("you must use the title tool before making git commits")
+			return fmt.Errorf("you must use the precommit tool before making git commits")
 		}
 
 		return nil
@@ -860,7 +863,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
-		claudetool.Think, a.preCommitTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
+		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
 		a.codereview.Tool(), a.multipleChoiceTool(),
 	}
 
@@ -947,12 +950,9 @@ func branchExists(dir, branchName string) bool {
 	return false
 }
 
-func (a *Agent) preCommitTool() *llm.Tool {
-	description := `Sets the conversation title and creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`
-	if experiment.Enabled("precommit") {
-		description = `Sets the conversation title, creates a git branch for tracking work, and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
-	}
-	preCommit := &llm.Tool{
+func (a *Agent) titleTool() *llm.Tool {
+	description := `Sets the conversation title.`
+	titleTool := &llm.Tool{
 		Name:        "title",
 		Description: description,
 		InputSchema: json.RawMessage(`{
@@ -960,35 +960,71 @@ func (a *Agent) preCommitTool() *llm.Tool {
 	"properties": {
 		"title": {
 			"type": "string",
-			"description": "A concise title summarizing what this conversation is about, imperative tense preferred"
-		},
-		"branch_name": {
-			"type": "string",
-			"description": "A 2-3 word alphanumeric hyphenated slug for the git branch name"
+			"description": "Brief title (3-6 words) in imperative tense. Focus on core action/component."
 		}
 	},
-	"required": ["title", "branch_name"]
+	"required": ["title"]
 }`),
 		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
 			var params struct {
-				Title      string `json:"title"`
-				BranchName string `json:"branch_name"`
+				Title string `json:"title"`
 			}
 			if err := json.Unmarshal(input, &params); err != nil {
 				return "", err
 			}
-			// It's unfortunate to not allow title changes,
-			// but it avoids accidentally generating multiple branches.
+
+			// We don't allow changing the title once set to be consistent with the previous behavior
+			// and to prevent accidental title changes
 			t := a.Title()
 			if t != "" {
 				return "", fmt.Errorf("title already set to: %s", t)
 			}
 
-			if params.BranchName == "" {
-				return "", fmt.Errorf("branch_name parameter cannot be empty")
-			}
 			if params.Title == "" {
 				return "", fmt.Errorf("title parameter cannot be empty")
+			}
+
+			a.SetTitle(params.Title)
+			response := fmt.Sprintf("Title set to %q", params.Title)
+			return response, nil
+		},
+	}
+	return titleTool
+}
+
+func (a *Agent) precommitTool() *llm.Tool {
+	description := `Creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`
+	if experiment.Enabled("precommit") {
+		description = `Creates a git branch for tracking work and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
+	}
+	preCommit := &llm.Tool{
+		Name:        "precommit",
+		Description: description,
+		InputSchema: json.RawMessage(`{
+	"type": "object",
+	"properties": {
+		"branch_name": {
+			"type": "string",
+			"description": "A 2-3 word alphanumeric hyphenated slug for the git branch name"
+		}
+	},
+	"required": ["branch_name"]
+}`),
+		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
+			var params struct {
+				BranchName string `json:"branch_name"`
+			}
+			if err := json.Unmarshal(input, &params); err != nil {
+				return "", err
+			}
+
+			b := a.BranchName()
+			if b != "" {
+				return "", fmt.Errorf("branch already set to: %s", b)
+			}
+
+			if params.BranchName == "" {
+				return "", fmt.Errorf("branch_name parameter cannot be empty")
 			}
 			if params.BranchName != cleanBranchName(params.BranchName) {
 				return "", fmt.Errorf("branch_name parameter must be alphanumeric hyphenated slug")
@@ -998,9 +1034,8 @@ func (a *Agent) preCommitTool() *llm.Tool {
 				return "", fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
 			}
 
-			a.SetTitleBranch(params.Title, branchName)
-
-			response := fmt.Sprintf("Title set to %q, branch name set to %q", params.Title, branchName)
+			a.SetBranch(branchName)
+			response := fmt.Sprintf("Branch name set to %q", branchName)
 
 			if experiment.Enabled("precommit") {
 				styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
