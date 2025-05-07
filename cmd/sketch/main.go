@@ -395,6 +395,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		OutsideOS:         flags.outsideOS,
 		OutsideWorkingDir: flags.outsideWorkingDir,
 		InDocker:          true, // This is true when we're in container mode or simulating it in unsafe mode
+		OneShot:           flags.oneShot,
 	}
 	agent := loop.NewAgent(agentConfig)
 

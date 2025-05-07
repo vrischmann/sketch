@@ -696,6 +696,7 @@ type AgentConfig struct {
 	ClientGOARCH     string
 	InDocker         bool
 	UseAnthropicEdit bool
+	OneShot          bool
 	// Outside information
 	OutsideHostname   string
 	OutsideOS         string
@@ -864,7 +865,12 @@ func (a *Agent) initConvo() *conversation.Convo {
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
 		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
-		a.codereview.Tool(), a.multipleChoiceTool(),
+		a.codereview.Tool(),
+	}
+
+	// One-shot mode is non-interactive, multiple choice requires human response
+	if !a.config.OneShot {
+		convo.Tools = append(convo.Tools, a.multipleChoiceTool())
 	}
 
 	convo.Tools = append(convo.Tools, browserTools...)
