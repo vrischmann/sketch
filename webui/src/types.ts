@@ -45,6 +45,7 @@ export interface AgentMessage {
 	end_time?: string | null;
 	elapsed?: Duration | null;
 	turnDuration?: Duration | null;
+	hide_output?: boolean;
 	idx: number;
 }
 

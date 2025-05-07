@@ -165,10 +165,14 @@ type AgentMessage struct {
 	// Turn duration - the time taken for a complete agent turn
 	TurnDuration *time.Duration `json:"turnDuration,omitempty"`
 
+	// HideOutput indicates that this message should not be rendered in the UI.
+	// This is useful for subconversations that generate output that shouldn't be shown to the user.
+	HideOutput bool `json:"hide_output,omitempty"`
+
 	Idx int `json:"idx"`
 }
 
-// SetConvo sets m.ConversationID and m.ParentConversationID based on convo.
+// SetConvo sets m.ConversationID, m.ParentConversationID, and m.HideOutput based on convo.
 func (m *AgentMessage) SetConvo(convo *conversation.Convo) {
 	if convo == nil {
 		m.ConversationID = ""
@@ -176,6 +180,7 @@ func (m *AgentMessage) SetConvo(convo *conversation.Convo) {
 		return
 	}
 	m.ConversationID = convo.ID
+	m.HideOutput = convo.Hidden
 	if convo.Parent != nil {
 		m.ParentConversationID = &convo.Parent.ID
 	}

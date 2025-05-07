@@ -1090,11 +1090,11 @@ floatingMessageStyles.textContent = `
     pointer-events: none;
     transition: opacity 0.3s ease, transform 0.3s ease;
   }
-  
+
   .floating-message.success {
     background-color: rgba(40, 167, 69, 0.9);
   }
-  
+
   .floating-message.error {
     background-color: rgba(220, 53, 69, 0.9);
   }

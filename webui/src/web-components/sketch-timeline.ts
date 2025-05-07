@@ -321,17 +321,33 @@ export class SketchTimeline extends LitElement {
     return html`
       <div id="scroll-container">
         <div class="timeline-container">
-          ${repeat(this.messages, this.messageKey, (message, index) => {
-            let previousMessage: AgentMessage;
-            if (index > 0) {
-              previousMessage = this.messages[index - 1];
-            }
-            return html`<sketch-timeline-message
-              .message=${message}
-              .previousMessage=${previousMessage}
-              .open=${false}
-            ></sketch-timeline-message>`;
-          })}
+          ${repeat(
+            this.messages.filter((msg) => !msg.hide_output),
+            this.messageKey,
+            (message, index) => {
+              let previousMessageIndex =
+                this.messages.findIndex((m) => m === message) - 1;
+              let previousMessage =
+                previousMessageIndex >= 0
+                  ? this.messages[previousMessageIndex]
+                  : undefined;
+
+              // Skip hidden messages when determining previous message
+              while (previousMessage && previousMessage.hide_output) {
+                previousMessageIndex--;
+                previousMessage =
+                  previousMessageIndex >= 0
+                    ? this.messages[previousMessageIndex]
+                    : undefined;
+              }
+
+              return html`<sketch-timeline-message
+                .message=${message}
+                .previousMessage=${previousMessage}
+                .open=${false}
+              ></sketch-timeline-message>`;
+            },
+          )}
           ${isThinking
             ? html`
                 <div class="thinking-indicator">

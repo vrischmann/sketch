@@ -150,6 +150,9 @@ func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
 		if resp == nil {
 			return
 		}
+		if resp.HideOutput {
+			continue
+		}
 		// Typically a user message will start the thinking and a (top-level
 		// conversation) end of turn will stop it.
 		thinking := !(resp.EndOfTurn && resp.ParentConversationID == nil)

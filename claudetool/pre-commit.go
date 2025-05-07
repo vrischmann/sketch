@@ -55,6 +55,7 @@ func representativeCommitSHAs(ctx context.Context, repoRoot string) ([]string, s
 
 	info := conversation.ToolCallInfoFromContext(ctx)
 	sub := info.Convo.SubConvo()
+	sub.Hidden = true
 	sub.PromptCaching = false
 
 	sub.SystemPrompt = `Analyze the provided git commit messages to identify consistent patterns, including but not limited to:

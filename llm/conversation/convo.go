@@ -79,6 +79,9 @@ type Convo struct {
 	// The Conversation DOES NOT automatically enforce the budget.
 	// It is up to the caller to call OverBudget() as appropriate.
 	Budget Budget
+	// Hidden indicates that the output of this conversation should be hidden in the UI.
+	// This is useful for subconversations that can generate noisy, uninteresting output.
+	Hidden bool
 
 	// messages tracks the messages so far in the conversation.
 	messages []llm.Message
