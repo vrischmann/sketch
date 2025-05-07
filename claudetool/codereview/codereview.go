@@ -358,21 +358,71 @@ func (r *CodeReviewer) changedFiles(ctx context.Context, fromCommit, toCommit st
 	return files, nil
 }
 
-// ModTidy runs go mod tidy.
-func (r *CodeReviewer) ModTidy(ctx context.Context) error {
+// ModTidy runs go mod tidy if go module files have changed.
+// Returns a list of files changed by go mod tidy (empty if none).
+func (r *CodeReviewer) ModTidy(ctx context.Context) ([]string, error) {
 	err := r.requireHEADDescendantOfInitialCommit(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot run ModTidy: %w", err)
+		return nil, fmt.Errorf("cannot run ModTidy: %w", err)
 	}
 
+	// Check if any go.mod, go.sum, etc. files have changed
+	currentCommit, err := r.CurrentCommit(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current commit: %w", err)
+	}
+
+	changedFiles, err := r.changedFiles(ctx, r.initialCommit, currentCommit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get changed files: %w", err)
+	}
+
+	// Check if any of the changed files are go module files
+	goModsChanged := false
+	for _, file := range changedFiles {
+		if isGoModFile(file) {
+			goModsChanged = true
+			break
+		}
+	}
+
+	if !goModsChanged {
+		// No go module files changed, so don't run go mod tidy
+		return nil, nil
+	}
+
+	// Run go mod tidy
 	cmd := exec.CommandContext(ctx, "go", "mod", "tidy")
 	cmd.Dir = r.repoRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("go mod tidy failed: %w\n%s", err, out)
+		return nil, fmt.Errorf("go mod tidy failed: %w\n%s", err, out)
 	}
 
-	return nil
+	// Check which files were changed by go mod tidy
+	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	statusCmd.Dir = r.repoRoot
+	statusOut, err := statusCmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get git status: %w", err)
+	}
+
+	var changedByTidy []string
+
+	for line := range strings.Lines(string(statusOut)) {
+		if len(line) <= 3 {
+			// empty line, defensiveness to avoid panics
+			continue
+		}
+		file := line[3:]
+		if !isGoModFile(file) {
+			continue
+		}
+		path := filepath.Join(r.repoRoot, file)
+		changedByTidy = append(changedByTidy, path)
+	}
+
+	return changedByTidy, nil
 }
 
 // RunMechanicalChecks runs all mechanical checks and returns a message describing any changes made.
@@ -384,38 +434,14 @@ func (r *CodeReviewer) RunMechanicalChecks(ctx context.Context) string {
 		actions = append(actions, "autoformatters")
 	}
 
-	err := r.ModTidy(ctx)
+	// Run go mod tidy (only if go module files have changed)
+	tidyChanges, err := r.ModTidy(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "CodeReviewer.RunMechanicalChecks: ModTidy failed", "err", err)
-	} else {
-		// Figure out which files go mod tidy changed, best effort.
-		// TODO: if we knew the repo was clean going in, this would be easier.
-		statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-		statusCmd.Dir = r.repoRoot
-		statusOut, err := statusCmd.CombinedOutput()
-		if err != nil {
-			slog.WarnContext(ctx, "CodeReviewer.RunMechanicalChecks: unable to get git status", "err", err)
-			return ""
-		}
-
-		madeChanges := false
-		for line := range strings.Lines(string(statusOut)) {
-			if len(line) <= 3 {
-				// empty line, defensiveness to avoid panics
-				continue
-			}
-			file := line[3:]
-			// TODO: this is a rough heuristic, revisit
-			if !strings.Contains(file, "go.") {
-				continue
-			}
-			path := filepath.Join(r.repoRoot, file)
-			changed = append(changed, path)
-			madeChanges = true
-		}
-		if madeChanges {
-			actions = append(actions, "`go mod tidy`")
-		}
+	}
+	if len(tidyChanges) > 0 {
+		changed = append(changed, tidyChanges...)
+		actions = append(actions, "`go mod tidy`")
 	}
 
 	if len(changed) == 0 {
@@ -434,4 +460,10 @@ Please amend your latest git commit with these changes and then continue with wh
 	)
 
 	return msg
+}
+
+// isGoModFile returns true if the file is a Go module file (go.mod, go.sum, etc.)
+func isGoModFile(path string) bool {
+	basename := filepath.Base(path)
+	return strings.HasPrefix(basename, "go.")
 }
