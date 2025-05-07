@@ -167,6 +167,9 @@ func executeBash(ctx context.Context, req bashInput) (string, error) {
 	cmd.Dir = WorkingDir(ctx)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
+	// Set environment with SKETCH=1
+	cmd.Env = append(os.Environ(), "SKETCH=1")
+
 	var output bytes.Buffer
 	cmd.Stdin = nil
 	cmd.Stdout = &output
@@ -245,6 +248,9 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 	cmd := exec.Command("bash", "-c", req.Command)
 	cmd.Dir = WorkingDir(ctx)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// Set environment with SKETCH=1
+	cmd.Env = append(os.Environ(), "SKETCH=1")
 
 	// Open output files
 	stdout, err := os.Create(stdoutFile)

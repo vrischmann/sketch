@@ -131,6 +131,24 @@ func TestExecuteBash(t *testing.T) {
 		}
 	})
 
+	// Test SKETCH=1 environment variable is set
+	t.Run("SKETCH Environment Variable", func(t *testing.T) {
+		req := bashInput{
+			Command: "echo $SKETCH",
+			Timeout: "5s",
+		}
+
+		output, err := executeBash(ctx, req)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		want := "1\n"
+		if output != want {
+			t.Errorf("Expected SKETCH=1, got %q", output)
+		}
+	})
+
 	// Test command with output to stderr
 	t.Run("Command with stderr", func(t *testing.T) {
 		req := bashInput{
@@ -195,7 +213,7 @@ func TestBackgroundBash(t *testing.T) {
 			Command    string `json:"command"`
 			Background bool   `json:"background"`
 		}{
-			Command:    "echo 'Hello from background'",
+			Command:    "echo 'Hello from background' $SKETCH",
 			Background: true,
 		}
 		inputJSON, err := json.Marshal(inputObj)
@@ -235,7 +253,7 @@ func TestBackgroundBash(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to read stdout file: %v", err)
 		}
-		expected := "Hello from background\n"
+		expected := "Hello from background 1\n"
 		if string(stdoutContent) != expected {
 			t.Errorf("Expected stdout content %q, got %q", expected, string(stdoutContent))
 		}
