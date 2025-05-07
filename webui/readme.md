@@ -29,10 +29,27 @@ make check
 For development, you can use watch mode:
 
 ```bash
-make demo
+make dev
 ```
 
-This will launch a local web server that serves the demo pages for the web components. You can edit the TypeScript files, and the changes will be reflected in real-time.
+This will launch a local web server at http://127.0.0.1:5173/ that serves the demo pages for the web components. You can edit the TypeScript files, and the changes will be reflected in real-time.
+
+To access the main app shell interface on the dev server (the primary UI component for Sketch):
+
+1. Start the dev server as above
+2. Navigate to http://127.0.0.1:5173/src/web-components/demo/sketch-app-shell.demo.html
+   or click on the "sketch-app-shell" link from the demo index page
+
+### UI Component Demos
+
+The development server provides access to individual component demos including:
+
+- Main app shell: http://127.0.0.1:5173/src/web-components/demo/sketch-app-shell.demo.html
+- Chat input: http://127.0.0.1:5173/src/web-components/demo/sketch-chat-input.demo.html
+- Timeline: http://127.0.0.1:5173/src/web-components/demo/sketch-timeline.demo.html
+- And more...
+
+You can access these demos from the index page or navigate directly to the specific component demo URL.
 
 #### VSCode
 

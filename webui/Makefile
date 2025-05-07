@@ -7,6 +7,9 @@ install:
 demo:
 	npm run demo
 
+dev:
+	npm run dev
+
 # TypeScript type checking
 # Note: The actual esbuild bundling happens in esbuild.go
 check:

@@ -35,3 +35,9 @@ go run ./cmd/sketch -docker-args "-v $HOME/.inside-cache:/root/.cache/sketch"
 # Inside
 go run ./cmd/sketch -unsafe
 ```
+
+## WebUI Development Server
+
+We have a standalone development server for the web UI that makes it easier to develop and test the client-side code. This server is separate from the main Go server and is intended for local development of the web components. It is populated with dummy data, and supports hot module reloading, allowing you to see changes in real-time without needing to restart the server.
+
+To run the development server for the web UI, see [webui/readme.md](webui/readme.md).
