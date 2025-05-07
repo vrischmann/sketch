@@ -210,6 +210,19 @@ func parseCLIFlags() CLIFlags {
 	flag.Var(&flags.experimentFlag, "x", "enable experimental features (comma-separated list or repeat flag; use 'list' to show all)")
 
 	flag.Parse()
+
+	// -open's default value should be true normally but false in one-shot mode.
+	// Distinguish between -open default value vs explicitly set.
+	openExplicit := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "open" {
+			openExplicit = true
+		}
+	})
+	if !openExplicit {
+		flags.openBrowser = !flags.oneShot
+	}
+
 	return flags
 }
 
