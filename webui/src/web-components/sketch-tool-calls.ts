@@ -2,8 +2,15 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { ToolCall } from "../types";
-import "./sketch-tool-card";
+import "./sketch-tool-card-bash";
+import "./sketch-tool-card-codereview";
+import "./sketch-tool-card-done";
+import "./sketch-tool-card-generic";
+import "./sketch-tool-card-multiple-choice";
+import "./sketch-tool-card-patch";
 import "./sketch-tool-card-screenshot";
+import "./sketch-tool-card-think";
+import "./sketch-tool-card-title";
 
 @customElement("sketch-tool-calls")
 export class SketchToolCalls extends LitElement {
