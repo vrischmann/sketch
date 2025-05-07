@@ -23,6 +23,7 @@ import (
 	"sketch.dev/claudetool/bashkit"
 	"sketch.dev/claudetool/browse"
 	"sketch.dev/claudetool/codereview"
+	"sketch.dev/claudetool/onstart"
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
 	"sketch.dev/llm/conversation"
@@ -296,6 +297,7 @@ type Agent struct {
 	gitRemoteAddr     string        // HTTP URL of the host git repo (only when under docker)
 	outsideHTTP       string        // base address of the outside webserver (only when under docker)
 	ready             chan struct{} // closed when the agent is initialized (only when under docker)
+	codebase          *onstart.Codebase
 	startedAt         time.Time
 	originalBudget    conversation.Budget
 	title             string
@@ -798,6 +800,15 @@ func (a *Agent) Init(ini AgentInit) error {
 			return fmt.Errorf("resolveRef: %w", err)
 		}
 		a.initialCommit = commitHash
+
+		if experiment.Enabled("memory") {
+			slog.Info("running codebase analysis")
+			codebase, err := onstart.AnalyzeCodebase(ctx, a.repoRoot)
+			if err != nil {
+				slog.Warn("failed to analyze codebase", "error", err)
+			}
+			a.codebase = codebase
+		}
 
 		llmCodeReview := codereview.NoLLMReview
 		if experiment.Enabled("llm_review") {
@@ -1808,6 +1819,7 @@ type systemPromptData struct {
 	WorkingDir    string
 	RepoRoot      string
 	InitialCommit string
+	Codebase      *onstart.Codebase
 }
 
 // renderSystemPrompt renders the system prompt template.
@@ -1827,6 +1839,7 @@ func (a *Agent) renderSystemPrompt() string {
 		WorkingDir:    a.workingDir,
 		RepoRoot:      a.repoRoot,
 		InitialCommit: a.initialCommit,
+		Codebase:      a.codebase,
 	}
 
 	tmpl, err := template.New("system").Parse(agentSystemPrompt)
@@ -1838,5 +1851,6 @@ func (a *Agent) renderSystemPrompt() string {
 	if err != nil {
 		panic(fmt.Sprintf("failed to execute system prompt template: %v", err))
 	}
+	// fmt.Printf("system prompt: %s\n", buf.String())
 	return buf.String()
 }
