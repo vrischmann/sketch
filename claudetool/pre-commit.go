@@ -41,6 +41,7 @@ func representativeCommitSHAs(ctx context.Context, repoRoot string) ([]string, e
 
 	info := conversation.ToolCallInfoFromContext(ctx)
 	sub := info.Convo.SubConvo()
+	sub.PromptCaching = false
 
 	sub.SystemPrompt = `You are an expert Git commit analyzer.
 

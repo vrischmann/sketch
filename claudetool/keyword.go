@@ -126,6 +126,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 	info := conversation.ToolCallInfoFromContext(ctx)
 	convo := info.Convo.SubConvo()
 	convo.SystemPrompt = strings.TrimSpace(keywordSystemPrompt)
+	convo.PromptCaching = false
 
 	initialMessage := llm.Message{
 		Role: llm.MessageRoleUser,

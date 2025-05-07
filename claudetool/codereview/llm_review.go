@@ -31,6 +31,7 @@ func (r *CodeReviewer) doLLMReview(ctx context.Context) (string, error) {
 
 	info := conversation.ToolCallInfoFromContext(ctx)
 	convo := info.Convo.SubConvo()
+	convo.PromptCaching = false
 	convo.SystemPrompt = strings.TrimSpace(llmCodereviewPrompt)
 	initialMessage := llm.UserStringMessage("<diff>\n" + string(out) + "\n</diff>")
 
