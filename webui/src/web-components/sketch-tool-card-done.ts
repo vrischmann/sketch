@@ -2,7 +2,6 @@ import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
 
-
 @customElement("sketch-tool-card-done")
 export class SketchToolCardDone extends LitElement {
   @property() toolCall: ToolCall;
@@ -14,17 +13,17 @@ export class SketchToolCardDone extends LitElement {
       <span slot="summary" class="summary-text"></span>
       <div slot="result">
         ${Object.keys(doneInput.checklist_items).map((key) => {
-      const item = doneInput.checklist_items[key];
-      let statusIcon = "⛔";
-      if (item.status == "yes") {
-        statusIcon = "👍";
-      } else if (item.status == "not applicable") {
-        statusIcon = "🤷‍♂️";
-      }
-      return html`<div>
+          const item = doneInput.checklist_items[key];
+          let statusIcon = "⛔";
+          if (item.status == "yes") {
+            statusIcon = "👍";
+          } else if (item.status == "not applicable") {
+            statusIcon = "🤷‍♂️";
+          }
+          return html`<div>
             <span>${statusIcon}</span> ${key}:${item.status}
           </div>`;
-    })}
+        })}
       </div>
     </sketch-tool-card>`;
   }

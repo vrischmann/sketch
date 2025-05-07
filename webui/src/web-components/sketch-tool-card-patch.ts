@@ -2,7 +2,6 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
 
-
 @customElement("sketch-tool-card-patch")
 export class SketchToolCardPatch extends LitElement {
   @property() toolCall: ToolCall;
@@ -28,9 +27,9 @@ export class SketchToolCardPatch extends LitElement {
       </span>
       <div slot="input">
         ${patchInput.patches.map((patch) => {
-      return html`Patch operation: <b>${patch.operation}</b>
+          return html`Patch operation: <b>${patch.operation}</b>
             <pre>${patch.newText}</pre>`;
-    })}
+        })}
       </div>
       <div slot="result">
         <pre>${this.toolCall?.result_message?.tool_result}</pre>

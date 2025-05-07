@@ -2,7 +2,6 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
 
-
 @customElement("sketch-tool-card-title")
 export class SketchToolCardTitle extends LitElement {
   @property() toolCall: ToolCall;

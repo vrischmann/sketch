@@ -2,7 +2,6 @@ import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
 
-
 @customElement("sketch-tool-card-generic")
 export class SketchToolCardGeneric extends LitElement {
   @property() toolCall: ToolCall;
@@ -18,8 +17,8 @@ export class SketchToolCardGeneric extends LitElement {
       <div slot="result">
         Result:
         ${this.toolCall?.result_message?.tool_result
-        ? html`<pre>${this.toolCall?.result_message.tool_result}</pre>`
-        : ""}
+          ? html`<pre>${this.toolCall?.result_message.tool_result}</pre>`
+          : ""}
       </div>
     </sketch-tool-card>`;
   }
