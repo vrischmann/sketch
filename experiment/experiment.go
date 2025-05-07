@@ -36,10 +36,6 @@ var (
 			Name:        "llm_review",
 			Description: "Add an LLM step to the codereview tool",
 		},
-		{
-			Name:        "precommit",
-			Description: "Changes title tool to a precommit tool that provides commit message style guidance",
-		},
 	}
 	byName = map[string]*Experiment{}
 )

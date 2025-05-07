@@ -993,10 +993,7 @@ func (a *Agent) titleTool() *llm.Tool {
 }
 
 func (a *Agent) precommitTool() *llm.Tool {
-	description := `Creates a git branch for tracking work. MANDATORY: You must use this tool before making any git commits.`
-	if experiment.Enabled("precommit") {
-		description = `Creates a git branch for tracking work and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
-	}
+	description := `Creates a git branch for tracking work and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
 	preCommit := &llm.Tool{
 		Name:        "precommit",
 		Description: description,
@@ -1037,14 +1034,12 @@ func (a *Agent) precommitTool() *llm.Tool {
 			a.SetBranch(branchName)
 			response := fmt.Sprintf("Branch name set to %q", branchName)
 
-			if experiment.Enabled("precommit") {
-				styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
-				if err != nil {
-					slog.DebugContext(ctx, "failed to get commit message style hint", "err", err)
-				}
-				if len(styleHint) > 0 {
-					response += "\n\n" + styleHint
-				}
+			styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
+			if err != nil {
+				slog.DebugContext(ctx, "failed to get commit message style hint", "err", err)
+			}
+			if len(styleHint) > 0 {
+				response += "\n\n" + styleHint
 			}
 
 			return response, nil
