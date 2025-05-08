@@ -125,7 +125,7 @@ func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg
 	return cst, nil
 }
 
-func CheckForIncludeWithFS(fs FileSystem) error {
+func CheckForIncludeWithFS(fs FileSystem, stdinReader bufio.Reader) error {
 	sketchSSHPathInclude := "Include " + filepath.Join(os.Getenv("HOME"), ".config", "sketch", "ssh_config")
 	defaultSSHPath := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
 
@@ -163,6 +163,14 @@ func CheckForIncludeWithFS(fs FileSystem) error {
 	}
 
 	if sketchInludePos == nil {
+		fmt.Printf("\nTo enable you to use ssh to connect to local sketch containers: \nAdd %q to the top of %s [y/N]? ", sketchSSHPathInclude, defaultSSHPath)
+		char, _, err := stdinReader.ReadRune()
+		if err != nil {
+			return fmt.Errorf("couldn't read from stdin: %w", err)
+		}
+		if char != 'y' && char != 'Y' {
+			return fmt.Errorf("User declined to edit ssh config file")
+		}
 		// Include line not found, add it to the top of the file
 		cfgBytes, err := cfg.MarshalText()
 		if err != nil {
@@ -557,5 +565,5 @@ func (kg *RealKeyGenerator) GeneratePublicKey(privateKey *rsa.PublicKey) (ssh.Pu
 
 // CheckForInclude checks if the user's SSH config includes the Sketch SSH config file
 func CheckForInclude() error {
-	return CheckForIncludeWithFS(&RealFileSystem{})
+	return CheckForIncludeWithFS(&RealFileSystem{}, *bufio.NewReader(os.Stdin))
 }

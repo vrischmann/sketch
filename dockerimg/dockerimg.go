@@ -283,15 +283,19 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 
 	var sshServerIdentity, sshUserIdentity []byte
 
-	if err := CheckForInclude(); err != nil {
-		fmt.Println(err.Error())
+	sshErr := CheckForInclude()
+	sshAvailable := false
+	sshErrMsg := ""
+	if sshErr != nil {
+		fmt.Println(sshErr.Error())
+		sshErrMsg = sshErr.Error()
 		// continue - ssh config is not required for the rest of sketch to function locally.
 	} else {
 		cst, err := NewSSHTheater(cntrName, sshHost, sshPort)
 		if err != nil {
 			return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
 		}
-
+		sshAvailable = true
 		// Note: The vscode: link uses an undocumented request parameter that I really had to dig to find:
 		// https://github.com/microsoft/vscode/blob/2b9486161abaca59b5132ce3c59544f3cc7000f6/src/vs/code/electron-main/app.ts#L878
 		fmt.Printf(`Connect to this container via any of these methods:
@@ -315,7 +319,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		// the scrollback (which is not good, but also not fatal).  I can't see why it does this
 		// though, since none of the calls in postContainerInitConfig obviously write to stdout
 		// or stderr.
-		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, sshServerIdentity, sshUserIdentity); err != nil {
+		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, sshAvailable, sshErrMsg, sshServerIdentity, sshUserIdentity); err != nil {
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
@@ -566,16 +570,8 @@ func getContainerPort(ctx context.Context, cntrName, cntrPort string) (string, e
 }
 
 // Contact the container and configure it.
-func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string, sshServerIdentity, sshAuthorizedKeys []byte) error {
+func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string, sshAvailable bool, sshError string, sshServerIdentity, sshAuthorizedKeys []byte) error {
 	localURL := "http://" + localAddr
-
-	// Check if SSH is available by checking for the Include directive in ~/.ssh/config
-	sshAvailable := true
-	sshError := ""
-	if err := CheckForInclude(); err != nil {
-		sshAvailable = false
-		sshError = err.Error()
-	}
 
 	initMsg, err := json.Marshal(
 		server.InitRequest{
