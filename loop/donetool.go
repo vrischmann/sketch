@@ -16,7 +16,7 @@ import (
 // not as reliable as it could be. Historically, we've found that Claude ignores
 // the tool results here, so we don't tell the tool to say "hey, really check this"
 // at the moment, though we've tried.
-func makeDoneTool(codereview *codereview.CodeReviewer, gitUsername, gitEmail string) *llm.Tool {
+func makeDoneTool(codereview *codereview.CodeReviewer) *llm.Tool {
 	description := doneDescription
 	if experiment.Enabled("not_done") {
 		description = backtrackDoneDescription
@@ -24,7 +24,7 @@ func makeDoneTool(codereview *codereview.CodeReviewer, gitUsername, gitEmail str
 	return &llm.Tool{
 		Name:        "done",
 		Description: description,
-		InputSchema: json.RawMessage(doneChecklistJSONSchema(gitUsername, gitEmail)),
+		InputSchema: json.RawMessage(doneChecklistSchema()),
 		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
 			if experiment.Enabled("not_done") {
 				if strings.Contains(strings.ToLower(string(input)), "cancel done tool call") {
@@ -62,26 +62,17 @@ func makeDoneTool(codereview *codereview.CodeReviewer, gitUsername, gitEmail str
 	}
 }
 
-func doneChecklistJSONSchema(gitUsername, gitEmail string) string {
-	gitCommitDescription := fmt.Sprintf(`Create git commits for any code changes you made. Match the style of recent commit messages. Include 'Co-Authored-By: sketch <hello@sketch.dev>' and the original user prompt. Use GIT_AUTHOR_NAME="%s" GIT_AUTHOR_EMAIL="%s" (not git config).`,
-		gitUsername, gitEmail)
-	desc, err := json.Marshal(gitCommitDescription)
-	if err != nil {
-		panic(err)
-	}
-	prefix := doneChecklistJSONSchemaPrefix
-	suffix := doneChecklistJSONSchemaSuffix
+func doneChecklistSchema() string {
 	if experiment.Enabled("not_done") {
-		prefix = backtrackDoneChecklistJSONSchemaPrefix
-		suffix = backtrackDoneChecklistJSONSchemaSuffix
+		return backtrackDoneChecklistJSONSchema
 	}
-	return prefix + string(desc) + suffix
+	return doneChecklistJSONSchema
 }
 
 // TODO: this is ugly, maybe JSON-encode a deeply nested map[string]any instead? also ugly.
 const (
-	doneDescription               = `Use this tool when you have achieved the user's goal. The parameters form a checklist which you should evaluate.`
-	doneChecklistJSONSchemaPrefix = `{
+	doneDescription         = `Use this tool when you have achieved the user's goal. The parameters form a checklist which you should evaluate.`
+	doneChecklistJSONSchema = `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Checklist",
   "description": "A schema for tracking checklist items with status and comments",
@@ -106,9 +97,7 @@ const (
         },
         "git_commit": {
           "$ref": "#/definitions/checklistItem",
-          "description": `
-
-	doneChecklistJSONSchemaSuffix = `
+          "description": "Create git commits for any code changes you made, adding --trailer 'Co-Authored-By: sketch <hello@sketch.dev>' and --trailer 'Change-ID: s$(openssl rand -hex 8)k'. The git user is already configured correctly."
         }
       },
       "additionalProperties": {
@@ -141,8 +130,8 @@ const (
 )
 
 const (
-	backtrackDoneDescription               = `This tool marks task completion. Review the checklist items carefully - if any item's status is "cancel" or any thoughts contain "Cancel done tool call", the entire call will be ignored without user notification. Cancellation is free and preferred over inaccurately marking items as "done" or "not applicable".`
-	backtrackDoneChecklistJSONSchemaPrefix = `{
+	backtrackDoneDescription         = `This tool marks task completion. Review the checklist items carefully - if any item's status is "cancel" or any thoughts contain "Cancel done tool call", the entire call will be ignored without user notification. Cancellation is free and preferred over inaccurately marking items as "done" or "not applicable".`
+	backtrackDoneChecklistJSONSchema = `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Checklist",
   "description": "A schema for tracking checklist items",
@@ -167,9 +156,7 @@ const (
         },
         "git_commit": {
           "$ref": "#/definitions/checklistItem",
-          "description": `
-
-	backtrackDoneChecklistJSONSchemaSuffix = `
+          "description": "Create git commits for any code changes you made, adding --trailer 'Co-Authored-By: sketch <hello@sketch.dev>' and --trailer 'Change-ID: s$(openssl rand -hex 8)k'. The git user is already configured correctly."
         }
       },
       "additionalProperties": {

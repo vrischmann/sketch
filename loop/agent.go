@@ -869,7 +869,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
-		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview, a.config.GitUsername, a.config.GitEmail),
+		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(),
 	}
 
