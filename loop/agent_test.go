@@ -90,7 +90,7 @@ func TestAgentLoop(t *testing.T) {
 	}
 
 	// Setup a test message that will trigger a simple, predictable response
-	userMessage := "What tools are available to you? Please just list them briefly."
+	userMessage := "What tools are available to you? Please just list them briefly. (Do not call the title tool.)"
 
 	// Send the message to the agent
 	agent.UserMessage(ctx, userMessage)
