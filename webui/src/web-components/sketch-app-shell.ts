@@ -331,6 +331,7 @@ export class SketchAppShell extends LitElement {
 
   @property({ attribute: false })
   containerState: State = {
+    state_version: 2,
     title: "",
     os: "",
     message_count: 0,

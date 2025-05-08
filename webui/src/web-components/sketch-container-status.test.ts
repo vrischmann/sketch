@@ -4,6 +4,7 @@ import { State } from "../types";
 
 // Mock complete state for testing
 const mockCompleteState: State = {
+  state_version: 2,
   hostname: "test-host",
   working_dir: "/test/dir",
   initial_commit: "abcdef1234567890",
@@ -78,6 +79,7 @@ test("renders with undefined state", async ({ mount }) => {
 
 test("renders with partial state data", async ({ mount }) => {
   const partialState: Partial<State> = {
+    state_version: 2,
     hostname: "partial-host",
     message_count: 10,
     os: "linux",

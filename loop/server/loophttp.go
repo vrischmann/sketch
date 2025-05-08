@@ -51,6 +51,9 @@ type TerminalResponse struct {
 }
 
 type State struct {
+	// null or 1: "old"
+	// 2: supports SSE for message updates
+	StateVersion         int                           `json:"state_version"`
 	MessageCount         int                           `json:"message_count"`
 	TotalUsage           *conversation.CumulativeUsage `json:"total_usage,omitempty"`
 	InitialCommit        string                        `json:"initial_commit"`
@@ -1059,6 +1062,7 @@ func (s *Server) getState() State {
 	totalUsage := s.agent.TotalUsage()
 
 	return State{
+		StateVersion:         2,
 		MessageCount:         serverMessageCount,
 		TotalUsage:           &totalUsage,
 		Hostname:             s.hostname,

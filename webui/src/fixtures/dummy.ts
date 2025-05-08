@@ -343,6 +343,7 @@ export const initialMessages: AgentMessage[] = [
 ];
 
 export const initialState: State = {
+  state_version: 2,
   message_count: initialMessages.length,
   total_usage: {
     start_time: "2025-04-24T10:32:00.679057+01:00",

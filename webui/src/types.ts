@@ -61,6 +61,7 @@ export interface CumulativeUsage {
 }
 
 export interface State {
+	state_version: number;
 	message_count: number;
 	total_usage?: CumulativeUsage | null;
 	initial_commit: string;
