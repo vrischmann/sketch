@@ -1,6 +1,7 @@
 package dockerimg
 
 import (
+	"context"
 	"crypto/subtle"
 	"fmt"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type gitHTTP struct {
@@ -78,6 +80,31 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "no git: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Check if this is a .git/info/refs request (which happens during git fetch)
+	// Use `GIT_CURL_VERBOSE=1 git fetch sketch-host` to inspect what's going on under the covers for git.
+	if strings.Contains(r.URL.Path, ".git/info/refs") {
+		slog.InfoContext(r.Context(), "detected git info/refs request, running git fetch origin")
+
+		// Create a context with a 5 second timeout
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
+		// Run git fetch origin in the background
+		cmd := exec.CommandContext(ctx, gitBin, "fetch", "origin")
+		cmd.Dir = g.gitRepoRoot
+
+		// Execute the command
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			slog.WarnContext(r.Context(), "git fetch failed",
+				"error", err,
+				"output", string(output))
+			// We don't return here, continue with normal processing
+		} else {
+			slog.InfoContext(r.Context(), "git fetch completed successfully")
+		}
 	}
 
 	w.Header().Set("Cache-Control", "no-cache")
