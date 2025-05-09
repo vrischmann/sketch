@@ -751,10 +751,20 @@ func (a *Agent) Init(ini AgentInit) error {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git stash: %s: %v", out, err)
 		}
+		// sketch-host is a git repo hosted by "outtie sketch". When it notices a 'git fetch',
+		// it runs "git fetch" underneath the covers to get its latest commits. By configuring
+		// an additional remote.sketch-host.fetch, we make "origin/main" on innie sketch look like
+		// origin/main on outtie sketch, which should make it easier to rebase.
 		cmd = exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", ini.GitRemoteAddr)
 		cmd.Dir = ini.WorkingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git remote add: %s: %v", out, err)
+		}
+		cmd = exec.CommandContext(ctx, "git", "config", "--add", "remote.sketch-host.fetch",
+			"+refs/heads/feature/*:refs/remotes/origin/feature/*")
+		cmd.Dir = ini.WorkingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git config --add: %s: %v", out, err)
 		}
 		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
 		cmd.Dir = ini.WorkingDir
