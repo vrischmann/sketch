@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -123,6 +124,15 @@ func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg
 	}
 
 	return cst, nil
+}
+
+func checkSSHResolve(hostname string) error {
+	cmd := exec.Command("ssh", "-T", hostname)
+	out, err := cmd.CombinedOutput()
+	if strings.HasPrefix(string(out), "ssh: Could not resolve hostname") {
+		return err
+	}
+	return nil
 }
 
 func CheckForIncludeWithFS(fs FileSystem, stdinReader bufio.Reader) error {
@@ -563,7 +573,10 @@ func (kg *RealKeyGenerator) GeneratePublicKey(privateKey *rsa.PublicKey) (ssh.Pu
 	return ssh.NewPublicKey(privateKey)
 }
 
-// CheckForInclude checks if the user's SSH config includes the Sketch SSH config file
-func CheckForInclude() error {
-	return CheckForIncludeWithFS(&RealFileSystem{}, *bufio.NewReader(os.Stdin))
+// CheckSSHReachability checks if the user's SSH config includes the Sketch SSH config file
+func CheckSSHReachability(cntrName string) error {
+	if err := checkSSHResolve(cntrName); err != nil {
+		return CheckForIncludeWithFS(&RealFileSystem{}, *bufio.NewReader(os.Stdin))
+	}
+	return nil
 }

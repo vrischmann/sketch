@@ -283,7 +283,12 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 
 	var sshServerIdentity, sshUserIdentity []byte
 
-	sshErr := CheckForInclude()
+	cst, err := NewSSHTheater(cntrName, sshHost, sshPort)
+	if err != nil {
+		return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
+	}
+
+	sshErr := CheckSSHReachability(cntrName)
 	sshAvailable := false
 	sshErrMsg := ""
 	if sshErr != nil {
@@ -291,10 +296,6 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		sshErrMsg = sshErr.Error()
 		// continue - ssh config is not required for the rest of sketch to function locally.
 	} else {
-		cst, err := NewSSHTheater(cntrName, sshHost, sshPort)
-		if err != nil {
-			return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
-		}
 		sshAvailable = true
 		// Note: The vscode: link uses an undocumented request parameter that I really had to dig to find:
 		// https://github.com/microsoft/vscode/blob/2b9486161abaca59b5132ce3c59544f3cc7000f6/src/vs/code/electron-main/app.ts#L878
