@@ -34,11 +34,12 @@ const (
 )
 
 type Model struct {
-	UserName  string // provided by the user to identify this model (e.g. "gpt4.1")
-	ModelName string // provided to the service provide to specify which model to use (e.g. "gpt-4.1-2025-04-14")
-	URL       string
-	Cost      ModelCost
-	APIKeyEnv string // environment variable name for the API key
+	UserName         string // provided by the user to identify this model (e.g. "gpt4.1")
+	ModelName        string // provided to the service provide to specify which model to use (e.g. "gpt-4.1-2025-04-14")
+	URL              string
+	Cost             ModelCost
+	APIKeyEnv        string // environment variable name for the API key
+	IsReasoningModel bool   // whether this model is a reasoning model (e.g. O3, O4-mini)
 }
 
 type ModelCost struct {
@@ -56,6 +57,56 @@ var (
 		URL:       OpenAIURL,
 		Cost:      ModelCost{Input: 200, CachedInput: 50, Output: 800},
 		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
+	GPT4o = Model{
+		UserName:  "gpt4o",
+		ModelName: "gpt-4o-2024-08-06",
+		URL:       OpenAIURL,
+		Cost:      ModelCost{Input: 250, CachedInput: 125, Output: 1000},
+		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
+	GPT4oMini = Model{
+		UserName:  "gpt4o-mini",
+		ModelName: "gpt-4o-mini-2024-07-18",
+		URL:       OpenAIURL,
+		Cost:      ModelCost{Input: 15, CachedInput: 8, Output: 60}, // 8 is actually 7.5 GRRR round up for now oh well
+		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
+	GPT41Mini = Model{
+		UserName:  "gpt4.1-mini",
+		ModelName: "gpt-4.1-mini-2025-04-14",
+		URL:       OpenAIURL,
+		Cost:      ModelCost{Input: 40, CachedInput: 10, Output: 160},
+		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
+	GPT41Nano = Model{
+		UserName:  "gpt4.1-nano",
+		ModelName: "gpt-4.1-nano-2025-04-14",
+		URL:       OpenAIURL,
+		Cost:      ModelCost{Input: 10, CachedInput: 3, Output: 40}, // 3 is actually 2.5 GRRR round up for now oh well
+		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
+	O3 = Model{
+		UserName:         "o3",
+		ModelName:        "o3-2025-04-16",
+		URL:              OpenAIURL,
+		Cost:             ModelCost{Input: 1000, CachedInput: 250, Output: 4000},
+		APIKeyEnv:        OpenAIAPIKeyEnv,
+		IsReasoningModel: true,
+	}
+
+	O4Mini = Model{
+		UserName:         "o4-mini",
+		ModelName:        "o4-mini-2025-04-16",
+		URL:              OpenAIURL,
+		Cost:             ModelCost{Input: 110, CachedInput: 28, Output: 440}, // 28 is actually 27.5 GRRR round up for now oh well
+		APIKeyEnv:        OpenAIAPIKeyEnv,
+		IsReasoningModel: true,
 	}
 
 	Gemini25Flash = Model{
@@ -97,6 +148,14 @@ var (
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
+	FireworksLlama4Maverick = Model{
+		UserName:  "fireworks-llama4-maverick",
+		ModelName: "accounts/fireworks/models/llama4-maverick-instruct-basic",
+		URL:       FireworksURL,
+		Cost:      ModelCost{Input: 22, Output: 88},
+		APIKeyEnv: FireworksAPIKeyEnv,
+	}
+
 	TogetherLlama3_3_70B = Model{
 		UserName:  "together-llama3-70b",
 		ModelName: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
@@ -118,6 +177,14 @@ var (
 		ModelName: "Qwen/Qwen3-235B-A22B-fp8-tput",
 		URL:       TogetherURL,
 		Cost:      ModelCost{Input: 20, Output: 60},
+		APIKeyEnv: TogetherAPIKeyEnv,
+	}
+
+	TogetherGemma2 = Model{
+		UserName:  "together-gemma2",
+		ModelName: "google/gemma-2-27b-it",
+		URL:       TogetherURL,
+		Cost:      ModelCost{Input: 80, Output: 80},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -161,6 +228,12 @@ var _ llm.Service = (*Service)(nil)
 // ModelsRegistry is a registry of all known models with their user-friendly names.
 var ModelsRegistry = []Model{
 	GPT41,
+	GPT41Mini,
+	GPT41Nano,
+	GPT4o,
+	GPT4oMini,
+	O3,
+	O4Mini,
 	Gemini25Flash,
 	Gemini25Pro,
 	TogetherDeepseekV3,
@@ -168,8 +241,11 @@ var ModelsRegistry = []Model{
 	TogetherLlama3_3_70B,
 	TogetherMistralSmall,
 	TogetherQwen3,
+	TogetherGemma2,
 	LlamaCPP,
 	FireworksDeepseekV3,
+	FireworksLlama4Maverick,
+	MistralMedium,
 }
 
 // ListModels returns a list of all available models with their user-friendly names.
@@ -559,9 +635,13 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 	req := openai.ChatCompletionRequest{
 		Model:      model.ModelName,
 		Messages:   allMessages,
-		MaxTokens:  cmp.Or(s.MaxTokens, DefaultMaxTokens),
 		Tools:      tools,
 		ToolChoice: fromLLMToolChoice(ir.ToolChoice), // TODO: make fromLLMToolChoice return an error when a perfect translation is not possible
+	}
+	if model.IsReasoningModel {
+		req.MaxCompletionTokens = cmp.Or(s.MaxTokens, DefaultMaxTokens)
+	} else {
+		req.MaxTokens = cmp.Or(s.MaxTokens, DefaultMaxTokens)
 	}
 	// fmt.Printf("Sending request to OpenAI\n")
 	// enc := json.NewEncoder(os.Stdout)
