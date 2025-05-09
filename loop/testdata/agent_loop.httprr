@@ -1,9 +1,9 @@
 httprr trace v1
-14141 2113
+14130 2178
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 13943
+Content-Length: 13932
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
@@ -51,7 +51,7 @@ Content-Type: application/json
   },
   {
    "name": "keyword_search",
-   "description": "\nkeyword_search locates files with a search-and-filter approach.\nUse when navigating unfamiliar codebases with only conceptual understanding or vague user questions.\n\nEffective use:\n- Provide a detailed query for accurate relevance ranking\n- Prefer MANY SPECIFIC terms over FEW GENERAL ones (high precision beats high recall)\n- Order search terms by importance (most important first)\n- Supports regex search terms for flexible matching\n\nIMPORTANT: Do NOT use this tool if you have precise information like log lines, error messages, filenames, symbols, or package names. Use direct approaches (grep, cat, go doc, etc.) instead.\n",
+   "description": "\nkeyword_search locates files with a search-and-filter approach.\nUse when navigating unfamiliar codebases with only conceptual understanding or vague user questions.\n\nEffective use:\n- Provide a detailed query for accurate relevance ranking\n- Prefer MANY SPECIFIC terms over FEW GENERAL ones (high precision beats high recall)\n- Order search terms by importance (most important first)\n- Supports regex search terms for flexible matching\n\nIMPORTANT: Do NOT use this tool if you have precise information like log lines, error messages, stack traces, filenames, or symbols. Use direct approaches (rg, cat, etc.) instead.\n",
    "input_schema": {
     "type": "object",
     "required": [
@@ -447,25 +447,25 @@ Content-Type: application/json
 }HTTP/2.0 200 OK
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
-Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-09T22:31:39Z
+Anthropic-Ratelimit-Input-Tokens-Remaining: 199000
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-09T22:32:01Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-09T22:31:43Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-09T22:32:04Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-09T22:31:38Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-09T22:32:00Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
-Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-09T22:31:39Z
+Anthropic-Ratelimit-Tokens-Remaining: 279000
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-09T22:32:01Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 93d4a5f30d59eb25-SJC
+Cf-Ray: 93d4a6795e647542-SJC
 Content-Type: application/json
-Date: Fri, 09 May 2025 22:31:43 GMT
-Request-Id: req_011CNxkRGmJA1oV5QHGCsb33
+Date: Fri, 09 May 2025 22:32:04 GMT
+Request-Id: req_011CNxkSrg1ab333g8XshWpb
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01Ducpx7QCP6dYEALWPCWx6b","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search files for specific terms\n3. think - Record thoughts and plans\n4. title - Set conversation title\n5. precommit - Create a git branch for tracking work\n6. done - Mark task as complete with checklist\n7. codereview - Run automated code review\n8. multiplechoice - Present quick answer options to user\n9. Browser tools:\n   - browser_navigate - Navigate to URL\n   - browser_click - Click element\n   - browser_type - Type text\n   - browser_wait_for - Wait for element\n   - browser_get_text - Get element text\n   - browser_eval - Evaluate JavaScript\n   - browser_screenshot - Take screenshot\n   - browser_scroll_into_view - Scroll element into view\n10. patch - Make precise text edits to files"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3264,"cache_read_input_tokens":0,"output_tokens":208}}
+{"id":"msg_019S4JeWNDZaM2mmDG8xEfFz","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I'll provide a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Find files with search terms in a codebase\n3. think - Record thoughts, notes, or plans\n4. title - Set conversation title\n5. precommit - Create git branch for tracking work\n6. done - Mark task as complete with checklist\n7. codereview - Run automated code review\n8. multiplechoice - Present multiple choice options to the user\n9. browser_* tools - Several browser manipulation tools including:\n   - browser_navigate\n   - browser_click\n   - browser_type\n   - browser_wait_for\n   - browser_get_text\n   - browser_eval\n   - browser_screenshot\n   - browser_scroll_into_view\n10. patch - Make precise text edits to files\n\nThese tools allow me to execute commands, search files, take notes, manage git, review code, interact with browsers, and modify files."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3262,"cache_read_input_tokens":0,"output_tokens":223}}

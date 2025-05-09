@@ -35,7 +35,7 @@ Effective use:
 - Order search terms by importance (most important first)
 - Supports regex search terms for flexible matching
 
-IMPORTANT: Do NOT use this tool if you have precise information like log lines, error messages, filenames, symbols, or package names. Use direct approaches (grep, cat, go doc, etc.) instead.
+IMPORTANT: Do NOT use this tool if you have precise information like log lines, error messages, stack traces, filenames, or symbols. Use direct approaches (rg, cat, etc.) instead.
 `
 
 	// If you modify this, update the termui template for prettier rendering.
