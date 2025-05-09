@@ -50,18 +50,6 @@ Executes a shell command using bash -c with an optional timeout, returning combi
 When run with background flag, the process may keep running after the tool call returns, and
 the agent can inspect the output by reading the output files. Use the background task when, for example,
 starting a server to test something. Be sure to kill the process group when done.
-
-Executables pre-installed in this environment include:
-- standard unix tools
-- go
-- git
-- rg
-- jq
-- gopls
-- sqlite
-- fzf
-- gh
-- python3
 `
 	// If you modify this, update the termui template for prettier rendering.
 	bashInputSchema = `
