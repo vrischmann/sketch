@@ -1540,17 +1540,51 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 			commits = append(commits, headCommit)
 		}
 
-		branch := cmp.Or(a.branchName, "sketch/"+a.config.SessionID)
+		originalBranch := cmp.Or(a.branchName, "sketch/"+a.config.SessionID)
+		branch := originalBranch
 
 		// TODO: I don't love the force push here. We could see if the push is a fast-forward, and,
 		// if it's not, we could make a backup with a unique name (perhaps append a timestamp) and
 		// then use push with lease to replace.
-		cmd = exec.Command("git", "push", "--force", a.gitRemoteAddr, "HEAD:refs/heads/"+branch)
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
+
+		// Try up to 10 times with different branch names if the branch is checked out on the remote
+		var out []byte
+		var err error
+		for retries := range 10 {
+			if retries > 0 {
+				// Add a numeric suffix to the branch name
+				branch = fmt.Sprintf("%s%d", originalBranch, retries)
+			}
+
+			cmd = exec.Command("git", "push", "--force", a.gitRemoteAddr, "HEAD:refs/heads/"+branch)
+			cmd.Dir = a.workingDir
+			out, err = cmd.CombinedOutput()
+
+			if err == nil {
+				// Success! Break out of the retry loop
+				break
+			}
+
+			// Check if this is the "refusing to update checked out branch" error
+			if !strings.Contains(string(out), "refusing to update checked out branch") {
+				// This is a different error, so don't retry
+				break
+			}
+
+			// If we're on the last retry, we'll report the error
+			if retries == 9 {
+				break
+			}
+		}
+
+		if err != nil {
 			a.pushToOutbox(ctx, errorMessage(fmt.Errorf("git push to host: %s: %v", out, err)))
 		} else {
 			headCommit.PushedBranch = branch
+			// Update the agent's branch name if we ended up using a different one
+			if branch != originalBranch {
+				a.branchName = branch
+			}
 		}
 	}
 
