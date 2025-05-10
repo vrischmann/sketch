@@ -31,6 +31,10 @@ type Service struct {
 
 var _ llm.Service = (*Service)(nil)
 
+func (s *Service) ModelName() string {
+	return cmp.Or(s.Model, DefaultModel)
+}
+
 // These maps convert between Sketch's llm package and Gemini API formats
 var fromLLMRole = map[llm.MessageRole]string{
 	llm.MessageRoleAssistant: "model",
