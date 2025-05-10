@@ -13,8 +13,6 @@ import (
 type Service interface {
 	// Do sends a request to an LLM.
 	Do(context.Context, *Request) (*Response, error)
-
-	ModelName() string
 }
 
 // MustSchema validates that schema is a valid JSON schema and returns it as a json.RawMessage.

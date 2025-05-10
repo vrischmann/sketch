@@ -41,10 +41,6 @@ type Service struct {
 	MaxTokens int          // defaults to DefaultMaxTokens if zero
 }
 
-func (s *Service) ModelName() string {
-	return cmp.Or(s.Model, DefaultModel)
-}
-
 var _ llm.Service = (*Service)(nil)
 
 type content struct {

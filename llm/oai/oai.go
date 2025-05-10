@@ -225,10 +225,6 @@ type Service struct {
 
 var _ llm.Service = (*Service)(nil)
 
-func (s *Service) ModelName() string {
-	return s.Model.UserName
-}
-
 // ModelsRegistry is a registry of all known models with their user-friendly names.
 var ModelsRegistry = []Model{
 	GPT41,
