@@ -6,6 +6,36 @@
     <script>
       const messages = [
         {
+          type: "agent",
+          end_of_turn: false,
+          content:
+            "Now I'll create an empty commit with a very long commit message:",
+          tool_calls: [
+            {
+              name: "bash",
+              input:
+                '{"command":"git commit --allow-empty -m \\"chore: create empty commit with very long message\\\\n\\\\nThis is an extremely long commit message to demonstrate how Git handles verbose commit messages.\\\\nThis empty commit has no actual code changes, but contains a lengthy explanation.\\\\n\\\\nThe empty commit pattern can be useful in several scenarios:\\\\n1. Triggering CI/CD pipelines without modifying code\\\\n2. Marking significant project milestones or releases\\\\n3. Creating annotated reference points in the commit history\\\\n4. Documenting important project decisions\\\\n\\\\nEmpty commits are created using the --allow-empty flag, which instructs Git to \\\\ncreate a commit even when there are no changes staged for commit. This bypasses\\\\nGit\'s normal behavior of refusing to record a commit that has the exact same\\\\ntree as its parent.\\\\n\\\\nSome technical details about empty commits:\\\\n- They still receive a unique commit hash\\\\n- They appear in the git log like any other commit\\\\n- They can be referenced by other git commands\\\\n- They can be included in merges, rebases, and other git operations\\\\n- They take up minimal space in the repository\\\\n\\\\nThis commit message continues to be extremely verbose just to demonstrate how\\\\nGit handles very long commit messages and how they appear in various Git interfaces.\\\\nThe content of this message is not particularly meaningful but serves to\\\\ndemonstrate the ability to include detailed context when necessary.\\\\n\\\\nMore lines of explanation follow to make this commit message truly excessive...\\\\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam ultrices ligula\\\\nnon tellus tincidunt, in volutpat nisi venenatis. Phasellus convallis felis nec\\\\ndiam dignissim, vel fringilla odio ultricies. Morbi feugiat velit in nulla\\\\nconsequat, eget facilisis dui vehicula. Donec fermentum nisl vel justo ultricies,\\\\nut semper libero ultrices. \\\\n\\\\nCras sagittis libero vitae diam eleifend, vel viverra eros tempus.\\\\nSuspendisse potenti. Nullam ac pede. Curabitur blandit hendrerit nibh.\\\\nDonec quis augue ut diam lobortis venenatis. Quisque dapibus justo eget neque.\\\\nInteger sit amet ligula vitae arcu interdum ultrices. Nullam ornare, magna sed\\\\nvenenatis tincidunt, libero urna ullamcorper tortor, ac ultrices neque sem ut massa.\\" --trailer \'Co-Authored-By: sketch <hello@sketch.dev>\' --trailer \'Change-ID: s$(openssl rand -hex 8)k\'"}',
+              tool_call_id: "toolu_01X67pzGzW2NtTjZnxoXTMc7",
+              args: '{"command":"git commit --allow-empty -m \\"chore: create empty commit with very long message\\\\n\\\\nThis is an extremely long commit message to demonstrate how Git handles verbose commit messages..."}',
+              result:
+                "[detached HEAD abc1234] chore: create empty commit with very long message\n 1 file changed, 1 insertion(+), 1 deletion(-)",
+            },
+          ],
+          timestamp: "2025-05-11T21:44:48.760674089Z",
+          conversation_id: "3qc-ptm3",
+          usage: {
+            input_tokens: 6,
+            cache_creation_input_tokens: 77,
+            cache_read_input_tokens: 4230,
+            output_tokens: 668,
+            cost_usd: 0.01159575,
+          },
+          start_time: "2025-05-11T21:44:35.577868468Z",
+          end_time: "2025-05-11T21:44:48.760670506Z",
+          elapsed: 13182802037,
+          idx: 8,
+        },
+        {
           type: "user",
           content: "a user message",
           timestamp: "2025-04-14T16:39:30.639533919Z",
@@ -206,6 +236,16 @@
       });
     </script>
     <style>
+      /* Fix for bash command overflow */
+      sketch-timeline-message::part(message-content),
+      sketch-tool-calls::part(tool-call-card),
+      sketch-tool-card::part(summary) {
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+
       .app-shell {
         display: block;
         font-family:

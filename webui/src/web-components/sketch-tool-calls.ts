@@ -21,6 +21,9 @@ export class SketchToolCalls extends LitElement {
     .tool-calls-container {
       margin-top: 8px;
       padding-top: 4px;
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     /* Card container */
@@ -34,6 +37,9 @@ export class SketchToolCalls extends LitElement {
       cursor: pointer;
       border-left: 2px solid rgba(0, 0, 0, 0.1);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      max-width: 100%;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     /* Status indicators for tool calls */

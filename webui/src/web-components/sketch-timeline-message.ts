@@ -60,6 +60,8 @@ export class SketchTimelineMessage extends LitElement {
       flex: 1;
       display: flex;
       max-width: calc(100% - 160px);
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .user .message-bubble-container {
@@ -77,9 +79,11 @@ export class SketchTimelineMessage extends LitElement {
       padding: 6px 10px;
       border-radius: 12px;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      max-width: 80%;
+      max-width: 100%;
       width: fit-content;
       min-width: min-content;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     /* User message styling */
@@ -1097,6 +1101,28 @@ floatingMessageStyles.textContent = `
 
   .floating-message.error {
     background-color: rgba(220, 53, 69, 0.9);
+  }
+
+  /* Style for code, pre elements, and tool components to ensure proper wrapping/truncation */
+  pre, code, sketch-tool-calls, sketch-tool-card, sketch-tool-card-bash {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  
+  /* Special rule for the message content container */
+  .message-content {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  /* Ensure tool call containers don't overflow */
+  ::slotted(sketch-tool-calls) {
+    max-width: 100%;
+    width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 `;
 document.head.appendChild(floatingMessageStyles);

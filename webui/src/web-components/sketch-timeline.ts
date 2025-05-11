@@ -52,6 +52,7 @@ export class SketchTimeline extends LitElement {
       margin: 0 auto;
       padding: 0 15px;
       box-sizing: border-box;
+      overflow-x: hidden;
     }
 
     /* Chat-like timeline styles */
@@ -64,8 +65,10 @@ export class SketchTimeline extends LitElement {
     /* Remove the vertical timeline line */
 
     #scroll-container {
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding-left: 1em;
+      max-width: 100%;
     }
     #jump-to-latest {
       display: none;

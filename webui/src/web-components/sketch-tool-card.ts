@@ -20,6 +20,13 @@ function renderMarkdown(markdownContent: string): string {
 
 // Common styles shared across all tool cards
 const commonStyles = css`
+  :host {
+    display: block;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
   pre {
     background: rgb(236, 236, 236);
     color: black;
@@ -33,11 +40,13 @@ const commonStyles = css`
     overflow-wrap: break-word;
   }
   .summary-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    width: 100% !important;
     font-family: monospace;
+    display: block;
   }
 `;
 
@@ -64,6 +73,7 @@ export class SketchToolCard extends LitElement {
       border-radius: 4px;
       position: relative;
       overflow: hidden;
+      flex-wrap: wrap;
     }
     .tool-row:hover {
       background-color: rgba(0, 0, 0, 0.02);
@@ -94,9 +104,9 @@ export class SketchToolCard extends LitElement {
       font-size: 14px;
     }
     .summary-text {
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: break-word;
       flex-grow: 1;
       flex-shrink: 1;
       color: #444;
@@ -104,7 +114,7 @@ export class SketchToolCard extends LitElement {
       font-size: 12px;
       padding: 0 4px;
       min-width: 50px;
-      max-width: calc(100% - 250px);
+      max-width: calc(100% - 150px);
       display: inline-block;
     }
     .tool-status {
@@ -267,10 +277,23 @@ export class SketchToolCardBash extends LitElement {
   static styles = [
     commonStyles,
     css`
+      :host {
+        max-width: 100%;
+        display: block;
+      }
       .input {
         display: flex;
         width: 100%;
+        max-width: 100%;
         flex-direction: column;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      .command-wrapper {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .input pre {
         width: 100%;
@@ -319,13 +342,25 @@ export class SketchToolCardBash extends LitElement {
     const isBackground = inputData?.background === true;
     const backgroundIcon = isBackground ? "🔄 " : "";
 
+    // Truncate the command if it's too long to display nicely
+    const command = inputData?.command || "";
+    const displayCommand =
+      command.length > 80 ? command.substring(0, 80) + "..." : command;
+
     return html` <sketch-tool-card
       .open=${this.open}
       .toolCall=${this.toolCall}
     >
-      <span slot="summary" class="summary-text">
-        <div class="command-wrapper">
-          ${backgroundIcon}${inputData?.command}
+      <span
+        slot="summary"
+        class="summary-text"
+        style="display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+      >
+        <div
+          class="command-wrapper"
+          style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+        >
+          ${backgroundIcon}${displayCommand}
         </div>
       </span>
       <div slot="input" class="input">
@@ -714,12 +749,26 @@ export class SketchToolCardGeneric extends LitElement {
 
   render() {
     return html`<sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-      <span slot="summary" class="summary-text">${this.toolCall?.input}</span>
-      <div slot="input">
+      <span
+        slot="summary"
+        style="display: block; white-space: normal; word-break: break-word; overflow-wrap: break-word; max-width: 100%; width: 100%;"
+        >${this.toolCall?.input}</span
+      >
+      <div
+        slot="input"
+        style="max-width: 100%; overflow-wrap: break-word; word-break: break-word;"
+      >
         Input:
-        <pre>${this.toolCall?.input}</pre>
+        <pre
+          style="max-width: 100%; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word;"
+        >
+${this.toolCall?.input}</pre
+        >
       </div>
-      <div slot="result">
+      <div
+        slot="result"
+        style="max-width: 100%; overflow-wrap: break-word; word-break: break-word;"
+      >
         Result:
         ${this.toolCall?.result_message?.tool_result
           ? html`<pre>${this.toolCall?.result_message.tool_result}</pre>`
