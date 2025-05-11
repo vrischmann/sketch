@@ -1,5 +1,5 @@
 {
-  "name": "webui",
+  "name": "sketch-webui",
   "description": "Web UI for CodingAgent.",
   "license": "ISC",
   "author": "",
@@ -7,7 +7,8 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./sketch-app-shell.js": "./dist/sketch-app-shell.js"
+    "./sketch-app-shell.js": "./dist/sketch-app-shell.js",
+    "./web-components/*": "./dist/web-components/*.js"
   },
   "scripts": {
     "playwright-install": "playwright install",
