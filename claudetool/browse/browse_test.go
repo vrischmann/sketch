@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/stretchr/testify/require"
 	"sketch.dev/llm"
 )
 
@@ -72,7 +73,7 @@ func TestGetTools(t *testing.T) {
 	// Test with screenshot tools included
 	t.Run("with screenshots", func(t *testing.T) {
 		toolsWithScreenshots := tools.GetTools(true)
-		if len(toolsWithScreenshots) != 9 {
+		if len(toolsWithScreenshots) != 10 {
 			t.Errorf("expected 9 tools with screenshots, got %d", len(toolsWithScreenshots))
 		}
 
@@ -87,7 +88,7 @@ func TestGetTools(t *testing.T) {
 	// Test without screenshot tools
 	t.Run("without screenshots", func(t *testing.T) {
 		noScreenshotTools := tools.GetTools(false)
-		if len(noScreenshotTools) != 7 {
+		if len(noScreenshotTools) != 8 {
 			t.Errorf("expected 7 tools without screenshots, got %d", len(noScreenshotTools))
 		}
 	})
@@ -303,4 +304,43 @@ func TestReadImageTool(t *testing.T) {
 	if contents[1].Data == "" {
 		t.Errorf("Expected Data in second content")
 	}
+}
+
+// TestResizeTool tests the browser resize functionality
+func TestResizeTool(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Skip if CI or headless testing environment
+	if os.Getenv("CI") != "" || os.Getenv("HEADLESS_TEST") != "" {
+		t.Skip("Skipping browser test in CI/headless environment")
+	}
+
+	t.Run("ResizeWindow", func(t *testing.T) {
+		tools := NewBrowseTools(ctx)
+		defer tools.Close()
+
+		// Resize to mobile dimensions
+		resizeTool := tools.NewResizeTool()
+		input := json.RawMessage(`{"width": 375, "height": 667}`)
+		content, err := resizeTool.Run(ctx, input)
+		require.NoError(t, err)
+		require.Contains(t, content[0].Text, "success")
+
+		// Navigate to a test page and verify using JavaScript to get window dimensions
+		navInput := json.RawMessage(`{"url": "https://example.com"}`)
+		content, err = tools.NewNavigateTool().Run(ctx, navInput)
+		require.NoError(t, err)
+		require.Contains(t, content[0].Text, "success")
+
+		// Check dimensions via JavaScript
+		evalInput := json.RawMessage(`{"expression": "({width: window.innerWidth, height: window.innerHeight})"}`)
+		content, err = tools.NewEvalTool().Run(ctx, evalInput)
+		require.NoError(t, err)
+
+		// The dimensions might not be exactly what we set (browser chrome, etc.)
+		// but they should be close
+		require.Contains(t, content[0].Text, "width")
+		require.Contains(t, content[0].Text, "height")
+	})
 }

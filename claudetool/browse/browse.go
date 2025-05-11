@@ -655,6 +655,71 @@ func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) 
 	return llm.TextContent(successResponse()), nil
 }
 
+// ResizeTool definition
+type resizeInput struct {
+	Width   int    `json:"width"`
+	Height  int    `json:"height"`
+	Timeout string `json:"timeout,omitempty"`
+}
+
+// NewResizeTool creates a tool for resizing the browser window
+func (b *BrowseTools) NewResizeTool() *llm.Tool {
+	return &llm.Tool{
+		Name:        "browser_resize",
+		Description: "Resize the browser window to a specific width and height",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"width": {
+					"type": "integer",
+					"description": "Window width in pixels"
+				},
+				"height": {
+					"type": "integer",
+					"description": "Window height in pixels"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
+				}
+			},
+			"required": ["width", "height"]
+		}`),
+		Run: b.resizeRun,
+	}
+}
+
+func (b *BrowseTools) resizeRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+	var input resizeInput
+	if err := json.Unmarshal(m, &input); err != nil {
+		return llm.TextContent(errorResponse(fmt.Errorf("invalid input: %w", err))), nil
+	}
+
+	browserCtx, err := b.GetBrowserContext()
+	if err != nil {
+		return llm.TextContent(errorResponse(err)), nil
+	}
+
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
+	// Validate dimensions
+	if input.Width <= 0 || input.Height <= 0 {
+		return llm.TextContent(errorResponse(fmt.Errorf("invalid dimensions: width and height must be positive"))), nil
+	}
+
+	// Resize the browser window
+	err = chromedp.Run(timeoutCtx,
+		chromedp.EmulateViewport(int64(input.Width), int64(input.Height)),
+	)
+	if err != nil {
+		return llm.TextContent(errorResponse(err)), nil
+	}
+
+	return llm.TextContent(successResponse()), nil
+}
+
 // GetTools returns browser tools, optionally filtering out screenshot-related tools
 func (b *BrowseTools) GetTools(includeScreenshotTools bool) []*llm.Tool {
 	tools := []*llm.Tool{
@@ -665,6 +730,7 @@ func (b *BrowseTools) GetTools(includeScreenshotTools bool) []*llm.Tool {
 		b.NewGetTextTool(),
 		b.NewEvalTool(),
 		b.NewScrollIntoViewTool(),
+		b.NewResizeTool(),
 	}
 
 	// Add screenshot-related tools if supported
