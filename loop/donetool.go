@@ -19,23 +19,23 @@ func makeDoneTool(codereview *codereview.CodeReviewer) *llm.Tool {
 		Name:        "done",
 		Description: doneDescription,
 		InputSchema: json.RawMessage(doneChecklistJSONSchema),
-		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
+		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 			// Cannot be done with a messy git.
 			if err := codereview.RequireNormalGitState(ctx); err != nil {
-				return "", err
+				return nil, err
 			}
 			if err := codereview.RequireNoUncommittedChanges(ctx); err != nil {
-				return "", err
+				return nil, err
 			}
 			// Ensure that the current commit has been reviewed.
 			head, err := codereview.CurrentCommit(ctx)
 			if err == nil {
 				needsReview := !codereview.IsInitialCommit(head) && !codereview.HasReviewed(head)
 				if needsReview {
-					return "", fmt.Errorf("codereview tool has not been run for commit %v", head)
+					return nil, fmt.Errorf("codereview tool has not been run for commit %v", head)
 				}
 			}
-			return `Please ask the user to review your work. Be concise - users are more likely to read shorter comments.`, nil
+			return llm.TextContent("Please ask the user to review your work. Be concise - users are more likely to read shorter comments."), nil
 		},
 	}
 }

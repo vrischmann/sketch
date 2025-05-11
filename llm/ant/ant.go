@@ -44,15 +44,26 @@ type Service struct {
 var _ llm.Service = (*Service)(nil)
 
 type content struct {
-	// TODO: image support?
 	// https://docs.anthropic.com/en/api/messages
 	ID   string `json:"id,omitempty"`
 	Type string `json:"type,omitempty"`
-	Text string `json:"text,omitempty"`
+
+	// Subtly, an empty string appears in tool results often, so we have
+	// to distinguish between empty string and no string.
+	// Underlying error looks like one of:
+	//   "messages.46.content.0.tool_result.content.0.text.text: Field required""
+	//   "messages.1.content.1.tool_use.text: Extra inputs are not permitted"
+	//
+	// I haven't found a super great source for the API, but
+	// https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/messages/messages.ts
+	// is somewhat acceptable but hard to read.
+	Text      *string         `json:"text,omitempty"`
+	MediaType string          `json:"media_type,omitempty"` // for image
+	Source    json.RawMessage `json:"source,omitempty"`     // for image
 
 	// for thinking
 	Thinking  string `json:"thinking,omitempty"`
-	Data      string `json:"data,omitempty"`      // for redacted_thinking
+	Data      string `json:"data,omitempty"`      // for redacted_thinking or image
 	Signature string `json:"signature,omitempty"` // for thinking
 
 	// for tool_use
@@ -60,9 +71,30 @@ type content struct {
 	ToolInput json.RawMessage `json:"input,omitempty"`
 
 	// for tool_result
-	ToolUseID  string `json:"tool_use_id,omitempty"`
-	ToolError  bool   `json:"is_error,omitempty"`
-	ToolResult string `json:"content,omitempty"`
+	ToolUseID string `json:"tool_use_id,omitempty"`
+	ToolError bool   `json:"is_error,omitempty"`
+	// note the recursive nature here; message looks like:
+	// {
+	//  "role": "user",
+	//  "content": [
+	//    {
+	//      "type": "tool_result",
+	//      "tool_use_id": "toolu_01A09q90qw90lq917835lq9",
+	//      "content": [
+	//        {"type": "text", "text": "15 degrees"},
+	//        {
+	//          "type": "image",
+	//          "source": {
+	//            "type": "base64",
+	//            "media_type": "image/jpeg",
+	//            "data": "/9j/4AAQSkZJRg...",
+	//          }
+	//        }
+	//      ]
+	//    }
+	//  ]
+	//}
+	ToolResult []content `json:"content,omitempty"`
 
 	// timing information for tool_result; not sent to Claude
 	StartTime *time.Time `json:"-"`
@@ -217,10 +249,28 @@ func fromLLMCache(c bool) json.RawMessage {
 }
 
 func fromLLMContent(c llm.Content) content {
-	return content{
+	var toolResult []content
+	if len(c.ToolResult) > 0 {
+		toolResult = make([]content, len(c.ToolResult))
+		for i, tr := range c.ToolResult {
+			// For image content inside a tool_result, we need to map it to "image" type
+			if tr.MediaType != "" && tr.MediaType == "image/jpeg" || tr.MediaType == "image/png" {
+				// Format as an image for Claude
+				toolResult[i] = content{
+					Type: "image",
+					Source: json.RawMessage(fmt.Sprintf(`{"type":"base64","media_type":"%s","data":"%s"}`,
+						tr.MediaType, tr.Data)),
+				}
+			} else {
+				toolResult[i] = fromLLMContent(tr)
+			}
+		}
+	}
+
+	d := content{
 		ID:           c.ID,
 		Type:         fromLLMContentType[c.Type],
-		Text:         c.Text,
+		MediaType:    c.MediaType,
 		Thinking:     c.Thinking,
 		Data:         c.Data,
 		Signature:    c.Signature,
@@ -228,9 +278,15 @@ func fromLLMContent(c llm.Content) content {
 		ToolInput:    c.ToolInput,
 		ToolUseID:    c.ToolUseID,
 		ToolError:    c.ToolError,
-		ToolResult:   c.ToolResult,
+		ToolResult:   toolResult,
 		CacheControl: fromLLMCache(c.Cache),
 	}
+	// Anthropic API complains if Text is specified when it shouldn't be
+	// or not specified when it's the empty string.
+	if c.Type != llm.ContentTypeToolResult && c.Type != llm.ContentTypeToolUse {
+		d.Text = &c.Text
+	}
+	return d
 }
 
 func fromLLMToolUse(tu *llm.ToolUse) *toolUse {
@@ -300,10 +356,19 @@ func toLLMUsage(u usage) llm.Usage {
 }
 
 func toLLMContent(c content) llm.Content {
-	return llm.Content{
+	// Convert toolResult from []content to []llm.Content
+	var toolResultContents []llm.Content
+	if len(c.ToolResult) > 0 {
+		toolResultContents = make([]llm.Content, len(c.ToolResult))
+		for i, tr := range c.ToolResult {
+			toolResultContents[i] = toLLMContent(tr)
+		}
+	}
+
+	ret := llm.Content{
 		ID:         c.ID,
 		Type:       toLLMContentType[c.Type],
-		Text:       c.Text,
+		MediaType:  c.MediaType,
 		Thinking:   c.Thinking,
 		Data:       c.Data,
 		Signature:  c.Signature,
@@ -311,8 +376,12 @@ func toLLMContent(c content) llm.Content {
 		ToolInput:  c.ToolInput,
 		ToolUseID:  c.ToolUseID,
 		ToolError:  c.ToolError,
-		ToolResult: c.ToolResult,
+		ToolResult: toolResultContents,
 	}
+	if c.Text != nil {
+		ret.Text = *c.Text
+	}
+	return ret
 }
 
 func toLLMResponse(r *response) *llm.Response {

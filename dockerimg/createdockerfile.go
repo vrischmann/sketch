@@ -184,19 +184,19 @@ func createDockerfile(ctx context.Context, srv llm.Service, initFiles map[string
 	}
 	toolCalled := false
 	var dockerfileExtraCmds string
-	runDockerfile := func(ctx context.Context, input json.RawMessage) (string, error) {
+	runDockerfile := func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 		// TODO: unmarshal straight into a struct
 		var m map[string]any
 		if err := json.Unmarshal(input, &m); err != nil {
-			return "", fmt.Errorf(`input=%[1]v (%[1]T), wanted a map[string]any, got: %w`, input, err)
+			return nil, fmt.Errorf(`input=%[1]v (%[1]T), wanted a map[string]any, got: %w`, input, err)
 		}
 		var ok bool
 		dockerfileExtraCmds, ok = m["extra_cmds"].(string)
 		if !ok {
-			return "", fmt.Errorf(`input["extra_cmds"]=%[1]v (%[1]T), wanted a string`, m["path"])
+			return nil, fmt.Errorf(`input["extra_cmds"]=%[1]v (%[1]T), wanted a string`, m["path"])
 		}
 		toolCalled = true
-		return "OK", nil
+		return llm.TextContent("OK"), nil
 	}
 
 	convo := conversation.New(ctx, srv)

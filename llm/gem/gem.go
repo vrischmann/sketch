@@ -222,9 +222,23 @@ func (s *Service) buildGeminiRequest(req *llm.Request) (*gemini.Request, error) 
 				// Tool result becomes a function response
 				// Create a map for the response
 				response := map[string]any{
-					"result": c.ToolResult,
-					"error":  c.ToolError,
+					"error": c.ToolError,
 				}
+
+				// Handle tool results: Gemini only supports string results
+				// Combine all text content into a single string
+				var resultText string
+				if len(c.ToolResult) > 0 {
+					// Collect all text from content objects
+					texts := make([]string, 0, len(c.ToolResult))
+					for _, result := range c.ToolResult {
+						if result.Text != "" {
+							texts = append(texts, result.Text)
+						}
+					}
+					resultText = strings.Join(texts, "\n")
+				}
+				response["result"] = resultText
 
 				// Determine the function name to use - this is critical
 				funcName := ""
@@ -254,7 +268,7 @@ func (s *Service) buildGeminiRequest(req *llm.Request) (*gemini.Request, error) 
 				slog.DebugContext(context.Background(), "gemini_preparing_tool_result",
 					"tool_use_id", c.ToolUseID,
 					"mapped_func_name", funcName,
-					"result_length", len(c.ToolResult))
+					"result_count", len(c.ToolResult))
 
 				content.Parts = append(content.Parts, gemini.Part{
 					FunctionResponse: &gemini.FunctionResponse{
@@ -464,7 +478,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 					"content_idx", j,
 					"tool_use_id", c.ToolUseID,
 					"tool_error", c.ToolError,
-					"result_length", len(c.ToolResult))
+					"result_count", len(c.ToolResult))
 			}
 		}
 		slog.DebugContext(ctx, "gemini_message",

@@ -22,8 +22,9 @@ func TestBashRun(t *testing.T) {
 		}
 
 		expected := "Hello, world!\n"
-		if result != expected {
-			t.Errorf("Expected %q, got %q", expected, result)
+		resultStr := ContentToString(result)
+		if resultStr != expected {
+			t.Errorf("Expected %q, got %q", expected, resultStr)
 		}
 	})
 
@@ -37,8 +38,9 @@ func TestBashRun(t *testing.T) {
 		}
 
 		expected := "foobar"
-		if result != expected {
-			t.Errorf("Expected %q, got %q", expected, result)
+		resultStr := ContentToString(result)
+		if resultStr != expected {
+			t.Errorf("Expected %q, got %q", expected, resultStr)
 		}
 	})
 
@@ -62,8 +64,9 @@ func TestBashRun(t *testing.T) {
 		}
 
 		expected := "Completed\n"
-		if result != expected {
-			t.Errorf("Expected %q, got %q", expected, result)
+		resultStr := ContentToString(result)
+		if resultStr != expected {
+			t.Errorf("Expected %q, got %q", expected, resultStr)
 		}
 	})
 
@@ -228,7 +231,8 @@ func TestBackgroundBash(t *testing.T) {
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
-		if err := json.Unmarshal([]byte(result), &bgResult); err != nil {
+		resultStr := ContentToString(result)
+		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
 			t.Fatalf("Failed to unmarshal background result: %v", err)
 		}
 
@@ -285,7 +289,8 @@ func TestBackgroundBash(t *testing.T) {
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
-		if err := json.Unmarshal([]byte(result), &bgResult); err != nil {
+		resultStr := ContentToString(result)
+		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
 			t.Fatalf("Failed to unmarshal background result: %v", err)
 		}
 
@@ -342,7 +347,8 @@ func TestBackgroundBash(t *testing.T) {
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
-		if err := json.Unmarshal([]byte(result), &bgResult); err != nil {
+		resultStr := ContentToString(result)
+		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
 			t.Fatalf("Failed to unmarshal background result: %v", err)
 		}
 

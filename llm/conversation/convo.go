@@ -272,10 +272,13 @@ func (c *Convo) insertMissingToolResults(mr *llm.Request, msg *llm.Message) {
 			continue
 		}
 		content := llm.Content{
-			Type:       llm.ContentTypeToolResult,
-			ToolUseID:  part.ID,
-			ToolError:  true,
-			ToolResult: "not executed; retry possible",
+			Type:      llm.ContentTypeToolResult,
+			ToolUseID: part.ID,
+			ToolError: true,
+			ToolResult: []llm.Content{{
+				Type: llm.ContentTypeText,
+				Text: "not executed; retry possible",
+			}},
 		}
 		prefix = append(prefix, content)
 		msg.Content = append(prefix, msg.Content...)
@@ -361,7 +364,10 @@ func (c *Convo) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, err
 		}
 
 		content.ToolError = true
-		content.ToolResult = "user canceled this too_use"
+		content.ToolResult = []llm.Content{{
+			Type: llm.ContentTypeText,
+			Text: "user canceled this too_use",
+		}}
 		toolResults = append(toolResults, content)
 	}
 	return toolResults, nil
@@ -429,17 +435,24 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]l
 				content.ToolUseEndTime = &endTime
 
 				content.ToolError = true
-				content.ToolResult = err.Error()
+				content.ToolResult = []llm.Content{{
+					Type: llm.ContentTypeText,
+					Text: err.Error(),
+				}}
 				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, nil, err)
 				toolResultC <- content
 			}
-			sendRes := func(res string) {
+			sendRes := func(toolResult []llm.Content) {
 				// Record end time
 				endTime := time.Now()
 				content.ToolUseEndTime = &endTime
 
-				content.ToolResult = res
-				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, &res, nil)
+				content.ToolResult = toolResult
+				var firstText string
+				if len(toolResult) > 0 {
+					firstText = toolResult[0].Text
+				}
+				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, &firstText, nil)
 				toolResultC <- content
 			}
 

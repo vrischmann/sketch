@@ -10,7 +10,7 @@ import (
 // RegisterBrowserTools initializes the browser tools and returns all the tools
 // ready to be added to an agent. It also returns a cleanup function that should
 // be called when done to properly close the browser.
-func RegisterBrowserTools(ctx context.Context) ([]*llm.Tool, func()) {
+func RegisterBrowserTools(ctx context.Context, supportsScreenshots bool) ([]*llm.Tool, func()) {
 	browserTools := NewBrowseTools(ctx)
 
 	// Initialize the browser
@@ -18,8 +18,7 @@ func RegisterBrowserTools(ctx context.Context) ([]*llm.Tool, func()) {
 		log.Printf("Warning: Failed to initialize browser: %v", err)
 	}
 
-	// Return all tools and a cleanup function
-	return browserTools.GetAllTools(), func() {
+	return browserTools.GetTools(supportsScreenshots), func() {
 		browserTools.Close()
 	}
 }

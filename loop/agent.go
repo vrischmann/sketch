@@ -26,6 +26,7 @@ import (
 	"sketch.dev/claudetool/onstart"
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
+	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
 )
 
@@ -228,8 +229,8 @@ func (a *AgentMessage) Attr() slog.Attr {
 	if a.TurnDuration != nil {
 		attrs = append(attrs, slog.Int64("turnDuration", a.TurnDuration.Nanoseconds()))
 	}
-	if a.ToolResult != "" {
-		attrs = append(attrs, slog.String("tool_result", a.ToolResult))
+	if len(a.ToolResult) > 0 {
+		attrs = append(attrs, slog.Any("tool_result", a.ToolResult))
 	}
 	if a.ToolError {
 		attrs = append(attrs, slog.Bool("tool_error", a.ToolError))
@@ -554,6 +555,33 @@ func (a *Agent) OnToolCall(ctx context.Context, convo *conversation.Convo, id st
 	a.mu.Unlock()
 }
 
+// contentToString converts []llm.Content to a string, concatenating all text content and skipping non-text types.
+// If there's only one element in the array and it's a text type, it returns that text directly.
+// It also processes nested ToolResult arrays recursively.
+func contentToString(contents []llm.Content) string {
+	if len(contents) == 0 {
+		return ""
+	}
+
+	// If there's only one element and it's a text type, return it directly
+	if len(contents) == 1 && contents[0].Type == llm.ContentTypeText {
+		return contents[0].Text
+	}
+
+	// Otherwise, concatenate all text content
+	var result strings.Builder
+	for _, content := range contents {
+		if content.Type == llm.ContentTypeText {
+			result.WriteString(content.Text)
+		} else if content.Type == llm.ContentTypeToolResult && len(content.ToolResult) > 0 {
+			// Recursively process nested tool results
+			result.WriteString(contentToString(content.ToolResult))
+		}
+	}
+
+	return result.String()
+}
+
 // OnToolResult implements ant.Listener.
 func (a *Agent) OnToolResult(ctx context.Context, convo *conversation.Convo, toolID string, toolName string, toolInput json.RawMessage, content llm.Content, result *string, err error) {
 	// Remove the tool call from outstanding calls
@@ -564,7 +592,7 @@ func (a *Agent) OnToolResult(ctx context.Context, convo *conversation.Convo, too
 	m := AgentMessage{
 		Type:       ToolUseMessageType,
 		Content:    content.Text,
-		ToolResult: content.ToolResult,
+		ToolResult: contentToString(content.ToolResult),
 		ToolError:  content.ToolError,
 		ToolName:   toolName,
 		ToolInput:  string(toolInput),
@@ -879,7 +907,8 @@ func (a *Agent) initConvo() *conversation.Convo {
 	// Add browser tools if enabled
 	// if experiment.Enabled("browser") {
 	if true {
-		bTools, browserCleanup := browse.RegisterBrowserTools(a.config.Context)
+		_, supportsScreenshots := a.config.Service.(*ant.Service)
+		bTools, browserCleanup := browse.RegisterBrowserTools(a.config.Context, supportsScreenshots)
 		// Add cleanup function to context cancel
 		go func() {
 			<-a.config.Context.Done()
@@ -943,13 +972,13 @@ func (a *Agent) multipleChoiceTool() *llm.Tool {
   },
   "required": ["question", "responseOptions"]
 }`),
-		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
+		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 			// The Run logic for "multiplchoice" tool is a no-op on the server.
 			// The UI will present a list of options for the user to select from,
 			// and that's it as far as "executing" the tool_use goes.
 			// When the user *does* select one of the presented options, that
 			// responseText gets sent as a chat message on behalf of the user.
-			return "end your turn and wait for the user to respond", nil
+			return llm.TextContent("end your turn and wait for the user to respond"), nil
 		},
 	}
 	return ret
@@ -997,28 +1026,28 @@ func (a *Agent) titleTool() *llm.Tool {
 	},
 	"required": ["title"]
 }`),
-		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
+		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 			var params struct {
 				Title string `json:"title"`
 			}
 			if err := json.Unmarshal(input, &params); err != nil {
-				return "", err
+				return nil, err
 			}
 
 			// We don't allow changing the title once set to be consistent with the previous behavior
 			// and to prevent accidental title changes
 			t := a.Title()
 			if t != "" {
-				return "", fmt.Errorf("title already set to: %s", t)
+				return nil, fmt.Errorf("title already set to: %s", t)
 			}
 
 			if params.Title == "" {
-				return "", fmt.Errorf("title parameter cannot be empty")
+				return nil, fmt.Errorf("title parameter cannot be empty")
 			}
 
 			a.SetTitle(params.Title)
 			response := fmt.Sprintf("Title set to %q", params.Title)
-			return response, nil
+			return llm.TextContent(response), nil
 		},
 	}
 	return titleTool
@@ -1039,28 +1068,28 @@ func (a *Agent) precommitTool() *llm.Tool {
 	},
 	"required": ["branch_name"]
 }`),
-		Run: func(ctx context.Context, input json.RawMessage) (string, error) {
+		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 			var params struct {
 				BranchName string `json:"branch_name"`
 			}
 			if err := json.Unmarshal(input, &params); err != nil {
-				return "", err
+				return nil, err
 			}
 
 			b := a.BranchName()
 			if b != "" {
-				return "", fmt.Errorf("branch already set to: %s", b)
+				return nil, fmt.Errorf("branch already set to: %s", b)
 			}
 
 			if params.BranchName == "" {
-				return "", fmt.Errorf("branch_name parameter cannot be empty")
+				return nil, fmt.Errorf("branch_name must not be empty")
 			}
 			if params.BranchName != cleanBranchName(params.BranchName) {
-				return "", fmt.Errorf("branch_name parameter must be alphanumeric hyphenated slug")
+				return nil, fmt.Errorf("branch_name parameter must be alphanumeric hyphenated slug")
 			}
 			branchName := "sketch/" + params.BranchName
 			if branchExists(a.workingDir, branchName) {
-				return "", fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
+				return nil, fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
 			}
 
 			a.SetBranch(branchName)
@@ -1074,7 +1103,7 @@ func (a *Agent) precommitTool() *llm.Tool {
 				response += "\n\n" + styleHint
 			}
 
-			return response, nil
+			return llm.TextContent(response), nil
 		},
 	}
 	return preCommit
@@ -1086,11 +1115,6 @@ func (a *Agent) Ready() <-chan struct{} {
 
 func (a *Agent) UserMessage(ctx context.Context, msg string) {
 	a.pushToOutbox(ctx, AgentMessage{Type: UserMessageType, Content: msg})
-	a.inbox <- msg
-}
-
-func (a *Agent) ToolResultMessage(ctx context.Context, toolCallID, msg string) {
-	a.pushToOutbox(ctx, AgentMessage{Type: UserMessageType, Content: msg, ToolCallId: toolCallID})
 	a.inbox <- msg
 }
 
@@ -1135,6 +1159,11 @@ func (a *Agent) Loop(ctxOuter context.Context) {
 func (a *Agent) pushToOutbox(ctx context.Context, m AgentMessage) {
 	if m.Timestamp.IsZero() {
 		m.Timestamp = time.Now()
+	}
+
+	// If this is a ToolUseMessage and ToolResult is set but Content is not, copy the ToolResult to Content
+	if m.Type == ToolUseMessageType && m.ToolResult != "" && m.Content == "" {
+		m.Content = m.ToolResult
 	}
 
 	// If this is an end-of-turn message, calculate the turn duration and add it to the message

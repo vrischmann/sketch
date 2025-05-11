@@ -74,11 +74,14 @@ func TestLoop_ToolCall_Basic(t *testing.T) {
 
 		toolUseContents := []llm.Content{
 			{
-				Type:       llm.ContentTypeToolResult,
-				ToolUseID:  "tool1",
-				Text:       "",
-				ToolResult: "This is a tool result",
-				ToolError:  false,
+				Type:      llm.ContentTypeToolResult,
+				ToolUseID: "tool1",
+				Text:      "",
+				ToolResult: []llm.Content{{
+					Type: llm.ContentTypeText,
+					Text: "This is a tool result",
+				}},
+				ToolError: false,
 			},
 		}
 		toolUseResultsMsg := llm.Message{
@@ -344,10 +347,13 @@ func TestProcessTurn_UserCancels(t *testing.T) {
 		}
 		canceledToolUseContents := []llm.Content{
 			{
-				Type:       llm.ContentTypeToolResult,
-				ToolUseID:  "tool1",
-				ToolError:  true,
-				ToolResult: "user canceled this tool_use",
+				Type:      llm.ContentTypeToolResult,
+				ToolUseID: "tool1",
+				ToolError: true,
+				ToolResult: []llm.Content{{
+					Type: llm.ContentTypeText,
+					Text: "user canceled this tool_use",
+				}},
 			},
 		}
 		canceledToolUseMsg := llm.Message{
@@ -424,11 +430,14 @@ func TestProcessTurn_UserDoesNotCancel(t *testing.T) {
 
 	toolUseContents := []llm.Content{
 		{
-			Type:       llm.ContentTypeToolResult,
-			ToolUseID:  "tool1",
-			Text:       "",
-			ToolResult: "This is a tool result",
-			ToolError:  false,
+			Type:      llm.ContentTypeToolResult,
+			ToolUseID: "tool1",
+			Text:      "",
+			ToolResult: []llm.Content{{
+				Type: llm.ContentTypeText,
+				Text: "This is a tool result",
+			}},
+			ToolError: false,
 		},
 	}
 	toolUseResponse := &llm.Response{

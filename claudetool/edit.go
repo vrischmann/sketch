@@ -67,55 +67,75 @@ var AnthropicEditTool = &llm.Tool{
 }
 
 // EditRun is the implementation of the edit tool
-func EditRun(ctx context.Context, input json.RawMessage) (string, error) {
+func EditRun(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 	var editRequest editInput
 	if err := json.Unmarshal(input, &editRequest); err != nil {
-		return "", fmt.Errorf("failed to parse edit input: %v", err)
+		return nil, fmt.Errorf("failed to parse edit input: %v", err)
 	}
 
 	// Validate the command
 	cmd := editCommand(editRequest.Command)
 	if !isValidCommand(cmd) {
-		return "", fmt.Errorf("unrecognized command %s. The allowed commands are: view, create, str_replace, insert, undo_edit", cmd)
+		return nil, fmt.Errorf("unrecognized command %s. The allowed commands are: view, create, str_replace, insert, undo_edit", cmd)
 	}
 
 	path := editRequest.Path
 
 	// Validate the path
 	if err := validatePath(cmd, path); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Execute the appropriate command
 	switch cmd {
 	case viewCommand:
-		return handleView(ctx, path, editRequest.ViewRange)
+		result, err := handleView(ctx, path, editRequest.ViewRange)
+		if err != nil {
+			return nil, err
+		}
+		return llm.TextContent(result), nil
 	case createCommand:
 		if editRequest.FileText == nil {
-			return "", fmt.Errorf("parameter file_text is required for command: create")
+			return nil, fmt.Errorf("parameter file_text is required for command: create")
 		}
-		return handleCreate(path, *editRequest.FileText)
+		result, err := handleCreate(path, *editRequest.FileText)
+		if err != nil {
+			return nil, err
+		}
+		return llm.TextContent(result), nil
 	case strReplaceCommand:
 		if editRequest.OldStr == nil {
-			return "", fmt.Errorf("parameter old_str is required for command: str_replace")
+			return nil, fmt.Errorf("parameter old_str is required for command: str_replace")
 		}
 		newStr := ""
 		if editRequest.NewStr != nil {
 			newStr = *editRequest.NewStr
 		}
-		return handleStrReplace(path, *editRequest.OldStr, newStr)
+		result, err := handleStrReplace(path, *editRequest.OldStr, newStr)
+		if err != nil {
+			return nil, err
+		}
+		return llm.TextContent(result), nil
 	case insertCommand:
 		if editRequest.InsertLine == nil {
-			return "", fmt.Errorf("parameter insert_line is required for command: insert")
+			return nil, fmt.Errorf("parameter insert_line is required for command: insert")
 		}
 		if editRequest.NewStr == nil {
-			return "", fmt.Errorf("parameter new_str is required for command: insert")
+			return nil, fmt.Errorf("parameter new_str is required for command: insert")
 		}
-		return handleInsert(path, *editRequest.InsertLine, *editRequest.NewStr)
+		result, err := handleInsert(path, *editRequest.InsertLine, *editRequest.NewStr)
+		if err != nil {
+			return nil, err
+		}
+		return llm.TextContent(result), nil
 	case undoEditCommand:
-		return handleUndoEdit(path)
+		result, err := handleUndoEdit(path)
+		if err != nil {
+			return nil, err
+		}
+		return llm.TextContent(result), nil
 	default:
-		return "", fmt.Errorf("command %s is not implemented", cmd)
+		return nil, fmt.Errorf("command %s is not implemented", cmd)
 	}
 }
 

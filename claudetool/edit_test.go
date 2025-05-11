@@ -50,7 +50,7 @@ func callEditTool(t *testing.T, input map[string]any) string {
 		t.Fatalf("Tool execution failed: %v", err)
 	}
 
-	return result
+	return ContentToString(result)
 }
 
 // TestEditToolView tests the view command functionality

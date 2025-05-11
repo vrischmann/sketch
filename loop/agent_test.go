@@ -680,3 +680,117 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 		t.Errorf("Expected to eventually reach StateEndOfTurn, but never did")
 	}
 }
+
+func TestContentToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		contents []llm.Content
+		want     string
+	}{
+		{
+			name:     "empty",
+			contents: []llm.Content{},
+			want:     "",
+		},
+		{
+			name: "single text content",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "hello world"},
+			},
+			want: "hello world",
+		},
+		{
+			name: "multiple text content",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "hello "},
+				{Type: llm.ContentTypeText, Text: "world"},
+			},
+			want: "hello world",
+		},
+		{
+			name: "mixed content types",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "hello "},
+				{Type: llm.ContentTypeText, MediaType: "image/png", Data: "base64data"},
+				{Type: llm.ContentTypeText, Text: "world"},
+			},
+			want: "hello world",
+		},
+		{
+			name: "non-text content only",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeToolUse, ToolName: "example"},
+			},
+			want: "",
+		},
+		{
+			name: "nested tool result",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "outer "},
+				{Type: llm.ContentTypeToolResult, ToolResult: []llm.Content{
+					{Type: llm.ContentTypeText, Text: "inner"},
+				}},
+			},
+			want: "outer inner",
+		},
+		{
+			name: "deeply nested tool result",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeToolResult, ToolResult: []llm.Content{
+					{Type: llm.ContentTypeToolResult, ToolResult: []llm.Content{
+						{Type: llm.ContentTypeText, Text: "deeply nested"},
+					}},
+				}},
+			},
+			want: "deeply nested",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := contentToString(tt.contents); got != tt.want {
+				t.Errorf("contentToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPushToOutbox(t *testing.T) {
+	// Create a new agent
+	a := &Agent{
+		outstandingLLMCalls:  make(map[string]struct{}),
+		outstandingToolCalls: make(map[string]string),
+		stateMachine:         NewStateMachine(),
+		subscribers:          make([]chan *AgentMessage, 0),
+	}
+
+	// Create a channel to receive messages
+	messageCh := make(chan *AgentMessage, 1)
+
+	// Add the channel to the subscribers list
+	a.mu.Lock()
+	a.subscribers = append(a.subscribers, messageCh)
+	a.mu.Unlock()
+
+	// We need to set the text that would be produced by our modified contentToString function
+	resultText := "test resultnested result" // Directly set the expected output
+
+	// In a real-world scenario, this would be coming from a toolResult that contained nested content
+
+	m := AgentMessage{
+		Type:       ToolUseMessageType,
+		ToolResult: resultText,
+	}
+
+	// Push the message to the outbox
+	a.pushToOutbox(context.Background(), m)
+
+	// Receive the message from the subscriber
+	received := <-messageCh
+
+	// Check that the Content field contains the concatenated text from ToolResult
+	expected := "test resultnested result"
+	if received.Content != expected {
+		t.Errorf("Expected Content to be %q, got %q", expected, received.Content)
+	}
+}

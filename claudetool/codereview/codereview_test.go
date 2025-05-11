@@ -246,7 +246,11 @@ func runDifferentialTest(dir, initialCommit string) (string, error) {
 	}
 
 	// Normalize paths in the result
-	normalized := normalizePaths(result, dir)
+	resultStr := ""
+	if len(result) > 0 {
+		resultStr = result[0].Text
+	}
+	normalized := normalizePaths(resultStr, dir)
 	return normalized, nil
 }
 

@@ -75,13 +75,16 @@ type Tool struct {
 	// The outputs from Run will be sent back to Claude.
 	// If you do not want to respond to the tool call request from Claude, return ErrDoNotRespond.
 	// ctx contains extra (rarely used) tool call information; retrieve it with ToolCallInfoFromContext.
-	Run func(ctx context.Context, input json.RawMessage) (string, error) `json:"-"`
+	Run func(ctx context.Context, input json.RawMessage) ([]Content, error) `json:"-"`
 }
 
 type Content struct {
 	ID   string
 	Type ContentType
 	Text string
+
+	// Media type for image content
+	MediaType string
 
 	// for thinking
 	Thinking  string
@@ -95,7 +98,7 @@ type Content struct {
 	// for tool_result
 	ToolUseID  string
 	ToolError  bool
-	ToolResult string
+	ToolResult []Content
 
 	// timing information for tool_result; added externally; not sent to the LLM
 	ToolUseStartTime *time.Time
@@ -121,7 +124,7 @@ func ContentsAttr(contents []Content) slog.Attr {
 			attrs = append(attrs, slog.String("tool_name", content.ToolName))
 			attrs = append(attrs, slog.String("tool_input", string(content.ToolInput)))
 		case ContentTypeToolResult:
-			attrs = append(attrs, slog.String("tool_result", content.ToolResult))
+			attrs = append(attrs, slog.Any("tool_result", content.ToolResult))
 			attrs = append(attrs, slog.Bool("tool_error", content.ToolError))
 		case ContentTypeThinking:
 			attrs = append(attrs, slog.String("thinking", content.Text))
@@ -228,4 +231,24 @@ func UserStringMessage(text string) Message {
 		Role:    MessageRoleUser,
 		Content: []Content{StringContent(text)},
 	}
+}
+
+// TextContent creates a simple text content for tool results.
+// This is a helper function to create the most common type of tool result content.
+func TextContent(text string) []Content {
+	return []Content{{
+		Type: ContentTypeText,
+		Text: text,
+	}}
+}
+
+// ImageContent creates an image content for tool results.
+// MediaType should be "image/jpeg" or "image/png"
+func ImageContent(text string, mediaType string, base64Data string) []Content {
+	return []Content{{
+		Type:      ContentTypeText,
+		Text:      text,
+		MediaType: mediaType,
+		Data:      base64Data,
+	}}
 }

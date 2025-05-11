@@ -83,10 +83,10 @@ func FindRepoRoot(wd string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
+func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	var input keywordInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return "", err
+		return nil, err
 	}
 	wd := WorkingDir(ctx)
 	root, err := FindRepoRoot(wd)
@@ -100,7 +100,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 	for _, term := range input.SearchTerms {
 		out, err := ripgrep(ctx, wd, []string{term})
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if len(out) > 64*1024 {
 			slog.InfoContext(ctx, "keyword search result too large", "term", term, "bytes", len(out))
@@ -115,7 +115,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 		var err error
 		out, err = ripgrep(ctx, wd, keep)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if len(out) < 128*1024 {
 			break
@@ -139,10 +139,10 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 
 	resp, err := convo.SendMessage(initialMessage)
 	if err != nil {
-		return "", fmt.Errorf("failed to send relevance filtering message: %w", err)
+		return nil, fmt.Errorf("failed to send relevance filtering message: %w", err)
 	}
 	if len(resp.Content) != 1 {
-		return "", fmt.Errorf("unexpected number of messages in relevance filtering response: %d", len(resp.Content))
+		return nil, fmt.Errorf("unexpected number of messages in relevance filtering response: %d", len(resp.Content))
 	}
 
 	filtered := resp.Content[0].Text
@@ -155,7 +155,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) (string, error) {
 		"filtered", filtered,
 	)
 
-	return resp.Content[0].Text, nil
+	return llm.TextContent(resp.Content[0].Text), nil
 }
 
 func ripgrep(ctx context.Context, wd string, terms []string) (string, error) {

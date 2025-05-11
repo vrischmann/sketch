@@ -37,27 +37,27 @@ func (r *CodeReviewer) Tool() *llm.Tool {
 	return spec
 }
 
-func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, error) {
+func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	// NOTE: If you add or modify error messages here, update the corresponding UI parsing in:
 	// webui/src/web-components/sketch-tool-card.ts (SketchToolCardCodeReview.getStatusIcon)
 	if err := r.RequireNormalGitState(ctx); err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check for normal git state", "err", err)
-		return "", err
+		return nil, err
 	}
 	if err := r.RequireNoUncommittedChanges(ctx); err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check for uncommitted changes", "err", err)
-		return "", err
+		return nil, err
 	}
 
 	// Check that the current commit is not the initial commit
 	currentCommit, err := r.CurrentCommit(ctx)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get current commit", "err", err)
-		return "", err
+		return nil, err
 	}
 	if r.IsInitialCommit(currentCommit) {
 		slog.DebugContext(ctx, "CodeReviewer.Run: current commit is initial commit, nothing to review")
-		return "", fmt.Errorf("no new commits have been added, nothing to review")
+		return nil, fmt.Errorf("no new commits have been added, nothing to review")
 	}
 
 	// No matter what failures happen from here out, we will declare this to have been reviewed.
@@ -67,7 +67,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	changedFiles, err := r.changedFiles(ctx, r.initialCommit, currentCommit)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get changed files", "err", err)
-		return "", err
+		return nil, err
 	}
 
 	// Prepare to analyze before/after for the impacted files.
@@ -79,7 +79,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	if err != nil {
 		// TODO: log and skip to stuff that doesn't require packages
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get packages for files", "err", err)
-		return "", err
+		return nil, err
 	}
 	allPkgList := slices.Collect(maps.Keys(allPkgs))
 
@@ -101,7 +101,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	testMsg, err := r.checkTests(ctx, allPkgList)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check tests", "err", err)
-		return "", err
+		return nil, err
 	}
 	if testMsg != "" {
 		errorMessages = append(errorMessages, testMsg)
@@ -110,7 +110,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	goplsMsg, err := r.checkGopls(ctx, changedFiles) // includes vet checks
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check gopls", "err", err)
-		return "", err
+		return nil, err
 	}
 	if goplsMsg != "" {
 		errorMessages = append(errorMessages, goplsMsg)
@@ -143,7 +143,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) (string, erro
 	if buf.Len() == 0 {
 		buf.WriteString("OK")
 	}
-	return buf.String(), nil
+	return llm.TextContent(buf.String()), nil
 }
 
 func (r *CodeReviewer) initializeInitialCommitWorktree(ctx context.Context) error {

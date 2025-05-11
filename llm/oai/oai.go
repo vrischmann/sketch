@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sashabaranov/go-openai"
@@ -320,7 +321,20 @@ func fromLLMContent(c llm.Content) (string, []openai.ToolCall) {
 		}
 	case llm.ContentTypeToolResult:
 		// Tool results in OpenAI are sent as a separate message with tool_call_id
-		return c.ToolResult, nil
+		// OpenAI doesn't support multiple content items or images in tool results
+		// Combine all text content into a single string
+		var resultText string
+		if len(c.ToolResult) > 0 {
+			// Collect all text from content objects
+			texts := make([]string, 0, len(c.ToolResult))
+			for _, result := range c.ToolResult {
+				if result.Text != "" {
+					texts = append(texts, result.Text)
+				}
+			}
+			resultText = strings.Join(texts, "\n")
+		}
+		return resultText, nil
 	default:
 		// For thinking or other types, convert to text
 		return c.Text, nil
@@ -348,9 +362,16 @@ func fromLLMMessage(msg llm.Message) []openai.ChatCompletionMessage {
 
 	// Process tool results as separate messages, but first
 	for _, tr := range toolResults {
+		// Convert toolresult array to a string for OpenAI
+		var toolResultContent string
+		if len(tr.ToolResult) > 0 {
+			// For now, just use the first text content in the array
+			toolResultContent = tr.ToolResult[0].Text
+		}
+
 		m := openai.ChatCompletionMessage{
 			Role:       "tool",
-			Content:    cmp.Or(tr.ToolResult, " "), // TODO: remove omitempty upstream
+			Content:    cmp.Or(toolResultContent, " "), // Use empty space if empty to avoid omitempty issues
 			ToolCallID: tr.ToolUseID,
 		}
 		messages = append(messages, m)
@@ -472,10 +493,13 @@ func toToolCallLLMContent(toolCall openai.ToolCall) llm.Content {
 // toToolResultLLMContent converts a tool result message from OpenAI to llm.Content.
 func toToolResultLLMContent(msg openai.ChatCompletionMessage) llm.Content {
 	return llm.Content{
-		Type:       llm.ContentTypeToolResult,
-		ToolUseID:  msg.ToolCallID,
-		ToolResult: msg.Content,
-		ToolError:  false, // OpenAI doesn't specify errors explicitly
+		Type:      llm.ContentTypeToolResult,
+		ToolUseID: msg.ToolCallID,
+		ToolResult: []llm.Content{{
+			Type: llm.ContentTypeText,
+			Text: msg.Content,
+		}},
+		ToolError: false, // OpenAI doesn't specify errors explicitly
 	}
 }
 

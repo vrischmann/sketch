@@ -102,22 +102,22 @@ func (i *bashInput) timeout() time.Duration {
 	}
 }
 
-func (b *BashTool) Run(ctx context.Context, m json.RawMessage) (string, error) {
+func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	var req bashInput
 	if err := json.Unmarshal(m, &req); err != nil {
-		return "", fmt.Errorf("failed to unmarshal bash command input: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal bash command input: %w", err)
 	}
 
 	// do a quick permissions check (NOT a security barrier)
 	err := bashkit.Check(req.Command)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Custom permission callback if set
 	if b.CheckPermission != nil {
 		if err := b.CheckPermission(req.Command); err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -125,23 +125,23 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) (string, error) {
 	if req.Background {
 		result, err := executeBackgroundBash(ctx, req)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		// Marshal the result to JSON
 		// TODO: emit XML(-ish) instead?
 		output, err := json.Marshal(result)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal background result: %w", err)
+			return nil, fmt.Errorf("failed to marshal background result: %w", err)
 		}
-		return string(output), nil
+		return llm.TextContent(string(output)), nil
 	}
 
 	// For foreground commands, use executeBash
 	out, execErr := executeBash(ctx, req)
-	if execErr == nil {
-		return out, nil
+	if execErr != nil {
+		return nil, execErr
 	}
-	return "", execErr
+	return llm.TextContent(out), nil
 }
 
 const maxBashOutputLength = 131072
@@ -300,7 +300,7 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 }
 
 // BashRun is the legacy function for testing compatibility
-func BashRun(ctx context.Context, m json.RawMessage) (string, error) {
+func BashRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	// Use the default Bash tool which has no permission callback
 	return Bash.Run(ctx, m)
 }

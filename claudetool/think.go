@@ -34,6 +34,6 @@ const (
 `
 )
 
-func thinkRun(ctx context.Context, m json.RawMessage) (string, error) {
-	return "recorded", nil
+func thinkRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+	return llm.TextContent("recorded"), nil
 }
