@@ -124,10 +124,9 @@ func errorResponse(err error) string {
 
 // NavigateTool definition
 type navigateInput struct {
-	URL string `json:"url"`
-}
-
-// NewNavigateTool creates a tool for navigating to URLs
+	URL     string `json:"url"`
+	Timeout string `json:"timeout,omitempty"`
+} // NewNavigateTool creates a tool for navigating to URLs
 func (b *BrowseTools) NewNavigateTool() *llm.Tool {
 	return &llm.Tool{
 		Name:        "browser_navigate",
@@ -138,6 +137,10 @@ func (b *BrowseTools) NewNavigateTool() *llm.Tool {
 				"url": {
 					"type": "string",
 					"description": "The URL to navigate to"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["url"]
@@ -157,7 +160,11 @@ func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) ([]llm
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
-	err = chromedp.Run(browserCtx,
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
+	err = chromedp.Run(timeoutCtx,
 		chromedp.Navigate(input.URL),
 		chromedp.WaitReady("body"),
 	)
@@ -172,6 +179,7 @@ func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) ([]llm
 type clickInput struct {
 	Selector    string `json:"selector"`
 	WaitVisible bool   `json:"wait_visible,omitempty"`
+	Timeout     string `json:"timeout,omitempty"`
 }
 
 // NewClickTool creates a tool for clicking elements
@@ -189,6 +197,10 @@ func (b *BrowseTools) NewClickTool() *llm.Tool {
 				"wait_visible": {
 					"type": "boolean",
 					"description": "Wait for the element to be visible before clicking"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["selector"]
@@ -208,6 +220,10 @@ func (b *BrowseTools) clickRun(ctx context.Context, m json.RawMessage) ([]llm.Co
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
 	actions := []chromedp.Action{
 		chromedp.WaitReady(input.Selector),
 	}
@@ -218,7 +234,7 @@ func (b *BrowseTools) clickRun(ctx context.Context, m json.RawMessage) ([]llm.Co
 
 	actions = append(actions, chromedp.Click(input.Selector))
 
-	err = chromedp.Run(browserCtx, actions...)
+	err = chromedp.Run(timeoutCtx, actions...)
 	if err != nil {
 		return llm.TextContent(errorResponse(err)), nil
 	}
@@ -231,6 +247,7 @@ type typeInput struct {
 	Selector string `json:"selector"`
 	Text     string `json:"text"`
 	Clear    bool   `json:"clear,omitempty"`
+	Timeout  string `json:"timeout,omitempty"`
 }
 
 // NewTypeTool creates a tool for typing into input elements
@@ -252,6 +269,10 @@ func (b *BrowseTools) NewTypeTool() *llm.Tool {
 				"clear": {
 					"type": "boolean",
 					"description": "Clear the input field before typing"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["selector", "text"]
@@ -271,6 +292,10 @@ func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
 	actions := []chromedp.Action{
 		chromedp.WaitReady(input.Selector),
 		chromedp.WaitVisible(input.Selector),
@@ -282,7 +307,7 @@ func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 
 	actions = append(actions, chromedp.SendKeys(input.Selector, input.Text))
 
-	err = chromedp.Run(browserCtx, actions...)
+	err = chromedp.Run(timeoutCtx, actions...)
 	if err != nil {
 		return llm.TextContent(errorResponse(err)), nil
 	}
@@ -292,8 +317,8 @@ func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 
 // WaitForTool definition
 type waitForInput struct {
-	Selector  string `json:"selector"`
-	TimeoutMS int    `json:"timeout_ms,omitempty"`
+	Selector string `json:"selector"`
+	Timeout  string `json:"timeout,omitempty"`
 }
 
 // NewWaitForTool creates a tool for waiting for elements
@@ -308,9 +333,9 @@ func (b *BrowseTools) NewWaitForTool() *llm.Tool {
 					"type": "string",
 					"description": "CSS selector for the element to wait for"
 				},
-				"timeout_ms": {
-					"type": "integer",
-					"description": "Maximum time to wait in milliseconds (default: 30000)"
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["selector"]
@@ -325,17 +350,12 @@ func (b *BrowseTools) waitForRun(ctx context.Context, m json.RawMessage) ([]llm.
 		return llm.TextContent(errorResponse(fmt.Errorf("invalid input: %w", err))), nil
 	}
 
-	timeout := 30000 // default timeout 30 seconds
-	if input.TimeoutMS > 0 {
-		timeout = input.TimeoutMS
-	}
-
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, time.Duration(timeout)*time.Millisecond)
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
 	defer cancel()
 
 	err = chromedp.Run(timeoutCtx, chromedp.WaitReady(input.Selector))
@@ -349,6 +369,7 @@ func (b *BrowseTools) waitForRun(ctx context.Context, m json.RawMessage) ([]llm.
 // GetTextTool definition
 type getTextInput struct {
 	Selector string `json:"selector"`
+	Timeout  string `json:"timeout,omitempty"`
 }
 
 type getTextOutput struct {
@@ -359,13 +380,17 @@ type getTextOutput struct {
 func (b *BrowseTools) NewGetTextTool() *llm.Tool {
 	return &llm.Tool{
 		Name:        "browser_get_text",
-		Description: "Get the innerText of an element",
+		Description: "Get the innerText of an element. Can be used to read the web page.",
 		InputSchema: json.RawMessage(`{
 			"type": "object",
 			"properties": {
 				"selector": {
 					"type": "string",
 					"description": "CSS selector for the element to get text from"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["selector"]
@@ -385,8 +410,12 @@ func (b *BrowseTools) getTextRun(ctx context.Context, m json.RawMessage) ([]llm.
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
 	var text string
-	err = chromedp.Run(browserCtx,
+	err = chromedp.Run(timeoutCtx,
 		chromedp.WaitReady(input.Selector),
 		chromedp.Text(input.Selector, &text),
 	)
@@ -406,6 +435,7 @@ func (b *BrowseTools) getTextRun(ctx context.Context, m json.RawMessage) ([]llm.
 // EvalTool definition
 type evalInput struct {
 	Expression string `json:"expression"`
+	Timeout    string `json:"timeout,omitempty"`
 }
 
 type evalOutput struct {
@@ -423,6 +453,10 @@ func (b *BrowseTools) NewEvalTool() *llm.Tool {
 				"expression": {
 					"type": "string",
 					"description": "JavaScript expression to evaluate"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["expression"]
@@ -442,8 +476,12 @@ func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
 	var result any
-	err = chromedp.Run(browserCtx, chromedp.Evaluate(input.Expression, &result))
+	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(input.Expression, &result))
 	if err != nil {
 		return llm.TextContent(errorResponse(err)), nil
 	}
@@ -461,6 +499,7 @@ func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 type screenshotInput struct {
 	Selector string `json:"selector,omitempty"`
 	Format   string `json:"format,omitempty"`
+	Timeout  string `json:"timeout,omitempty"`
 }
 
 type screenshotOutput struct {
@@ -470,7 +509,7 @@ type screenshotOutput struct {
 // NewScreenshotTool creates a tool for taking screenshots
 func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 	return &llm.Tool{
-		Name:        "browser_screenshot",
+		Name:        "browser_take_screenshot",
 		Description: "Take a screenshot of the page or a specific element",
 		InputSchema: json.RawMessage(`{
 			"type": "object",
@@ -483,6 +522,10 @@ func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 					"type": "string",
 					"description": "Output format ('base64' or 'png'), defaults to 'base64'",
 					"enum": ["base64", "png"]
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			}
 		}`),
@@ -501,6 +544,10 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
 	var buf []byte
 	var actions []chromedp.Action
 
@@ -515,7 +562,7 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 		actions = append(actions, chromedp.CaptureScreenshot(&buf))
 	}
 
-	err = chromedp.Run(browserCtx, actions...)
+	err = chromedp.Run(timeoutCtx, actions...)
 	if err != nil {
 		return llm.TextContent(errorResponse(err)), nil
 	}
@@ -542,6 +589,7 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 // ScrollIntoViewTool definition
 type scrollIntoViewInput struct {
 	Selector string `json:"selector"`
+	Timeout  string `json:"timeout,omitempty"`
 }
 
 // NewScrollIntoViewTool creates a tool for scrolling elements into view
@@ -555,6 +603,10 @@ func (b *BrowseTools) NewScrollIntoViewTool() *llm.Tool {
 				"selector": {
 					"type": "string",
 					"description": "CSS selector for the element to scroll into view"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["selector"]
@@ -574,6 +626,10 @@ func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) 
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
+	// Create a timeout context for this operation
+	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
+	defer cancel()
+
 	script := fmt.Sprintf(`
 		const el = document.querySelector('%s');
 		if (el) {
@@ -584,7 +640,7 @@ func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) 
 	`, input.Selector)
 
 	var result bool
-	err = chromedp.Run(browserCtx,
+	err = chromedp.Run(timeoutCtx,
 		chromedp.WaitReady(input.Selector),
 		chromedp.Evaluate(script, &result),
 	)
@@ -647,7 +703,8 @@ func GetScreenshotPath(id string) string {
 
 // ReadImageTool definition
 type readImageInput struct {
-	Path string `json:"path"`
+	Path    string `json:"path"`
+	Timeout string `json:"timeout,omitempty"`
 }
 
 // NewReadImageTool creates a tool for reading images and returning them as base64 encoded data
@@ -661,6 +718,10 @@ func (b *BrowseTools) NewReadImageTool() *llm.Tool {
 				"path": {
 					"type": "string",
 					"description": "Path to the image file to read"
+				},
+				"timeout": {
+					"type": "string",
+					"description": "Timeout as a Go duration string (default: 5s)"
 				}
 			},
 			"required": ["path"]
@@ -707,4 +768,20 @@ func (b *BrowseTools) readImageRun(ctx context.Context, m json.RawMessage) ([]ll
 			Data:      base64Data,
 		},
 	}, nil
+}
+
+// parseTimeout parses a timeout string and returns a time.Duration
+// It returns a default of 5 seconds if the timeout is empty or invalid
+func parseTimeout(timeout string) time.Duration {
+	if timeout == "" {
+		return 5 * time.Second // default 5 seconds
+	}
+
+	dur, err := time.ParseDuration(timeout)
+	if err != nil {
+		// If parsing fails, return the default
+		return 5 * time.Second
+	}
+
+	return dur
 }

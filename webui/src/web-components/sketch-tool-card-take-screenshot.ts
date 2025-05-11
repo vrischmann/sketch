@@ -2,8 +2,8 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ToolCall } from "../types";
 
-@customElement("sketch-tool-card-screenshot")
-export class SketchToolCardScreenshot extends LitElement {
+@customElement("sketch-tool-card-take-screenshot")
+export class SketchToolCardTakeScreenshot extends LitElement {
   @property()
   toolCall: ToolCall;
 
@@ -153,6 +153,6 @@ export class SketchToolCardScreenshot extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "sketch-tool-card-screenshot": SketchToolCardScreenshot;
+    "sketch-tool-card-take-screenshot": SketchToolCardTakeScreenshot;
   }
 }

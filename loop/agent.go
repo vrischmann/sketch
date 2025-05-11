@@ -904,18 +904,17 @@ func (a *Agent) initConvo() *conversation.Convo {
 	// template in termui/termui.go has pretty-printing support for all tools.
 
 	var browserTools []*llm.Tool
-	// Add browser tools if enabled
-	// if experiment.Enabled("browser") {
-	if true {
-		_, supportsScreenshots := a.config.Service.(*ant.Service)
-		bTools, browserCleanup := browse.RegisterBrowserTools(a.config.Context, supportsScreenshots)
-		// Add cleanup function to context cancel
-		go func() {
-			<-a.config.Context.Done()
-			browserCleanup()
-		}()
-		browserTools = bTools
-	}
+	_, supportsScreenshots := a.config.Service.(*ant.Service)
+	var bTools []*llm.Tool
+	var browserCleanup func()
+
+	bTools, browserCleanup = browse.RegisterBrowserTools(a.config.Context, supportsScreenshots)
+	// Add cleanup function to context cancel
+	go func() {
+		<-a.config.Context.Done()
+		browserCleanup()
+	}()
+	browserTools = bTools
 
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,

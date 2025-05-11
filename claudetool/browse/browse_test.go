@@ -32,7 +32,7 @@ func TestToolCreation(t *testing.T) {
 		{tools.NewWaitForTool(), "browser_wait_for", "Wait", []string{"selector"}},
 		{tools.NewGetTextTool(), "browser_get_text", "Get", []string{"selector"}},
 		{tools.NewEvalTool(), "browser_eval", "Evaluate", []string{"expression"}},
-		{tools.NewScreenshotTool(), "browser_screenshot", "Take", nil},
+		{tools.NewScreenshotTool(), "browser_take_screenshot", "Take", nil},
 		{tools.NewScrollIntoViewTool(), "browser_scroll_into_view", "Scroll", []string{"selector"}},
 	}
 
@@ -101,7 +101,7 @@ func TestBrowserInitialization(t *testing.T) {
 	}
 
 	// Create browser tools instance
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	tools := NewBrowseTools(ctx)
@@ -147,7 +147,7 @@ func TestNavigateTool(t *testing.T) {
 	}
 
 	// Create browser tools instance
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	tools := NewBrowseTools(ctx)

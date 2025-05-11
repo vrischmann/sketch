@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { ToolCall } from "../types";
 import "./sketch-tool-card";
-import "./sketch-tool-card-screenshot";
+import "./sketch-tool-card-take-screenshot";
 
 @customElement("sketch-tool-calls")
 export class SketchToolCalls extends LitElement {
@@ -116,11 +116,11 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-precommit>`;
-      case "browser_screenshot":
-        return html`<sketch-tool-card-screenshot
+      case "browser_take_screenshot":
+        return html`<sketch-tool-card-take-screenshot
           .open=${open}
           .toolCall=${toolCall}
-        ></sketch-tool-card-screenshot>`;
+        ></sketch-tool-card-take-screenshot>`;
     }
     return html`<sketch-tool-card-generic
       .open=${open}
@@ -147,7 +147,7 @@ export class SketchToolCalls extends LitElement {
           let shouldOpen = false;
           // Always expand screenshot tool calls, expand last tool call if this.open is true
           if (
-            toolCall.name === "browser_screenshot" ||
+            toolCall.name === "browser_take_screenshot" ||
             (idx == this.toolCalls?.length - 1 && this.open)
           ) {
             shouldOpen = true;
