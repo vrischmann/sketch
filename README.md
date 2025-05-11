@@ -83,6 +83,24 @@ The diff view shows you changes since Sketch started. Leaving comments on lines
 adds them to the chat box, and, when you hit send, Sketch goes to work addressing your
 comments.
 
+### Connecting to Sketch's Container
+
+You can interact directly with the container by:
+
+ 1. Using the "Terminal" tab in the UI
+ 2. Using `ssh`. Look at the startup logs or click on the information icon to see a command like `ssh sketch-ilik-eske-tcha-lott`.
+We have automatically configured your SSH configuration to make these special hostnames work.
+ 3. Using Visual Studio Code. Again, look for a command line or magic link behind the information icon,
+or when Sketch starts up. This starts a new VSCode session "remoted into" the container. You
+can use the terminal, review diffs, and so forth.
+
+By using SSH (and/or VSCode), you can forward ports from the container to your
+machine. For example, if you want to start your development webserver, you can
+do something like `ssh -L8000:localhost:8888 sketch-ilik-epor-tfor-ward go run
+./cmd/server` to make `http://localhost:8000/` on your machine point to
+`localhost:8888` inside the container.
+
+
 ### Using the Browser Tools
 
 You can ask Sketch to browse a web page and take screenshots. There are tools
