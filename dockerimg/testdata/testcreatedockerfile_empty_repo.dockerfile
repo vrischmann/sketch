@@ -17,14 +17,22 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-# Install any Go tools specific to development
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+RUN go mod tidy || true
 
-# Install any Python dependencies if needed (allow failures)
+# Install any Python dependencies if a requirements.txt exists, but continue on failure
 RUN if [ -f requirements.txt ]; then pip3 install -r requirements.txt || true; fi
 
-# Pre-compile the project if possible
-RUN if [ -f go.mod ]; then go build -v ./... || true; fi
+# Install any npm dependencies if package.json exists
+RUN if [ -f package.json ]; then npm install || true; fi
+
+# Install additional tools that might be useful for Go development
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+
+# Install any additional needed packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    make \
+    protobuf-compiler \
+    || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

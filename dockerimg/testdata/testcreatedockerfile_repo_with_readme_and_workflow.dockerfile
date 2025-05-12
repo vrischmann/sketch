@@ -17,11 +17,10 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-# Install specific Node.js dependencies
-RUN npm install -g corepack || true
-RUN corepack enable || true
+RUN npm install -g corepack && corepack enable
 
-# Any Python setup would go here, but none seems required for this project
+# Try installing any Python dependencies, but continue on failure
+RUN python3 -m pip install --upgrade pip || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

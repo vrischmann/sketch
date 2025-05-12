@@ -211,7 +211,7 @@ func createDockerfile(ctx context.Context, srv llm.Service, initFiles map[string
   "properties": {
     "extra_cmds": {
       "type": "string",
-      "description": "Extra commands to add to the dockerfile."
+      "description": "Extra dockerfile commands to add to the dockerfile. Each command should start with RUN."
     }
   }
 }`),

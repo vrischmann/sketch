@@ -17,15 +17,7 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends graphviz || true && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Python environment setup with error handling
-RUN if [ -f requirements.txt ]; then \
-    pip3 install -r requirements.txt || true; \
-fi
+RUN apt-get update && apt-get install -y graphviz || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

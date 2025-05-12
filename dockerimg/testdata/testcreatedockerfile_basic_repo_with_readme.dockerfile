@@ -17,8 +17,16 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-# No special commands needed for this simple Go test project
-# The base image already provides all necessary Go tools
+RUN echo "Setting up a minimal Go test project environment"
+
+# Install any Go-specific testing tools
+RUN go install github.com/stretchr/testify@latest || true
+
+# Basic Python environment setup (optional, will continue if it fails)
+RUN pip3 install pytest pytest-cov || true
+
+# Run initial setup if needed
+RUN if [ -f "Makefile" ]; then make setup || true; fi
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
