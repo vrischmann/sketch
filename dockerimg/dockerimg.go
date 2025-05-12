@@ -662,6 +662,7 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 
 	var initFiles map[string]string
 	var dockerfilePath string
+	var generatedDockerfile string
 
 	// TODO: prefer a "Dockerfile.sketch" so users can tailor any env to this tool.
 	if len(candidates) == 1 && strings.ToLower(filepath.Base(candidates[0])) == "dockerfile" {
@@ -704,18 +705,18 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 			APIKey: modelAPIKey,
 			HTTPC:  http.DefaultClient,
 		}
-		dockerfile, err := createDockerfile(ctx, srv, initFiles, subPathWorkingDir)
+		generatedDockerfile, err = createDockerfile(ctx, srv, initFiles, subPathWorkingDir)
 		if err != nil {
 			return "", fmt.Errorf("create dockerfile: %w", err)
 		}
 		dockerfilePath = filepath.Join(cwd, tmpSketchDockerfile)
-		if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0o666); err != nil {
+		if err := os.WriteFile(dockerfilePath, []byte(generatedDockerfile), 0o666); err != nil {
 			return "", err
 		}
 		defer os.Remove(dockerfilePath)
 
 		if verbose {
-			fmt.Fprintf(os.Stderr, "generated Dockerfile in %s:\n\t%s\n\n", time.Since(start).Round(time.Millisecond), strings.Replace(dockerfile, "\n", "\n\t", -1))
+			fmt.Fprintf(os.Stderr, "generated Dockerfile in %s:\n\t%s\n\n", time.Since(start).Round(time.Millisecond), strings.Replace(generatedDockerfile, "\n", "\n\t", -1))
 		}
 	}
 
@@ -750,7 +751,14 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 
 	err = run(ctx, "docker build", cmd)
 	if err != nil {
-		return "", fmt.Errorf("docker build failed: %v", err)
+		var msg string
+		if generatedDockerfile != "" {
+			if !verbose {
+				fmt.Fprintf(os.Stderr, "Generated Dockerfile:\n\t%s\n\n", strings.Replace(generatedDockerfile, "\n", "\n\t", -1))
+			}
+			msg = fmt.Sprintf("\n\nThe generated Dockerfile failed to build.\nYou can override it by committing a Dockerfile to your project.")
+		}
+		return "", fmt.Errorf("docker build failed: %v%s", err, msg)
 	}
 	fmt.Printf("built docker image %s in %s\n", imgName, time.Since(start).Round(time.Millisecond))
 	return imgName, nil
