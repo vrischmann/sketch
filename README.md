@@ -108,6 +108,13 @@ both for taking screenshots and "reading images," the latter of which sends the
 image to the LLM. This functionality is handy if you're working on a web page and
 want to see what the in-progress change looks like.
 
+## FAQ
+
+### `no space left on device`
+
+Docker images, containers, and so forth tend to pile up. `docker prune -a` is a good
+command to start with to prune unused images and containers.
+
 ## Development
 
 [![Go Reference](https://pkg.go.dev/badge/sketch.dev.svg)](https://pkg.go.dev/sketch.dev)
