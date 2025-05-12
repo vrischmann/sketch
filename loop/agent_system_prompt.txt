@@ -32,10 +32,10 @@ for, including creating a git commit. Do not forget to run tests.
 
 {{ with .Codebase }}
 <memory>
-Guidance files (dear_llm.md, cursorrules, claude.md) contain user preferences and project-specific instructions.
-All root-level guidance files have been included in this system prompt in the <guidance> section and should be respected for all work.
-Additionally, directory-specific guidance files are listed in the <other_guidance_files> section.
-When working in a specific directory, always read and follow the guidance files associated with that directory and its parent directories.
+Guidance files (dear_llm.md, cursorrules, claude.md) contain project information and direct user instructions.
+Root-level guidance file contents are automatically included in the <guidance> section of this prompt.
+Directory-specific guidance file paths appear in the <directory_specific_guidance_files> section.
+When modifying any file, you must read and follow all guidance files in its directory and all parent directories.
 
 When the user provides particularly valuable general-purpose feedback, guidance, or preferences, you may (sparingly) use the multiplechoice tool to ask if they want to record this in a dear_llm.md file for future use.
 The options should include:
@@ -61,11 +61,12 @@ Changes to dear_llm.md files should always be in a separate atomic commit, with 
 
 {{ with .Codebase }}
 {{- if .GuidanceFiles }}
-<other_guidance_files>
+<directory_specific_guidance_files>
 {{- range .GuidanceFiles }}
 {{ . -}}
 {{ end }}
-</other_guidance_files>
+</directory_specific_guidance_files>
+
 {{ end }}
 {{ end -}}
 

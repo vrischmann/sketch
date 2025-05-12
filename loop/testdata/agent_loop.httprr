@@ -1,9 +1,9 @@
 httprr trace v1
-16161 2332
+16361 2314
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 15963
+Content-Length: 16163
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
@@ -137,6 +137,10 @@ Content-Type: application/json
       "type": "object",
       "description": "Collection of checklist items",
       "properties": {
+       "checked_guidance": {
+        "$ref": "#/definitions/checklistItem",
+        "description": "I checked for and followed any directory-specific guidance files for all modified files."
+       },
        "wrote_tests": {
         "$ref": "#/definitions/checklistItem",
         "description": "If code was changed, tests were written or updated."
@@ -521,24 +525,24 @@ Content-Type: application/json
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
 Anthropic-Ratelimit-Input-Tokens-Remaining: 199000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-11T01:26:00Z
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-13T01:15:55Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-11T01:26:04Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-13T01:15:59Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-11T01:25:59Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-13T01:15:54Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
 Anthropic-Ratelimit-Tokens-Remaining: 279000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-11T01:26:00Z
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-13T01:15:55Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 93dde2b41c34cf2b-SJC
+Cf-Ray: 93ee4eb0491e6426-SJC
 Content-Type: application/json
-Date: Sun, 11 May 2025 01:26:04 GMT
-Request-Id: req_011CNzsXGD3jV7cnpYvABKN2
+Date: Tue, 13 May 2025 01:15:59 GMT
+Request-Id: req_011CP4eNXNcezPCsgHD8gg2Q
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01Q6jfLzpKJGDUmGXgP2w3FQ","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files using keywords\n3. think - Record thoughts, notes, and plans\n4. title - Set conversation title\n5. precommit - Create a git branch for tracking work\n6. done - Mark completion of user's goal with checklist\n7. codereview - Run automated code review\n8. multiplechoice - Present user with quick answer options\n9. Browser tools:\n   - browser_navigate - Go to URL\n   - browser_click - Click element\n   - browser_type - Type text\n   - browser_wait_for - Wait for element\n   - browser_get_text - Get text from element\n   - browser_eval - Run JavaScript\n   - browser_scroll_into_view - Scroll element into view\n   - browser_resize - Resize browser window\n   - browser_take_screenshot - Take screenshot\n   - browser_read_image - Read image file\n10. patch - Make precise text edits to files\n\nThese tools allow me to explore, analyze, modify code, interact with web pages, and help complete your tasks."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3727,"cache_read_input_tokens":0,"output_tokens":262}}
+{"id":"msg_01RPSRVLryPQEH6xYWh1qZng","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search files using keywords\n3. think - For thought process without external effects\n4. title - Set conversation title (not calling as requested)\n5. precommit - Create a git branch for tracking work\n6. done - Mark task completion with a checklist\n7. codereview - Run automated code review\n8. multiplechoice - Present user with answer options\n9. browser_navigate - Navigate to a URL\n10. browser_click - Click on an element\n11. browser_type - Type text into an element\n12. browser_wait_for - Wait for an element\n13. browser_get_text - Get text from an element\n14. browser_eval - Evaluate JavaScript\n15. browser_scroll_into_view - Scroll to an element\n16. browser_resize - Resize browser window\n17. browser_take_screenshot - Take a screenshot\n18. browser_read_image - Read an image file\n19. patch - Modify files with precise text edits\n\nIs there a specific tool you'd like me to elaborate on?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3765,"cache_read_input_tokens":0,"output_tokens":259}}

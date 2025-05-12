@@ -54,6 +54,10 @@ const (
       "type": "object",
       "description": "Collection of checklist items",
       "properties": {
+        "checked_guidance": {
+          "$ref": "#/definitions/checklistItem",
+          "description": "I checked for and followed any directory-specific guidance files for all modified files."
+        },
         "wrote_tests": {
           "$ref": "#/definitions/checklistItem",
           "description": "If code was changed, tests were written or updated."
