@@ -1550,7 +1550,7 @@ func removeGitHooks(_ context.Context, repoPath string) error {
 	}
 
 	// Create an empty hooks directory to prevent git from recreating default hooks
-	err = os.MkdirAll(hooksDir, 0755)
+	err = os.MkdirAll(hooksDir, 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to create empty git hooks directory: %w", err)
 	}
