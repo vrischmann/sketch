@@ -508,6 +508,21 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 }
 
 func buildLinuxSketchBin(ctx context.Context) (string, error) {
+	// Change to directory containing dockerimg.go for module detection
+	_, codeFile, _, _ := runtime.Caller(0)
+	codeDir := filepath.Dir(codeFile)
+	if currentDir, err := os.Getwd(); err != nil {
+		slog.WarnContext(ctx, "could not get current directory", "err", err)
+	} else {
+		if err := os.Chdir(codeDir); err != nil {
+			slog.WarnContext(ctx, "could not change to code directory for module check", "err", err)
+		} else {
+			defer func() {
+				_ = os.Chdir(currentDir)
+			}()
+		}
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
