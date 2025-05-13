@@ -18,3 +18,7 @@ Both layers use the same entrypoint (cmd/sketch). Outer sketch sets up container
 - When changing tool schemas, update both termui and webui
 - For unsafe/recursive development, use `-unsafe` flag
 - Unless explicitly requested, do not add backwards compatibility shims
+
+## Meta
+
+The program you are working on is Sketch. The program you are running is Sketch. This can be slightly confusing: Carefully distinguish the prompt and tools you have from the codebase you are working on. Modifying the code does not change your prompt or tools.
