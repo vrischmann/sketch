@@ -1106,7 +1106,7 @@ func (a *Agent) precommitTool() *llm.Tool {
 
 			b := a.BranchName()
 			if b != "" {
-				return nil, fmt.Errorf("branch already set to: %s", b)
+				return nil, fmt.Errorf("branch already set to %s; do not create a new branch", b)
 			}
 
 			if params.BranchName == "" {
