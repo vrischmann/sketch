@@ -49,16 +49,14 @@ export class SketchToolCardKnowledgeBase extends LitElement {
     const inputData = JSON.parse(this.toolCall?.input || "{}");
     const topic = inputData.topic || "unknown";
     const resultText = this.toolCall?.result_message?.tool_result || "";
-    
+
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
         <span slot="summary" class="summary-text">
           <span class="icon">📚</span> Knowledge: ${topic}
         </span>
         <div slot="input">
-          <div>
-            <span class="topic-label">Topic:</span> ${topic}
-          </div>
+          <div><span class="topic-label">Topic:</span> ${topic}</div>
         </div>
         ${this.toolCall?.result_message?.tool_result
           ? html`<div slot="result">
