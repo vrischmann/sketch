@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/google/uuid"
 	"sketch.dev/llm"
@@ -35,6 +36,10 @@ type BrowseTools struct {
 	// Map to track screenshots by ID and their creation time
 	screenshots      map[string]time.Time
 	screenshotsMutex sync.Mutex
+	// Console logs storage
+	consoleLogs      []*runtime.EventConsoleAPICalled
+	consoleLogsMutex sync.Mutex
+	maxConsoleLogs   int
 }
 
 // NewBrowseTools creates a new set of browser automation tools
@@ -47,9 +52,11 @@ func NewBrowseTools(ctx context.Context) *BrowseTools {
 	}
 
 	b := &BrowseTools{
-		ctx:         ctx,
-		cancel:      cancel,
-		screenshots: make(map[string]time.Time),
+		ctx:            ctx,
+		cancel:         cancel,
+		screenshots:    make(map[string]time.Time),
+		consoleLogs:    make([]*runtime.EventConsoleAPICalled, 0),
+		maxConsoleLogs: 100,
 	}
 
 	return b
@@ -71,6 +78,14 @@ func (b *BrowseTools) Initialize() error {
 
 		b.browserCtx = browserCtx
 		b.browserCtxCancel = browserCancel
+
+		// Set up console log listener
+		chromedp.ListenTarget(browserCtx, func(ev any) {
+			switch e := ev.(type) {
+			case *runtime.EventConsoleAPICalled:
+				b.captureConsoleLog(e)
+			}
+		})
 
 		// Ensure the browser starts
 		if err := chromedp.Run(browserCtx); err != nil {
@@ -731,6 +746,8 @@ func (b *BrowseTools) GetTools(includeScreenshotTools bool) []*llm.Tool {
 		b.NewEvalTool(),
 		b.NewScrollIntoViewTool(),
 		b.NewResizeTool(),
+		b.NewRecentConsoleLogsTool(),
+		b.NewClearConsoleLogsTool(),
 	}
 
 	// Add screenshot-related tools if supported
@@ -850,4 +867,125 @@ func parseTimeout(timeout string) time.Duration {
 	}
 
 	return dur
+}
+
+// captureConsoleLog captures a console log event and stores it
+func (b *BrowseTools) captureConsoleLog(e *runtime.EventConsoleAPICalled) {
+	// Add to logs with mutex protection
+	b.consoleLogsMutex.Lock()
+	defer b.consoleLogsMutex.Unlock()
+
+	// Add the log and maintain max size
+	b.consoleLogs = append(b.consoleLogs, e)
+	if len(b.consoleLogs) > b.maxConsoleLogs {
+		b.consoleLogs = b.consoleLogs[len(b.consoleLogs)-b.maxConsoleLogs:]
+	}
+}
+
+// RecentConsoleLogsTool definition
+type recentConsoleLogsInput struct {
+	Limit int `json:"limit,omitempty"`
+}
+
+// NewRecentConsoleLogsTool creates a tool for retrieving recent console logs
+func (b *BrowseTools) NewRecentConsoleLogsTool() *llm.Tool {
+	return &llm.Tool{
+		Name:        "browser_recent_console_logs",
+		Description: "Get recent browser console logs",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"limit": {
+					"type": "integer",
+					"description": "Maximum number of log entries to return (default: 100)"
+				}
+			}
+		}`),
+		Run: b.recentConsoleLogsRun,
+	}
+}
+
+func (b *BrowseTools) recentConsoleLogsRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+	var input recentConsoleLogsInput
+	if err := json.Unmarshal(m, &input); err != nil {
+		return llm.TextContent(errorResponse(fmt.Errorf("invalid input: %w", err))), nil
+	}
+
+	// Ensure browser is initialized
+	_, err := b.GetBrowserContext()
+	if err != nil {
+		return llm.TextContent(errorResponse(err)), nil
+	}
+
+	// Apply limit (default to 100 if not specified)
+	limit := 100
+	if input.Limit > 0 {
+		limit = input.Limit
+	}
+
+	// Get console logs with mutex protection
+	b.consoleLogsMutex.Lock()
+	logs := make([]*runtime.EventConsoleAPICalled, 0, len(b.consoleLogs))
+	start := 0
+	if len(b.consoleLogs) > limit {
+		start = len(b.consoleLogs) - limit
+	}
+	logs = append(logs, b.consoleLogs[start:]...)
+	b.consoleLogsMutex.Unlock()
+
+	// Format the logs as JSON
+	logData, err := json.MarshalIndent(logs, "", "  ")
+	if err != nil {
+		return llm.TextContent(errorResponse(fmt.Errorf("failed to serialize logs: %w", err))), nil
+	}
+
+	// Format the logs
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Retrieved %d console log entries:\n\n", len(logs)))
+
+	if len(logs) == 0 {
+		sb.WriteString("No console logs captured.")
+	} else {
+		// Add the JSON data for full details
+		sb.WriteString(string(logData))
+	}
+
+	return llm.TextContent(sb.String()), nil
+}
+
+// ClearConsoleLogsTool definition
+type clearConsoleLogsInput struct{}
+
+// NewClearConsoleLogsTool creates a tool for clearing console logs
+func (b *BrowseTools) NewClearConsoleLogsTool() *llm.Tool {
+	return &llm.Tool{
+		Name:        "browser_clear_console_logs",
+		Description: "Clear all captured browser console logs",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"properties": {}
+		}`),
+		Run: b.clearConsoleLogsRun,
+	}
+}
+
+func (b *BrowseTools) clearConsoleLogsRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+	var input clearConsoleLogsInput
+	if err := json.Unmarshal(m, &input); err != nil {
+		return llm.TextContent(errorResponse(fmt.Errorf("invalid input: %w", err))), nil
+	}
+
+	// Ensure browser is initialized
+	_, err := b.GetBrowserContext()
+	if err != nil {
+		return llm.TextContent(errorResponse(err)), nil
+	}
+
+	// Clear console logs with mutex protection
+	b.consoleLogsMutex.Lock()
+	logCount := len(b.consoleLogs)
+	b.consoleLogs = make([]*runtime.EventConsoleAPICalled, 0)
+	b.consoleLogsMutex.Unlock()
+
+	return llm.TextContent(fmt.Sprintf("Cleared %d console log entries.", logCount)), nil
 }

@@ -73,8 +73,8 @@ func TestGetTools(t *testing.T) {
 	// Test with screenshot tools included
 	t.Run("with screenshots", func(t *testing.T) {
 		toolsWithScreenshots := tools.GetTools(true)
-		if len(toolsWithScreenshots) != 10 {
-			t.Errorf("expected 9 tools with screenshots, got %d", len(toolsWithScreenshots))
+		if len(toolsWithScreenshots) != 12 {
+			t.Errorf("expected 12 tools with screenshots, got %d", len(toolsWithScreenshots))
 		}
 
 		// Check tool naming convention
@@ -88,8 +88,8 @@ func TestGetTools(t *testing.T) {
 	// Test without screenshot tools
 	t.Run("without screenshots", func(t *testing.T) {
 		noScreenshotTools := tools.GetTools(false)
-		if len(noScreenshotTools) != 8 {
-			t.Errorf("expected 7 tools without screenshots, got %d", len(noScreenshotTools))
+		if len(noScreenshotTools) != 10 {
+			t.Errorf("expected 10 tools without screenshots, got %d", len(noScreenshotTools))
 		}
 	})
 }
