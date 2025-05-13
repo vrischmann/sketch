@@ -94,7 +94,7 @@ jobs:
 				APIKey: apiKey,
 				HTTPC:  rr.Client(),
 			}
-			result, err := createDockerfile(ctx, srv, initFiles, "")
+			result, err := createDockerfile(ctx, srv, initFiles, "", false)
 			if err != nil {
 				t.Fatal(err)
 			}

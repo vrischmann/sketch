@@ -176,7 +176,7 @@ func checkTagExists(tag string) error {
 // It expects the relevant initFiles to have been provided.
 // If the sketch binary is being executed in a sub-directory of the repository,
 // the relative path is provided on subPathWorkingDir.
-func createDockerfile(ctx context.Context, srv llm.Service, initFiles map[string]string, subPathWorkingDir string) (string, error) {
+func createDockerfile(ctx context.Context, srv llm.Service, initFiles map[string]string, subPathWorkingDir string, verbose bool) (string, error) {
 	if subPathWorkingDir == "." {
 		subPathWorkingDir = ""
 	} else if subPathWorkingDir != "" && subPathWorkingDir[0] != '/' {
@@ -266,9 +266,16 @@ In particular:
 	if res.StopReason != llm.StopReasonToolUse {
 		return "", fmt.Errorf("expected stop reason %q, got %q", llm.StopReasonToolUse, res.StopReason)
 	}
-	if _, err := convo.ToolResultContents(context.TODO(), res); err != nil {
+	_, err = convo.ToolResultContents(context.TODO(), res)
+	if err != nil {
 		return "", err
 	}
+
+	// Print the LLM response when verbose is enabled
+	if verbose && len(res.Content) > 0 && res.Content[0].Type == llm.ContentTypeText && res.Content[0].Text != "" {
+		fmt.Printf("\n<llm_response>\n%s\n</llm_response>\n\n", res.Content[0].Text)
+	}
+
 	if !toolCalled {
 		return "", fmt.Errorf("no dockerfile returned")
 	}

@@ -705,7 +705,7 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 			APIKey: modelAPIKey,
 			HTTPC:  http.DefaultClient,
 		}
-		generatedDockerfile, err = createDockerfile(ctx, srv, initFiles, subPathWorkingDir)
+		generatedDockerfile, err = createDockerfile(ctx, srv, initFiles, subPathWorkingDir, verbose)
 		if err != nil {
 			return "", fmt.Errorf("create dockerfile: %w", err)
 		}
