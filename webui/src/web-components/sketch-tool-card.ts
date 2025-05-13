@@ -790,5 +790,6 @@ declare global {
     "sketch-tool-card-title": SketchToolCardTitle;
     "sketch-tool-card-precommit": SketchToolCardPrecommit;
     "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
+    // TODO: We haven't implemented this for browser tools.
   }
 }
