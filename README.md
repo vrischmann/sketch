@@ -1,12 +1,12 @@
 # Sketch
 
-Sketch is an agentic coding tool.
+Sketch is an agentic coding tool. It draws the 🦉.
 
 Sketch runs in your terminal, has a web UI, understands your code, and helps
 you get work done. To keep your environment pristine, sketch starts a docker
 container and outputs its work onto a branch in your host git repository.
 
-Sketch helps with most programming environments, but Go is Sketch's specialty.
+Sketch helps with most programming environments, but Sketch has extra goodies for Go.
 
 To get started:
 
@@ -22,7 +22,7 @@ It uses docker for containers.
 
 macOS: `brew install colima` (or an equivalent, like Docker Desktop or Orbstack)
 linux: `apt install docker.io` (or equivalent for your distro)
-WSL2:  install Docker Desktop for Windows (docker entirely inside WSL2 is tricky)
+WSL2: install Docker Desktop for Windows (docker entirely inside WSL2 is tricky)
 
 The [sketch.dev](https://sketch.dev) service is used to provide access
 to an LLM service and give you a way to access the web UI from anywhere.
@@ -32,6 +32,8 @@ to an LLM service and give you a way to access the web UI from anywhere.
 We have a discord server to discuss sketch.
 
 Join if you want! https://discord.gg/6w9qNRUDzS
+
+GitHub issues are also welcome: https://github.com/boldsoftware/sketch/issues
 
 ## User Guide
 
@@ -70,17 +72,17 @@ sketch/foo` or `git merge sketch/foo` or `git reset --hard sketch/foo` and so
 on to pull those branches into your workspace. Use the same workflows you would
 as if you were pulling in a friend's Pull Request.
 
-You can ask Sketch to `git fetch sketch-host` and rebase onto some commit or
+Advanced: You can ask Sketch to `git fetch sketch-host` and rebase onto some commit or
 other. Doing so will also fetch where you started Sketch, and we do a bit of
 "git fetch refspec configuration" to make `origin/main` work as a git reference.
 
-Don't be afraid of asking Sketch to rebase, merge/squash commits, rewrite commit
+Don't be afraid of asking Sketch to help you rebase, merge/squash commits, rewrite commit
 messages, and so forth; it's good at it!
 
 ### Reviewing Diffs
 
 The diff view shows you changes since Sketch started. Leaving comments on lines
-adds them to the chat box, and, when you hit send, Sketch goes to work addressing your
+adds them to the chat box, and, when you hit Send (at the bottom of the page), Sketch goes to work addressing your
 comments.
 
 ### Connecting to Sketch's Container
@@ -92,7 +94,7 @@ You can interact directly with the container by:
 We have automatically configured your SSH configuration to make these special hostnames work.
  3. Using Visual Studio Code. Again, look for a command line or magic link behind the information icon,
 or when Sketch starts up. This starts a new VSCode session "remoted into" the container. You
-can use the terminal, review diffs, and so forth.
+can edit the code, use the terminal, review diffs, and so forth.
 
 By using SSH (and/or VSCode), you can forward ports from the container to your
 machine. For example, if you want to start your development webserver, you can
@@ -104,7 +106,7 @@ do something like `ssh -L8000:localhost:8888 sketch-ilik-epor-tfor-ward go run
 ### Using the Browser Tools
 
 You can ask Sketch to browse a web page and take screenshots. There are tools
-both for taking screenshots and "reading images," the latter of which sends the
+both for taking screenshots and "reading images", the latter of which sends the
 image to the LLM. This functionality is handy if you're working on a web page and
 want to see what the in-progress change looks like.
 
