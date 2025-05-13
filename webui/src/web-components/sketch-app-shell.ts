@@ -361,6 +361,7 @@ export class SketchAppShell extends LitElement {
 
     // Binding methods to this
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
+    this._handlePopState = this._handlePopState.bind(this);
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handleMutlipleChoiceSelected =
       this._handleMutlipleChoiceSelected.bind(this);
