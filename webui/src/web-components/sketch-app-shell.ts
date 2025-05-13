@@ -844,7 +844,7 @@ export class SketchAppShell extends LitElement {
       if (this.viewMode !== "chat") {
         this.toggleViewMode("chat", true);
       }
-      
+
       // Send the message to the server
       const response = await fetch("chat", {
         method: "POST",
