@@ -3,9 +3,8 @@ package dockerimg
 import (
 	"bufio"
 	"bytes"
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io/fs"
@@ -19,7 +18,7 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-const keyBitSize = 2048
+// Ed25519 has a fixed key size, no bit size constant needed
 
 // SSHTheater does the necessary key pair generation, known_hosts updates, ssh_config file updates etc steps
 // so that ssh can connect to a locally running sketch container to other local processes like vscode without
@@ -33,6 +32,8 @@ const keyBitSize = 2048
 // Include $HOME/.config/sketch/ssh_config
 //
 // where $HOME is your home directory.
+//
+// SSHTheater uses Ed25519 keys for improved security and performance.
 type SSHTheater struct {
 	cntrName string
 	sshHost  string
@@ -58,6 +59,7 @@ type SSHTheater struct {
 // these files do not already exist.  These key pair files are not deleted by #Cleanup,
 // so they can be re-used across invocations of sketch. This means every sketch container
 // that runs on this host will use the same ssh server identity.
+// The system uses Ed25519 keys for better security and performance.
 //
 // If this doesn't return an error, you should be able to run "ssh <cntrName>"
 // in a terminal on your host machine to open a shell into the container without having
@@ -224,13 +226,23 @@ func removeFromHosts(cntrName string, cfgHosts []*ssh_config.Host) []*ssh_config
 	return hosts
 }
 
-func encodePrivateKeyToPEM(privateKey *rsa.PrivateKey) []byte {
+func encodePrivateKeyToPEM(privateKey ed25519.PrivateKey) []byte {
 	pemBlock := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		Type:  "OPENSSH PRIVATE KEY",
+		Bytes: MarshalED25519PrivateKey(privateKey),
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)
 	return pemBytes
+}
+
+// MarshalED25519PrivateKey encodes an Ed25519 private key in the OpenSSH private key format
+func MarshalED25519PrivateKey(key ed25519.PrivateKey) []byte {
+	// Marshal the private key using the SSH library
+	pkBytes, err := ssh.MarshalPrivateKey(key, "")
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal private key: %v", err))
+	}
+	return pem.EncodeToMemory(pkBytes)
 }
 
 func (c *SSHTheater) writeKeyToFile(keyBytes []byte, filename string) error {
@@ -243,14 +255,14 @@ func (c *SSHTheater) createKeyPairIfMissing(idPath string) (ssh.PublicKey, error
 		return nil, nil
 	}
 
-	privateKey, err := c.kg.GeneratePrivateKey(keyBitSize)
+	privateKey, publicKey, err := c.kg.GenerateKeyPair()
 	if err != nil {
-		return nil, fmt.Errorf("error generating private key: %w", err)
+		return nil, fmt.Errorf("error generating key pair: %w", err)
 	}
 
-	publicRsaKey, err := c.kg.GeneratePublicKey(&privateKey.PublicKey)
+	sshPublicKey, err := c.kg.ConvertToSSHPublicKey(publicKey)
 	if err != nil {
-		return nil, fmt.Errorf("error generating public key: %w", err)
+		return nil, fmt.Errorf("error converting to SSH public key: %w", err)
 	}
 
 	privateKeyPEM := encodePrivateKeyToPEM(privateKey)
@@ -259,13 +271,13 @@ func (c *SSHTheater) createKeyPairIfMissing(idPath string) (ssh.PublicKey, error
 	if err != nil {
 		return nil, fmt.Errorf("error writing private key to file %w", err)
 	}
-	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
+	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
 
 	err = c.writeKeyToFile([]byte(pubKeyBytes), idPath+".pub")
 	if err != nil {
 		return nil, fmt.Errorf("error writing public key to file %w", err)
 	}
-	return publicRsaKey, nil
+	return sshPublicKey, nil
 }
 
 func (c *SSHTheater) addSketchHostMatchIfMissing(cfg *ssh_config.Config) error {
@@ -558,19 +570,20 @@ func (fs *RealFileSystem) SafeWriteFile(name string, data []byte, perm fs.FileMo
 
 // KeyGenerator represents an interface for generating SSH keys for testability
 type KeyGenerator interface {
-	GeneratePrivateKey(bitSize int) (*rsa.PrivateKey, error)
-	GeneratePublicKey(privateKey *rsa.PublicKey) (ssh.PublicKey, error)
+	GenerateKeyPair() (ed25519.PrivateKey, ed25519.PublicKey, error)
+	ConvertToSSHPublicKey(publicKey ed25519.PublicKey) (ssh.PublicKey, error)
 }
 
 // RealKeyGenerator is the default implementation of KeyGenerator
 type RealKeyGenerator struct{}
 
-func (kg *RealKeyGenerator) GeneratePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, bitSize)
+func (kg *RealKeyGenerator) GenerateKeyPair() (ed25519.PrivateKey, ed25519.PublicKey, error) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	return privateKey, publicKey, err
 }
 
-func (kg *RealKeyGenerator) GeneratePublicKey(privateKey *rsa.PublicKey) (ssh.PublicKey, error) {
-	return ssh.NewPublicKey(privateKey)
+func (kg *RealKeyGenerator) ConvertToSSHPublicKey(publicKey ed25519.PublicKey) (ssh.PublicKey, error) {
+	return ssh.NewPublicKey(publicKey)
 }
 
 // CheckSSHReachability checks if the user's SSH config includes the Sketch SSH config file

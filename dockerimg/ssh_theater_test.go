@@ -3,8 +3,8 @@ package dockerimg
 import (
 	"bufio"
 	"bytes"
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"io/fs"
 	"os"
@@ -186,50 +186,52 @@ func (m *MockFileSystem) SafeWriteFile(name string, data []byte, perm fs.FileMod
 
 // MockKeyGenerator implements KeyGenerator interface for testing
 type MockKeyGenerator struct {
-	privateKey *rsa.PrivateKey
-	publicKey  ssh.PublicKey
-	FailOn     map[string]error
+	privateKey   ed25519.PrivateKey
+	publicKey    ed25519.PublicKey
+	sshPublicKey ssh.PublicKey
+	FailOn       map[string]error
 }
 
-func NewMockKeyGenerator(privateKey *rsa.PrivateKey, publicKey ssh.PublicKey) *MockKeyGenerator {
+func NewMockKeyGenerator(privateKey ed25519.PrivateKey, publicKey ed25519.PublicKey, sshPublicKey ssh.PublicKey) *MockKeyGenerator {
 	return &MockKeyGenerator{
-		privateKey: privateKey,
-		publicKey:  publicKey,
-		FailOn:     make(map[string]error),
+		privateKey:   privateKey,
+		publicKey:    publicKey,
+		sshPublicKey: sshPublicKey,
+		FailOn:       make(map[string]error),
 	}
 }
 
-func (m *MockKeyGenerator) GeneratePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
-	if err, ok := m.FailOn["GeneratePrivateKey"]; ok {
-		return nil, err
+func (m *MockKeyGenerator) GenerateKeyPair() (ed25519.PrivateKey, ed25519.PublicKey, error) {
+	if err, ok := m.FailOn["GenerateKeyPair"]; ok {
+		return nil, nil, err
 	}
-	return m.privateKey, nil
+	return m.privateKey, m.publicKey, nil
 }
 
-func (m *MockKeyGenerator) GeneratePublicKey(privateKey *rsa.PublicKey) (ssh.PublicKey, error) {
-	if err, ok := m.FailOn["GeneratePublicKey"]; ok {
+func (m *MockKeyGenerator) ConvertToSSHPublicKey(publicKey ed25519.PublicKey) (ssh.PublicKey, error) {
+	if err, ok := m.FailOn["ConvertToSSHPublicKey"]; ok {
 		return nil, err
 	}
-	return m.publicKey, nil
+	return m.sshPublicKey, nil
 }
 
 // setupMocks sets up common mocks for testing
-func setupMocks(t *testing.T) (*MockFileSystem, *MockKeyGenerator, *rsa.PrivateKey) {
-	// Generate a real private key using real random
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+func setupMocks(t *testing.T) (*MockFileSystem, *MockKeyGenerator, ed25519.PrivateKey) {
+	// Generate a real Ed25519 key pair
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		t.Fatalf("Failed to generate test private key: %v", err)
+		t.Fatalf("Failed to generate test key pair: %v", err)
 	}
 
-	// Generate a test public key
-	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	// Generate a test SSH public key
+	sshPublicKey, err := ssh.NewPublicKey(publicKey)
 	if err != nil {
-		t.Fatalf("Failed to generate test public key: %v", err)
+		t.Fatalf("Failed to generate test SSH public key: %v", err)
 	}
 
 	// Create mocks
 	mockFS := NewMockFileSystem()
-	mockKG := NewMockKeyGenerator(privateKey, publicKey)
+	mockKG := NewMockKeyGenerator(privateKey, publicKey, sshPublicKey)
 
 	return mockFS, mockKG, privateKey
 }
@@ -314,7 +316,7 @@ func TestCreateKeyPairIfMissing(t *testing.T) {
 
 	// Verify public key content format
 	pubKeyContent, _ := mockFS.ReadFile(pubKeyPath)
-	if !bytes.HasPrefix(pubKeyContent, []byte("ssh-rsa ")) {
+	if !bytes.HasPrefix(pubKeyContent, []byte("ssh-ed25519 ")) {
 		t.Errorf("Public key does not have expected format, got: %s", pubKeyContent)
 	}
 }
@@ -471,9 +473,9 @@ func TestRemoveContainerFromKnownHosts(t *testing.T) {
 	ssh, mockFS, _ := setupTestSSHTheater(t)
 
 	// Setup server public key
-	privateKey, _ := ssh.kg.GeneratePrivateKey(2048)
-	publicKey, _ := ssh.kg.GeneratePublicKey(&privateKey.PublicKey)
-	ssh.serverPublicKey = publicKey
+	_, publicKey, _ := ssh.kg.GenerateKeyPair()
+	sshPublicKey, _ := ssh.kg.ConvertToSSHPublicKey(publicKey)
+	ssh.serverPublicKey = sshPublicKey
 
 	// Create host line to be removed
 	hostLine := "[localhost]:2222 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..."
@@ -524,14 +526,14 @@ func TestSSHTheaterCleanup(t *testing.T) {
 	knownHostsPath := filepath.Join(tempDir, "known_hosts")
 	serverIdentityPath := filepath.Join(tempDir, "server_identity")
 
-	// Create private key for server key
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	// Create keys for server key
+	publicKey, _, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		t.Fatalf("Failed to generate private key: %v", err)
+		t.Fatalf("Failed to generate key pair: %v", err)
 	}
-	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	sshPublicKey, err := ssh.NewPublicKey(publicKey)
 	if err != nil {
-		t.Fatalf("Failed to generate public key: %v", err)
+		t.Fatalf("Failed to generate SSH public key: %v", err)
 	}
 
 	// Initialize files
@@ -551,7 +553,7 @@ func TestSSHTheaterCleanup(t *testing.T) {
 		userIdentityPath:   userIdentityPath,
 		knownHostsPath:     knownHostsPath,
 		serverIdentityPath: serverIdentityPath,
-		serverPublicKey:    publicKey,
+		serverPublicKey:    sshPublicKey,
 		fs:                 &RealFileSystem{},
 		kg:                 &RealKeyGenerator{},
 	}
@@ -670,7 +672,7 @@ func TestSSHTheaterWithErrors(t *testing.T) {
 	// Test directory creation failure
 	mockFS := NewMockFileSystem()
 	mockFS.FailOn["MkdirAll"] = fmt.Errorf("mock mkdir error")
-	mockKG := NewMockKeyGenerator(nil, nil)
+	mockKG := NewMockKeyGenerator(nil, nil, nil)
 
 	// Set HOME environment variable for the test
 	oldHome := os.Getenv("HOME")
@@ -685,8 +687,8 @@ func TestSSHTheaterWithErrors(t *testing.T) {
 
 	// Test key generation failure
 	mockFS = NewMockFileSystem()
-	mockKG = NewMockKeyGenerator(nil, nil)
-	mockKG.FailOn["GeneratePrivateKey"] = fmt.Errorf("mock key generation error")
+	mockKG = NewMockKeyGenerator(nil, nil, nil)
+	mockKG.FailOn["GenerateKeyPair"] = fmt.Errorf("mock key generation error")
 
 	_, err = newSSHTheatherWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
 	if err == nil || !strings.Contains(err.Error(), "key generation error") {
