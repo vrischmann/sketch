@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/crypto/ssh"
 	"sketch.dev/browser"
 	"sketch.dev/llm/ant"
 	"sketch.dev/loop/server"
@@ -284,7 +285,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		return appendInternalErr(fmt.Errorf("failed to split ssh host and port: %w", err))
 	}
 
-	var sshServerIdentity, sshUserIdentity []byte
+	var sshServerIdentity, sshUserIdentity, containerCAPublicKey, hostCertificate []byte
 
 	cst, err := NewSSHTheater(cntrName, sshHost, sshPort)
 	if err != nil {
@@ -309,6 +310,16 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 `, cntrName, cntrName, cntrName)
 		sshUserIdentity = cst.userIdentity
 		sshServerIdentity = cst.serverIdentity
+
+		// Get the Container CA public key for mutual auth
+		if cst.containerCAPublicKey != nil {
+			containerCAPublicKey = ssh.MarshalAuthorizedKey(cst.containerCAPublicKey)
+			fmt.Println("🔒 SSH Mutual Authentication enabled (container will verify host)")
+		}
+
+		// Get the host certificate for mutual auth
+		hostCertificate = cst.hostCertificate
+
 		defer func() {
 			if err := cst.Cleanup(); err != nil {
 				appendInternalErr(err)
@@ -323,7 +334,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		// the scrollback (which is not good, but also not fatal).  I can't see why it does this
 		// though, since none of the calls in postContainerInitConfig obviously write to stdout
 		// or stderr.
-		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, sshAvailable, sshErrMsg, sshServerIdentity, sshUserIdentity); err != nil {
+		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, sshAvailable, sshErrMsg, sshServerIdentity, sshUserIdentity, containerCAPublicKey, hostCertificate); err != nil {
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
@@ -589,19 +600,21 @@ func getContainerPort(ctx context.Context, cntrName, cntrPort string) (string, e
 }
 
 // Contact the container and configure it.
-func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string, sshAvailable bool, sshError string, sshServerIdentity, sshAuthorizedKeys []byte) error {
+func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string, sshAvailable bool, sshError string, sshServerIdentity, sshAuthorizedKeys, sshContainerCAKey, sshHostCertificate []byte) error {
 	localURL := "http://" + localAddr
 
 	initMsg, err := json.Marshal(
 		server.InitRequest{
-			Commit:            commit,
-			OutsideHTTP:       fmt.Sprintf("http://sketch:%s@host.docker.internal:%s", gitPass, gitPort),
-			GitRemoteAddr:     fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitPass, gitPort),
-			HostAddr:          localAddr,
-			SSHAuthorizedKeys: sshAuthorizedKeys,
-			SSHServerIdentity: sshServerIdentity,
-			SSHAvailable:      sshAvailable,
-			SSHError:          sshError,
+			Commit:             commit,
+			OutsideHTTP:        fmt.Sprintf("http://sketch:%s@host.docker.internal:%s", gitPass, gitPort),
+			GitRemoteAddr:      fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitPass, gitPort),
+			HostAddr:           localAddr,
+			SSHAuthorizedKeys:  sshAuthorizedKeys,
+			SSHServerIdentity:  sshServerIdentity,
+			SSHContainerCAKey:  sshContainerCAKey,
+			SSHHostCertificate: sshHostCertificate,
+			SSHAvailable:       sshAvailable,
+			SSHError:           sshError,
 		})
 	if err != nil {
 		return fmt.Errorf("init msg: %w", err)

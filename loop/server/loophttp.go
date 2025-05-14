@@ -80,14 +80,16 @@ type State struct {
 }
 
 type InitRequest struct {
-	HostAddr          string `json:"host_addr"`
-	OutsideHTTP       string `json:"outside_http"`
-	GitRemoteAddr     string `json:"git_remote_addr"`
-	Commit            string `json:"commit"`
-	SSHAuthorizedKeys []byte `json:"ssh_authorized_keys"`
-	SSHServerIdentity []byte `json:"ssh_server_identity"`
-	SSHAvailable      bool   `json:"ssh_available"`
-	SSHError          string `json:"ssh_error,omitempty"`
+	HostAddr           string `json:"host_addr"`
+	OutsideHTTP        string `json:"outside_http"`
+	GitRemoteAddr      string `json:"git_remote_addr"`
+	Commit             string `json:"commit"`
+	SSHAuthorizedKeys  []byte `json:"ssh_authorized_keys"`
+	SSHServerIdentity  []byte `json:"ssh_server_identity"`
+	SSHContainerCAKey  []byte `json:"ssh_container_ca_key"`
+	SSHHostCertificate []byte `json:"ssh_host_certificate"`
+	SSHAvailable       bool   `json:"ssh_available"`
+	SSHError           string `json:"ssh_error,omitempty"`
 }
 
 // Server serves sketch HTTP. Server implements http.Handler.
@@ -190,7 +192,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if len(m.SSHAuthorizedKeys) > 0 && len(m.SSHServerIdentity) > 0 {
 			go func() {
 				ctx := context.Background()
-				if err := s.ServeSSH(ctx, m.SSHServerIdentity, m.SSHAuthorizedKeys); err != nil {
+				if err := s.ServeSSH(ctx, m.SSHServerIdentity, m.SSHAuthorizedKeys, m.SSHContainerCAKey, m.SSHHostCertificate); err != nil {
 					slog.ErrorContext(r.Context(), "/init ServeSSH", slog.String("err", err.Error()))
 					// Update SSH error if server fails to start
 					s.sshAvailable = false
