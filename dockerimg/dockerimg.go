@@ -709,11 +709,17 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 		if err != nil {
 			return "", fmt.Errorf("create dockerfile: %w", err)
 		}
-		dockerfilePath = filepath.Join(cwd, tmpSketchDockerfile)
+		// Create a unique temporary directory for the Dockerfile
+		tmpDir, err := os.MkdirTemp("", "sketch-docker-*")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temporary directory: %w", err)
+		}
+		dockerfilePath = filepath.Join(tmpDir, tmpSketchDockerfile)
 		if err := os.WriteFile(dockerfilePath, []byte(generatedDockerfile), 0o666); err != nil {
 			return "", err
 		}
-		defer os.Remove(dockerfilePath)
+		// Remove the temporary directory and all contents when done
+		defer os.RemoveAll(tmpDir)
 
 		if verbose {
 			fmt.Fprintf(os.Stderr, "generated Dockerfile in %s:\n\t%s\n\n", time.Since(start).Round(time.Millisecond), strings.Replace(generatedDockerfile, "\n", "\n\t", -1))
