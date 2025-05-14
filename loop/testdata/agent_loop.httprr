@@ -1,9 +1,9 @@
 httprr trace v1
-16931 2233
+16935 2032
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 16733
+Content-Length: 16737
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
@@ -535,7 +535,7 @@ Content-Type: application/json
  ],
  "system": [
   {
-   "text": "You are the expert coding assistant and architect powering Sketch,\nan agentic coding environment that helps users accomplish coding tasks through autonomous analysis and implementation.\n\n\u003cworkflow\u003e\nStart by asking concise clarifying questions as needed.\nOnce the intent is clear, work autonomously.\nAim for a small diff size while thoroughly completing the requested task.\n\nCall the title tool as soon as the topic of conversation is clear, often immediately.\n\nBreak down the overall goal into a series of smaller steps.\n(The first step is often: \"Make a plan.\")\nThen execute each step using tools.\nUpdate the plan if you have encountered problems or learned new information.\n\nWhen in doubt about a step, follow this broad workflow:\n\n- Think about how the current step fits into the overall plan.\n- Do research. Good tool choices: bash, think, keyword_search\n- Make edits.\n- Repeat.\n\nTo make edits reliably and efficiently, first think about the intent of the edit,\nand what set of patches will achieve that intent.\nThen use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call.\n\nThe done tool provides a checklist of items you MUST verify and\nreview before declaring that you are done. Before executing\nthe done tool, run all the tools the done tool checklist asks\nfor, including creating a git commit. Do not forget to run tests.\n\u003c/workflow\u003e\n\n\u003csystem_info\u003e\n\u003cplatform\u003e\nlinux/amd64\n\u003c/platform\u003e\n\u003cpwd\u003e\n/\n\u003c/pwd\u003e\n\u003c/system_info\u003e\n\n\u003cgit_info\u003e\n\u003cgit_root\u003e\n\n\u003c/git_root\u003e\n\u003cHEAD\u003e\n\n\u003c/HEAD\u003e\n\u003c/git_info\u003e\n\n",
+   "text": "You are the expert coding assistant and architect powering Sketch,\nan agentic coding environment that helps users accomplish coding tasks through autonomous analysis and implementation.\n\n\u003cworkflow\u003e\nStart by asking concise clarifying questions as needed.\nOnce the intent is clear, work autonomously.\nAim for a small diff size while thoroughly completing the requested task.\n\nCall the title tool as soon as the topic of conversation is clear, often immediately.\n\nBreak down the overall goal into a series of smaller steps.\n(The first step is often: \"Make a plan.\")\nThen execute each step using tools.\nUpdate the plan if you have encountered problems or learned new information.\n\nWhen in doubt about a step, follow this broad workflow:\n\n- Think about how the current step fits into the overall plan.\n- Do research. Good tool choices: bash, think, keyword_search\n- Make edits.\n- Repeat.\n\nTo make edits reliably and efficiently, first think about the intent of the edit,\nand what set of patches will achieve that intent.\nThen use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call.\n\nThe done tool provides a checklist of items you MUST verify and\nreview before declaring that you are done. Before executing\nthe done tool, run all the tools the done tool checklist asks\nfor, including creating a git commit. Do not forget to run tests.\n\u003c/workflow\u003e\n\n\u003csystem_info\u003e\n\u003cplatform\u003e\nlinux/amd64\n\u003c/platform\u003e\n\u003cpwd\u003e\n/\n\u003c/pwd\u003e\n\u003c/system_info\u003e\n\n\u003cgit_info\u003e\n\u003cgit_root\u003e\n\n\u003c/git_root\u003e\n\u003cHEAD\u003e\nHEAD\n\u003c/HEAD\u003e\n\u003c/git_info\u003e\n\n",
    "type": "text",
    "cache_control": {
     "type": "ephemeral"
@@ -546,24 +546,24 @@ Content-Type: application/json
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
 Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-14T00:18:00Z
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-14T16:36:00Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-14T00:18:04Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-14T16:36:03Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-14T00:17:59Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-14T16:35:58Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
 Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-14T00:18:00Z
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-14T16:36:00Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 93f6373918bc7afd-SJC
+Cf-Ray: 93fbcfd2ac34236d-SJC
 Content-Type: application/json
-Date: Wed, 14 May 2025 00:18:04 GMT
-Request-Id: req_011CP6TmGW2vmPmS7JfqFK5U
+Date: Wed, 14 May 2025 16:36:03 GMT
+Request-Id: req_011CP7kLmfzqYMjT1roGU6g3
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01K2J8Qx4ZGm7pds3aQd83SV","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here are the tools available to me:\n\n1. bash - Executes shell commands\n2. keyword_search - Searches files using keywords\n3. think - For thinking out loud, taking notes, or planning\n4. title - Sets conversation title\n5. precommit - Creates git branches and provides commit guidance\n6. done - Indicates task completion with a checklist\n7. codereview - Runs automated code review\n8. multiplechoice - Presents multiple choice questions to users\n9. Browser tools:\n   - browser_navigate, browser_click, browser_type, browser_wait_for\n   - browser_get_text, browser_eval, browser_scroll_into_view\n   - browser_resize, browser_recent_console_logs, browser_clear_console_logs\n   - browser_take_screenshot, browser_read_image\n10. patch - Modifies files with precise text edits\n\nThese tools allow me to perform tasks like executing code, searching files, interacting with browsers, editing files, and managing git repositories."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3888,"cache_read_input_tokens":0,"output_tokens":234}}
+{"id":"msg_01SDrU5LWSJHPMGMWk8rrTcX","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I can provide you with a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Find files with search terms\n3. think - Record thoughts and plans (no external effects)\n4. title - Set conversation title\n5. precommit - Create git branch for work\n6. done - Mark completion with checklist verification\n7. codereview - Run automated code review\n8. multiplechoice - Present options for user to choose from\n9. browser_* tools - Various browser automation functions (navigate, click, type, etc.)\n10. patch - Make precise text edits to files\n\nThese tools allow me to help with coding tasks, navigate codebases, make edits, run commands, interact with web pages, and plan/document my work."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3890,"cache_read_input_tokens":0,"output_tokens":177}}

@@ -1112,12 +1112,13 @@ func (s *Server) getState() State {
 	totalUsage := s.agent.TotalUsage()
 
 	return State{
-		StateVersion:         2,
-		MessageCount:         serverMessageCount,
-		TotalUsage:           &totalUsage,
-		Hostname:             s.hostname,
-		WorkingDir:           getWorkingDir(),
-		InitialCommit:        s.agent.InitialCommit(),
+		StateVersion: 2,
+		MessageCount: serverMessageCount,
+		TotalUsage:   &totalUsage,
+		Hostname:     s.hostname,
+		WorkingDir:   getWorkingDir(),
+		// TODO: Rename this field to sketch-base?
+		InitialCommit:        s.agent.SketchGitBase(),
 		Title:                s.agent.Title(),
 		BranchName:           s.agent.BranchName(),
 		OS:                   s.agent.OS(),

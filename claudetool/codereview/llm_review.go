@@ -17,7 +17,7 @@ var llmCodereviewPrompt string
 // doLLMReview analyzes the diff using an LLM subagent.
 func (r *CodeReviewer) doLLMReview(ctx context.Context) (string, error) {
 	// Get the full diff between initial commit and HEAD
-	cmd := exec.CommandContext(ctx, "git", "diff", r.initialCommit, "HEAD")
+	cmd := exec.CommandContext(ctx, "git", "diff", r.sketchBaseRef, "HEAD")
 	cmd.Dir = r.repoRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {

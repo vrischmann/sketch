@@ -64,7 +64,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	// This should help avoid the model getting blocked by a broken code review tool.
 	r.reviewed = append(r.reviewed, currentCommit)
 
-	changedFiles, err := r.changedFiles(ctx, r.initialCommit, currentCommit)
+	changedFiles, err := r.changedFiles(ctx, r.sketchBaseRef, currentCommit)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get changed files", "err", err)
 		return nil, err
@@ -154,7 +154,7 @@ func (r *CodeReviewer) initializeInitialCommitWorktree(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	worktreeCmd := exec.CommandContext(ctx, "git", "worktree", "add", "--detach", tmpDir, r.initialCommit)
+	worktreeCmd := exec.CommandContext(ctx, "git", "worktree", "add", "--detach", tmpDir, r.sketchBaseRef)
 	worktreeCmd.Dir = r.repoRoot
 	out, err := worktreeCmd.CombinedOutput()
 	if err != nil {
@@ -274,7 +274,7 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 		}
 
 		// Check if the file exists in the initial commit
-		checkCmd := exec.CommandContext(ctx, "git", "cat-file", "-e", fmt.Sprintf("%s:%s", r.initialCommit, relFile))
+		checkCmd := exec.CommandContext(ctx, "git", "cat-file", "-e", fmt.Sprintf("%s:%s", r.sketchBaseRef, relFile))
 		checkCmd.Dir = r.repoRoot
 		if err := checkCmd.Run(); err == nil {
 			// File exists in initial commit
@@ -491,21 +491,21 @@ func (r *CodeReviewer) HasReviewed(commit string) bool {
 }
 
 func (r *CodeReviewer) IsInitialCommit(commit string) bool {
-	return commit == r.initialCommit
+	return commit == r.sketchBaseRef
 }
 
-// requireHEADDescendantOfInitialCommit returns an error if HEAD is not a descendant of r.initialCommit.
+// requireHEADDescendantOfSketchBaseRef returns an error if HEAD is not a descendant of r.initialCommit.
 // This serves two purposes:
 //   - ensures we're not still on the initial commit
 //   - ensures we're not on a separate branch or upstream somewhere, which would be confusing
-func (r *CodeReviewer) requireHEADDescendantOfInitialCommit(ctx context.Context) error {
+func (r *CodeReviewer) requireHEADDescendantOfSketchBaseRef(ctx context.Context) error {
 	head, err := r.CurrentCommit(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Note: Git's merge-base --is-ancestor checks strict ancestry (i.e., <), so a commit is NOT an ancestor of itself.
-	cmd := exec.CommandContext(ctx, "git", "merge-base", "--is-ancestor", r.initialCommit, head)
+	cmd := exec.CommandContext(ctx, "git", "merge-base", "--is-ancestor", r.sketchBaseRef, head)
 	cmd.Dir = r.repoRoot
 	err = cmd.Run()
 	if err != nil {
@@ -890,7 +890,7 @@ func (r *CodeReviewer) formatTestRegressions(regressions []testRegression) strin
 	}
 
 	buf := new(strings.Builder)
-	fmt.Fprintf(buf, "Test regressions detected between initial commit (%s) and HEAD:\n\n", r.initialCommit)
+	fmt.Fprintf(buf, "Test regressions detected between initial commit (%s) and HEAD:\n\n", r.sketchBaseRef)
 
 	for i, reg := range regressions {
 		fmt.Fprintf(buf, "%d: %v: ", i+1, reg.Source())

@@ -84,8 +84,10 @@ type CodingAgent interface {
 	// If commit is non-nil, it shows the diff for just that specific commit.
 	Diff(commit *string) (string, error)
 
-	// InitialCommit returns the Git commit hash that was saved when the agent was instantiated.
-	InitialCommit() string
+	// SketchGitBase returns the commit that's the "base" for Sketch's work. It
+	// starts out as the commit where sketch started, but a user can move it if need
+	// be, for example in the case of a rebase. It is stored as a git tag.
+	SketchGitBase() string
 
 	// Title returns the current title of the conversation.
 	Title() string
@@ -298,7 +300,6 @@ type Agent struct {
 	url               string
 	firstMessageIndex int           // index of the first message in the current conversation
 	lastHEAD          string        // hash of the last HEAD that was pushed to the host (only when under docker)
-	initialCommit     string        // hash of the Git HEAD when the agent was instantiated or Init()
 	gitRemoteAddr     string        // HTTP URL of the host git repo (only when under docker)
 	outsideHTTP       string        // base address of the outside webserver (only when under docker)
 	ready             chan struct{} // closed when the agent is initialized (only when under docker)
@@ -833,10 +834,8 @@ func (a *Agent) Init(ini AgentInit) error {
 				return fmt.Errorf("git checkout %s: %s: %w", ini.Commit, checkoutOut, err)
 			}
 		}
-		a.lastHEAD = ini.Commit
 		a.gitRemoteAddr = ini.GitRemoteAddr
 		a.outsideHTTP = ini.OutsideHTTP
-		a.initialCommit = ini.Commit
 		if ini.HostAddr != "" {
 			a.url = "http://" + ini.HostAddr
 		}
@@ -850,11 +849,16 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.repoRoot = repoRoot
 
-		commitHash, err := resolveRef(ctx, a.repoRoot, "HEAD")
 		if err != nil {
 			return fmt.Errorf("resolveRef: %w", err)
 		}
-		a.initialCommit = commitHash
+
+		cmd := exec.CommandContext(ctx, "git", "tag", "-f", a.SketchGitBaseRef(), "HEAD")
+		cmd.Dir = repoRoot
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git tag -f %s %s: %s: %w", a.SketchGitBaseRef(), "HEAD", out, err)
+		}
+		a.lastHEAD = ini.Commit
 
 		if experiment.Enabled("memory") {
 			slog.Info("running codebase analysis")
@@ -869,7 +873,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		if experiment.Enabled("llm_review") {
 			llmCodeReview = codereview.DoLLMReview
 		}
-		codereview, err := codereview.NewCodeReviewer(ctx, a.repoRoot, a.initialCommit, llmCodeReview)
+		codereview, err := codereview.NewCodeReviewer(ctx, a.repoRoot, a.SketchGitBaseRef(), llmCodeReview)
 		if err != nil {
 			return fmt.Errorf("Agent.Init: codereview.NewCodeReviewer: %w", err)
 		}
@@ -877,7 +881,7 @@ func (a *Agent) Init(ini AgentInit) error {
 
 		a.gitOrigin = getGitOrigin(ctx, ini.WorkingDir)
 	}
-	a.lastHEAD = a.initialCommit
+	a.lastHEAD = a.SketchGitBase()
 	a.convo = a.initConvo()
 	close(a.ready)
 	return nil
@@ -1505,7 +1509,7 @@ func (a *Agent) TotalUsage() conversation.CumulativeUsage {
 
 // Diff returns a unified diff of changes made since the agent was instantiated.
 func (a *Agent) Diff(commit *string) (string, error) {
-	if a.initialCommit == "" {
+	if a.SketchGitBase() == "" {
 		return "", fmt.Errorf("no initial commit reference available")
 	}
 
@@ -1530,7 +1534,7 @@ func (a *Agent) Diff(commit *string) (string, error) {
 	}
 
 	// Otherwise, get the diff between the initial commit and the current state using exec.Command
-	cmd := exec.CommandContext(ctx, "git", "diff", "--unified=10", a.initialCommit)
+	cmd := exec.CommandContext(ctx, "git", "diff", "--unified=10", a.SketchGitBaseRef())
 	cmd.Dir = a.repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1540,9 +1544,26 @@ func (a *Agent) Diff(commit *string) (string, error) {
 	return string(output), nil
 }
 
-// InitialCommit returns the Git commit hash that was saved when the agent was instantiated.
-func (a *Agent) InitialCommit() string {
-	return a.initialCommit
+// SketchGitBaseRef distinguishes between the typical container version, where sketch-base is
+// unambiguous, and the "unsafe" version, where we need to use a session id to disambiguate.
+func (a *Agent) SketchGitBaseRef() string {
+	if a.IsInContainer() {
+		return "sketch-base"
+	} else {
+		return "sketch-base-" + a.SessionID()
+	}
+}
+
+// SketchGitBase returns the Git commit hash that was saved when the agent was instantiated.
+func (a *Agent) SketchGitBase() string {
+	cmd := exec.CommandContext(context.Background(), "git", "rev-parse", a.SketchGitBaseRef())
+	cmd.Dir = a.repoRoot
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		slog.Warn("could not identify sketch-base", slog.String("error", err.Error()))
+		return "HEAD"
+	}
+	return string(strings.TrimSpace(string(output)))
 }
 
 // removeGitHooks removes the Git hooks directory from the repository
@@ -1597,7 +1618,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 	// Format: <hash>\0<subject>\0<body>\0
 	// This uses NULL bytes as separators to avoid issues with newlines in commit messages
 	// Limit to 100 commits to avoid overwhelming the user
-	cmd := exec.CommandContext(ctx, "git", "log", "-n", "100", "--pretty=format:%H%x00%s%x00%b%x00", "^"+a.initialCommit, head)
+	cmd := exec.CommandContext(ctx, "git", "log", "-n", "100", "--pretty=format:%H%x00%s%x00%b%x00", "^"+a.SketchGitBaseRef(), head)
 	cmd.Dir = a.repoRoot
 	output, err := cmd.Output()
 	if err != nil {
@@ -1837,7 +1858,6 @@ func (a *Agent) initGitRevision(ctx context.Context, workingDir, revision string
 		return fmt.Errorf("git checkout %s: %s: %w", revision, out, err)
 	}
 	a.lastHEAD = revision
-	a.initialCommit = revision
 	return nil
 }
 
@@ -1923,7 +1943,7 @@ func (a *Agent) renderSystemPrompt() string {
 		ClientGOARCH:  a.config.ClientGOARCH,
 		WorkingDir:    a.workingDir,
 		RepoRoot:      a.repoRoot,
-		InitialCommit: a.initialCommit,
+		InitialCommit: a.SketchGitBase(),
 		Codebase:      a.codebase,
 	}
 

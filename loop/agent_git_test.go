@@ -53,22 +53,26 @@ func TestGitCommitTracking(t *testing.T) {
 		t.Fatalf("Failed to create initial commit: %v", err)
 	}
 
-	// Get the initial commit hash
-	cmd = exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = tempDir
-	initialCommitOutput, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Failed to get initial commit hash: %v", err)
-	}
-	initialCommit := strings.TrimSpace(string(initialCommitOutput))
+	// Note: The initial commit will be tagged as sketch-base later
 
 	// Create agent with the temp repo
 	agent := &Agent{
-		workingDir:    tempDir,
-		repoRoot:      tempDir, // Set repoRoot to same as workingDir for this test
-		seenCommits:   make(map[string]bool),
-		initialCommit: initialCommit,
-		subscribers:   []chan *AgentMessage{},
+		workingDir:  tempDir,
+		repoRoot:    tempDir, // Set repoRoot to same as workingDir for this test
+		seenCommits: make(map[string]bool),
+		subscribers: []chan *AgentMessage{},
+		config: AgentConfig{
+			SessionID: "test-session",
+			InDocker:  false,
+		},
+		history: []AgentMessage{},
+	}
+
+	// Create sketch-base-test-session tag at current HEAD to serve as the base commit
+	cmd = exec.Command("git", "tag", "-f", "sketch-base-test-session", "HEAD")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to create sketch-base tag: %v", err)
 	}
 
 	// Make a new commit
@@ -90,9 +94,9 @@ func TestGitCommitTracking(t *testing.T) {
 
 	// Call handleGitCommits and verify we get a commit message
 	ctx := context.Background()
-	_, err = agent.handleGitCommits(ctx)
-	if err != nil {
-		t.Fatalf("handleGitCommits failed: %v", err)
+	_, gitErr := agent.handleGitCommits(ctx)
+	if gitErr != nil {
+		t.Fatalf("handleGitCommits failed: %v", gitErr)
 	}
 
 	// Check if we received a commit message
@@ -171,9 +175,9 @@ func TestGitCommitTracking(t *testing.T) {
 	agent.seenCommits = make(map[string]bool)
 
 	// Call handleGitCommits again - it should show up to 20 commits (or whatever git defaults to)
-	_, err = agent.handleGitCommits(ctx)
-	if err != nil {
-		t.Fatalf("handleGitCommits failed: %v", err)
+	_, handleErr := agent.handleGitCommits(ctx)
+	if handleErr != nil {
+		t.Fatalf("handleGitCommits failed: %v", handleErr)
 	}
 
 	// Check if we received a commit message

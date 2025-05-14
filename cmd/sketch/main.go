@@ -394,8 +394,10 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		OutsideHostname:   flags.outsideHostname,
 		OutsideOS:         flags.outsideOS,
 		OutsideWorkingDir: flags.outsideWorkingDir,
-		InDocker:          true, // This is true when we're in container mode or simulating it in unsafe mode
-		OneShot:           flags.oneShot,
+		// Ultimately this is a subtle flag because it's trying to distinguish
+		// between unsafe-on-host and inside sketch, and should probably be renamed/simplified.
+		InDocker: flags.outsideHostname != "",
+		OneShot:  flags.oneShot,
 	}
 	agent := loop.NewAgent(agentConfig)
 

@@ -17,7 +17,7 @@ import (
 // A CodeReviewer manages quality checks.
 type CodeReviewer struct {
 	repoRoot        string
-	initialCommit   string
+	sketchBaseRef   string
 	initialStatus   []fileStatus // git status of files at initial commit, absolute paths
 	reviewed        []string     // history of all commits which have been reviewed
 	initialWorktree string       // git worktree at initial commit, absolute path
@@ -29,17 +29,17 @@ const (
 	DoLLMReview = true
 )
 
-func NewCodeReviewer(ctx context.Context, repoRoot, initialCommit string, llmReview bool) (*CodeReviewer, error) {
+func NewCodeReviewer(ctx context.Context, repoRoot, sketchBaseRef string, llmReview bool) (*CodeReviewer, error) {
 	r := &CodeReviewer{
 		repoRoot:      repoRoot,
-		initialCommit: initialCommit,
+		sketchBaseRef: sketchBaseRef,
 		llmReview:     llmReview,
 	}
 	if r.repoRoot == "" {
 		return nil, fmt.Errorf("NewCodeReviewer: repoRoot must be non-empty")
 	}
-	if r.initialCommit == "" {
-		return nil, fmt.Errorf("NewCodeReviewer: initialCommit must be non-empty")
+	if r.sketchBaseRef == "" {
+		return nil, fmt.Errorf("NewCodeReviewer: sketchBaseRef must be non-empty")
 	}
 	// Confirm that root is in fact the git repo root.
 	root, err := claudetool.FindRepoRoot(r.repoRoot)
@@ -65,7 +65,7 @@ func NewCodeReviewer(ctx context.Context, repoRoot, initialCommit string, llmRev
 // It is best-effort only.
 func (r *CodeReviewer) autoformat(ctx context.Context) []string {
 	// Refuse to format if initial commit is not an ancestor of HEAD
-	err := r.requireHEADDescendantOfInitialCommit(ctx)
+	err := r.requireHEADDescendantOfSketchBaseRef(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "CodeReviewer.Autoformat refusing to format", "err", err)
 		return nil
@@ -83,7 +83,7 @@ func (r *CodeReviewer) autoformat(ctx context.Context) []string {
 	}
 	// Retrieve a list of all files changed
 	// TODO: instead of one git diff --name-only and then N --name-status, do one --name-status.
-	changedFiles, err := r.changedFiles(ctx, r.initialCommit, head)
+	changedFiles, err := r.changedFiles(ctx, r.sketchBaseRef, head)
 	if err != nil {
 		slog.WarnContext(ctx, "CodeReviewer.Autoformat unable to get changed files", "err", err)
 		return nil
@@ -252,7 +252,7 @@ func (r *CodeReviewer) absPath(relPath string) string {
 
 // gitFileStatus returns the status of a file (A for added, M for modified, D for deleted, etc.)
 func (r *CodeReviewer) gitFileStatus(ctx context.Context, file string) (string, error) {
-	cmd := exec.CommandContext(ctx, "git", "diff", "--name-status", r.initialCommit, "HEAD", "--", file)
+	cmd := exec.CommandContext(ctx, "git", "diff", "--name-status", r.sketchBaseRef, "HEAD", "--", file)
 	cmd.Dir = r.repoRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -361,7 +361,7 @@ func (r *CodeReviewer) changedFiles(ctx context.Context, fromCommit, toCommit st
 // ModTidy runs go mod tidy if go module files have changed.
 // Returns a list of files changed by go mod tidy (empty if none).
 func (r *CodeReviewer) ModTidy(ctx context.Context) ([]string, error) {
-	err := r.requireHEADDescendantOfInitialCommit(ctx)
+	err := r.requireHEADDescendantOfSketchBaseRef(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot run ModTidy: %w", err)
 	}
@@ -372,7 +372,7 @@ func (r *CodeReviewer) ModTidy(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("failed to get current commit: %w", err)
 	}
 
-	changedFiles, err := r.changedFiles(ctx, r.initialCommit, currentCommit)
+	changedFiles, err := r.changedFiles(ctx, r.sketchBaseRef, currentCommit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get changed files: %w", err)
 	}
