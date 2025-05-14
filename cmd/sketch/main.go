@@ -178,7 +178,7 @@ func parseCLIFlags() CLIFlags {
 	flag.StringVar(&flags.addr, "addr", "localhost:0", "local debug HTTP server address")
 	flag.StringVar(&flags.skabandAddr, "skaband-addr", "https://sketch.dev", "URL of the skaband server")
 	flag.BoolVar(&flags.unsafe, "unsafe", false, "run directly without a docker container")
-	flag.BoolVar(&flags.openBrowser, "open", true, "open sketch URL in system browser")
+	flag.BoolVar(&flags.openBrowser, "open", true, "open sketch URL in system browser; on by default except if -one-shot is used or a ssh connection is detected")
 	flag.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
 	flag.Uint64Var(&flags.maxIterations, "max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
 	flag.DurationVar(&flags.maxWallTime, "max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
@@ -211,7 +211,7 @@ func parseCLIFlags() CLIFlags {
 
 	flag.Parse()
 
-	// -open's default value should be true normally but false in one-shot mode.
+	// -open's default value is not a simple true/false; it depends on other flags and conditions.
 	// Distinguish between -open default value vs explicitly set.
 	openExplicit := false
 	flag.Visit(func(f *flag.Flag) {
@@ -220,7 +220,9 @@ func parseCLIFlags() CLIFlags {
 		}
 	})
 	if !openExplicit {
-		flags.openBrowser = !flags.oneShot
+		// Not explicitly set.
+		// Calculate the right default value: true except with one-shot mode or if we're running in a ssh session.
+		flags.openBrowser = !flags.oneShot && os.Getenv("SSH_CONNECTION") != ""
 	}
 
 	return flags
