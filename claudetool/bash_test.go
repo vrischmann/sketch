@@ -394,7 +394,7 @@ func TestBashTimeout(t *testing.T) {
 			Background: false,
 		}
 		fgTimeout := foreground.timeout()
-		expectedFg := 1 * time.Minute
+		expectedFg := 10 * time.Second
 		if fgTimeout != expectedFg {
 			t.Errorf("Expected foreground default timeout to be %v, got %v", expectedFg, fgTimeout)
 		}
