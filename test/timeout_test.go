@@ -17,7 +17,7 @@ func TestBashTimeout(t *testing.T) {
 	cmd := `echo "Starting command..."; echo "This should appear in partial output"; sleep 5; echo "This shouldn't appear"`
 
 	// Prepare the input with a very short timeout
-	input := map[string]interface{}{
+	input := map[string]any{
 		"command": cmd,
 		"timeout": "1s", // Very short timeout to trigger the timeout case
 	}
