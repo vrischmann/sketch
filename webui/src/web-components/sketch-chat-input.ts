@@ -69,6 +69,71 @@ export class SketchChatInput extends LitElement {
     window.addEventListener("diff-comment", this._handleDiffComment);
   }
 
+  // Handle paste events for files (including images)
+  private _handlePaste = async (event: ClipboardEvent) => {
+    // Check if the clipboard contains files
+    if (event.clipboardData && event.clipboardData.files.length > 0) {
+      const file = event.clipboardData.files[0];
+
+      // Handle the file upload (for any file type, not just images)
+      event.preventDefault(); // Prevent default paste behavior
+
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Insert a placeholder at the current cursor position
+      const cursorPos = this.chatInput.selectionStart;
+      const textBefore = this.content.substring(0, cursorPos);
+      const textAfter = this.content.substring(cursorPos);
+
+      // Add a loading indicator
+      const loadingText = `[Uploading ${file.name}...]`;
+      this.content = `${textBefore}${loadingText}${textAfter}`;
+
+      // Adjust spacing immediately to show loading indicator
+      requestAnimationFrame(() => this.adjustChatSpacing());
+
+      try {
+        // Upload the file to the server using a relative path
+        const response = await fetch("./upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Replace the loading placeholder with the actual file path
+        this.content = this.content.replace(loadingText, `[${data.path}]`);
+
+        // Adjust the cursor position after the inserted text
+        requestAnimationFrame(() => {
+          this.adjustChatSpacing();
+          this.chatInput.focus();
+          const newPos = textBefore.length + data.path.length + 2; // +2 for the brackets
+          this.chatInput.selectionStart = newPos;
+          this.chatInput.selectionEnd = newPos;
+        });
+      } catch (error) {
+        console.error("Failed to upload file:", error);
+
+        // Replace loading indicator with error message
+        const errorText = `[Upload failed: ${error.message}]`;
+        this.content = this.content.replace(loadingText, errorText);
+
+        // Adjust spacing to show error message
+        requestAnimationFrame(() => {
+          this.adjustChatSpacing();
+          this.chatInput.focus();
+        });
+      }
+    }
+  };
+
   private _handleDiffComment(event: CustomEvent) {
     const { comment } = event.detail;
     if (!comment) return;
@@ -140,6 +205,9 @@ export class SketchChatInput extends LitElement {
       this.chatInput.focus();
       // Initialize the input height
       this.adjustChatSpacing();
+
+      // Add paste event listener for image handling
+      this.chatInput.addEventListener("paste", this._handlePaste);
     }
 
     // Add window.onload handler to ensure the input is focused when the page fully loads
