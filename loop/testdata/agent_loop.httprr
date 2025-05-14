@@ -1,5 +1,5 @@
 httprr trace v1
-17130 2300
+17130 2368
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
@@ -545,25 +545,25 @@ Content-Type: application/json
 }HTTP/2.0 200 OK
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
-Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-14T17:14:42Z
+Anthropic-Ratelimit-Input-Tokens-Remaining: 199000
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-14T18:08:23Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-14T17:14:47Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-14T18:08:27Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-14T17:14:41Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-14T18:08:21Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
-Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-14T17:14:42Z
+Anthropic-Ratelimit-Tokens-Remaining: 279000
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-14T18:08:23Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 93fc08883d69eb2e-SJC
+Cf-Ray: 93fc5726693267dd-SJC
 Content-Type: application/json
-Date: Wed, 14 May 2025 17:14:47 GMT
-Request-Id: req_011CP7oHzfcYW6GANW1jdh1Z
+Date: Wed, 14 May 2025 18:08:27 GMT
+Request-Id: req_011CP7sPNMwRDkkveLJpbgia
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_014RUPnFkUwsrsjLtoq8muDc","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here are the tools available to me:\n\n1. `bash` - Execute shell commands\n2. `keyword_search` - Search for files matching specific terms\n3. `think` - Record thoughts, notes, or plans (no external effects)\n4. `title` - Set conversation title\n5. `precommit` - Create a git branch for tracking work\n6. `done` - Indicate completion of the user's goal with a checklist\n7. `codereview` - Run an automated code review\n8. `multiplechoice` - Present multiple choice options to the user\n9. Browser tools:\n   - `browser_navigate`, `browser_click`, `browser_type`, `browser_wait_for`, `browser_get_text`\n   - `browser_eval`, `browser_scroll_into_view`, `browser_resize`\n   - `browser_recent_console_logs`, `browser_clear_console_logs`\n   - `browser_take_screenshot`, `browser_read_image`\n10. `patch` - Tool for precise text file modifications\n\nThese tools allow me to perform a wide range of coding tasks, from exploring code to making changes, running tests, and finalizing work with git commits."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3932,"cache_read_input_tokens":0,"output_tokens":274}}
+{"id":"msg_01FzMyZwvMfiSVefMimbLeBM","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I'll list the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files based on keywords\n3. think - Record thoughts and plans\n4. title - Set conversation title\n5. precommit - Create git branch for tracking work\n6. done - Indicate task completion with checklist\n7. codereview - Run automated code review\n8. multiplechoice - Present multiple choice options to user\n9. browser_navigate - Navigate to URLs\n10. browser_click - Click elements using CSS selectors\n11. browser_type - Type text into web elements\n12. browser_wait_for - Wait for elements to appear\n13. browser_get_text - Get text from web elements\n14. browser_eval - Execute JavaScript in browser\n15. browser_scroll_into_view - Scroll elements into view\n16. browser_resize - Resize browser window\n17. browser_recent_console_logs - Get browser console logs\n18. browser_clear_console_logs - Clear console logs\n19. browser_take_screenshot - Take screenshots\n20. browser_read_image - Read and encode image files\n21. patch - Make precise text edits to files"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":3932,"cache_read_input_tokens":0,"output_tokens":267}}
