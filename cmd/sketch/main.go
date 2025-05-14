@@ -182,7 +182,7 @@ func parseCLIFlags() CLIFlags {
 	flag.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
 	flag.Uint64Var(&flags.maxIterations, "max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
 	flag.DurationVar(&flags.maxWallTime, "max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
-	flag.Float64Var(&flags.maxDollars, "max-dollars", 5.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
+	flag.Float64Var(&flags.maxDollars, "max-dollars", 10.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
 	flag.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
 	flag.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
 	flag.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
