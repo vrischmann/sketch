@@ -1123,7 +1123,7 @@ func (a *Agent) precommitTool() *llm.Tool {
 			}
 
 			a.SetBranch(branchName)
-			response := fmt.Sprintf("Branch name set to %q", branchName)
+			response := fmt.Sprintf("switched to branch sketch/%q - DO NOT change branches unless explicitly requested", branchName)
 
 			styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
 			if err != nil {
