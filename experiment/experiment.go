@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 )
@@ -81,11 +82,12 @@ func Fprint(w io.Writer) {
 // values and can be used multiple times.
 type Flag struct {
 	Value string
+	set   bool // whether the flag has been set explicitly
 }
 
 // String returns the string representation of the flag value.
 func (f *Flag) String() string {
-	return f.Value
+	return f.Get().(string)
 }
 
 // Set adds a value to the flag.
@@ -95,20 +97,25 @@ func (f *Flag) Set(value string) error {
 	} else {
 		f.Value = f.Value + "," + value // quadratic, doesn't matter, tiny N
 	}
+	f.set = true
 	return nil
 }
 
 // Get returns the flag values.
 func (f *Flag) Get() any {
-	return f.Value
+	if f.set {
+		return f.Value
+	}
+	return os.Getenv("SKETCH_EXPERIMENT")
 }
 
 // Process handles all flag values, enabling the appropriate experiments.
 func (f *Flag) Process() error {
 	mu.Lock()
 	defer mu.Unlock()
+	v := f.String()
 
-	for name := range strings.SplitSeq(f.Value, ",") {
+	for name := range strings.SplitSeq(v, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
