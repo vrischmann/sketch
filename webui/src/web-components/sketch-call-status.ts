@@ -13,6 +13,9 @@ export class SketchCallStatus extends LitElement {
   @property()
   agentState: string | null = null;
 
+  @property()
+  isIdle: boolean = false;
+
   static styles = css`
     @keyframes gentle-pulse {
       0% {
@@ -75,6 +78,28 @@ export class SketchCallStatus extends LitElement {
       width: 20px;
       height: 20px;
     }
+
+    .status-banner {
+      margin-top: 4px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 0.5px;
+      width: 100%;
+      min-width: 64px; /* Ensure same width regardless of state */
+    }
+
+    .status-working {
+      background-color: #ffeecc;
+      color: #e65100;
+    }
+
+    .status-idle {
+      background-color: #e6f4ea;
+      color: #0d652d;
+    }
   `;
 
   render() {
@@ -89,6 +114,9 @@ export class SketchCallStatus extends LitElement {
     </svg>`;
 
     const agentState = `${this.agentState ? " (" + this.agentState + ")" : ""}`;
+
+    // Determine working state - working if not idle
+    const isWorking = !this.isIdle;
 
     return html`
       <div class="call-status-container">
@@ -109,6 +137,11 @@ export class SketchCallStatus extends LitElement {
             : "No tool calls in progress"}${agentState}"
         >
           ${unsafeHTML(wrenchSVG)}
+        </div>
+        <div
+          class="status-banner ${isWorking ? "status-working" : "status-idle"}"
+        >
+          ${isWorking ? "WORKING" : "IDLE"}
         </div>
       </div>
     `;

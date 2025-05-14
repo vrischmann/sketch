@@ -964,6 +964,10 @@ export class SketchAppShell extends LitElement {
             .agentState=${this.containerState?.agent_state}
             .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
             .toolCalls=${this.containerState?.outstanding_tool_calls || []}
+            .isIdle=${this.messages.length > 0
+              ? this.messages[this.messages.length - 1]?.end_of_turn &&
+                !this.messages[this.messages.length - 1]?.parent_conversation_id
+              : true}
           ></sketch-call-status>
 
           <sketch-network-status

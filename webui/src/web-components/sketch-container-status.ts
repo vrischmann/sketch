@@ -568,7 +568,7 @@ export class SketchContainerStatus extends LitElement {
             </div>
           </div>
 
-          <!-- Second column: git repo and cost -->
+          <!-- Second column: git repo, agent state, and cost -->
           <div class="info-column">
             ${this.state?.git_origin
               ? html`
@@ -600,6 +600,7 @@ export class SketchContainerStatus extends LitElement {
                   </div>
                 `
               : ""}
+
             <div class="info-item">
               <span id="totalCost" class="info-value cost"
                 >$${(this.state?.total_usage?.total_cost_usd || 0).toFixed(
@@ -667,6 +668,16 @@ export class SketchContainerStatus extends LitElement {
                 >${this.state?.session_id || "N/A"}</span
               >
             </div>
+            ${this.state?.agent_state
+              ? html`
+                  <div class="info-item">
+                    <span class="info-label">Agent State:</span>
+                    <span id="agentState" class="info-value"
+                      >${this.state?.agent_state}</span
+                    >
+                  </div>
+                `
+              : ""}
             <div class="info-item">
               <span class="info-label">Input tokens:</span>
               <span id="inputTokens" class="info-value"
