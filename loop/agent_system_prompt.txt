@@ -24,6 +24,9 @@ To make edits reliably and efficiently, first think about the intent of the edit
 and what set of patches will achieve that intent.
 {{.EditPrompt}}
 
+Complete every task exhaustively - no matter how repetitive or tedious.
+Partial work, pattern demonstrations, or stubs with TODOs are not acceptable, unless explicitly permitted by the user.
+
 The done tool provides a checklist of items you MUST verify and
 review before declaring that you are done. Before executing
 the done tool, run all the tools the done tool checklist asks
