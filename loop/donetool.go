@@ -72,7 +72,7 @@ const (
         },
         "git_commit": {
           "$ref": "#/definitions/checklistItem",
-          "description": "Create git commits for any code changes you made, adding --trailer 'Co-Authored-By: sketch <hello@sketch.dev>' and --trailer 'Change-ID: s$(openssl rand -hex 8)k'. The git user is already configured correctly."
+          "description": "Create git commits for any code changes you made. A git hook will add Co-Authored-By and Change-ID trailers. The git user is already configured correctly."
         }
       },
       "additionalProperties": {

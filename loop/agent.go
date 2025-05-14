@@ -785,6 +785,9 @@ func (a *Agent) Init(ini AgentInit) error {
 	}
 	ctx := a.config.Context
 	if ini.InDocker {
+		if err := setupGitHooks(ini.WorkingDir); err != nil {
+			slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
+		}
 		cmd := exec.CommandContext(ctx, "git", "stash")
 		cmd.Dir = ini.WorkingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
@@ -2013,4 +2016,139 @@ func (a *Agent) NewStateTransitionIterator(ctx context.Context) StateTransitionI
 		ch:          ch,
 		unsubscribe: unsubscribe,
 	}
+}
+
+// setupGitHooks creates or updates git hooks in the specified working directory.
+func setupGitHooks(workingDir string) error {
+	hooksDir := filepath.Join(workingDir, ".git", "hooks")
+
+	_, err := os.Stat(hooksDir)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("git hooks directory does not exist: %s", hooksDir)
+	}
+	if err != nil {
+		return fmt.Errorf("error checking git hooks directory: %w", err)
+	}
+
+	// Define the post-commit hook content
+	postCommitHook := `#!/bin/bash
+echo "<post_commit_hook>"
+echo "Please review this commit message and fix it if it is incorrect."
+echo "This hook only echos the commit message; it does not modify it."
+echo "Bash escaping is a common source of issues; to fix that, create a temp file and use 'git commit --amend -F COMMIT_MSG_FILE'."
+echo "<last_commit_message>"
+git log -1 --pretty=%B
+echo "</last_commit_message>"
+echo "</post_commit_hook>"
+`
+
+	// Define the prepare-commit-msg hook content
+	prepareCommitMsgHook := `#!/bin/bash
+# Add Co-Authored-By and Change-ID trailers to commit messages
+# Check if these trailers already exist before adding them
+
+commit_file="$1"
+COMMIT_SOURCE="$2"
+
+# Skip for merges, squashes, or when using a commit template
+if [ "$COMMIT_SOURCE" = "template" ] || [ "$COMMIT_SOURCE" = "merge" ] || \
+   [ "$COMMIT_SOURCE" = "squash" ]; then
+  exit 0
+fi
+
+commit_msg=$(cat "$commit_file")
+
+needs_co_author=true
+needs_change_id=true
+
+# Check if commit message already has Co-Authored-By trailer
+if grep -q "Co-Authored-By: sketch <hello@sketch.dev>" "$commit_file"; then
+  needs_co_author=false
+fi
+
+# Check if commit message already has Change-ID trailer
+if grep -q "Change-ID: s[a-f0-9]\+k" "$commit_file"; then
+  needs_change_id=false
+fi
+
+# Only modify if at least one trailer needs to be added
+if [ "$needs_co_author" = true ] || [ "$needs_change_id" = true ]; then
+  # Ensure there's a blank line before trailers
+  if [ -s "$commit_file" ] && [ "$(tail -1 "$commit_file" | tr -d '\n')" != "" ]; then
+    echo "" >> "$commit_file"
+  fi
+
+  # Add trailers if needed
+  if [ "$needs_co_author" = true ]; then
+    echo "Co-Authored-By: sketch <hello@sketch.dev>" >> "$commit_file"
+  fi
+
+  if [ "$needs_change_id" = true ]; then
+    change_id=$(openssl rand -hex 8)
+    echo "Change-ID: s${change_id}k" >> "$commit_file"
+  fi
+fi
+`
+
+	// Update or create the post-commit hook
+	err = updateOrCreateHook(filepath.Join(hooksDir, "post-commit"), postCommitHook, "<last_commit_message>")
+	if err != nil {
+		return fmt.Errorf("failed to set up post-commit hook: %w", err)
+	}
+
+	// Update or create the prepare-commit-msg hook
+	err = updateOrCreateHook(filepath.Join(hooksDir, "prepare-commit-msg"), prepareCommitMsgHook, "Add Co-Authored-By and Change-ID trailers")
+	if err != nil {
+		return fmt.Errorf("failed to set up prepare-commit-msg hook: %w", err)
+	}
+
+	return nil
+}
+
+// updateOrCreateHook creates a new hook file or updates an existing one
+// by appending the new content if it doesn't already contain it.
+func updateOrCreateHook(hookPath, content, distinctiveLine string) error {
+	// Check if the hook already exists
+	buf, err := os.ReadFile(hookPath)
+	if os.IsNotExist(err) {
+		// Hook doesn't exist, create it
+		err = os.WriteFile(hookPath, []byte(content), 0o755)
+		if err != nil {
+			return fmt.Errorf("failed to create hook: %w", err)
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("error reading existing hook: %w", err)
+	}
+
+	// Hook exists, check if our content is already in it by looking for a distinctive line
+	code := string(buf)
+	if strings.Contains(code, distinctiveLine) {
+		// Already contains our content, nothing to do
+		return nil
+	}
+
+	// Append our content to the existing hook
+	f, err := os.OpenFile(hookPath, os.O_APPEND|os.O_WRONLY, 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to open hook for appending: %w", err)
+	}
+	defer f.Close()
+
+	// Ensure there's a newline at the end of the existing content if needed
+	if len(code) > 0 && !strings.HasSuffix(code, "\n") {
+		_, err = f.WriteString("\n")
+		if err != nil {
+			return fmt.Errorf("failed to add newline to hook: %w", err)
+		}
+	}
+
+	// Add a separator before our content
+	_, err = f.WriteString("\n# === Added by Sketch ===\n" + content)
+	if err != nil {
+		return fmt.Errorf("failed to append to hook: %w", err)
+	}
+
+	return nil
 }
