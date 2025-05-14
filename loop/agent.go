@@ -960,7 +960,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 	// One-shot mode is non-interactive, multiple choice requires human response
 	if !a.config.OneShot {
-		convo.Tools = append(convo.Tools, a.multipleChoiceTool())
+		convo.Tools = append(convo.Tools, multipleChoiceTool)
 	}
 
 	convo.Tools = append(convo.Tools, browserTools...)
@@ -973,12 +973,11 @@ func (a *Agent) initConvo() *conversation.Convo {
 	return convo
 }
 
-func (a *Agent) multipleChoiceTool() *llm.Tool {
-	ret := &llm.Tool{
-		Name:        "multiplechoice",
-		Description: "Present the user with an quick way to answer to your question using one of a short list of possible answers you would expect from the user.",
-		EndsTurn:    true,
-		InputSchema: json.RawMessage(`{
+var multipleChoiceTool = &llm.Tool{
+	Name:        "multiplechoice",
+	Description: "Present the user with an quick way to answer to your question using one of a short list of possible answers you would expect from the user.",
+	EndsTurn:    true,
+	InputSchema: json.RawMessage(`{
   "type": "object",
   "description": "The question and a list of answers you would expect the user to choose from.",
   "properties": {
@@ -1007,16 +1006,14 @@ func (a *Agent) multipleChoiceTool() *llm.Tool {
   },
   "required": ["question", "responseOptions"]
 }`),
-		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
-			// The Run logic for "multiplchoice" tool is a no-op on the server.
-			// The UI will present a list of options for the user to select from,
-			// and that's it as far as "executing" the tool_use goes.
-			// When the user *does* select one of the presented options, that
-			// responseText gets sent as a chat message on behalf of the user.
-			return llm.TextContent("end your turn and wait for the user to respond"), nil
-		},
-	}
-	return ret
+	Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+		// The Run logic for "multiplechoice" tool is a no-op on the server.
+		// The UI will present a list of options for the user to select from,
+		// and that's it as far as "executing" the tool_use goes.
+		// When the user *does* select one of the presented options, that
+		// responseText gets sent as a chat message on behalf of the user.
+		return llm.TextContent("end your turn and wait for the user to respond"), nil
+	},
 }
 
 type MultipleChoiceOption struct {
