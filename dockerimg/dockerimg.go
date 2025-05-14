@@ -124,7 +124,6 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	if err != nil {
 		return err
 	}
-
 	gitRoot, err := findGitRoot(ctx, config.Path)
 	if err != nil {
 		return err
@@ -270,6 +269,10 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	localAddr, err := getContainerPort(ctx, cntrName, "80")
 	if err != nil {
 		return appendInternalErr(err)
+	}
+
+	if config.Verbose {
+		fmt.Fprintf(os.Stderr, "Host web server: http://%s/\n", localAddr)
 	}
 
 	localSSHAddr, err := getContainerPort(ctx, cntrName, "22")
