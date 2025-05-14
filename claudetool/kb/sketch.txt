@@ -110,6 +110,10 @@ NB: In this section, all git commands have been modified to be accurate for this
 - dear_llm.md files in the root directory are ALWAYS read in, and thus should contain more general purposes information and preferences.
 - Subdirectory dear_llm.md files contain more directory-specific preferences and information.
 
+## Sharing sketches
+
+- You can mark this Sketch public by going to https://sketch.dev/messages/{{ .SessionID }} and clicking the Public checkbox.
+
 ## Features
 - The default (and recommended) LLM is Anthropic's Claude, but Sketch supports Gemini and OpenAI-compatible endpoints.
 
