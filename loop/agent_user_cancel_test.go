@@ -104,7 +104,7 @@ func TestLoop_ToolCall_Basic(t *testing.T) {
 
 		// Set up the mock response for tool results
 		mockConvo.ExpectCall("SendMessage", userMsg).Return(userMsgResponse, nil)
-		mockConvo.ExpectCall("ToolResultContents", userMsgResponse).Return(toolUseContents, nil)
+		mockConvo.ExpectCall("ToolResultContents", userMsgResponse).Return(toolUseContents, false, nil)
 		mockConvo.ExpectCall("SendMessage", toolUseResultsMsg).Return(toolUseResponse, nil)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -458,7 +458,7 @@ func TestProcessTurn_UserDoesNotCancel(t *testing.T) {
 	defer cancel()
 
 	// Setting up the mock response for tool results
-	mockConvo.ExpectCall("ToolResultContents", initialResponse).Return(toolUseContents, nil)
+	mockConvo.ExpectCall("ToolResultContents", initialResponse).Return(toolUseContents, false, nil)
 	mockConvo.ExpectCall("SendMessage", nil).Return(toolUseResponse, nil)
 	// mockConvo, as a mock, isn't able to run the loop in conversation.Convo that makes this agent.OnToolResult callback.
 	// So we "mock" it out here by calling it explicitly, in order to make sure it calls .pushToOutbox with this message.

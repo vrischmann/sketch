@@ -286,7 +286,7 @@ type ConvoInterface interface {
 	SendMessage(message llm.Message) (*llm.Response, error)
 	SendUserTextMessage(s string, otherContents ...llm.Content) (*llm.Response, error)
 	GetID() string
-	ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error)
+	ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error)
 	ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error)
 	CancelToolUse(toolUseID string, cause error) error
 	SubConvoWithHistory() *conversation.Convo
@@ -1339,6 +1339,7 @@ func (a *Agent) processUserMessage(ctx context.Context) (*llm.Response, error) {
 func (a *Agent) handleToolExecution(ctx context.Context, resp *llm.Response) (bool, *llm.Response) {
 	var results []llm.Content
 	cancelled := false
+	toolEndsTurn := false
 
 	// Transition to checking for cancellation state
 	a.stateMachine.Transition(ctx, StateCheckingForCancellation, "Checking if user requested cancellation")
@@ -1365,7 +1366,7 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *llm.Response) (bo
 
 		// Execute the tools
 		var err error
-		results, err = a.convo.ToolResultContents(ctx, resp)
+		results, toolEndsTurn, err = a.convo.ToolResultContents(ctx, resp)
 		if ctx.Err() != nil { // e.g. the user canceled the operation
 			cancelled = true
 			a.stateMachine.Transition(ctx, StateCancelled, "Operation cancelled during tool execution")
@@ -1387,7 +1388,8 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *llm.Response) (bo
 	}
 
 	// Continue the conversation with tool results and any user messages
-	return a.continueTurnWithToolResults(ctx, results, autoqualityMessages, cancelled)
+	shouldContinue, resp := a.continueTurnWithToolResults(ctx, results, autoqualityMessages, cancelled)
+	return shouldContinue && !toolEndsTurn, resp
 }
 
 // processGitChanges checks for new git commits and runs autoformatters if needed

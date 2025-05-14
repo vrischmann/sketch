@@ -256,7 +256,7 @@ func TestAgentProcessTurnWithNilResponse(t *testing.T) {
 type MockConvoInterface struct {
 	sendMessageFunc              func(message llm.Message) (*llm.Response, error)
 	sendUserTextMessageFunc      func(s string, otherContents ...llm.Content) (*llm.Response, error)
-	toolResultContentsFunc       func(ctx context.Context, resp *llm.Response) ([]llm.Content, error)
+	toolResultContentsFunc       func(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error)
 	toolResultCancelContentsFunc func(resp *llm.Response) ([]llm.Content, error)
 	cancelToolUseFunc            func(toolUseID string, cause error) error
 	cumulativeUsageFunc          func() conversation.CumulativeUsage
@@ -280,11 +280,11 @@ func (m *MockConvoInterface) SendUserTextMessage(s string, otherContents ...llm.
 	return nil, nil
 }
 
-func (m *MockConvoInterface) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
+func (m *MockConvoInterface) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error) {
 	if m.toolResultContentsFunc != nil {
 		return m.toolResultContentsFunc(ctx, resp)
 	}
-	return nil, nil
+	return nil, false, nil
 }
 
 func (m *MockConvoInterface) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error) {
@@ -469,7 +469,7 @@ func TestAgentStateMachine(t *testing.T) {
 // mockConvoInterface is a mock implementation of ConvoInterface for testing
 type mockConvoInterface struct {
 	SendMessageFunc        func(message llm.Message) (*llm.Response, error)
-	ToolResultContentsFunc func(ctx context.Context, resp *llm.Response) ([]llm.Content, error)
+	ToolResultContentsFunc func(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error)
 }
 
 func (c *mockConvoInterface) GetID() string {
@@ -501,11 +501,11 @@ func (m *mockConvoInterface) SendUserTextMessage(s string, otherContents ...llm.
 	return m.SendMessage(llm.UserStringMessage(s))
 }
 
-func (m *mockConvoInterface) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
+func (m *mockConvoInterface) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error) {
 	if m.ToolResultContentsFunc != nil {
 		return m.ToolResultContentsFunc(ctx, resp)
 	}
-	return []llm.Content{}, nil
+	return []llm.Content{}, false, nil
 }
 
 func (m *mockConvoInterface) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error) {
@@ -640,8 +640,8 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 	}
 
 	// Tool result content handler
-	mockConvo.ToolResultContentsFunc = func(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
-		return []llm.Content{llm.StringContent("Tool executed successfully")}, nil
+	mockConvo.ToolResultContentsFunc = func(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error) {
+		return []llm.Content{llm.StringContent("Tool executed successfully")}, false, nil
 	}
 
 	// Track state transitions

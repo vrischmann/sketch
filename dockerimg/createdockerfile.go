@@ -266,7 +266,7 @@ In particular:
 	if res.StopReason != llm.StopReasonToolUse {
 		return "", fmt.Errorf("expected stop reason %q, got %q", llm.StopReasonToolUse, res.StopReason)
 	}
-	_, err = convo.ToolResultContents(context.TODO(), res)
+	_, _, err = convo.ToolResultContents(context.TODO(), res)
 	if err != nil {
 		return "", err
 	}

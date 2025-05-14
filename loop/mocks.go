@@ -149,7 +149,7 @@ func (m *MockConvo) SendUserTextMessage(message string, otherContents ...llm.Con
 	return exp.result[0].(*llm.Response), retErr
 }
 
-func (m *MockConvo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, error) {
+func (m *MockConvo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]llm.Content, bool, error) {
 	m.recordCall("ToolResultContents", resp)
 	exp, ok := m.findMatchingExpectation("ToolResultContents", resp)
 	if !ok {
@@ -163,7 +163,7 @@ func (m *MockConvo) ToolResultContents(ctx context.Context, resp *llm.Response) 
 		retErr = err
 	}
 
-	return exp.result[0].([]llm.Content), retErr
+	return exp.result[0].([]llm.Content), false, retErr
 }
 
 func (m *MockConvo) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error) {
