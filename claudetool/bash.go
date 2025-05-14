@@ -138,12 +138,7 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, e
 
 	// For foreground commands, use executeBash
 	out, execErr := executeBash(ctx, req)
-	// If there's a timeout error, we still want to return the partial output
 	if execErr != nil {
-		if out != "" && strings.Contains(execErr.Error(), "timed out") {
-			// Return both the partial output and the error
-			return llm.TextContent(out), execErr
-		}
 		return nil, execErr
 	}
 	return llm.TextContent(out), nil
@@ -186,15 +181,6 @@ func executeBash(ctx context.Context, req bashInput) (string, error) {
 	err := cmd.Wait()
 	close(done)
 
-	if execCtx.Err() == context.DeadlineExceeded {
-		// Get the partial output that was captured before the timeout
-		partialOutput := output.String()
-		// Truncate if the output is too large
-		if len(partialOutput) > maxBashOutputLength {
-			partialOutput = partialOutput[:maxBashOutputLength] + "\n[output truncated due to size]\n"
-		}
-		return partialOutput, fmt.Errorf("command timed out after %s - partial output included", req.timeout())
-	}
 	longOutput := output.Len() > maxBashOutputLength
 	var outstr string
 	if longOutput {
@@ -206,6 +192,15 @@ func executeBash(ctx context.Context, req bashInput) (string, error) {
 		outstr = output.String()
 	}
 
+	if execCtx.Err() == context.DeadlineExceeded {
+		// Get the partial output that was captured before the timeout
+		partialOutput := output.String()
+		// Truncate if the output is too large
+		if len(partialOutput) > maxBashOutputLength {
+			partialOutput = partialOutput[:maxBashOutputLength] + "\n[output truncated due to size]\n"
+		}
+		return "", fmt.Errorf("command timed out after %s\nCommand output (until it timed out):\n%s", req.timeout(), outstr)
+	}
 	if err != nil {
 		return "", fmt.Errorf("command failed: %w\n%s", err, outstr)
 	}

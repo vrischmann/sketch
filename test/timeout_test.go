@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"sketch.dev/claudetool"
-	"sketch.dev/llm"
 )
 
 func TestBashTimeout(t *testing.T) {
@@ -42,30 +41,25 @@ func TestBashTimeout(t *testing.T) {
 		t.Errorf("Error doesn't mention timeout: %v", err)
 	}
 
-	// Check that we got partial output despite the error
-	if len(result) == 0 {
-		t.Fatalf("Expected partial output, got empty result")
+	// No output should be returned directly, it should be in the error message
+	if len(result) > 0 {
+		t.Fatalf("Expected no direct output, got: %v", result)
 	}
 
-	// Verify the error mentions that partial output is included
-	if !containsString(err.Error(), "partial output included") {
-		t.Errorf("Error should mention that partial output is included: %v", err)
+	// The error should contain the partial output
+	errorMsg := err.Error()
+	if !containsString(errorMsg, "Starting command") || !containsString(errorMsg, "should appear in partial output") {
+		t.Errorf("Error should contain the partial output: %v", errorMsg)
 	}
 
-	// The partial output should contain the initial output but not the text after sleep
-	text := ""
-	for _, content := range result {
-		if content.Type == llm.ContentTypeText {
-			text += content.Text
-		}
+	// The error should indicate a timeout
+	if !containsString(errorMsg, "timed out") {
+		t.Errorf("Error should indicate a timeout: %v", errorMsg)
 	}
 
-	if !containsString(text, "Starting command") || !containsString(text, "should appear in partial output") {
-		t.Errorf("Partial output is missing expected content: %s", text)
-	}
-
-	if containsString(text, "shouldn't appear") {
-		t.Errorf("Partial output contains unexpected content (after timeout): %s", text)
+	// The error should not contain the output that would appear after the sleep
+	if containsString(err.Error(), "shouldn't appear") {
+		t.Errorf("Error contains output that should not have been captured (after timeout): %s", err.Error())
 	}
 }
 
