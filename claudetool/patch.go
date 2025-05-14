@@ -219,11 +219,6 @@ func PatchRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	}
 
 	if patchErr != nil {
-		sendTelemetry(ctx, "patch_error", map[string]any{
-			"orig":    origStr,
-			"patches": input.Patches,
-			"errors":  patchErr,
-		})
 		return nil, patchErr
 	}
 
