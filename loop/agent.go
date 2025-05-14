@@ -860,14 +860,12 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.lastHEAD = ini.Commit
 
-		if experiment.Enabled("memory") {
-			slog.Info("running codebase analysis")
-			codebase, err := onstart.AnalyzeCodebase(ctx, a.repoRoot)
-			if err != nil {
-				slog.Warn("failed to analyze codebase", "error", err)
-			}
-			a.codebase = codebase
+		slog.Info("running codebase analysis")
+		codebase, err := onstart.AnalyzeCodebase(ctx, a.repoRoot)
+		if err != nil {
+			slog.Warn("failed to analyze codebase", "error", err)
 		}
+		a.codebase = codebase
 
 		llmCodeReview := codereview.NoLLMReview
 		if experiment.Enabled("llm_review") {

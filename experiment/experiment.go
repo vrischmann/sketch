@@ -33,10 +33,7 @@ var (
 			Name:        "llm_review",
 			Description: "Add an LLM step to the codereview tool",
 		},
-		{
-			Name:        "memory",
-			Description: "Enable memory subsystem (dear_llm.md)",
-		},
+
 		{
 			Name:        "kb",
 			Description: "Enable knowledge_base tool",
