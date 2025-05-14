@@ -979,12 +979,19 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 	iterator := s.agent.NewIterator(ctx, fromIndex) // Start from the requested index
 	defer iterator.Close()
 
+	// Create an iterator to receive state transitions
+	stateIterator := s.agent.NewStateTransitionIterator(ctx)
+	defer stateIterator.Close()
+
 	// Setup heartbeat timer
 	heartbeatTicker := time.NewTicker(45 * time.Second)
 	defer heartbeatTicker.Stop()
 
 	// Create a channel for messages
 	messageChan := make(chan *loop.AgentMessage, 10)
+
+	// Create a channel for state transitions
+	stateChan := make(chan *loop.StateTransition, 10)
 
 	// Start a goroutine to read messages without blocking the heartbeat
 	go func() {
@@ -1001,6 +1008,28 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 			select {
 			case messageChan <- newMessage:
 				// Message sent to channel
+			case <-ctx.Done():
+				// Context cancelled
+				return
+			}
+		}
+	}()
+
+	// Start a goroutine to read state transitions
+	go func() {
+		defer close(stateChan)
+		for {
+			// This can block, but it's in its own goroutine
+			newTransition := stateIterator.Next()
+			if newTransition == nil {
+				// No transition available (likely due to context cancellation)
+				slog.InfoContext(ctx, "No more state transitions available, ending state stream")
+				return
+			}
+
+			select {
+			case stateChan <- newTransition:
+				// Transition sent to channel
 			case <-ctx.Done():
 				// Context cancelled
 				return
@@ -1025,6 +1054,27 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 			// Client disconnected
 			slog.InfoContext(ctx, "Client disconnected from SSE stream")
 			return
+
+		case _, ok := <-stateChan:
+			if !ok {
+				// Channel closed
+				slog.InfoContext(ctx, "State transition channel closed, ending SSE stream")
+				return
+			}
+
+			// Get updated state
+			state = s.getState()
+
+			// Send updated state after the state transition
+			fmt.Fprintf(w, "event: state\n")
+			fmt.Fprintf(w, "data: ")
+			encoder.Encode(state)
+			fmt.Fprintf(w, "\n\n")
+
+			// Flush to send the state immediately
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
 
 		case newMessage, ok := <-messageChan:
 			if !ok {

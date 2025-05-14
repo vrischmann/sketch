@@ -59,6 +59,9 @@ type CodingAgent interface {
 	// starts with the given message index.
 	NewIterator(ctx context.Context, nextMessageIdx int) MessageIterator
 
+	// Returns an iterator that notifies of state transitions until the context is done.
+	NewStateTransitionIterator(ctx context.Context) StateTransitionIterator
+
 	// Loop begins the agent loop returns only when ctx is cancelled.
 	Loop(ctx context.Context)
 
@@ -1935,4 +1938,62 @@ func (a *Agent) renderSystemPrompt() string {
 	}
 	// fmt.Printf("system prompt: %s\n", buf.String())
 	return buf.String()
+}
+
+// StateTransitionIterator provides an iterator over state transitions.
+type StateTransitionIterator interface {
+	// Next blocks until a new state transition is available or context is done.
+	// Returns nil if the context is cancelled.
+	Next() *StateTransition
+	// Close removes the listener and cleans up resources.
+	Close()
+}
+
+// StateTransitionIteratorImpl implements StateTransitionIterator using a state machine listener.
+type StateTransitionIteratorImpl struct {
+	agent       *Agent
+	ctx         context.Context
+	ch          chan StateTransition
+	unsubscribe func()
+}
+
+// Next blocks until a new state transition is available or the context is cancelled.
+func (s *StateTransitionIteratorImpl) Next() *StateTransition {
+	select {
+	case <-s.ctx.Done():
+		return nil
+	case transition, ok := <-s.ch:
+		if !ok {
+			return nil
+		}
+		transitionCopy := transition
+		return &transitionCopy
+	}
+}
+
+// Close removes the listener and cleans up resources.
+func (s *StateTransitionIteratorImpl) Close() {
+	if s.unsubscribe != nil {
+		s.unsubscribe()
+		s.unsubscribe = nil
+	}
+}
+
+// NewStateTransitionIterator returns an iterator that receives state transitions.
+func (a *Agent) NewStateTransitionIterator(ctx context.Context) StateTransitionIterator {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Create channel to receive state transitions
+	ch := make(chan StateTransition, 10)
+
+	// Add a listener to the state machine
+	unsubscribe := a.stateMachine.AddTransitionListener(ch)
+
+	return &StateTransitionIteratorImpl{
+		agent:       a,
+		ctx:         ctx,
+		ch:          ch,
+		unsubscribe: unsubscribe,
+	}
 }
