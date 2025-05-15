@@ -101,6 +101,9 @@ type ContainerConfig struct {
 
 	// ExperimentFlag contains the experimental features to enable
 	ExperimentFlag string
+
+	// TermUI enables terminal UI
+	TermUI bool
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -490,6 +493,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-outside-os="+config.OutsideOS,
 		"-outside-working-dir="+config.OutsideWorkingDir,
 		"-open=false",
+		"-termui="+fmt.Sprintf("%t", config.TermUI),
 		"-x="+config.ExperimentFlag,
 	)
 	if config.Model != "" {

@@ -92,7 +92,7 @@ func run() error {
 	ctx := skribe.ContextWithAttr(context.Background(), slog.String("session_id", flagArgs.sessionID))
 
 	// Configure logging
-	slogHandler, logFile, err := setupLogging(flagArgs.oneShot, flagArgs.verbose, flagArgs.unsafe)
+	slogHandler, logFile, err := setupLogging(flagArgs.termUI, flagArgs.verbose, flagArgs.unsafe)
 	if err != nil {
 		return err
 	}
@@ -292,6 +292,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		Verbose:           flags.verbose,
 		DockerArgs:        flags.dockerArgs,
 		ExperimentFlag:    flags.experimentFlag.String(),
+		TermUI:            flags.termUI,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -541,23 +542,26 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 
 // setupLogging configures the logging system based on command-line flags.
 // Returns the slog handler and optionally a log file (which should be closed by the caller).
-func setupLogging(oneShot, verbose, unsafe bool) (slog.Handler, *os.File, error) {
+func setupLogging(termui, verbose, unsafe bool) (slog.Handler, *os.File, error) {
 	var slogHandler slog.Handler
 	var logFile *os.File
 	var err error
 
-	if !oneShot && !verbose {
-		// Log to a file
-		logFile, err = os.CreateTemp("", "sketch-cli-log-*")
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot create log file: %v", err)
-		}
-		if unsafe {
-			fmt.Printf("structured logs: %v\n", logFile.Name())
-		}
+	if verbose && !termui {
+		// Log to stderr
+		slogHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+		return slogHandler, nil, nil
 	}
 
-	// Always send slogs to the logFile.
+	// Log to a file
+	logFile, err = os.CreateTemp("", "sketch-cli-log-*")
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot create log file: %v", err)
+	}
+	if unsafe {
+		fmt.Printf("structured logs: %v\n", logFile.Name())
+	}
+
 	slogHandler = slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug})
 	slogHandler = skribe.AttrsWrap(slogHandler)
 
