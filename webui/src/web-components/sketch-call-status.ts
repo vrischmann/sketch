@@ -34,9 +34,16 @@ export class SketchCallStatus extends LitElement {
 
     .call-status-container {
       display: flex;
+      position: relative;
+      align-items: center;
+      padding: 0 10px;
+    }
+
+    .indicators-container {
+      display: flex;
       align-items: center;
       gap: 10px;
-      padding: 0 10px;
+      position: relative;
     }
 
     .indicator {
@@ -80,15 +87,19 @@ export class SketchCallStatus extends LitElement {
     }
 
     .status-banner {
-      margin-top: 4px;
+      position: absolute;
       padding: 2px 5px;
       border-radius: 3px;
       font-size: 10px;
       font-weight: bold;
       text-align: center;
       letter-spacing: 0.5px;
-      width: 100%;
-      min-width: 64px; /* Ensure same width regardless of state */
+      width: 64px; /* Fixed width for the banner */
+      left: 50%;
+      transform: translateX(-50%);
+      top: 60%; /* Position a little below center */
+      z-index: 10; /* Ensure it appears above the icons */
+      opacity: 0.6;
     }
 
     .status-working {
@@ -120,23 +131,25 @@ export class SketchCallStatus extends LitElement {
 
     return html`
       <div class="call-status-container">
-        <div
-          class="indicator llm-indicator ${this.llmCalls > 0 ? "active" : ""}"
-          title="${this.llmCalls > 0
-            ? `${this.llmCalls} LLM ${this.llmCalls === 1 ? "call" : "calls"} in progress`
-            : "No LLM calls in progress"}${agentState}"
-        >
-          ${unsafeHTML(lightbulbSVG)}
-        </div>
-        <div
-          class="indicator tool-indicator ${this.toolCalls.length > 0
-            ? "active"
-            : ""}"
-          title="${this.toolCalls.length > 0
-            ? `${this.toolCalls.length} tool ${this.toolCalls.length === 1 ? "call" : "calls"} in progress: ${this.toolCalls.join(", ")}`
-            : "No tool calls in progress"}${agentState}"
-        >
-          ${unsafeHTML(wrenchSVG)}
+        <div class="indicators-container">
+          <div
+            class="indicator llm-indicator ${this.llmCalls > 0 ? "active" : ""}"
+            title="${this.llmCalls > 0
+              ? `${this.llmCalls} LLM ${this.llmCalls === 1 ? "call" : "calls"} in progress`
+              : "No LLM calls in progress"}${agentState}"
+          >
+            ${unsafeHTML(lightbulbSVG)}
+          </div>
+          <div
+            class="indicator tool-indicator ${this.toolCalls.length > 0
+              ? "active"
+              : ""}"
+            title="${this.toolCalls.length > 0
+              ? `${this.toolCalls.length} tool ${this.toolCalls.length === 1 ? "call" : "calls"} in progress: ${this.toolCalls.join(", ")}`
+              : "No tool calls in progress"}${agentState}"
+          >
+            ${unsafeHTML(wrenchSVG)}
+          </div>
         </div>
         <div
           class="status-banner ${isWorking ? "status-working" : "status-idle"}"
