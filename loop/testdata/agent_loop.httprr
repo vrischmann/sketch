@@ -1,9 +1,9 @@
 httprr trace v1
-17065 2169
+17852 2128
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 16867
+Content-Length: 17654
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
@@ -196,6 +196,14 @@ Content-Type: application/json
   {
    "name": "codereview",
    "description": "Run an automated code review.",
+   "input_schema": {
+    "type": "object",
+    "properties": {}
+   }
+  },
+  {
+   "name": "about_sketch",
+   "description": "Provides information about Sketch.\n\nWhen to use this tool:\n\n- The user is asking how to USE Sketch itself (not asking Sketch to perform a task)\n- The user has questions about Sketch functionality, setup, or capabilities\n- The user needs help with Sketch-specific concepts like running commands, secrets management, git integration\n- The query is about \"How do I do X in Sketch?\" or \"Is it possible to Y in Sketch?\" or just \"Help\"\n- The user is confused about how a Sketch feature works or how to access it\n- You need to know how to interact with the host environment, e.g. port forwarding or pulling changes the user has made outside of Sketch\n",
    "input_schema": {
     "type": "object",
     "properties": {}
@@ -546,24 +554,24 @@ Content-Type: application/json
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
 Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-15T19:40:18Z
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-15T20:17:28Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-15T19:40:22Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-15T20:17:32Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-15T19:40:16Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-15T20:17:27Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
 Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-15T19:40:18Z
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-15T20:17:28Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 94051b2c59caf99f-SJC
+Cf-Ray: 940551a07914cfbc-SJC
 Content-Type: application/json
-Date: Thu, 15 May 2025 19:40:22 GMT
-Request-Id: req_011CP9tCqLUse3jVkYatN3Pe
+Date: Thu, 15 May 2025 20:17:32 GMT
+Request-Id: req_011CP9w3FmESuYF78HncTfc3
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01C1MJnT26WAW5fnwyrziYLG","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files based on keywords\n3. think - Record thoughts, notes, or plans\n4. title - Set conversation title\n5. precommit - Create a git branch for tracking work\n6. done - Indicate task completion with a checklist\n7. codereview - Run an automated code review\n8. multiplechoice - Present multiple choice questions to the user\n9. Browser tools:\n   - browser_navigate, browser_click, browser_type, browser_wait_for, \n   - browser_get_text, browser_eval, browser_scroll_into_view,\n   - browser_resize, browser_recent_console_logs, browser_clear_console_logs,\n   - browser_take_screenshot, browser_read_image\n10. patch - Tool for precise text edits\n\nThese tools help me assist with coding tasks, research, browser automation, and file modifications."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":0,"cache_read_input_tokens":3909,"output_tokens":226}}
+{"id":"msg_017btCVYisvUNXeyMwoA6BtT","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files with specific terms\n3. think - Record thoughts and plans without external effects\n4. title - Set conversation title\n5. precommit - Create git branch for tracking work\n6. done - Mark task as complete with checklist\n7. codereview - Run automated code review\n8. about_sketch - Provide information about Sketch\n9. multiplechoice - Present multiple choice options to user\n10. browser_* tools - Several browser automation tools (navigate, click, type, etc.)\n11. patch - File modification tool for precise text edits\n\nThese tools allow me to interact with the system, navigate code, make edits, and help complete various coding tasks. Would you like more detailed information about any specific tool?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":4110,"cache_read_input_tokens":0,"output_tokens":189}}

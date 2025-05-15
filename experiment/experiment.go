@@ -33,11 +33,6 @@ var (
 			Name:        "llm_review",
 			Description: "Add an LLM step to the codereview tool",
 		},
-
-		{
-			Name:        "kb",
-			Description: "Enable about_sketch tool",
-		},
 	}
 	byName = map[string]*Experiment{}
 )

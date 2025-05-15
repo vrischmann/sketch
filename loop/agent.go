@@ -952,11 +952,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
 		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
-		a.codereview.Tool(),
-	}
-
-	if experiment.Enabled("kb") {
-		convo.Tools = append(convo.Tools, claudetool.AboutSketch)
+		a.codereview.Tool(), claudetool.AboutSketch,
 	}
 
 	// One-shot mode is non-interactive, multiple choice requires human response
