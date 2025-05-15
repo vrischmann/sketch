@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"flag"
 	"fmt"
@@ -149,6 +150,7 @@ type CLIFlags struct {
 	oneShot           bool
 	prompt            string
 	modelName         string
+	llmAPIKey         string
 	listModels        bool
 	verbose           bool
 	version           bool
@@ -186,6 +188,7 @@ func parseCLIFlags() CLIFlags {
 	flag.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
 	flag.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
 	flag.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
+	flag.StringVar(&flags.llmAPIKey, "llm-api-key", "", "API key for the LLM provider; if not set, will be read from an env var")
 	flag.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
 	flag.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
 	flag.BoolVar(&flags.version, "version", false, "print the version and exit")
@@ -244,13 +247,16 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	}
 
 	// Get credentials and connect to skaband if needed
-	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
-	if err != nil {
-		return err
-	}
-	pubKey, modelURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
-	if err != nil {
-		return err
+	var pubKey, modelURL, apiKey string
+	if flags.skabandAddr != "" {
+		privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
+		if err != nil {
+			return err
+		}
+		pubKey, modelURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Get current working directory
@@ -303,7 +309,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 // with access to outside environment variables.
 func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
 	// Get credentials from environment
-	apiKey := os.Getenv("SKETCH_MODEL_API_KEY")
+	apiKey := cmp.Or(os.Getenv("SKETCH_MODEL_API_KEY"), flags.llmAPIKey)
 	pubKey := os.Getenv("SKETCH_PUB_KEY")
 	modelURL, err := skabandclient.LocalhostToDockerInternal(os.Getenv("SKETCH_MODEL_URL"))
 	if err != nil && os.Getenv("SKETCH_MODEL_URL") != "" {
@@ -324,9 +330,9 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 		if flags.modelName == "gemini" {
 			envName = gem.GeminiAPIKeyEnv
 		}
-		apiKey = os.Getenv(envName)
+		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)
 		if apiKey == "" {
-			return fmt.Errorf("%s environment variable is not set", envName)
+			return fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
 		}
 	} else {
 		// Connect to skaband

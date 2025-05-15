@@ -495,14 +495,18 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.Model != "" {
 		cmdArgs = append(cmdArgs, "-model="+config.Model)
 	}
-	if config.SkabandAddr != "" {
-		cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)
-	}
+	cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)
 	if config.Prompt != "" {
 		cmdArgs = append(cmdArgs, "-prompt", config.Prompt)
 	}
 	if config.OneShot {
 		cmdArgs = append(cmdArgs, "-one-shot")
+	}
+	if config.ModelURL == "" {
+		// Forward ANTHROPIC_API_KEY for direct use.
+		// TODO: have outtie run an http proxy?
+		// TODO: select and forward the relevant API key based on the model
+		cmdArgs = append(cmdArgs, "-llm-api-key="+os.Getenv("ANTHROPIC_API_KEY"))
 	}
 
 	// Add additional docker arguments if provided
