@@ -421,11 +421,11 @@ export class SketchToolCardDone extends LitElement {
       <div slot="result">
         ${Object.keys(doneInput.checklist_items).map((key) => {
           const item = doneInput.checklist_items[key];
-          let statusIcon = "⛔";
+          let statusIcon = "〰️";
           if (item.status == "yes") {
-            statusIcon = "👍";
+            statusIcon = "✅";
           } else if (item.status == "not applicable") {
-            statusIcon = "🤷‍♂️";
+            statusIcon = "🤷";
           }
           return html`<div>
             <span>${statusIcon}</span> ${key}:${item.status}
