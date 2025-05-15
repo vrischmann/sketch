@@ -43,8 +43,8 @@ var (
 🏷️  {{.input.title}}
 {{else if eq .msg.ToolName "precommit" -}}
 🌱 git branch: sketch/{{.input.branch_name}}
-{{else if eq .msg.ToolName "knowledge_base" -}}
-📚 Knowledge: {{.input.topic}}
+{{else if eq .msg.ToolName "about_sketch" -}}
+📚 About Sketch
 {{else if eq .msg.ToolName "str_replace_editor" -}}
  ✏️  {{.input.file_path -}}
 {{else if eq .msg.ToolName "codereview" -}}

@@ -956,7 +956,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	}
 
 	if experiment.Enabled("kb") {
-		convo.Tools = append(convo.Tools, claudetool.KnowledgeBase)
+		convo.Tools = append(convo.Tools, claudetool.AboutSketch)
 	}
 
 	// One-shot mode is non-interactive, multiple choice requires human response

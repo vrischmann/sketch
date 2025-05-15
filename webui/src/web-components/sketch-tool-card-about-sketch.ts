@@ -18,8 +18,8 @@ function renderMarkdown(markdownContent: string): string {
   }
 }
 
-@customElement("sketch-tool-card-knowledge-base")
-export class SketchToolCardKnowledgeBase extends LitElement {
+@customElement("sketch-tool-card-about-sketch")
+export class SketchToolCardAboutSketch extends LitElement {
   @property() toolCall: ToolCall;
   @property() open: boolean;
 
@@ -27,7 +27,7 @@ export class SketchToolCardKnowledgeBase extends LitElement {
     .summary-text {
       font-style: italic;
     }
-    .knowledge-content {
+    .about-sketch-content {
       background: rgb(246, 248, 250);
       border-radius: 6px;
       padding: 12px;
@@ -36,7 +36,7 @@ export class SketchToolCardKnowledgeBase extends LitElement {
       overflow-y: auto;
       border: 1px solid #e1e4e8;
     }
-    .topic-label {
+    .sketch-label {
       font-weight: bold;
       color: #24292e;
     }
@@ -46,21 +46,19 @@ export class SketchToolCardKnowledgeBase extends LitElement {
   `;
 
   render() {
-    const inputData = JSON.parse(this.toolCall?.input || "{}");
-    const topic = inputData.topic || "unknown";
     const resultText = this.toolCall?.result_message?.tool_result || "";
 
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
         <span slot="summary" class="summary-text">
-          <span class="icon">📚</span> Knowledge: ${topic}
+          <span class="icon">📚</span> About Sketch
         </span>
         <div slot="input">
-          <div><span class="topic-label">Topic:</span> ${topic}</div>
+          <div><span class="sketch-label"></span></div>
         </div>
         ${this.toolCall?.result_message?.tool_result
           ? html`<div slot="result">
-              <div class="knowledge-content">
+              <div class="about-sketch-content">
                 ${unsafeHTML(renderMarkdown(resultText))}
               </div>
             </div>`
@@ -72,6 +70,6 @@ export class SketchToolCardKnowledgeBase extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "sketch-tool-card-knowledge-base": SketchToolCardKnowledgeBase;
+    "sketch-tool-card-about-sketch": SketchToolCardAboutSketch;
   }
 }

@@ -31,7 +31,7 @@ func (r *CodeReviewer) Tool() *llm.Tool {
 		Name:        "codereview",
 		Description: `Run an automated code review.`,
 		// If you modify this, update the termui template for prettier rendering.
-		InputSchema: llm.MustSchema(`{"type": "object", "properties": {}}`),
+		InputSchema: llm.EmptySchema(),
 		Run:         r.Run,
 	}
 	return spec

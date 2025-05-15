@@ -27,6 +27,10 @@ func MustSchema(schema string) json.RawMessage {
 	return json.RawMessage(bytes)
 }
 
+func EmptySchema() json.RawMessage {
+	return MustSchema(`{"type": "object", "properties": {}}`)
+}
+
 type Request struct {
 	Messages   []Message
 	ToolChoice *ToolChoice

@@ -36,7 +36,7 @@ var (
 
 		{
 			Name:        "kb",
-			Description: "Enable knowledge_base tool",
+			Description: "Enable about_sketch tool",
 		},
 	}
 	byName = map[string]*Experiment{}

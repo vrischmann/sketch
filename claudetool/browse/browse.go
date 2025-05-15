@@ -531,7 +531,7 @@ func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 			"properties": {
 				"selector": {
 					"type": "string",
-					"description": "CSS selector for the element to screenshot (optional)"	
+					"description": "CSS selector for the element to screenshot (optional)"
 				},
 				"format": {
 					"type": "string",
@@ -961,11 +961,8 @@ func (b *BrowseTools) NewClearConsoleLogsTool() *llm.Tool {
 	return &llm.Tool{
 		Name:        "browser_clear_console_logs",
 		Description: "Clear all captured browser console logs",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {}
-		}`),
-		Run: b.clearConsoleLogsRun,
+		InputSchema: llm.EmptySchema(),
+		Run:         b.clearConsoleLogsRun,
 	}
 }
 
