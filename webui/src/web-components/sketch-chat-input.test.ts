@@ -161,3 +161,66 @@ test("resizes when user enters more text than will fit", async ({ mount }) => {
     Number.parseInt(origHeight),
   );
 });
+
+test("shows drop overlay when file is dragged over", async ({ mount }) => {
+  const component = await mount(SketchChatInput, {});
+
+  // Simulate dragenter event
+  await component.evaluate((el: SketchChatInput) => {
+    const container = el.renderRoot.querySelector(".chat-container");
+    if (container) {
+      const event = new DragEvent("dragenter", { bubbles: true });
+      container.dispatchEvent(event);
+    }
+  });
+
+  // Check that the isDraggingOver state is true
+  const isDraggingOver = await component.evaluate(
+    (el: SketchChatInput) => el.isDraggingOver,
+  );
+  expect(isDraggingOver).toBe(true);
+
+  // Check that the drop zone overlay is visible
+  const overlay = await component.evaluate(
+    (el: SketchChatInput) =>
+      el.renderRoot.querySelector(".drop-zone-overlay") !== null,
+  );
+  expect(overlay).toBe(true);
+});
+
+test("hides drop overlay when drag leaves", async ({ mount }) => {
+  const component = await mount(SketchChatInput, {});
+
+  // First set isDraggingOver to true
+  await component.evaluate((el: SketchChatInput) => {
+    el.isDraggingOver = true;
+  });
+
+  // Simulate dragleave event
+  await component.evaluate((el: SketchChatInput) => {
+    const container = el.renderRoot.querySelector(".chat-container");
+    if (container) {
+      const event = new DragEvent("dragleave", { bubbles: true });
+      Object.defineProperty(event, "target", { value: container });
+      container.dispatchEvent(event);
+    }
+  });
+
+  // Check that the isDraggingOver state is false
+  const isDraggingOver = await component.evaluate(
+    (el: SketchChatInput) => el.isDraggingOver,
+  );
+  expect(isDraggingOver).toBe(false);
+});
+
+// Note: Testing actual file drop and upload would require mocking the fetch API
+// This is a simple test that the drop event handler exists
+test("has a drop event handler", async ({ mount }) => {
+  const component = await mount(SketchChatInput, {});
+
+  // Check that the component has the _handleDrop method
+  const hasDropHandler = await component.evaluate(
+    (el: SketchChatInput) => typeof (el as any)._handleDrop === "function",
+  );
+  expect(hasDropHandler).toBe(true);
+});

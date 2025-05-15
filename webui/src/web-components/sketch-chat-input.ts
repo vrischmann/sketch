@@ -6,6 +6,9 @@ export class SketchChatInput extends LitElement {
   @state()
   content: string = "";
 
+  @state()
+  isDraggingOver: boolean = false;
+
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
@@ -17,6 +20,7 @@ export class SketchChatInput extends LitElement {
       background: #f0f0f0;
       padding: 15px;
       min-height: 40px; /* Ensure minimum height */
+      position: relative;
     }
 
     .chat-input-wrapper {
@@ -57,16 +61,105 @@ export class SketchChatInput extends LitElement {
     #sendChatButton:hover {
       background-color: #0d8bf2;
     }
+
+    /* Drop zone styling */
+    .drop-zone-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(33, 150, 243, 0.1);
+      border: 2px dashed #2196f3;
+      border-radius: 4px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .drop-zone-message {
+      background-color: #ffffff;
+      padding: 15px 20px;
+      border-radius: 4px;
+      font-weight: 600;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
   `;
 
   constructor() {
     super();
     this._handleDiffComment = this._handleDiffComment.bind(this);
+    this._handleDragOver = this._handleDragOver.bind(this);
+    this._handleDragEnter = this._handleDragEnter.bind(this);
+    this._handleDragLeave = this._handleDragLeave.bind(this);
+    this._handleDrop = this._handleDrop.bind(this);
   }
 
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener("diff-comment", this._handleDiffComment);
+  }
+
+  // Utility function to handle file uploads (used by both paste and drop handlers)
+  private async _uploadFile(file: File, insertPosition: number) {
+    // Insert a placeholder at the cursor position
+    const textBefore = this.content.substring(0, insertPosition);
+    const textAfter = this.content.substring(insertPosition);
+
+    // Add a loading indicator
+    const loadingText = `[Uploading ${file.name}...]`;
+    this.content = `${textBefore}${loadingText}${textAfter}`;
+
+    // Adjust spacing immediately to show loading indicator
+    requestAnimationFrame(() => this.adjustChatSpacing());
+
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Upload the file to the server using a relative path
+      const response = await fetch("./upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Replace the loading placeholder with the actual file path
+      this.content = this.content.replace(loadingText, `[${data.path}]`);
+
+      // Adjust the cursor position after the inserted text
+      requestAnimationFrame(() => {
+        this.adjustChatSpacing();
+        this.chatInput.focus();
+        const newPos = textBefore.length + data.path.length + 2; // +2 for the brackets
+        this.chatInput.selectionStart = newPos;
+        this.chatInput.selectionEnd = newPos;
+      });
+
+      return data.path;
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+
+      // Replace loading indicator with error message
+      const errorText = `[Upload failed: ${error.message}]`;
+      this.content = this.content.replace(loadingText, errorText);
+
+      // Adjust spacing to show error message
+      requestAnimationFrame(() => {
+        this.adjustChatSpacing();
+        this.chatInput.focus();
+      });
+
+      throw error;
+    }
   }
 
   // Handle paste events for files (including images)
@@ -78,58 +171,59 @@ export class SketchChatInput extends LitElement {
       // Handle the file upload (for any file type, not just images)
       event.preventDefault(); // Prevent default paste behavior
 
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // Insert a placeholder at the current cursor position
+      // Get the current cursor position
       const cursorPos = this.chatInput.selectionStart;
-      const textBefore = this.content.substring(0, cursorPos);
-      const textAfter = this.content.substring(cursorPos);
+      await this._uploadFile(file, cursorPos);
+    }
+  };
 
-      // Add a loading indicator
-      const loadingText = `[Uploading ${file.name}...]`;
-      this.content = `${textBefore}${loadingText}${textAfter}`;
+  // Handle drag events for file drop operation
+  private _handleDragOver(event: DragEvent) {
+    event.preventDefault(); // Necessary to allow dropping
+    event.stopPropagation();
+  }
 
-      // Adjust spacing immediately to show loading indicator
-      requestAnimationFrame(() => this.adjustChatSpacing());
+  private _handleDragEnter(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver = true;
+  }
 
-      try {
-        // Upload the file to the server using a relative path
-        const response = await fetch("./upload", {
-          method: "POST",
-          body: formData,
-        });
+  private _handleDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    // Only set to false if we're leaving the container (not entering a child element)
+    if (event.target === this.renderRoot.querySelector(".chat-container")) {
+      this.isDraggingOver = false;
+    }
+  }
 
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.statusText}`);
+  private _handleDrop = async (event: DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver = false;
+
+    // Check if the dataTransfer contains files
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      // Process all dropped files
+      for (let i = 0; i < event.dataTransfer.files.length; i++) {
+        const file = event.dataTransfer.files[i];
+        try {
+          // For the first file, insert at the cursor position
+          // For subsequent files, append at the end of the content
+          const insertPosition =
+            i === 0 ? this.chatInput.selectionStart : this.content.length;
+          await this._uploadFile(file, insertPosition);
+
+          // Add a space between multiple files
+          if (i < event.dataTransfer.files.length - 1) {
+            this.content += " ";
+          }
+        } catch (error) {
+          // Error already handled in _uploadFile
+          console.error("Failed to process dropped file:", error);
+          // Continue with the next file
         }
-
-        const data = await response.json();
-
-        // Replace the loading placeholder with the actual file path
-        this.content = this.content.replace(loadingText, `[${data.path}]`);
-
-        // Adjust the cursor position after the inserted text
-        requestAnimationFrame(() => {
-          this.adjustChatSpacing();
-          this.chatInput.focus();
-          const newPos = textBefore.length + data.path.length + 2; // +2 for the brackets
-          this.chatInput.selectionStart = newPos;
-          this.chatInput.selectionEnd = newPos;
-        });
-      } catch (error) {
-        console.error("Failed to upload file:", error);
-
-        // Replace loading indicator with error message
-        const errorText = `[Upload failed: ${error.message}]`;
-        this.content = this.content.replace(loadingText, errorText);
-
-        // Adjust spacing to show error message
-        requestAnimationFrame(() => {
-          this.adjustChatSpacing();
-          this.chatInput.focus();
-        });
       }
     }
   };
@@ -149,6 +243,20 @@ export class SketchChatInput extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener("diff-comment", this._handleDiffComment);
+
+    // Clean up drag and drop event listeners
+    const container = this.renderRoot.querySelector(".chat-container");
+    if (container) {
+      container.removeEventListener("dragover", this._handleDragOver);
+      container.removeEventListener("dragenter", this._handleDragEnter);
+      container.removeEventListener("dragleave", this._handleDragLeave);
+      container.removeEventListener("drop", this._handleDrop);
+    }
+
+    // Clean up paste event listener
+    if (this.chatInput) {
+      this.chatInput.removeEventListener("paste", this._handlePaste);
+    }
   }
 
   sendChatMessage() {
@@ -208,6 +316,15 @@ export class SketchChatInput extends LitElement {
 
       // Add paste event listener for image handling
       this.chatInput.addEventListener("paste", this._handlePaste);
+
+      // Add drag and drop event listeners
+      const container = this.renderRoot.querySelector(".chat-container");
+      if (container) {
+        container.addEventListener("dragover", this._handleDragOver);
+        container.addEventListener("dragenter", this._handleDragEnter);
+        container.addEventListener("dragleave", this._handleDragLeave);
+        container.addEventListener("drop", this._handleDrop);
+      }
     }
 
     // Add window.onload handler to ensure the input is focused when the page fully loads
@@ -238,6 +355,13 @@ export class SketchChatInput extends LitElement {
             Send
           </button>
         </div>
+        ${this.isDraggingOver
+          ? html`
+              <div class="drop-zone-overlay">
+                <div class="drop-zone-message">Drop files here</div>
+              </div>
+            `
+          : ""}
       </div>
     `;
   }
