@@ -90,3 +90,26 @@ Regarding how CSS rules defined in sketch-tool-card affect elements that contain
    - This affects how the component is displayed in its parent context
 
 In summary, the architecture uses composition rather than inheritance, with specialized tool cards wrapping the base sketch-tool-card component and filling its slots with custom content. The CSS styling is carefully managed through Shadow DOM, with some targeted styling using ::slotted selectors to ensure proper layout and appearance throughout the component hierarchy.
+
+# API URLs Must Be Relative
+
+When making fetch requests to backend APIs in Sketch, all URLs **must be relative** without leading slashes. The base URL for Sketch varies depending on how it is deployed and run:
+
+```javascript
+// CORRECT - use relative paths without leading slash
+const response = await fetch(`git/rawdiff?commit=${commit}`);
+const data = await fetch(`git/show?hash=${hash}`);
+
+// INCORRECT - do not use absolute paths with leading slash
+const response = await fetch(`/git/rawdiff?commit=${commit}`); // WRONG!
+const data = await fetch(`/git/show?hash=${hash}`); // WRONG!
+```
+
+The reason for this requirement is that Sketch may be deployed:
+
+1. At the root path of a domain
+2. In a subdirectory
+3. Behind a proxy with a path prefix
+4. In different environments (dev, production)
+
+Using relative paths ensures that requests are correctly routed regardless of the deployment configuration. The browser will resolve the URLs relative to the current page location.
