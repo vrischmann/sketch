@@ -36,6 +36,7 @@ For the "sketch" topic:
 - The user needs help with Sketch-specific concepts like running commands, secrets management, git integration
 - The query is about "How do I do X in Sketch?" or "Is it possible to Y in Sketch?" or just "Help"
 - The user is confused about how a Sketch feature works or how to access it
+- You need to know how to interact with the host machine, ed forwarding a port or pulling changes that the user has made outside of Sketch
 
 For the "strings_lines" topic:
 - Any mentions of strings.Lines in the code, by the codereview, or by the user
