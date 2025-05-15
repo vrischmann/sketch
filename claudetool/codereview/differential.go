@@ -986,7 +986,11 @@ func (r *CodeReviewer) findRelatedFiles(ctx context.Context, changedFiles []stri
 		correlation := float64(count) / float64(maxCount)
 		// Require min correlation to avoid noise
 		if correlation >= 0.1 {
-			relatedFiles = append(relatedFiles, RelatedFile{Path: file, Correlation: correlation})
+			// Check if the file still exists in the repository
+			fullPath := filepath.Join(r.repoRoot, file)
+			if _, err := os.Stat(fullPath); err == nil {
+				relatedFiles = append(relatedFiles, RelatedFile{Path: file, Correlation: correlation})
+			}
 		}
 	}
 
