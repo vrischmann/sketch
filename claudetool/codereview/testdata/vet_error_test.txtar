@@ -1,4 +1,4 @@
-Check that vet errors are detected in a test run
+Verify that gopls provides vet error coverage
 
 -- p.go --
 package p
@@ -22,11 +22,6 @@ Add vet error
 
 -- .run_test --
 # Errors
-
-Test regressions detected between initial commit (INITIAL_COMMIT_HASH) and HEAD:
-
-1: sketch.dev: Previously had no tests, now has build/vet errors
-
 
 Gopls check issues detected:
 

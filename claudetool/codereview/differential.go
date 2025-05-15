@@ -165,7 +165,9 @@ func (r *CodeReviewer) initializeInitialCommitWorktree(ctx context.Context) erro
 }
 
 func (r *CodeReviewer) checkTests(ctx context.Context, pkgList []string) (string, error) {
-	goTestArgs := []string{"test", "-json", "-v"}
+	// 'gopls check' covers everything that 'go vet' covers.
+	// Disabling vet here speeds things up, and allows more precise filtering and reporting.
+	goTestArgs := []string{"test", "-json", "-v", "-vet=off"}
 	goTestArgs = append(goTestArgs, pkgList...)
 
 	afterTestCmd := exec.CommandContext(ctx, "go", goTestArgs...)
@@ -207,6 +209,15 @@ type GoplsIssue struct {
 	Message  string // Description of the issue
 }
 
+// goplsIgnore contains substring patterns for gopls (and vet) diagnostic messages that should be suppressed.
+var goplsIgnore = []string{
+	// these are often just wrong, see https://github.com/golang/go/issues/57059#issuecomment-2884771470
+	"ends with redundant newline",
+
+	// as of May 2025, Claude doesn't understand strings/bytes.SplitSeq well enough to use it
+	"SplitSeq",
+}
+
 // checkGopls runs gopls check on the provided files in both the current and initial state,
 // compares the results, and reports any new issues introduced in the current state.
 func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (string, error) {
@@ -246,7 +257,6 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 			slog.WarnContext(ctx, "CodeReviewer.checkGopls: gopls check failed to run properly", "err", err, "output", string(afterGoplsOut))
 			return "", nil // Skip rather than failing the entire code review
 		}
-		// Otherwise, proceed with parsing - it's likely just the non-zero exit code due to found issues
 	}
 
 	// Parse the output
@@ -309,7 +319,8 @@ func (r *CodeReviewer) checkGopls(ctx context.Context, changedFiles []string) (s
 	return r.formatGoplsRegressions(goplsRegressions), nil
 }
 
-// parseGoplsOutput parses the text output from gopls check
+// parseGoplsOutput parses the text output from gopls check.
+// It drops any that match the patterns in goplsIgnore.
 // Each line has the format: '/path/to/file.go:448:22-26: unused parameter: path'
 func parseGoplsOutput(root string, output []byte) []GoplsIssue {
 	var issues []GoplsIssue
@@ -358,6 +369,11 @@ func parseGoplsOutput(root string, output []byte) []GoplsIssue {
 		colonCount := strings.Count(position, ":")
 		if colonCount < 2 {
 			continue // Not enough position information
+		}
+
+		// Skip diagnostics that match any of our ignored patterns
+		if shouldIgnoreDiagnostic(message) {
+			continue
 		}
 
 		issues = append(issues, GoplsIssue{
@@ -1065,4 +1081,14 @@ func (r *CodeReviewer) formatRelatedFiles(files []RelatedFile) string {
 
 	fmt.Fprintf(buf, "\nThese files have historically changed with the files you have modified. Consider whether they require updates as well.\n")
 	return buf.String()
+}
+
+// shouldIgnoreDiagnostic reports whether a diagnostic message matches any of the patterns in goplsIgnore.
+func shouldIgnoreDiagnostic(message string) bool {
+	for _, pattern := range goplsIgnore {
+		if strings.Contains(message, pattern) {
+			return true
+		}
+	}
+	return false
 }
