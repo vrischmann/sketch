@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -425,13 +426,22 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 	httpc := cmp.Or(s.HTTPC, http.DefaultClient)
 
 	// retry loop
+	var errs error // accumulated errors across all attempts
 	for attempts := 0; ; attempts++ {
+		if attempts > 10 {
+			return nil, fmt.Errorf("anthropic request failed after %d attempts: %w", attempts, errs)
+		}
+		if attempts > 0 {
+			sleep := backoff[min(attempts, len(backoff)-1)] + time.Duration(rand.Int64N(int64(time.Second)))
+			slog.WarnContext(ctx, "anthropic request sleep before retry", "sleep", sleep, "attempts", attempts)
+			time.Sleep(sleep)
+		}
 		if dumpText {
 			fmt.Printf("RAW REQUEST:\n%s\n\n", payload)
 		}
 		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(errs, err)
 		}
 
 		req.Header.Set("Content-Type", "application/json")
@@ -452,10 +462,15 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 		resp, err := httpc.Do(req)
 		if err != nil {
-			return nil, err
+			errs = errors.Join(errs, err)
+			continue
 		}
-		buf, _ := io.ReadAll(resp.Body)
+		buf, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
 
 		switch {
 		case resp.StatusCode == http.StatusOK:
@@ -465,7 +480,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			var response response
 			err = json.NewDecoder(bytes.NewReader(buf)).Decode(&response)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(errs, err)
 			}
 			if response.StopReason == "max_tokens" && !largerMaxTokens {
 				slog.InfoContext(ctx, "anthropic_retrying_with_larger_tokens", "message", "Retrying Anthropic API call with larger max tokens size")
@@ -484,20 +499,24 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 			return toLLMResponse(&response), nil
 		case resp.StatusCode >= 500 && resp.StatusCode < 600:
-			// overloaded or unhappy, in one form or another
-			sleep := backoff[min(attempts, len(backoff)-1)] + time.Duration(rand.Int64N(int64(time.Second)))
-			slog.WarnContext(ctx, "anthropic_request_failed", "response", string(buf), "status_code", resp.StatusCode, "sleep", sleep)
-			time.Sleep(sleep)
+			// server error, retry
+			slog.WarnContext(ctx, "anthropic_request_failed", "response", string(buf), "status_code", resp.StatusCode)
+			errs = errors.Join(errs, fmt.Errorf("status %v: %s", resp.Status, buf))
+			continue
 		case resp.StatusCode == 429:
-			// rate limited. wait 1 minute as a starting point, because that's the rate limiting window.
-			// and then add some additional time for backoff.
-			sleep := time.Minute + backoff[min(attempts, len(backoff)-1)] + time.Duration(rand.Int64N(int64(time.Second)))
-			slog.WarnContext(ctx, "anthropic_request_rate_limited", "response", string(buf), "sleep", sleep)
-			time.Sleep(sleep)
-		// case resp.StatusCode == 400:
-		// TODO: parse ErrorResponse, make (*ErrorResponse) implement error
+			// rate limited, retry
+			slog.WarnContext(ctx, "anthropic_request_rate_limited", "response", string(buf))
+			errs = errors.Join(errs, fmt.Errorf("status %v: %s", resp.Status, buf))
+			continue
+		case resp.StatusCode >= 400 && resp.StatusCode < 500:
+			// some other 400, probably unrecoverable
+			slog.WarnContext(ctx, "anthropic_request_failed", "response", string(buf), "status_code", resp.StatusCode)
+			return nil, errors.Join(errs, fmt.Errorf("status %v: %s", resp.Status, buf))
 		default:
-			return nil, fmt.Errorf("API request failed with status %s\n%s", resp.Status, buf)
+			// ...retry, I guess?
+			slog.WarnContext(ctx, "anthropic_request_failed", "response", string(buf), "status_code", resp.StatusCode)
+			errs = errors.Join(errs, fmt.Errorf("status %v: %s", resp.Status, buf))
+			continue
 		}
 	}
 }
