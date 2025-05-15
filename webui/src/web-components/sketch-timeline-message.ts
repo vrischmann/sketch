@@ -233,6 +233,75 @@ export class SketchTimelineMessage extends LitElement {
       box-sizing: border-box; /* Include padding in width calculation */
     }
 
+    /* Code block container styles */
+    .code-block-container {
+      position: relative;
+      margin: 8px 0;
+      border-radius: 6px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .user .code-block-container {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 8px;
+      background: rgba(0, 0, 0, 0.1);
+      font-size: 12px;
+    }
+
+    .user .code-block-header {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .code-language {
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .code-copy-button {
+      background: transparent;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 2px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+      transition: all 0.15s ease;
+    }
+
+    .code-copy-button:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .user .code-copy-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .code-block-container pre {
+      margin: 0;
+      padding: 8px;
+      background: transparent;
+    }
+
+    .code-block-container code {
+      background: transparent;
+      padding: 0;
+      display: block;
+      width: 100%;
+    }
+
     .user .message-text pre,
     .user .message-text code {
       background: rgba(255, 255, 255, 0.2);
@@ -549,6 +618,7 @@ export class SketchTimelineMessage extends LitElement {
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
     this.renderMermaidDiagrams();
+    this.setupCodeBlockCopyButtons();
   }
 
   // Render mermaid diagrams after the component is updated
@@ -589,6 +659,56 @@ export class SketchTimelineMessage extends LitElement {
     }, 100); // Small delay to ensure DOM is ready
   }
 
+  // Setup code block copy buttons after component is updated
+  setupCodeBlockCopyButtons() {
+    setTimeout(() => {
+      // Find all copy buttons in code blocks
+      const copyButtons =
+        this.shadowRoot?.querySelectorAll(".code-copy-button");
+      if (!copyButtons || copyButtons.length === 0) return;
+
+      // Add click event listener to each button
+      copyButtons.forEach((button) => {
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const codeId = (button as HTMLElement).dataset.codeId;
+          if (!codeId) return;
+
+          const codeElement = this.shadowRoot?.querySelector(`#${codeId}`);
+          if (!codeElement) return;
+
+          const codeText = codeElement.textContent || "";
+          const buttonRect = button.getBoundingClientRect();
+
+          // Copy code to clipboard
+          navigator.clipboard
+            .writeText(codeText)
+            .then(() => {
+              // Show success indicator
+              const originalHTML = button.innerHTML;
+              button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6L9 17l-5-5"></path>
+                </svg>
+              `;
+
+              // Display floating message
+              this.showFloatingMessage("Copied!", buttonRect, "success");
+
+              // Reset button after delay
+              setTimeout(() => {
+                button.innerHTML = originalHTML;
+              }, 2000);
+            })
+            .catch((err) => {
+              console.error("Failed to copy code:", err);
+              this.showFloatingMessage("Failed to copy!", buttonRect, "error");
+            });
+        });
+      });
+    }, 100); // Small delay to ensure DOM is ready
+  }
+
   // See https://lit.dev/docs/components/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -600,7 +720,7 @@ export class SketchTimelineMessage extends LitElement {
       const renderer = new Renderer();
       const originalCodeRenderer = renderer.code.bind(renderer);
 
-      // Override the code renderer to handle mermaid diagrams
+      // Override the code renderer to handle mermaid diagrams and add copy buttons
       renderer.code = function ({ text, lang, escaped }: Tokens.Code): string {
         if (lang === "mermaid") {
           // Generate a unique ID for this diagram
@@ -611,8 +731,23 @@ export class SketchTimelineMessage extends LitElement {
                    <div class="mermaid" id="${id}">${text}</div>
                  </div>`;
         }
-        // Default rendering for other code blocks
-        return originalCodeRenderer({ text, lang, escaped });
+
+        // For regular code blocks, add a copy button
+        const id = `code-block-${Math.random().toString(36).substring(2, 10)}`;
+        const langClass = lang ? ` class="language-${lang}"` : "";
+
+        return `<div class="code-block-container">
+                 <div class="code-block-header">
+                   ${lang ? `<span class="code-language">${lang}</span>` : ""}
+                   <button class="code-copy-button" title="Copy code" data-code-id="${id}">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                     </svg>
+                   </button>
+                 </div>
+                 <pre><code id="${id}"${langClass}>${text}</code></pre>
+               </div>`;
       };
 
       // Set markdown options for proper code block highlighting and safety
