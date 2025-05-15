@@ -265,8 +265,9 @@ Special commands:
 				initialCommitRef := getShortSHA(ui.agent.SketchGitBase())
 				if len(branches) == 1 {
 					ui.AppendSystemMessage("\n🔄 Branch pushed during session: %s", branches[0])
-					ui.AppendSystemMessage("🍒 To add those changes to your branch: git cherry-pick %s..%s", initialCommitRef, branches[0])
-					ui.AppendSystemMessage("🔀                                   or git merge %s", branches[0])
+					ui.AppendSystemMessage("🍒 Cherry-pick those changes: git cherry-pick %s..%s", initialCommitRef, branches[0])
+					ui.AppendSystemMessage("🔀 Merge those changes:       git merge %s", branches[0])
+					ui.AppendSystemMessage("🗑️  Delete the branch:         git branch -D %s", branches[0])
 				} else {
 					ui.AppendSystemMessage("\n🔄 Branches pushed during session:")
 					for _, branch := range branches {
@@ -276,13 +277,14 @@ Special commands:
 					for _, branch := range branches {
 						ui.AppendSystemMessage("git cherry-pick %s..%s", initialCommitRef, branch)
 					}
-					ui.AppendSystemMessage("\n🍒 To add all those changes to your branch:")
-					for _, branch := range branches {
-						ui.AppendSystemMessage("git cherry-pick %s..%s", initialCommitRef, branch)
-					}
 					ui.AppendSystemMessage("\n🔀                              or:")
 					for _, branch := range branches {
 						ui.AppendSystemMessage("git merge %s", branch)
+					}
+
+					ui.AppendSystemMessage("\n🗑️  To delete branches:")
+					for _, branch := range branches {
+						ui.AppendSystemMessage("git branch -D %s", branch)
 					}
 				}
 			}
