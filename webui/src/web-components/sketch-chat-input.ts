@@ -9,6 +9,12 @@ export class SketchChatInput extends LitElement {
   @state()
   isDraggingOver: boolean = false;
 
+  @state()
+  uploadsInProgress: number = 0;
+
+  @state()
+  showUploadInProgressMessage: boolean = false;
+
   // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
   // Note that these styles only apply to the scope of this web component's
   // shadow DOM node, so they won't leak out or collide with CSS declared in
@@ -62,6 +68,11 @@ export class SketchChatInput extends LitElement {
       background-color: #0d8bf2;
     }
 
+    #sendChatButton:disabled {
+      background-color: #b0b0b0;
+      cursor: not-allowed;
+    }
+
     /* Drop zone styling */
     .drop-zone-overlay {
       position: absolute;
@@ -79,12 +90,36 @@ export class SketchChatInput extends LitElement {
       pointer-events: none;
     }
 
-    .drop-zone-message {
+    .drop-zone-message,
+    .upload-progress-message {
       background-color: #ffffff;
       padding: 15px 20px;
       border-radius: 4px;
       font-weight: 600;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .upload-progress-message {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #fff9c4;
+      border: 1px solid #fbc02d;
+      z-index: 20;
+      font-size: 14px;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
     }
   `;
 
@@ -108,9 +143,12 @@ export class SketchChatInput extends LitElement {
     const textBefore = this.content.substring(0, insertPosition);
     const textAfter = this.content.substring(insertPosition);
 
-    // Add a loading indicator
-    const loadingText = `[Uploading ${file.name}...]`;
+    // Add a loading indicator with a visual cue
+    const loadingText = `[🔄 Uploading ${file.name}...]`;
     this.content = `${textBefore}${loadingText}${textAfter}`;
+
+    // Increment uploads in progress counter
+    this.uploadsInProgress++;
 
     // Adjust spacing immediately to show loading indicator
     requestAnimationFrame(() => this.adjustChatSpacing());
@@ -159,6 +197,9 @@ export class SketchChatInput extends LitElement {
       });
 
       throw error;
+    } finally {
+      // Always decrement the counter, even if there was an error
+      this.uploadsInProgress--;
     }
   }
 
@@ -260,15 +301,35 @@ export class SketchChatInput extends LitElement {
   }
 
   sendChatMessage() {
-    const event = new CustomEvent("send-chat", {
-      detail: { message: this.content },
-      bubbles: true,
-      composed: true,
-    });
-    this.dispatchEvent(event);
+    // Prevent sending if there are uploads in progress
+    if (this.uploadsInProgress > 0) {
+      console.log(
+        `Message send prevented: ${this.uploadsInProgress} uploads in progress`,
+      );
 
-    // TODO(philip?): Ideally we only clear the content if the send is successful.
-    this.content = ""; // Clear content after sending
+      // Show message to user
+      this.showUploadInProgressMessage = true;
+
+      // Hide the message after 3 seconds
+      setTimeout(() => {
+        this.showUploadInProgressMessage = false;
+      }, 3000);
+
+      return;
+    }
+
+    // Only send if there's actual content (not just whitespace)
+    if (this.content.trim()) {
+      const event = new CustomEvent("send-chat", {
+        detail: { message: this.content },
+        bubbles: true,
+        composed: true,
+      });
+      this.dispatchEvent(event);
+
+      // TODO(philip?): Ideally we only clear the content if the send is successful.
+      this.content = ""; // Clear content after sending
+    }
   }
 
   adjustChatSpacing() {
@@ -351,14 +412,25 @@ export class SketchChatInput extends LitElement {
             @input="${this._chatInputChanged}"
             .value=${this.content || ""}
           ></textarea>
-          <button @click="${this._sendChatClicked}" id="sendChatButton">
-            Send
+          <button
+            @click="${this._sendChatClicked}"
+            id="sendChatButton"
+            ?disabled=${this.uploadsInProgress > 0}
+          >
+            ${this.uploadsInProgress > 0 ? "Uploading..." : "Send"}
           </button>
         </div>
         ${this.isDraggingOver
           ? html`
               <div class="drop-zone-overlay">
                 <div class="drop-zone-message">Drop files here</div>
+              </div>
+            `
+          : ""}
+        ${this.showUploadInProgressMessage
+          ? html`
+              <div class="upload-progress-message">
+                Please wait for file upload to complete before sending
               </div>
             `
           : ""}
