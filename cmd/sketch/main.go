@@ -136,6 +136,26 @@ func run() error {
 }
 
 // CLIFlags holds all command-line arguments
+// StringSliceFlag is a custom flag type that allows for repeated flag values.
+// It collects all values into a slice.
+type StringSliceFlag []string
+
+// String returns the string representation of the flag value.
+func (f *StringSliceFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+// Set adds a value to the flag.
+func (f *StringSliceFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
+// Get returns the flag values.
+func (f *StringSliceFlag) Get() any {
+	return []string(*f)
+}
+
 type CLIFlags struct {
 	addr              string
 	skabandAddr       string
@@ -168,6 +188,7 @@ type CLIFlags struct {
 	outsideWorkingDir string
 	sketchBinaryLinux string
 	dockerArgs        string
+	mounts            StringSliceFlag
 	termUI            bool
 }
 
@@ -195,6 +216,7 @@ func parseCLIFlags() CLIFlags {
 	flag.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
 	flag.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
 	flag.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
+	flag.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
 	flag.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
 
 	// Flags geared towards sketch developers or sketch internals:
@@ -289,6 +311,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		InitialCommit:     flags.initialCommit,
 		Verbose:           flags.verbose,
 		DockerArgs:        flags.dockerArgs,
+		Mounts:            flags.mounts,
 		ExperimentFlag:    flags.experimentFlag.String(),
 		TermUI:            flags.termUI,
 	}

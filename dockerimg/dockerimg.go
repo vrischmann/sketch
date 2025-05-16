@@ -99,6 +99,9 @@ type ContainerConfig struct {
 	// DockerArgs are additional arguments to pass to the docker create command
 	DockerArgs string
 
+	// Mounts specifies volumes to mount in the container in format /path/on/host:/path/in/container
+	Mounts []string
+
 	// ExperimentFlag contains the experimental features to enable
 	ExperimentFlag string
 
@@ -484,6 +487,13 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	}
 	// colima does this by default, but Linux docker seems to need this set explicitly
 	cmdArgs = append(cmdArgs, "--add-host", "host.docker.internal:host-gateway")
+
+	// Add volume mounts if specified
+	for _, mount := range config.Mounts {
+		if mount != "" {
+			cmdArgs = append(cmdArgs, "-v", mount)
+		}
+	}
 	cmdArgs = append(
 		cmdArgs,
 		imgName,
