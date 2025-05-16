@@ -35,11 +35,11 @@ test("dispatches view-mode-select event when clicking a mode button", async ({
   });
 
   // Click the diff button
-  await component.locator("#showDiffButton").click();
+  await component.locator("#showDiff2Button").click();
 
   // Wait for the event and check its details
   const detail: any = await eventPromise;
-  expect(detail.mode).toBe("diff");
+  expect(detail.mode).toBe("diff2");
 });
 
 test("updates the active mode when receiving update-active-mode event", async ({
@@ -56,7 +56,7 @@ test("updates the active mode when receiving update-active-mode event", async ({
   // Dispatch the update-active-mode event
   await component.evaluate((el) => {
     const updateEvent = new CustomEvent("update-active-mode", {
-      detail: { mode: "diff" },
+      detail: { mode: "diff2" },
       bubbles: true,
     });
     el.dispatchEvent(updateEvent);
@@ -66,10 +66,10 @@ test("updates the active mode when receiving update-active-mode event", async ({
   activeMode = await component.evaluate(
     (el: SketchViewModeSelect) => el.activeMode,
   );
-  expect(activeMode).toBe("diff");
+  expect(activeMode).toBe("diff2");
 
   // Check that the diff button is now active
-  await expect(component.locator("#showDiffButton.active")).toBeVisible();
+  await expect(component.locator("#showDiff2Button.active")).toBeVisible();
 });
 
 test("correctly marks the active button based on mode", async ({ mount }) => {
@@ -86,6 +86,6 @@ test("correctly marks the active button based on mode", async ({ mount }) => {
   await expect(
     component.locator("#showConversationButton.active"),
   ).not.toBeVisible();
-  await expect(component.locator("#showDiffButton.active")).not.toBeVisible();
+  await expect(component.locator("#showDiff2Button.active")).not.toBeVisible();
   await expect(component.locator("#showChartsButton.active")).not.toBeVisible();
 });
