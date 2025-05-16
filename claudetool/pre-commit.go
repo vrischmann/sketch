@@ -64,6 +64,7 @@ func representativeCommitSHAs(ctx context.Context, repoRoot string) ([]string, s
 - Structure and organization
 - Length and detail
 - Special notations or tags
+- Capitalization and punctuation
 
 First, provide a concise analysis of the predominant patterns.
 Then select up to 3 commit hashes that best exemplify the repository's commit style.
