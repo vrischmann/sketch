@@ -116,17 +116,6 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 		errorMessages = append(errorMessages, goplsMsg)
 	}
 
-	if r.llmReview {
-		llmComments, err := r.doLLMReview(ctx)
-		if err != nil {
-			// Log the error but don't fail the codereview if this check fails
-			slog.WarnContext(ctx, "CodeReviewer.Run: error doing LLM review", "err", err)
-		}
-		if llmComments != "" {
-			infoMessages = append(infoMessages, llmComments)
-		}
-	}
-
 	// NOTE: If you change this output format, update the corresponding UI parsing in:
 	// webui/src/web-components/sketch-tool-card.ts (SketchToolCardCodeReview.getStatusIcon)
 	buf := new(strings.Builder)

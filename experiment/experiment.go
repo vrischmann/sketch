@@ -29,10 +29,6 @@ var (
 			Name:        "all",
 			Description: "Enable all experiments",
 		},
-		{
-			Name:        "llm_review",
-			Description: "Add an LLM step to the codereview tool",
-		},
 	}
 	byName = map[string]*Experiment{}
 )

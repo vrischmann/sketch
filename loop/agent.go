@@ -25,7 +25,6 @@ import (
 	"sketch.dev/claudetool/browse"
 	"sketch.dev/claudetool/codereview"
 	"sketch.dev/claudetool/onstart"
-	"sketch.dev/experiment"
 	"sketch.dev/llm"
 	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
@@ -874,11 +873,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.codebase = codebase
 
-		llmCodeReview := codereview.NoLLMReview
-		if experiment.Enabled("llm_review") {
-			llmCodeReview = codereview.DoLLMReview
-		}
-		codereview, err := codereview.NewCodeReviewer(ctx, a.repoRoot, a.SketchGitBaseRef(), llmCodeReview)
+		codereview, err := codereview.NewCodeReviewer(ctx, a.repoRoot, a.SketchGitBaseRef())
 		if err != nil {
 			return fmt.Errorf("Agent.Init: codereview.NewCodeReviewer: %w", err)
 		}

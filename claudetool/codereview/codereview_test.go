@@ -234,7 +234,7 @@ func runDifferentialTest(dir, initialCommit string) (string, error) {
 
 	// Create a code reviewer for the repository
 	ctx := context.Background()
-	reviewer, err := NewCodeReviewer(ctx, dir, initialCommit, NoLLMReview)
+	reviewer, err := NewCodeReviewer(ctx, dir, initialCommit)
 	if err != nil {
 		return "", fmt.Errorf("error creating code reviewer: %w", err)
 	}
@@ -272,7 +272,7 @@ func runAutoformat(dir, initialCommit string) ([]string, error) {
 		return nil, fmt.Errorf("initial commit not set, cannot run autoformat")
 	}
 	ctx := context.Background()
-	reviewer, err := NewCodeReviewer(ctx, dir, initialCommit, NoLLMReview)
+	reviewer, err := NewCodeReviewer(ctx, dir, initialCommit)
 	if err != nil {
 		return nil, fmt.Errorf("error creating code reviewer: %w", err)
 	}
