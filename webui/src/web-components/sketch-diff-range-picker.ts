@@ -9,9 +9,9 @@ import { GitLogEntry } from "../types";
 /**
  * Range type for diff views
  */
-export type DiffRange = 
-  | { type: 'range'; from: string; to: string } 
-  | { type: 'single'; commit: string };
+export type DiffRange =
+  | { type: "range"; from: string; to: string }
+  | { type: "single"; commit: string };
 
 /**
  * Component for selecting commit range for diffs
@@ -22,29 +22,29 @@ export class SketchDiffRangePicker extends LitElement {
   commits: GitLogEntry[] = [];
 
   @state()
-  private rangeType: 'range' | 'single' = 'range';
+  private rangeType: "range" | "single" = "range";
 
   @state()
-  private fromCommit: string = '';
+  private fromCommit: string = "";
 
   @state()
-  private toCommit: string = '';
+  private toCommit: string = "";
 
   @state()
-  private singleCommit: string = '';
+  private singleCommit: string = "";
 
   @state()
   private loading: boolean = true;
 
   @state()
   private error: string | null = null;
-  
+
   @property({ attribute: false, type: Object })
   gitService!: GitDataService;
-  
+
   constructor() {
     super();
-    console.log('SketchDiffRangePicker initialized');
+    console.log("SketchDiffRangePicker initialized");
   }
 
   static styles = css`
@@ -127,7 +127,7 @@ export class SketchDiffRangePicker extends LitElement {
       color: var(--error-color, #dc3545);
       font-size: 14px;
     }
-    
+
     @media (max-width: 768px) {
       .commit-selector {
         max-width: 100%;
@@ -138,10 +138,10 @@ export class SketchDiffRangePicker extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     // Wait for DOM to be fully loaded to ensure proper initialization order
-    if (document.readyState === 'complete') {
+    if (document.readyState === "complete") {
       this.loadCommits();
     } else {
-      window.addEventListener('load', () => {
+      window.addEventListener("load", () => {
         setTimeout(() => this.loadCommits(), 0); // Give time for provider initialization
       });
     }
@@ -153,9 +153,8 @@ export class SketchDiffRangePicker extends LitElement {
         ${this.loading
           ? html`<div class="loading">Loading commits...</div>`
           : this.error
-          ? html`<div class="error">${this.error}</div>`
-          : this.renderRangePicker()
-        }
+            ? html`<div class="error">${this.error}</div>`
+            : this.renderRangePicker()}
       </div>
     `;
   }
@@ -168,8 +167,8 @@ export class SketchDiffRangePicker extends LitElement {
             type="radio"
             name="rangeType"
             value="range"
-            ?checked=${this.rangeType === 'range'}
-            @change=${() => this.setRangeType('range')}
+            ?checked=${this.rangeType === "range"}
+            @change=${() => this.setRangeType("range")}
           />
           Commit Range
         </label>
@@ -178,18 +177,17 @@ export class SketchDiffRangePicker extends LitElement {
             type="radio"
             name="rangeType"
             value="single"
-            ?checked=${this.rangeType === 'single'}
-            @change=${() => this.setRangeType('single')}
+            ?checked=${this.rangeType === "single"}
+            @change=${() => this.setRangeType("single")}
           />
           Single Commit
         </label>
       </div>
 
       <div class="commit-selectors">
-        ${this.rangeType === 'range'
+        ${this.rangeType === "range"
           ? this.renderRangeSelectors()
-          : this.renderSingleSelector()
-        }
+          : this.renderSingleSelector()}
       </div>
     `;
   }
@@ -204,11 +202,14 @@ export class SketchDiffRangePicker extends LitElement {
           @change=${this.handleFromChange}
         >
           ${this.commits.map(
-            commit => html`
-              <option value=${commit.hash} ?selected=${commit.hash === this.fromCommit}>
+            (commit) => html`
+              <option
+                value=${commit.hash}
+                ?selected=${commit.hash === this.fromCommit}
+              >
                 ${this.formatCommitOption(commit)}
               </option>
-            `
+            `,
           )}
         </select>
       </div>
@@ -219,13 +220,18 @@ export class SketchDiffRangePicker extends LitElement {
           .value=${this.toCommit}
           @change=${this.handleToChange}
         >
-          <option value="" ?selected=${this.toCommit === ''}>Uncommitted Changes</option>
+          <option value="" ?selected=${this.toCommit === ""}>
+            Uncommitted Changes
+          </option>
           ${this.commits.map(
-            commit => html`
-              <option value=${commit.hash} ?selected=${commit.hash === this.toCommit}>
+            (commit) => html`
+              <option
+                value=${commit.hash}
+                ?selected=${commit.hash === this.toCommit}
+              >
                 ${this.formatCommitOption(commit)}
               </option>
-            `
+            `,
           )}
         </select>
       </div>
@@ -242,11 +248,14 @@ export class SketchDiffRangePicker extends LitElement {
           @change=${this.handleSingleChange}
         >
           ${this.commits.map(
-            commit => html`
-              <option value=${commit.hash} ?selected=${commit.hash === this.singleCommit}>
+            (commit) => html`
+              <option
+                value=${commit.hash}
+                ?selected=${commit.hash === this.singleCommit}
+              >
                 ${this.formatCommitOption(commit)}
               </option>
-            `
+            `,
           )}
         </select>
       </div>
@@ -259,11 +268,11 @@ export class SketchDiffRangePicker extends LitElement {
   formatCommitOption(commit: GitLogEntry): string {
     const shortHash = commit.hash.substring(0, 7);
     let label = `${shortHash} ${commit.subject}`;
-    
+
     if (commit.refs && commit.refs.length > 0) {
-      label += ` (${commit.refs.join(', ')})`;
+      label += ` (${commit.refs.join(", ")})`;
     }
-    
+
     return label;
   }
 
@@ -275,38 +284,40 @@ export class SketchDiffRangePicker extends LitElement {
     this.error = null;
 
     if (!this.gitService) {
-      console.error('GitService was not provided to sketch-diff-range-picker');
+      console.error("GitService was not provided to sketch-diff-range-picker");
       throw Error();
     }
 
     try {
       // Get the base commit reference
       const baseCommitRef = await this.gitService.getBaseCommitRef();
-      
+
       // Load commit history
       this.commits = await this.gitService.getCommitHistory(baseCommitRef);
-      
+
       // Set default selections
       if (this.commits.length > 0) {
         // For range, default is base to HEAD
         // TODO: is sketch-base right in the unsafe context, where it's sketch-base-...
         // should this be startswith?
-        const baseCommit = this.commits.find(c => 
-          c.refs && c.refs.some(ref => ref.includes('sketch-base'))
+        const baseCommit = this.commits.find(
+          (c) => c.refs && c.refs.some((ref) => ref.includes("sketch-base")),
         );
-        
-        this.fromCommit = baseCommit ? baseCommit.hash : this.commits[this.commits.length - 1].hash;
+
+        this.fromCommit = baseCommit
+          ? baseCommit.hash
+          : this.commits[this.commits.length - 1].hash;
         // Default to Uncommitted Changes by setting toCommit to empty string
-        this.toCommit = ''; // Empty string represents uncommitted changes
-        
+        this.toCommit = ""; // Empty string represents uncommitted changes
+
         // For single, default to HEAD
         this.singleCommit = this.commits[0].hash;
-        
+
         // Dispatch initial range event
         this.dispatchRangeEvent();
       }
     } catch (error) {
-      console.error('Error loading commits:', error);
+      console.error("Error loading commits:", error);
       this.error = `Error loading commits: ${error.message}`;
     } finally {
       this.loading = false;
@@ -316,7 +327,7 @@ export class SketchDiffRangePicker extends LitElement {
   /**
    * Handle range type change
    */
-  setRangeType(type: 'range' | 'single') {
+  setRangeType(type: "range" | "single") {
     this.rangeType = type;
     this.dispatchRangeEvent();
   }
@@ -352,16 +363,17 @@ export class SketchDiffRangePicker extends LitElement {
    * Dispatch range change event
    */
   dispatchRangeEvent() {
-    const range: DiffRange = this.rangeType === 'range'
-      ? { type: 'range', from: this.fromCommit, to: this.toCommit }
-      : { type: 'single', commit: this.singleCommit };
-    
-    const event = new CustomEvent('range-change', {
+    const range: DiffRange =
+      this.rangeType === "range"
+        ? { type: "range", from: this.fromCommit, to: this.toCommit }
+        : { type: "single", commit: this.singleCommit };
+
+    const event = new CustomEvent("range-change", {
       detail: { range },
       bubbles: true,
-      composed: true
+      composed: true,
     });
-    
+
     this.dispatchEvent(event);
   }
 }

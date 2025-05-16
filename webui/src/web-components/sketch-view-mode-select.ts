@@ -139,7 +139,7 @@ export class SketchViewModeSelect extends LitElement {
           <span class="tab-icon">±</span>
           <span>Diff</span>
         </button>
-        
+
         <button
           id="showTerminalButton"
           class="tab-btn ${this.activeMode === "terminal" ? "active" : ""}"

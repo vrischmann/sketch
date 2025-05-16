@@ -37,10 +37,7 @@ export class SketchNetworkStatus extends LitElement {
   render() {
     // We no longer show any content as the dot is being removed
     // The connection status will now be handled by the call-status component
-    return html`
-      <div class="status-container">
-      </div>
-    `;
+    return html` <div class="status-container"></div> `;
   }
 }
 

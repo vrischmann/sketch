@@ -15,7 +15,7 @@ export class SketchCallStatus extends LitElement {
 
   @property()
   isIdle: boolean = false;
-  
+
   @property()
   isDisconnected: boolean = false;
 
@@ -114,7 +114,7 @@ export class SketchCallStatus extends LitElement {
       background-color: #e6f4ea;
       color: #0d652d;
     }
-    
+
     .status-disconnected {
       background-color: #ffebee; /* Light red */
       color: #d32f2f; /* Red */
@@ -138,7 +138,7 @@ export class SketchCallStatus extends LitElement {
     // Determine state - disconnected takes precedence, then working vs idle
     let statusClass = "status-idle";
     let statusText = "IDLE";
-    
+
     if (this.isDisconnected) {
       statusClass = "status-disconnected";
       statusText = "DISCONNECTED";
@@ -169,11 +169,7 @@ export class SketchCallStatus extends LitElement {
             ${unsafeHTML(wrenchSVG)}
           </div>
         </div>
-        <div
-          class="status-banner ${statusClass}"
-        >
-          ${statusText}
-        </div>
+        <div class="status-banner ${statusClass}">${statusText}</div>
       </div>
     `;
   }

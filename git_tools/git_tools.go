@@ -299,7 +299,7 @@ func GitSaveFile(repoDir, filePath, content string) error {
 	}
 
 	// Write the content to the file
-	err = os.WriteFile(fullPath, []byte(content), 0644)
+	err = os.WriteFile(fullPath, []byte(content), 0o644)
 	if err != nil {
 		return fmt.Errorf("error writing to file %s: %w", filePath, err)
 	}

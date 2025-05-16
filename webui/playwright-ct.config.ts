@@ -51,6 +51,6 @@ export default defineConfig({
 
 function getReporterConfig(): PlaywrightTestConfig["reporter"] {
   // Sketch does not understand the junit failure reporting very well.
-  
+
   return [["html", { open: "never" }]];
 }

@@ -26,7 +26,7 @@
         background-color: #f0f0f0;
         border-radius: 4px;
       }
-      
+
       button {
         padding: 8px 12px;
         background-color: #4285f4;
@@ -36,11 +36,11 @@
         cursor: pointer;
         margin-right: 8px;
       }
-      
+
       button:hover {
         background-color: #3367d6;
       }
-      
+
       sketch-monaco-view {
         margin-top: 20px;
         height: 500px;
@@ -60,34 +60,34 @@
     </div>
 
     <sketch-monaco-view id="diffEditor"></sketch-monaco-view>
-    
+
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const diffEditor = document.getElementById('diffEditor');
-        
+      document.addEventListener("DOMContentLoaded", () => {
+        const diffEditor = document.getElementById("diffEditor");
+
         // Set initial example
         diffEditor.originalCode = `function hello() {
   console.log("Hello World");
   return true;
 }`;
-        
+
         diffEditor.modifiedCode = `function hello() {
   // Add a comment
   console.log("Hello Updated World");
   return true;
 }`;
-        
+
         // Example 1: JavaScript
-        document.getElementById('example1').addEventListener('click', () => {
+        document.getElementById("example1").addEventListener("click", () => {
           diffEditor.setOriginalCode(
             `function calculateTotal(items) {
   return items
     .map(item => item.price * item.quantity)
     .reduce((a, b) => a + b, 0);
 }`,
-            'original.js'
+            "original.js",
           );
-          
+
           diffEditor.setModifiedCode(
             `function calculateTotal(items) {
   // Apply discount if available
@@ -100,12 +100,12 @@
     })
     .reduce((a, b) => a + b, 0);
 }`,
-            'modified.js'
+            "modified.js",
           );
         });
-        
+
         // Example 2: HTML
-        document.getElementById('example2').addEventListener('click', () => {
+        document.getElementById("example2").addEventListener("click", () => {
           diffEditor.setOriginalCode(
             `<!DOCTYPE html>
 <html>
@@ -117,9 +117,9 @@
   <p>This is a paragraph.</p>
 </body>
 </html>`,
-            'original.html'
+            "original.html",
           );
-          
+
           diffEditor.setModifiedCode(
             `<!DOCTYPE html>
 <html>
@@ -140,12 +140,12 @@
   </footer>
 </body>
 </html>`,
-            'modified.html'
+            "modified.html",
           );
         });
-        
+
         // Example 3: Go
-        document.getElementById('example3').addEventListener('click', () => {
+        document.getElementById("example3").addEventListener("click", () => {
           diffEditor.setOriginalCode(
             `package main
 
@@ -154,9 +154,9 @@ import "fmt"
 func main() {
 	fmt.Println("Hello, world!")
 }`,
-            'original.go'
+            "original.go",
           );
-          
+
           diffEditor.setModifiedCode(
             `package main
 
@@ -169,7 +169,7 @@ func main() {
 	fmt.Println("Hello, world!")
 	fmt.Printf("The time is %s\n", time.Now().Format(time.RFC3339))
 }`,
-            'modified.go'
+            "modified.go",
           );
         });
       });

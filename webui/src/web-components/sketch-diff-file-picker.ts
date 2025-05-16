@@ -41,7 +41,9 @@ export class SketchDiffFilePicker extends LitElement {
     .file-select {
       flex: 1;
       min-width: 200px;
-      max-width: calc(100% - 230px); /* Leave space for the navigation buttons and file info */
+      max-width: calc(
+        100% - 230px
+      ); /* Leave space for the navigation buttons and file info */
       overflow: hidden;
     }
 
@@ -110,7 +112,7 @@ export class SketchDiffFilePicker extends LitElement {
         width: 100%;
         justify-content: space-between;
       }
-      
+
       .file-info {
         margin-left: 0;
         margin-top: 8px;
@@ -121,22 +123,22 @@ export class SketchDiffFilePicker extends LitElement {
 
   updated(changedProperties: Map<string, any>) {
     // If files changed, reset the selection
-    if (changedProperties.has('files')) {
+    if (changedProperties.has("files")) {
       this.updateSelectedIndex();
     }
 
     // If selectedPath changed externally, update the index
-    if (changedProperties.has('selectedPath')) {
+    if (changedProperties.has("selectedPath")) {
       this.updateSelectedIndex();
     }
   }
-  
+
   connectedCallback() {
     super.connectedCallback();
     // Initialize the selection when the component is connected, but only if files exist
     if (this.files && this.files.length > 0) {
       this.updateSelectedIndex();
-      
+
       // Explicitly trigger file selection event for the first file when there's only one file
       // This ensures the diff view is updated even when navigation buttons aren't clicked
       if (this.files.length === 1) {
@@ -156,33 +158,33 @@ export class SketchDiffFilePicker extends LitElement {
           <select @change=${this.handleSelect}>
             ${this.files.map(
               (file, index) => html`
-                <option 
-                  value=${index} 
+                <option
+                  value=${index}
                   ?selected=${index === this.selectedIndex}
                 >
                   ${this.formatFileOption(file)}
                 </option>
-              `
+              `,
             )}
           </select>
         </div>
-        
+
         <div class="navigation-buttons">
-          <button 
-            @click=${this.handlePrevious} 
+          <button
+            @click=${this.handlePrevious}
             ?disabled=${this.selectedIndex <= 0}
           >
             Previous
           </button>
-          <button 
-            @click=${this.handleNext} 
+          <button
+            @click=${this.handleNext}
             ?disabled=${this.selectedIndex >= this.files.length - 1}
           >
             Next
           </button>
         </div>
 
-        ${this.selectedIndex >= 0 ? this.renderFileInfo() : ''}
+        ${this.selectedIndex >= 0 ? this.renderFileInfo() : ""}
       </div>
     `;
   }
@@ -191,8 +193,8 @@ export class SketchDiffFilePicker extends LitElement {
     const file = this.files[this.selectedIndex];
     return html`
       <div class="file-info">
-        ${this.getFileStatusName(file.status)} | 
-        ${this.selectedIndex + 1} of ${this.files.length}
+        ${this.getFileStatusName(file.status)} | ${this.selectedIndex + 1} of
+        ${this.files.length}
       </div>
     `;
   }
@@ -210,11 +212,16 @@ export class SketchDiffFilePicker extends LitElement {
    */
   getFileStatusSymbol(status: string): string {
     switch (status.toUpperCase()) {
-      case 'A': return '+';
-      case 'M': return 'M';
-      case 'D': return '-';
-      case 'R': return 'R';
-      default: return '?';
+      case "A":
+        return "+";
+      case "M":
+        return "M";
+      case "D":
+        return "-";
+      case "R":
+        return "R";
+      default:
+        return "?";
     }
   }
 
@@ -223,11 +230,16 @@ export class SketchDiffFilePicker extends LitElement {
    */
   getFileStatusName(status: string): string {
     switch (status.toUpperCase()) {
-      case 'A': return 'Added';
-      case 'M': return 'Modified';
-      case 'D': return 'Deleted';
-      case 'R': return 'Renamed';
-      default: return 'Unknown';
+      case "A":
+        return "Added";
+      case "M":
+        return "Modified";
+      case "D":
+        return "Deleted";
+      case "R":
+        return "Renamed";
+      default:
+        return "Unknown";
     }
   }
 
@@ -265,13 +277,13 @@ export class SketchDiffFilePicker extends LitElement {
     if (index >= 0 && index < this.files.length) {
       this.selectedIndex = index;
       this.selectedPath = this.files[index].path;
-      
-      const event = new CustomEvent('file-selected', {
+
+      const event = new CustomEvent("file-selected", {
         detail: { file: this.files[index] },
         bubbles: true,
-        composed: true
+        composed: true,
       });
-      
+
       this.dispatchEvent(event);
     }
   }
@@ -288,7 +300,9 @@ export class SketchDiffFilePicker extends LitElement {
 
     if (this.selectedPath) {
       // Find the file with the matching path
-      const index = this.files.findIndex(file => file.path === this.selectedPath);
+      const index = this.files.findIndex(
+        (file) => file.path === this.selectedPath,
+      );
       if (index >= 0) {
         this.selectedIndex = index;
         return;
@@ -298,18 +312,22 @@ export class SketchDiffFilePicker extends LitElement {
     // Default to first file if no match or no path
     this.selectedIndex = 0;
     const newSelectedPath = this.files[0].path;
-    
+
     // Only dispatch event if the path has actually changed and files exist
-    if (this.selectedPath !== newSelectedPath && this.files && this.files.length > 0) {
+    if (
+      this.selectedPath !== newSelectedPath &&
+      this.files &&
+      this.files.length > 0
+    ) {
       this.selectedPath = newSelectedPath;
-      
+
       // Dispatch the event directly - we've already checked the files array
-      const event = new CustomEvent('file-selected', {
+      const event = new CustomEvent("file-selected", {
         detail: { file: this.files[0] },
         bubbles: true,
-        composed: true
+        composed: true,
       });
-      
+
       this.dispatchEvent(event);
     }
   }

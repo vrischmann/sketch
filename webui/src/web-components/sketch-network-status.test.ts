@@ -11,11 +11,16 @@ test("network status component is not visible", async ({ mount }) => {
   });
 
   // The status container should exist but be hidden with display: none
-  await expect(component.locator(".status-container")).toHaveCSS("display", "none");
+  await expect(component.locator(".status-container")).toHaveCSS(
+    "display",
+    "none",
+  );
 });
 
 // Test that the network status component remains invisible regardless of connection state
-test("network status component is not visible when disconnected", async ({ mount }) => {
+test("network status component is not visible when disconnected", async ({
+  mount,
+}) => {
   const component = await mount(SketchNetworkStatus, {
     props: {
       connection: "disconnected",
@@ -24,5 +29,8 @@ test("network status component is not visible when disconnected", async ({ mount
   });
 
   // The status container should exist but be hidden with display: none
-  await expect(component.locator(".status-container")).toHaveCSS("display", "none");
+  await expect(component.locator(".status-container")).toHaveCSS(
+    "display",
+    "none",
+  );
 });

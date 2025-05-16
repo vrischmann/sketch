@@ -581,20 +581,20 @@ export class CodeDiffEditor extends LitElement {
     try {
       // Disable semantic validation globally for TypeScript/JavaScript
       monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true
+        noSemanticValidation: true,
       });
       monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true
+        noSemanticValidation: true,
       });
-      
+
       // First time initialization
       if (!this.editor) {
         // Create the diff editor only once
         this.editor = monaco.editor.createDiffEditor(this.container.value!, {
           automaticLayout: true,
           // Make it read-only by default
-        // We'll adjust individual editor settings after creation
-        readOnly: true,
+          // We'll adjust individual editor settings after creation
+          readOnly: true,
           theme: "vs", // Always use light mode
           renderSideBySide: true,
           ignoreTrimWhitespace: false,
@@ -623,8 +623,8 @@ export class CodeDiffEditor extends LitElement {
 
       // Create or update models
       this.updateModels();
-          // Set up content change listener
-          this.setupContentChangeListener();
+      // Set up content change listener
+      this.setupContentChangeListener();
 
       // Force layout recalculation after a short delay
       // This ensures the editor renders properly, especially with single files

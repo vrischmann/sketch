@@ -37,7 +37,7 @@ func setupTestRepo(t *testing.T) string {
 
 func createAndCommitFile(t *testing.T, repoDir, filename, content string, stage bool) string {
 	filePath := filepath.Join(repoDir, filename)
-	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
 		t.Fatalf("Failed to write file: %v", err)
 	}
 
@@ -236,7 +236,7 @@ func TestGitRecentLog(t *testing.T) {
 
 	// Create initial commit
 	initialFile := filepath.Join(tmpDir, "initial.txt")
-	os.WriteFile(initialFile, []byte("initial content"), 0644)
+	os.WriteFile(initialFile, []byte("initial content"), 0o644)
 	exec.Command("git", "-C", tmpDir, "add", "initial.txt").Run()
 	initialCommitCmd := exec.Command("git", "-C", tmpDir, "commit", "-m", "Initial commit")
 	out, err := initialCommitCmd.CombinedOutput()
@@ -254,7 +254,7 @@ func TestGitRecentLog(t *testing.T) {
 
 	// Add a second commit
 	secondFile := filepath.Join(tmpDir, "second.txt")
-	os.WriteFile(secondFile, []byte("second content"), 0644)
+	os.WriteFile(secondFile, []byte("second content"), 0o644)
 	exec.Command("git", "-C", tmpDir, "add", "second.txt").Run()
 	secondCommitCmd := exec.Command("git", "-C", tmpDir, "commit", "-m", "Second commit")
 	out, err = secondCommitCmd.CombinedOutput()
@@ -268,7 +268,7 @@ func TestGitRecentLog(t *testing.T) {
 
 	// Add a third commit
 	thirdFile := filepath.Join(tmpDir, "third.txt")
-	os.WriteFile(thirdFile, []byte("third content"), 0644)
+	os.WriteFile(thirdFile, []byte("third content"), 0o644)
 	exec.Command("git", "-C", tmpDir, "add", "third.txt").Run()
 	thirdCommitCmd := exec.Command("git", "-C", tmpDir, "commit", "-m", "Third commit")
 	out, err = thirdCommitCmd.CombinedOutput()
@@ -385,7 +385,7 @@ func TestGitSaveFile(t *testing.T) {
 	testFileContent := "initial content"
 	testFileFull := filepath.Join(tmpDir, testFilePath)
 
-	err = os.WriteFile(testFileFull, []byte(testFileContent), 0644)
+	err = os.WriteFile(testFileFull, []byte(testFileContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}

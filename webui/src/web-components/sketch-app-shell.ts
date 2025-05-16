@@ -190,14 +190,14 @@ export class SketchAppShell extends LitElement {
       width: 100%;
       height: 100%;
     }
-    
+
     /* Make chat view take full width available */
     .chat-view.view-active {
       display: flex;
       flex-direction: column;
       width: 100%;
     }
-    
+
     /* Monaco diff2 view needs to take all available space */
     .diff2-view.view-active {
       flex: 1;
@@ -646,12 +646,13 @@ export class SketchAppShell extends LitElement {
             (diffViewComp as any).loadDiffContent();
           }
           break;
-          
+
         case "diff2":
           diff2View?.classList.add("view-active");
           // Refresh git/recentlog when Monaco diff view is opened
           // This ensures branch information is always up-to-date, as branches can change frequently
-          const diff2ViewComp = this.shadowRoot?.querySelector("sketch-diff2-view");
+          const diff2ViewComp =
+            this.shadowRoot?.querySelector("sketch-diff2-view");
           if (diff2ViewComp) {
             (diff2ViewComp as SketchDiff2View).refreshDiffView();
           }
@@ -1052,7 +1053,7 @@ export class SketchAppShell extends LitElement {
               .commitHash=${this.currentCommitHash}
             ></sketch-diff-view>
           </div>
-          
+
           <div
             class="diff2-view ${this.viewMode === "diff2" ? "view-active" : ""}"
           >
@@ -1070,7 +1071,6 @@ export class SketchAppShell extends LitElement {
           >
             <sketch-terminal></sketch-terminal>
           </div>
-
         </div>
       </div>
 

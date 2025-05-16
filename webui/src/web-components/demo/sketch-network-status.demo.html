@@ -19,17 +19,17 @@
   </head>
   <body>
     <h1>Status Indicators Demo</h1>
-    
+
     <div class="status-container">
       <div class="label">Connected State:</div>
       <sketch-call-status
         .isDisconnected="false"
         .isIdle="true"
         .llmCalls="0"
-        .toolCalls='[]'
+        .toolCalls="[]"
       ></sketch-call-status>
     </div>
-    
+
     <div class="status-container">
       <div class="label">Working State:</div>
       <sketch-call-status
@@ -39,14 +39,14 @@
         .toolCalls='["bash"]'
       ></sketch-call-status>
     </div>
-    
+
     <div class="status-container">
       <div class="label">Disconnected State:</div>
       <sketch-call-status
         .isDisconnected="true"
         .isIdle="true"
         .llmCalls="0"
-        .toolCalls='[]'
+        .toolCalls="[]"
       ></sketch-call-status>
     </div>
   </body>

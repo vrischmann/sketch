@@ -55,17 +55,25 @@ export class SketchDiffEmptyView extends LitElement {
     return html`
       <div class="empty-diff-box">
         <h2 class="empty-diff-title">How to use the Diff View</h2>
-        
+
         <p class="empty-diff-content">
-          By default, the diff view shows differences between when you started Sketch (the "sketch-base" tag) and the current state. Choose a commit to look at, or, a range of commits, and navigate across files.
+          By default, the diff view shows differences between when you started
+          Sketch (the "sketch-base" tag) and the current state. Choose a commit
+          to look at, or, a range of commits, and navigate across files.
         </p>
 
         <p class="empty-diff-content">
-          You can select text to leave comments on the code. These will be added to your chat window, and you can click Send to send them along to the agent, which will respond in the chat window.
+          You can select text to leave comments on the code. These will be added
+          to your chat window, and you can click Send to send them along to the
+          agent, which will respond in the chat window.
         </p>
 
         <p class="empty-diff-content">
-          If the range includes <strong>Uncommitted Changes</strong>, you can <strong>edit</strong> the text as well, and it auto-saves. If you want to clear up a comment or write your own text, just go ahead and do it! Once you're done, though, be sure to commit your changes, either by asking the agent to do so or in the Terminal view.
+          If the range includes <strong>Uncommitted Changes</strong>, you can
+          <strong>edit</strong> the text as well, and it auto-saves. If you want
+          to clear up a comment or write your own text, just go ahead and do it!
+          Once you're done, though, be sure to commit your changes, either by
+          asking the agent to do so or in the Terminal view.
         </p>
       </div>
     `;

@@ -1,7 +1,7 @@
 // git-data-service.ts
 // Interface and implementation for fetching Git data
 
-import { DiffFile, GitLogEntry } from '../types';
+import { DiffFile, GitLogEntry } from "../types";
 
 // Re-export DiffFile as GitDiffFile
 export type GitDiffFile = DiffFile;
@@ -45,7 +45,7 @@ export interface GitDataService {
    * @returns File content as string
    */
   getWorkingCopyContent(filePath: string): Promise<string>;
-  
+
   /**
    * Saves file content to the working directory
    * @param filePath Path to the file within the repository
@@ -75,18 +75,20 @@ export class DefaultGitDataService implements GitDataService {
 
   async getCommitHistory(initialCommit?: string): Promise<GitLogEntry[]> {
     try {
-      const url = initialCommit 
-        ? `git/recentlog?initialCommit=${encodeURIComponent(initialCommit)}` 
-        : 'git/recentlog';
+      const url = initialCommit
+        ? `git/recentlog?initialCommit=${encodeURIComponent(initialCommit)}`
+        : "git/recentlog";
       const response = await fetch(url);
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch commit history: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch commit history: ${response.statusText}`,
+        );
       }
-      
+
       return await response.json();
     } catch (error) {
-      console.error('Error fetching commit history:', error);
+      console.error("Error fetching commit history:", error);
       throw error;
     }
   }
@@ -95,14 +97,14 @@ export class DefaultGitDataService implements GitDataService {
     try {
       const url = `git/rawdiff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch diff: ${response.statusText}`);
       }
-      
+
       return await response.json();
     } catch (error) {
-      console.error('Error fetching diff:', error);
+      console.error("Error fetching diff:", error);
       throw error;
     }
   }
@@ -111,14 +113,14 @@ export class DefaultGitDataService implements GitDataService {
     try {
       const url = `git/rawdiff?commit=${encodeURIComponent(commit)}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch commit diff: ${response.statusText}`);
       }
-      
+
       return await response.json();
     } catch (error) {
-      console.error('Error fetching commit diff:', error);
+      console.error("Error fetching commit diff:", error);
       throw error;
     }
   }
@@ -126,77 +128,86 @@ export class DefaultGitDataService implements GitDataService {
   async getFileContent(fileHash: string): Promise<string> {
     try {
       // If the hash is marked as a working copy (special value '000000' or empty)
-      if (fileHash === '0000000000000000000000000000000000000000' || !fileHash) {
+      if (
+        fileHash === "0000000000000000000000000000000000000000" ||
+        !fileHash
+      ) {
         // This shouldn't happen, but if it does, return empty string
         // Working copy content should be fetched through getWorkingCopyContent
-        console.warn('Invalid file hash for getFileContent, returning empty string');
-        return '';
+        console.warn(
+          "Invalid file hash for getFileContent, returning empty string",
+        );
+        return "";
       }
-      
+
       const url = `git/show?hash=${encodeURIComponent(fileHash)}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch file content: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      return data.output || '';
+      return data.output || "";
     } catch (error) {
-      console.error('Error fetching file content:', error);
+      console.error("Error fetching file content:", error);
       throw error;
     }
   }
-  
+
   async getWorkingCopyContent(filePath: string): Promise<string> {
     try {
       const url = `git/cat?path=${encodeURIComponent(filePath)}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch working copy content: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch working copy content: ${response.statusText}`,
+        );
       }
-      
+
       const data = await response.json();
-      return data.output || '';
+      return data.output || "";
     } catch (error) {
-      console.error('Error fetching working copy content:', error);
+      console.error("Error fetching working copy content:", error);
       throw error;
     }
   }
-  
+
   async saveFileContent(filePath: string, content: string): Promise<void> {
     try {
       const url = `git/save`;
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           path: filePath,
-          content: content
+          content: content,
         }),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to save file content: ${response.statusText} - ${errorText}`);
+        throw new Error(
+          `Failed to save file content: ${response.statusText} - ${errorText}`,
+        );
       }
-      
+
       // Don't need to return the response, just ensure it was successful
     } catch (error) {
-      console.error('Error saving file content:', error);
+      console.error("Error saving file content:", error);
       throw error;
     }
   }
-  
-  async getUnstagedChanges(from: string = 'HEAD'): Promise<GitDiffFile[]> {
+
+  async getUnstagedChanges(from: string = "HEAD"): Promise<GitDiffFile[]> {
     try {
       // To get unstaged changes, we diff the specified commit (or HEAD) with an empty 'to'
-      return await this.getDiff(from, '');
+      return await this.getDiff(from, "");
     } catch (error) {
-      console.error('Error fetching unstaged changes:', error);
+      console.error("Error fetching unstaged changes:", error);
       throw error;
     }
   }
@@ -210,10 +221,10 @@ export class DefaultGitDataService implements GitDataService {
     try {
       // This could be replaced with a specific endpoint call if available
       // For now, we'll use a fixed value or try to get it from the server
-      this.baseCommitRef = 'sketch-base';
+      this.baseCommitRef = "sketch-base";
       return this.baseCommitRef;
     } catch (error) {
-      console.error('Error fetching base commit reference:', error);
+      console.error("Error fetching base commit reference:", error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <title>Status Demo</title>
@@ -36,7 +36,7 @@
   <body>
     <h1>Status Indicators Demo</h1>
     <p>This demo shows the status indicators with the DISCONNECTED state.</p>
-    
+
     <div class="demo-section">
       <div class="demo-item">
         <h2>IDLE State</h2>
@@ -44,14 +44,14 @@
           <sketch-call-status id="idle-status"></sketch-call-status>
         </div>
       </div>
-      
+
       <div class="demo-item">
         <h2>WORKING State</h2>
         <div class="status-display">
           <sketch-call-status id="working-status"></sketch-call-status>
         </div>
       </div>
-      
+
       <div class="demo-item">
         <h2>DISCONNECTED State</h2>
         <div class="status-display">
@@ -62,23 +62,25 @@
 
     <script>
       // Set up the demo after components are defined
-      window.addEventListener('DOMContentLoaded', () => {
+      window.addEventListener("DOMContentLoaded", () => {
         // IDLE status
-        const idleStatus = document.getElementById('idle-status');
+        const idleStatus = document.getElementById("idle-status");
         idleStatus.isIdle = true;
         idleStatus.isDisconnected = false;
         idleStatus.llmCalls = 0;
         idleStatus.toolCalls = [];
-        
+
         // WORKING status
-        const workingStatus = document.getElementById('working-status');
+        const workingStatus = document.getElementById("working-status");
         workingStatus.isIdle = false;
         workingStatus.isDisconnected = false;
         workingStatus.llmCalls = 1;
-        workingStatus.toolCalls = ['bash'];
-        
+        workingStatus.toolCalls = ["bash"];
+
         // DISCONNECTED status
-        const disconnectedStatus = document.getElementById('disconnected-status');
+        const disconnectedStatus = document.getElementById(
+          "disconnected-status",
+        );
         disconnectedStatus.isIdle = true;
         disconnectedStatus.isDisconnected = true;
         disconnectedStatus.llmCalls = 0;
