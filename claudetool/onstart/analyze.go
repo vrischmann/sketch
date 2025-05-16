@@ -147,6 +147,7 @@ func categorizeFile(path string) string {
 	if isRepoRootFile {
 		if (strings.HasPrefix(lowerFilename, "claude.") && strings.HasSuffix(lowerFilename, ".md")) ||
 			strings.HasPrefix(lowerFilename, "dear_llm") ||
+			(strings.HasPrefix(lowerFilename, "agent.") && strings.HasSuffix(lowerFilename, ".md")) ||
 			strings.Contains(lowerFilename, "cursorrules") {
 			return "inject"
 		}
@@ -166,7 +167,8 @@ func categorizeFile(path string) string {
 
 	// GuidanceFiles - other files that provide guidance but aren't critical enough to inject
 	// Non-root directory claude.md files, and other guidance files
-	if !isRepoRootFile && strings.HasPrefix(lowerFilename, "claude.") && strings.HasSuffix(lowerFilename, ".md") {
+	if (strings.HasPrefix(lowerFilename, "claude.") && strings.HasSuffix(lowerFilename, ".md")) ||
+		(strings.HasPrefix(lowerFilename, "agent.") && strings.HasSuffix(lowerFilename, ".md")) {
 		return "guidance"
 	}
 

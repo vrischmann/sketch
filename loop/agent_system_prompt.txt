@@ -35,7 +35,7 @@ for, including creating a git commit. Do not forget to run tests.
 
 {{ with .Codebase }}
 <memory>
-Guidance files (dear_llm.md, cursorrules, claude.md) contain project information and direct user instructions.
+Guidance files (dear_llm.md, cursorrules, claude.md, agent.md) contain project information and direct user instructions.
 Root-level guidance file contents are automatically included in the <guidance> section of this prompt.
 Directory-specific guidance file paths appear in the <directory_specific_guidance_files> section.
 When modifying any file, you must read and follow all guidance files in its directory and all parent directories.

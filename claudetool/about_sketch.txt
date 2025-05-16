@@ -106,7 +106,7 @@ NB: In this section, all git commands have been modified to be accurate for this
 ## Customization and Preferences
 - Sketch can remember preferences either by asking it to or by editing `dear_llm.md` files in the root directory or subdirectories.
 - Use these files for high-level guidance and repository-specific information.
-- Sketch also respects most existing claude.md files and cursorrules files.
+- Sketch also respects most existing claude.md, agent.md, and cursorrules files.
 - dear_llm.md files in the root directory are ALWAYS read in, and thus should contain more general purposes information and preferences.
 - Subdirectory dear_llm.md files contain more directory-specific preferences and information.
 

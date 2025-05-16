@@ -1,5 +1,5 @@
 httprr trace v1
-17852 2128
+17852 2409
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
@@ -554,24 +554,24 @@ Content-Type: application/json
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
 Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-15T20:17:28Z
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-16T00:56:21Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-15T20:17:32Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-16T00:56:25Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-15T20:17:27Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-16T00:56:14Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
 Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-15T20:17:28Z
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-16T00:56:21Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 940551a07914cfbc-SJC
+Cf-Ray: 9406ea03986c15b4-SJC
 Content-Type: application/json
-Date: Thu, 15 May 2025 20:17:32 GMT
-Request-Id: req_011CP9w3FmESuYF78HncTfc3
+Date: Fri, 16 May 2025 00:56:25 GMT
+Request-Id: req_011CPAJJJhhhTSXWBvSFVn4k
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_017btCVYisvUNXeyMwoA6BtT","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"Here's a brief list of the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files with specific terms\n3. think - Record thoughts and plans without external effects\n4. title - Set conversation title\n5. precommit - Create git branch for tracking work\n6. done - Mark task as complete with checklist\n7. codereview - Run automated code review\n8. about_sketch - Provide information about Sketch\n9. multiplechoice - Present multiple choice options to user\n10. browser_* tools - Several browser automation tools (navigate, click, type, etc.)\n11. patch - File modification tool for precise text edits\n\nThese tools allow me to interact with the system, navigate code, make edits, and help complete various coding tasks. Would you like more detailed information about any specific tool?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":4110,"cache_read_input_tokens":0,"output_tokens":189}}
+{"id":"msg_01F1KQ7esC8YqWVvzBcQayXw","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I'll list the tools available to me:\n\n1. bash - Execute shell commands\n2. keyword_search - Search for files based on keywords\n3. think - Record thoughts, notes, or plans\n4. title - Set conversation title\n5. precommit - Create git branch for tracking work\n6. done - Mark task as complete with checklist\n7. codereview - Run automated code review\n8. about_sketch - Provide information about Sketch\n9. multiplechoice - Present quick answer options to user\n10. Browser tools:\n   - browser_navigate - Navigate to URL\n   - browser_click - Click element by CSS selector\n   - browser_type - Type text into input element\n   - browser_wait_for - Wait for element\n   - browser_get_text - Get element text\n   - browser_eval - Evaluate JavaScript\n   - browser_scroll_into_view - Scroll element into view\n   - browser_resize - Resize browser window\n   - browser_recent_console_logs - Get console logs\n   - browser_clear_console_logs - Clear console logs\n   - browser_take_screenshot - Take screenshot\n   - browser_read_image - Read image file\n11. patch - File modification tool for precise text edits"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":4110,"cache_read_input_tokens":0,"output_tokens":281}}
