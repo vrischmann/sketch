@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
@@ -21,7 +20,6 @@ import (
 	"sketch.dev/llm/gem"
 	"sketch.dev/llm/oai"
 
-	"github.com/richardlehane/crock32"
 	"sketch.dev/browser"
 	"sketch.dev/dockerimg"
 	"sketch.dev/httprr"
@@ -202,7 +200,7 @@ func parseCLIFlags() CLIFlags {
 	// Flags geared towards sketch developers or sketch internals:
 	flag.StringVar(&flags.gitUsername, "git-username", "", "(internal) username for git commits")
 	flag.StringVar(&flags.gitEmail, "git-email", "", "(internal) email for git commits")
-	flag.StringVar(&flags.sessionID, "session-id", newSessionID(), "(internal) unique session-id for a sketch process")
+	flag.StringVar(&flags.sessionID, "session-id", skabandclient.NewSessionID(), "(internal) unique session-id for a sketch process")
 	flag.BoolVar(&flags.record, "httprecord", true, "(debugging) Record trace (if httprr is set)")
 	flag.BoolVar(&flags.noCleanup, "nocleanup", false, "(debugging) do not clean up docker containers on exit")
 	flag.StringVar(&flags.containerLogDest, "save-container-logs", "", "(debugging) host path to save container logs to on exit")
@@ -566,16 +564,6 @@ func setupLogging(termui, verbose, unsafe bool) (slog.Handler, *os.File, error) 
 	slogHandler = skribe.AttrsWrap(slogHandler)
 
 	return slogHandler, logFile, nil
-}
-
-// newSessionID generates a new 10-byte random Session ID.
-func newSessionID() string {
-	u1, u2 := rand.Uint64(), rand.Uint64N(1<<16)
-	s := crock32.Encode(u1) + crock32.Encode(uint64(u2))
-	if len(s) < 16 {
-		s += strings.Repeat("0", 16-len(s))
-	}
-	return s[0:4] + "-" + s[4:8] + "-" + s[8:12] + "-" + s[12:16]
 }
 
 func getHostname() string {

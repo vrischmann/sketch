@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -23,6 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/richardlehane/crock32"
 	"golang.org/x/net/http2"
 )
 
@@ -263,4 +265,14 @@ func LocalhostToDockerInternal(skabandURL string) (string, error) {
 		return u.String(), nil
 	}
 	return skabandURL, nil
+}
+
+// NewSessionID generates a new 10-byte random Session ID.
+func NewSessionID() string {
+	u1, u2 := rand.Uint64(), rand.Uint64N(1<<16)
+	s := crock32.Encode(u1) + crock32.Encode(uint64(u2))
+	if len(s) < 16 {
+		s += strings.Repeat("0", 16-len(s))
+	}
+	return s[0:4] + "-" + s[4:8] + "-" + s[8:12] + "-" + s[12:16]
 }
