@@ -225,7 +225,7 @@ func parseCLIFlags() CLIFlags {
 	if !openExplicit {
 		// Not explicitly set.
 		// Calculate the right default value: true except with one-shot mode or if we're running in a ssh session.
-		flags.openBrowser = !flags.oneShot && os.Getenv("SSH_CONNECTION") != ""
+		flags.openBrowser = !flags.oneShot && os.Getenv("SSH_CONNECTION") == ""
 	}
 
 	return flags
