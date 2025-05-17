@@ -788,7 +788,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		return fmt.Errorf("Agent.Init: already initialized")
 	}
 	ctx := a.config.Context
-	if ini.InDocker {
+	if ini.InDocker && ini.Commit != "" {
 		if err := setupGitHooks(ini.WorkingDir); err != nil {
 			slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
 		}
