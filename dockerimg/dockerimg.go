@@ -473,7 +473,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.SSHPort > 0 {
 		cmdArgs = append(cmdArgs, "-p", fmt.Sprintf("%d:22", config.SSHPort)) // forward container ssh port to host ssh port
 	} else {
-		cmdArgs = append(cmdArgs, "-p", "22") // use an ephemeral host port for ssh.
+		cmdArgs = append(cmdArgs, "-p", "0:22") // use an ephemeral host port for ssh.
 	}
 	if relPath != "." {
 		cmdArgs = append(cmdArgs, "-w", "/app/"+relPath)
