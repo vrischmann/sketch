@@ -494,6 +494,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-outside-working-dir="+config.OutsideWorkingDir,
 		"-open=false",
 		"-termui="+fmt.Sprintf("%t", config.TermUI),
+		"-verbose="+fmt.Sprintf("%t", config.Verbose),
 		"-x="+config.ExperimentFlag,
 	)
 	if config.Model != "" {
