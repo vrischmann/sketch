@@ -709,6 +709,47 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		json.NewEncoder(w).Encode(map[string]string{"status": "cancelled", "reason": cancelReason})
 	})
 
+	// Handler for /end - shuts down the inner sketch process
+	s.mux.HandleFunc("/end", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Parse the request body (optional)
+		var requestBody struct {
+			Reason string `json:"reason"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&requestBody); err != nil && err != io.EOF {
+			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		endReason := "user requested end of session"
+		if requestBody.Reason != "" {
+			endReason = requestBody.Reason
+		}
+
+		// Send success response before exiting
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ending", "reason": endReason})
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+
+		// Log that we're shutting down
+		slog.Info("Ending session", "reason", endReason)
+
+		// Exit the process after a short delay to allow response to be sent
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			os.Exit(0)
+		}()
+	})
+
 	debugMux := initDebugMux()
 	s.mux.HandleFunc("/debug/", func(w http.ResponseWriter, r *http.Request) {
 		debugMux.ServeHTTP(w, r)

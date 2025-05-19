@@ -237,7 +237,8 @@ export class SketchAppShell extends LitElement {
     }
 
     .restart-button,
-    .stop-button {
+    .stop-button,
+    .end-button {
       background: #2196f3;
       color: white;
       border: none;
@@ -278,6 +279,21 @@ export class SketchAppShell extends LitElement {
 
     .stop-button:disabled:hover {
       background-color: #e9a8ad;
+    }
+
+    .end-button {
+      background: #6c757d;
+      color: white;
+    }
+
+    .end-button:hover:not(:disabled) {
+      background-color: #5a6268;
+    }
+
+    .end-button:disabled {
+      background-color: #a9acaf;
+      cursor: not-allowed;
+      opacity: 0.7;
     }
 
     .button-icon {
@@ -403,6 +419,7 @@ export class SketchAppShell extends LitElement {
     this._handleMutlipleChoiceSelected =
       this._handleMutlipleChoiceSelected.bind(this);
     this._handleStopClick = this._handleStopClick.bind(this);
+    this._handleEndClick = this._handleEndClick.bind(this);
     this._handleNotificationsToggle =
       this._handleNotificationsToggle.bind(this);
     this._handleWindowFocus = this._handleWindowFocus.bind(this);
@@ -869,6 +886,61 @@ export class SketchAppShell extends LitElement {
     }
   }
 
+  private async _handleEndClick(event?: Event): Promise<void> {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Ending the session will shut down the underlying container. Are you sure?",
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch("end", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: "user requested end of session" }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(
+          `Failed to end session: ${response.status} - ${errorData}`,
+        );
+      }
+
+      // After successful response, redirect to messages view
+      // Extract the session ID from the URL
+      const currentUrl = window.location.href;
+      // The URL pattern should be like https://sketch.dev/s/cs71-8qa6-1124-aw79/
+      const urlParts = currentUrl.split("/");
+      let sessionId = "";
+
+      // Find the session ID in the URL (should be after /s/)
+      for (let i = 0; i < urlParts.length; i++) {
+        if (urlParts[i] === "s" && i + 1 < urlParts.length) {
+          sessionId = urlParts[i + 1];
+          break;
+        }
+      }
+
+      if (sessionId) {
+        // Create the messages URL
+        const messagesUrl = `/messages/${sessionId}`;
+        // Redirect to messages view
+        window.location.href = messagesUrl;
+      }
+
+      // End request sent - connection will be closed by server
+    } catch (error) {
+      console.error("Error ending session:", error);
+    }
+  }
+
   openRestartModal() {
     this.restartModalOpen = true;
   }
@@ -986,6 +1058,26 @@ export class SketchAppShell extends LitElement {
               <rect x="6" y="6" width="12" height="12" />
             </svg>
             <span class="button-text">Stop</span>
+          </button>
+          <button
+            id="endButton"
+            class="end-button"
+            @click=${this._handleEndClick}
+          >
+            <svg
+              class="button-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 6L6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
+            <span class="button-text">End</span>
           </button>
 
           <div
@@ -1121,6 +1213,12 @@ export class SketchAppShell extends LitElement {
         console.error("Error cancelling operation:", error);
       }
     });
+
+    // Setup end button
+    const endButton = this.renderRoot?.querySelector(
+      "#endButton",
+    ) as HTMLButtonElement;
+    // We're already using the @click binding in the HTML, so manual event listener not needed here
 
     // Process any existing messages to find commit information
     if (this.messages && this.messages.length > 0) {
