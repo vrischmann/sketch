@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -152,9 +153,34 @@ func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, 
 
 	// We have a TCP connection to the server and have been through the upgrade dance.
 	// Now we can run an HTTP server over that connection ("inverting" the HTTP flow).
+	// Skaband is expected to heartbeat within 60 seconds.
+	lastHeartbeat := time.Now()
+	mu := sync.Mutex{}
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			mu.Lock()
+			if time.Since(lastHeartbeat) > 60*time.Second {
+				mu.Unlock()
+				conn.Close()
+				slog.Info("skaband heartbeat timeout")
+				return
+			}
+			mu.Unlock()
+		}
+	}()
 	server := &http2.Server{}
+	h2 := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/skabandheartbeat" {
+			w.WriteHeader(http.StatusOK)
+			mu.Lock()
+			defer mu.Unlock()
+			lastHeartbeat = time.Now()
+		}
+		h.ServeHTTP(w, r)
+	})
 	server.ServeConn(conn, &http2.ServeConnOpts{
-		Handler: h,
+		Handler: h2,
 	})
 
 	return nil
