@@ -1086,14 +1086,6 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 	// Create a context for the SSE stream
 	ctx := r.Context()
 
-	// Create an iterator to receive new messages as they arrive
-	iterator := s.agent.NewIterator(ctx, fromIndex) // Start from the requested index
-	defer iterator.Close()
-
-	// Create an iterator to receive state transitions
-	stateIterator := s.agent.NewStateTransitionIterator(ctx)
-	defer stateIterator.Close()
-
 	// Setup heartbeat timer
 	heartbeatTicker := time.NewTicker(45 * time.Second)
 	defer heartbeatTicker.Stop()
@@ -1106,6 +1098,9 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 
 	// Start a goroutine to read messages without blocking the heartbeat
 	go func() {
+		// Create an iterator to receive new messages as they arrive
+		iterator := s.agent.NewIterator(ctx, fromIndex) // Start from the requested index
+		defer iterator.Close()
 		defer close(messageChan)
 		for {
 			// This can block, but it's in its own goroutine
@@ -1128,6 +1123,9 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 
 	// Start a goroutine to read state transitions
 	go func() {
+		// Create an iterator to receive state transitions
+		stateIterator := s.agent.NewStateTransitionIterator(ctx)
+		defer stateIterator.Close()
 		defer close(stateChan)
 		for {
 			// This can block, but it's in its own goroutine
