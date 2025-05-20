@@ -1475,7 +1475,7 @@ func (a *Agent) overBudget(ctx context.Context) error {
 		a.stateMachine.Transition(ctx, StateBudgetExceeded, "Budget exceeded: "+err.Error())
 		m := budgetMessage(err)
 		m.Content = m.Content + "\n\nBudget reset."
-		a.pushToOutbox(ctx, budgetMessage(err))
+		a.pushToOutbox(ctx, m)
 		a.convo.ResetBudget(a.originalBudget)
 		return err
 	}
