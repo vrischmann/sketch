@@ -173,15 +173,6 @@ export class SketchChatInput extends LitElement {
       // Replace the loading placeholder with the actual file path
       this.content = this.content.replace(loadingText, `[${data.path}]`);
 
-      // Adjust the cursor position after the inserted text
-      requestAnimationFrame(() => {
-        this.adjustChatSpacing();
-        this.chatInput.focus();
-        const newPos = textBefore.length + data.path.length + 2; // +2 for the brackets
-        this.chatInput.selectionStart = newPos;
-        this.chatInput.selectionEnd = newPos;
-      });
-
       return data.path;
     } catch (error) {
       console.error("Failed to upload file:", error);
