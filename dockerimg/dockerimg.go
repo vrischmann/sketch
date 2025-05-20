@@ -132,6 +132,10 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	if err != nil {
 		return err
 	}
+	err = checkForEmptyGitRepo(ctx, config.Path)
+	if err != nil {
+		return err
+	}
 
 	imgName, err := findOrBuildDockerImage(ctx, config.Path, gitRoot, config.Model, config.ModelURL, config.ModelAPIKey, config.ForceRebuild, config.Verbose)
 	if err != nil {
@@ -837,6 +841,17 @@ func findDirDockerfiles(root string) (res []string, err error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+func checkForEmptyGitRepo(ctx context.Context, path string) error {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "-q", "--verify", "HEAD")
+	cmd.Dir = path
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("sketch needs to run from within a git repo with at least one commit.\nRun: %s",
+			"git commit --allow-empty -m 'initial commit'")
+	}
+	return nil
 }
 
 func findGitRoot(ctx context.Context, path string) (string, error) {
