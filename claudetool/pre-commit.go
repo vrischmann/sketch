@@ -66,6 +66,8 @@ func representativeCommitSHAs(ctx context.Context, repoRoot string) ([]string, s
 - Special notations or tags
 - Capitalization and punctuation
 
+Ignore Change-ID and Co-authored-by lines in your analysis.
+
 First, provide a concise analysis of the predominant patterns.
 Then select up to 3 commit hashes that best exemplify the repository's commit style.
 Finally, output these selected commit hashes, one per line, without commentary.
