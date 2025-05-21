@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/stretchr/testify/require"
 	"sketch.dev/llm"
 )
 
@@ -324,23 +323,37 @@ func TestResizeTool(t *testing.T) {
 		resizeTool := tools.NewResizeTool()
 		input := json.RawMessage(`{"width": 375, "height": 667}`)
 		content, err := resizeTool.Run(ctx, input)
-		require.NoError(t, err)
-		require.Contains(t, content[0].Text, "success")
+		if err != nil {
+			t.Fatalf("Error: %v", err)
+		}
+		if !strings.Contains(content[0].Text, "success") {
+			t.Fatalf("Expected success in response, got: %s", content[0].Text)
+		}
 
 		// Navigate to a test page and verify using JavaScript to get window dimensions
 		navInput := json.RawMessage(`{"url": "https://example.com"}`)
 		content, err = tools.NewNavigateTool().Run(ctx, navInput)
-		require.NoError(t, err)
-		require.Contains(t, content[0].Text, "success")
+		if err != nil {
+			t.Fatalf("Error: %v", err)
+		}
+		if !strings.Contains(content[0].Text, "success") {
+			t.Fatalf("Expected success in response, got: %s", content[0].Text)
+		}
 
 		// Check dimensions via JavaScript
 		evalInput := json.RawMessage(`{"expression": "({width: window.innerWidth, height: window.innerHeight})"}`)
 		content, err = tools.NewEvalTool().Run(ctx, evalInput)
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatalf("Error: %v", err)
+		}
 
 		// The dimensions might not be exactly what we set (browser chrome, etc.)
 		// but they should be close
-		require.Contains(t, content[0].Text, "width")
-		require.Contains(t, content[0].Text, "height")
+		if !strings.Contains(content[0].Text, "width") {
+			t.Fatalf("Expected width in response, got: %s", content[0].Text)
+		}
+		if !strings.Contains(content[0].Text, "height") {
+			t.Fatalf("Expected height in response, got: %s", content[0].Text)
+		}
 	})
 }
