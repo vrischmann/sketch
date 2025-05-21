@@ -153,6 +153,11 @@ func categorizeFile(path string) string {
 		}
 	}
 
+	// GitHub Copilot: https://code.visualstudio.com/docs/copilot/copilot-customization
+	if path == ".github/copilot-instructions.md" {
+		return "inject"
+	}
+
 	// BuildFiles - build and configuration files
 	if strings.HasPrefix(lowerFilename, "makefile") ||
 		strings.HasSuffix(lowerPath, ".vscode/tasks.json") {
