@@ -190,6 +190,9 @@ type CLIFlags struct {
 	dockerArgs        string
 	mounts            StringSliceFlag
 	termUI            bool
+	gitRemoteURL      string
+	commit            string
+	outsideHTTP       string
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -231,6 +234,10 @@ func parseCLIFlags() CLIFlags {
 	flag.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
 	flag.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
 	flag.Var(&flags.experimentFlag, "x", "enable experimental features (comma-separated list or repeat flag; use 'list' to show all)")
+
+	flag.StringVar(&flags.gitRemoteURL, "git-remote-url", "", "(internal) git remote for outside sketch")
+	flag.StringVar(&flags.commit, "commit", "", "(internal) the git commit reference to check out from git remote url")
+	flag.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
 
 	flag.Parse()
 
@@ -424,10 +431,13 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		OutsideHostname:   flags.outsideHostname,
 		OutsideOS:         flags.outsideOS,
 		OutsideWorkingDir: flags.outsideWorkingDir,
+		WorkingDir:        wd,
 		// Ultimately this is a subtle flag because it's trying to distinguish
 		// between unsafe-on-host and inside sketch, and should probably be renamed/simplified.
-		InDocker: flags.outsideHostname != "",
-		OneShot:  flags.oneShot,
+		InDocker:      flags.outsideHostname != "",
+		OneShot:       flags.oneShot,
+		GitRemoteAddr: flags.gitRemoteURL,
+		OutsideHTTP:   flags.outsideHTTP,
 	}
 	agent := loop.NewAgent(agentConfig)
 
@@ -438,11 +448,9 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 	}
 
 	// Initialize the agent (only needed when not inside sketch with outside hostname)
+	// In the innie case, outtie sends a POST /init
 	if !inInsideSketch {
-		ini := loop.AgentInit{
-			WorkingDir: wd,
-		}
-		if err = agent.Init(ini); err != nil {
+		if err = agent.Init(loop.AgentInit{}); err != nil {
 			return fmt.Errorf("failed to initialize agent: %v", err)
 		}
 	}

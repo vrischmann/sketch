@@ -85,10 +85,10 @@ type State struct {
 }
 
 type InitRequest struct {
-	HostAddr           string `json:"host_addr"`
-	OutsideHTTP        string `json:"outside_http"`
-	GitRemoteAddr      string `json:"git_remote_addr"`
-	Commit             string `json:"commit"`
+	// Passed to agent so that the URL it prints in the termui prompt is correct (when skaband is not used)
+	HostAddr string `json:"host_addr"`
+
+	// POST /init will start the SSH server with these configs
 	SSHAuthorizedKeys  []byte `json:"ssh_authorized_keys"`
 	SSHServerIdentity  []byte `json:"ssh_server_identity"`
 	SSHContainerCAKey  []byte `json:"ssh_container_ca_key"`
@@ -215,12 +215,8 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 
 		ini := loop.AgentInit{
-			WorkingDir:    "/app",
-			InDocker:      true,
-			Commit:        m.Commit,
-			OutsideHTTP:   m.OutsideHTTP,
-			GitRemoteAddr: m.GitRemoteAddr,
-			HostAddr:      m.HostAddr,
+			InDocker: true,
+			HostAddr: m.HostAddr,
 		}
 		if err := agent.Init(ini); err != nil {
 			http.Error(w, "init failed: "+err.Error(), http.StatusInternalServerError)

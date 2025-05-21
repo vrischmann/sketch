@@ -68,7 +68,8 @@ func TestAgentLoop(t *testing.T) {
 
 	apiKey := cmp.Or(os.Getenv("OUTER_SKETCH_MODEL_API_KEY"), os.Getenv("ANTHROPIC_API_KEY"))
 	cfg := AgentConfig{
-		Context: ctx,
+		Context:    ctx,
+		WorkingDir: wd,
 		Service: &ant.Service{
 			APIKey: apiKey,
 			HTTPC:  client,
@@ -84,7 +85,7 @@ func TestAgentLoop(t *testing.T) {
 	if err := os.Chdir(origWD); err != nil {
 		t.Fatal(err)
 	}
-	err = agent.Init(AgentInit{WorkingDir: wd, NoGit: true})
+	err = agent.Init(AgentInit{NoGit: true})
 	if err != nil {
 		t.Fatal(err)
 	}

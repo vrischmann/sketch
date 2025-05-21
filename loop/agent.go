@@ -744,10 +744,18 @@ type AgentConfig struct {
 	InDocker         bool
 	UseAnthropicEdit bool
 	OneShot          bool
+	WorkingDir       string
 	// Outside information
 	OutsideHostname   string
 	OutsideOS         string
 	OutsideWorkingDir string
+
+	// Outtie's HTTP to, e.g., open a browser
+	OutsideHTTP string
+	// Outtie's Git server
+	GitRemoteAddr string
+	// Commit to checkout from Outtie
+	Commit string
 }
 
 // NewAgent creates a new Agent.
@@ -767,19 +775,18 @@ func NewAgent(config AgentConfig) *Agent {
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 		stateMachine:         NewStateMachine(),
+		workingDir:           config.WorkingDir,
+		outsideHTTP:          config.OutsideHTTP,
+		gitRemoteAddr:        config.GitRemoteAddr,
 	}
 	return agent
 }
 
 type AgentInit struct {
-	WorkingDir string
-	NoGit      bool // only for testing
+	NoGit bool // only for testing
 
-	InDocker      bool
-	Commit        string
-	OutsideHTTP   string
-	GitRemoteAddr string
-	HostAddr      string
+	InDocker bool
+	HostAddr string
 }
 
 func (a *Agent) Init(ini AgentInit) error {
@@ -787,12 +794,11 @@ func (a *Agent) Init(ini AgentInit) error {
 		return fmt.Errorf("Agent.Init: already initialized")
 	}
 	ctx := a.config.Context
-	if ini.InDocker && ini.Commit != "" {
-		if err := setupGitHooks(ini.WorkingDir); err != nil {
-			slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
-		}
+
+	// Fetch, if so configured.
+	if ini.InDocker && a.config.Commit != "" && a.config.GitRemoteAddr != "" {
 		cmd := exec.CommandContext(ctx, "git", "stash")
-		cmd.Dir = ini.WorkingDir
+		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git stash: %s: %v", out, err)
 		}
@@ -800,53 +806,51 @@ func (a *Agent) Init(ini AgentInit) error {
 		// it runs "git fetch" underneath the covers to get its latest commits. By configuring
 		// an additional remote.sketch-host.fetch, we make "origin/main" on innie sketch look like
 		// origin/main on outtie sketch, which should make it easier to rebase.
-		cmd = exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", ini.GitRemoteAddr)
-		cmd.Dir = ini.WorkingDir
+		cmd = exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", a.gitRemoteAddr)
+		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git remote add: %s: %v", out, err)
 		}
 		cmd = exec.CommandContext(ctx, "git", "config", "--add", "remote.sketch-host.fetch",
 			"+refs/heads/feature/*:refs/remotes/origin/feature/*")
-		cmd.Dir = ini.WorkingDir
+		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git config --add: %s: %v", out, err)
 		}
 		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
-		cmd.Dir = ini.WorkingDir
+		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git fetch: %s: %w", out, err)
 		}
-		cmd = exec.CommandContext(ctx, "git", "checkout", "-f", ini.Commit)
-		cmd.Dir = ini.WorkingDir
+		cmd = exec.CommandContext(ctx, "git", "checkout", "-f", a.config.Commit)
+		cmd.Dir = a.workingDir
 		if checkoutOut, err := cmd.CombinedOutput(); err != nil {
 			// Remove git hooks if they exist and retry
 			// Only try removing hooks if we haven't already removed them during fetch
-			hookPath := filepath.Join(ini.WorkingDir, ".git", "hooks")
+			hookPath := filepath.Join(a.workingDir, ".git", "hooks")
 			if _, statErr := os.Stat(hookPath); statErr == nil {
 				slog.WarnContext(ctx, "git checkout failed, removing hooks and retrying",
 					slog.String("error", err.Error()),
 					slog.String("output", string(checkoutOut)))
-				if removeErr := removeGitHooks(ctx, ini.WorkingDir); removeErr != nil {
+				if removeErr := removeGitHooks(ctx, a.workingDir); removeErr != nil {
 					slog.WarnContext(ctx, "failed to remove git hooks", slog.String("error", removeErr.Error()))
 				}
 
 				// Retry the checkout operation
-				cmd = exec.CommandContext(ctx, "git", "checkout", "-f", ini.Commit)
-				cmd.Dir = ini.WorkingDir
+				cmd = exec.CommandContext(ctx, "git", "checkout", "-f", a.config.Commit)
+				cmd.Dir = a.workingDir
 				if retryOut, retryErr := cmd.CombinedOutput(); retryErr != nil {
-					return fmt.Errorf("git checkout %s failed even after removing hooks: %s: %w", ini.Commit, retryOut, retryErr)
+					return fmt.Errorf("git checkout %s failed even after removing hooks: %s: %w", a.config.Commit, retryOut, retryErr)
 				}
 			} else {
-				return fmt.Errorf("git checkout %s: %s: %w", ini.Commit, checkoutOut, err)
+				return fmt.Errorf("git checkout %s: %s: %w", a.config.Commit, checkoutOut, err)
 			}
 		}
-		a.gitRemoteAddr = ini.GitRemoteAddr
-		a.outsideHTTP = ini.OutsideHTTP
-		if ini.HostAddr != "" {
-			a.url = "http://" + ini.HostAddr
-		}
 	}
-	a.workingDir = ini.WorkingDir
+
+	if ini.HostAddr != "" {
+		a.url = "http://" + ini.HostAddr
+	}
 
 	if !ini.NoGit {
 		repoRoot, err := repoRoot(ctx, a.workingDir)
@@ -859,12 +863,15 @@ func (a *Agent) Init(ini AgentInit) error {
 			return fmt.Errorf("resolveRef: %w", err)
 		}
 
+		if err := setupGitHooks(a.workingDir); err != nil {
+			slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
+		}
+
 		cmd := exec.CommandContext(ctx, "git", "tag", "-f", a.SketchGitBaseRef(), "HEAD")
 		cmd.Dir = repoRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git tag -f %s %s: %s: %w", a.SketchGitBaseRef(), "HEAD", out, err)
 		}
-		a.lastHEAD = ini.Commit
 
 		slog.Info("running codebase analysis")
 		codebase, err := onstart.AnalyzeCodebase(ctx, a.repoRoot)
@@ -879,7 +886,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.codereview = codereview
 
-		a.gitOrigin = getGitOrigin(ctx, ini.WorkingDir)
+		a.gitOrigin = getGitOrigin(ctx, a.workingDir)
 	}
 	a.lastHEAD = a.SketchGitBase()
 	a.convo = a.initConvo()
@@ -1787,7 +1794,7 @@ func repoRoot(ctx context.Context, dir string) (string, error) {
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse failed: %w\n%s", err, stderr)
+		return "", fmt.Errorf("git rev-parse (in %s) failed: %w\n%s", dir, err, stderr)
 	}
 	return strings.TrimSpace(string(out)), nil
 }

@@ -90,7 +90,7 @@ type ContainerConfig struct {
 	// Initial prompt
 	Prompt string
 
-	// Initial commit to use as starting point
+	// Initial commit to use as starting point. Resolved into Commit on the host.
 	InitialCommit string
 
 	// Verbose enables verbose output
@@ -107,11 +107,20 @@ type ContainerConfig struct {
 
 	// TermUI enables terminal UI
 	TermUI bool
+
+	GitRemoteUrl string
+
+	// Commit hash to checkout from GetRemoteUrl
+	Commit string
+
+	// Outtie's HTTP server
+	OutsideHTTP string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
 // It writes status to stdout.
 func LaunchContainer(ctx context.Context, config ContainerConfig) error {
+	slog.Debug("Container Config", slog.String("config", fmt.Sprintf("%+v", config)))
 	if _, err := exec.LookPath("docker"); err != nil {
 		if runtime.GOOS == "darwin" {
 			return fmt.Errorf("cannot find `docker` binary; run: brew install docker colima && colima start")
@@ -197,6 +206,10 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	if err != nil {
 		return err
 	}
+
+	config.OutsideHTTP = fmt.Sprintf("http://sketch:%s@host.docker.internal:%s", gitSrv.pass, gitSrv.gitPort)
+	config.GitRemoteUrl = fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitSrv.pass, gitSrv.gitPort)
+	config.Commit = commit
 
 	// Create the sketch container
 	if err := createDockerContainer(ctx, cntrName, hostPort, relPath, imgName, config); err != nil {
@@ -337,14 +350,21 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		}()
 	}
 
-	// Tell the sketch container which git server port and commit to initialize with.
+	// Tell the sketch container to Init(), which starts the SSH server
+	// and checks out the right commit.
+	// TODO: I'm trying to move as much configuration as possible into the command-line
+	// arguments to avoid splitting them up. "localAddr" is the only difficult one:
+	// we run (effectively) "docker run -p 0:80 image sketch -flags" and you can't
+	// get the port Docker chose until after the process starts. The SSH config is
+	// mostly available ahead of time, but whether it works ("sshAvailable"/"sshErrMsg")
+	// may also empirically need to be done after the SSH server is up and running.
 	go func() {
 		// TODO: Why is this called in a goroutine? I have found that when I pull this out
 		// of the goroutine and call it inline, then the terminal UI clears itself and all
 		// the scrollback (which is not good, but also not fatal).  I can't see why it does this
 		// though, since none of the calls in postContainerInitConfig obviously write to stdout
 		// or stderr.
-		if err := postContainerInitConfig(ctx, localAddr, commit, gitSrv.gitPort, gitSrv.pass, sshAvailable, sshErrMsg, sshServerIdentity, sshUserIdentity, containerCAPublicKey, hostCertificate); err != nil {
+		if err := postContainerInitConfig(ctx, localAddr, sshAvailable, sshErrMsg, sshServerIdentity, sshUserIdentity, containerCAPublicKey, hostCertificate); err != nil {
 			slog.ErrorContext(ctx, "LaunchContainer.postContainerInitConfig", slog.String("err", err.Error()))
 			errCh <- appendInternalErr(err)
 		}
@@ -514,6 +534,16 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.Model != "" {
 		cmdArgs = append(cmdArgs, "-model="+config.Model)
 	}
+	if config.GitRemoteUrl != "" {
+		cmdArgs = append(cmdArgs, "-git-remote-url="+config.GitRemoteUrl)
+		if config.Commit == "" {
+			panic("Commit should have been set when GitRemoteUrl was set")
+		}
+		cmdArgs = append(cmdArgs, "-commit="+config.Commit)
+	}
+	if config.OutsideHTTP != "" {
+		cmdArgs = append(cmdArgs, "-outside-http="+config.OutsideHTTP)
+	}
 	cmdArgs = append(cmdArgs, "-skaband-addr="+config.SkabandAddr)
 	if config.Prompt != "" {
 		cmdArgs = append(cmdArgs, "-prompt", config.Prompt)
@@ -623,14 +653,11 @@ func getContainerPort(ctx context.Context, cntrName, cntrPort string) (string, e
 }
 
 // Contact the container and configure it.
-func postContainerInitConfig(ctx context.Context, localAddr, commit, gitPort, gitPass string, sshAvailable bool, sshError string, sshServerIdentity, sshAuthorizedKeys, sshContainerCAKey, sshHostCertificate []byte) error {
+func postContainerInitConfig(ctx context.Context, localAddr string, sshAvailable bool, sshError string, sshServerIdentity, sshAuthorizedKeys, sshContainerCAKey, sshHostCertificate []byte) error {
 	localURL := "http://" + localAddr
 
 	initMsg, err := json.Marshal(
 		server.InitRequest{
-			Commit:             commit,
-			OutsideHTTP:        fmt.Sprintf("http://sketch:%s@host.docker.internal:%s", gitPass, gitPort),
-			GitRemoteAddr:      fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitPass, gitPort),
 			HostAddr:           localAddr,
 			SSHAuthorizedKeys:  sshAuthorizedKeys,
 			SSHServerIdentity:  sshServerIdentity,
