@@ -212,6 +212,14 @@ var (
 		Cost:      ModelCost{Input: 40, Output: 200},
 		APIKeyEnv: MistralAPIKeyEnv,
 	}
+
+	DevstralSmall = Model{
+		UserName:  "devstral-small",
+		ModelName: "devstral-small-latest",
+		URL:       MistralURL,
+		Cost:      ModelCost{Input: 100, Output: 300},
+		APIKeyEnv: MistralAPIKeyEnv,
+	}
 )
 
 // Service provides chat completions.
@@ -247,6 +255,7 @@ var ModelsRegistry = []Model{
 	FireworksDeepseekV3,
 	FireworksLlama4Maverick,
 	MistralMedium,
+	DevstralSmall,
 }
 
 // ListModels returns a list of all available models with their user-friendly names.
