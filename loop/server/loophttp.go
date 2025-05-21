@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -995,13 +996,19 @@ func getShellPath() string {
 
 func initDebugMux() *http.ServeMux {
 	mux := http.NewServeMux()
+	build := "unknown build"
+	bi, ok := debug.ReadBuildInfo()
+	if ok {
+		build = fmt.Sprintf("%s@%v\n", bi.Path, bi.Main.Version)
+	}
 	mux.HandleFunc("GET /debug/{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		// TODO: pid is not as useful as "outside pid"
 		fmt.Fprintf(w, `<!doctype html>
 			<html><head><title>sketch debug</title></head><body>
 			<h1>sketch debug</h1>
-			pid %d
+			pid %d<br>
+			build %s<br>
 			<ul>
 					<li><a href="/debug/pprof/cmdline">pprof/cmdline</a></li>
 					<li><a href="/debug/pprof/profile">pprof/profile</a></li>
@@ -1012,7 +1019,7 @@ func initDebugMux() *http.ServeMux {
 			</ul>
 			</body>
 			</html>
-			`, os.Getpid())
+			`, os.Getpid(), build)
 	})
 	mux.HandleFunc("GET /debug/pprof/", pprof.Index)
 	mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
