@@ -59,13 +59,15 @@ func TestGitCommitTracking(t *testing.T) {
 	agent := &Agent{
 		workingDir:  tempDir,
 		repoRoot:    tempDir, // Set repoRoot to same as workingDir for this test
-		seenCommits: make(map[string]bool),
 		subscribers: []chan *AgentMessage{},
 		config: AgentConfig{
 			SessionID: "test-session",
 			InDocker:  false,
 		},
 		history: []AgentMessage{},
+		gitState: AgentGitState{
+			seenCommits: make(map[string]bool),
+		},
 	}
 
 	// Create sketch-base-test-session tag at current HEAD to serve as the base commit
@@ -172,7 +174,7 @@ func TestGitCommitTracking(t *testing.T) {
 	}
 
 	// Reset the seen commits map
-	agent.seenCommits = make(map[string]bool)
+	agent.gitState.seenCommits = make(map[string]bool)
 
 	// Call handleGitCommits again - it should show up to 20 commits (or whatever git defaults to)
 	_, handleErr := agent.handleGitCommits(ctx)

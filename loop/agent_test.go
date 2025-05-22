@@ -526,11 +526,11 @@ func TestAgentProcessTurnStateTransitions(t *testing.T) {
 
 	// Create an agent with the state machine
 	agent := &Agent{
-		convo:                mockConvo,
-		config:               AgentConfig{Context: ctx},
-		inbox:                make(chan string, 10),
-		ready:                make(chan struct{}),
-		seenCommits:          make(map[string]bool),
+		convo:  mockConvo,
+		config: AgentConfig{Context: ctx},
+		inbox:  make(chan string, 10),
+		ready:  make(chan struct{}),
+
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 		stateMachine:         NewStateMachine(),
@@ -603,11 +603,11 @@ func TestAgentProcessTurnWithToolUse(t *testing.T) {
 
 	// Create an agent with the state machine
 	agent := &Agent{
-		convo:                mockConvo,
-		config:               AgentConfig{Context: ctx},
-		inbox:                make(chan string, 10),
-		ready:                make(chan struct{}),
-		seenCommits:          make(map[string]bool),
+		convo:  mockConvo,
+		config: AgentConfig{Context: ctx},
+		inbox:  make(chan string, 10),
+		ready:  make(chan struct{}),
+
 		outstandingLLMCalls:  make(map[string]struct{}),
 		outstandingToolCalls: make(map[string]string),
 		stateMachine:         NewStateMachine(),

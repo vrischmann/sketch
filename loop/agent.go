@@ -295,22 +295,43 @@ type ConvoInterface interface {
 	SubConvoWithHistory() *conversation.Convo
 }
 
+// AgentGitState holds the state necessary for pushing to a remote git repo
+// when HEAD changes. If gitRemoteAddr is set, then we push to sketch/
+// any time we notice we need to.
+type AgentGitState struct {
+	mu            sync.Mutex      // protects following
+	lastHEAD      string          // hash of the last HEAD that was pushed to the host
+	gitRemoteAddr string          // HTTP URL of the host git repo
+	seenCommits   map[string]bool // Track git commits we've already seen (by hash)
+	branchName    string
+}
+
+func (ags *AgentGitState) SetBranchName(branchName string) {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	ags.branchName = branchName
+}
+
+func (ags *AgentGitState) BranchName() string {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	return ags.branchName
+}
+
 type Agent struct {
 	convo             ConvoInterface
 	config            AgentConfig // config for this agent
+	gitState          AgentGitState
 	workingDir        string
 	repoRoot          string // workingDir may be a subdir of repoRoot
 	url               string
 	firstMessageIndex int           // index of the first message in the current conversation
-	lastHEAD          string        // hash of the last HEAD that was pushed to the host (only when under docker)
-	gitRemoteAddr     string        // HTTP URL of the host git repo (only when under docker)
 	outsideHTTP       string        // base address of the outside webserver (only when under docker)
 	ready             chan struct{} // closed when the agent is initialized (only when under docker)
 	codebase          *onstart.Codebase
 	startedAt         time.Time
 	originalBudget    conversation.Budget
 	title             string
-	branchName        string
 	codereview        *codereview.CodeReviewer
 	// State machine to track agent state
 	stateMachine *StateMachine
@@ -343,9 +364,6 @@ type Agent struct {
 
 	// Iterators add themselves here when they're ready to be notified of new messages.
 	subscribers []chan *AgentMessage
-
-	// Track git commits we've already seen (by hash)
-	seenCommits map[string]bool
 
 	// Track outstanding LLM call IDs
 	outstandingLLMCalls map[string]struct{}
@@ -451,9 +469,7 @@ func (a *Agent) Title() string {
 
 // BranchName returns the git branch name for the conversation.
 func (a *Agent) BranchName() string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.branchName
+	return a.gitState.BranchName()
 }
 
 // OutstandingLLMCallCount returns the number of outstanding LLM calls.
@@ -552,7 +568,7 @@ func (a *Agent) SetTitle(title string) {
 func (a *Agent) SetBranch(branchName string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.branchName = branchName
+	a.gitState.SetBranchName(branchName)
 	convo, ok := a.convo.(*conversation.Convo)
 	if ok {
 		convo.ExtraData["branch"] = branchName
@@ -762,13 +778,16 @@ type AgentConfig struct {
 // It is not usable until Init() is called.
 func NewAgent(config AgentConfig) *Agent {
 	agent := &Agent{
-		config:               config,
-		ready:                make(chan struct{}),
-		inbox:                make(chan string, 100),
-		subscribers:          make([]chan *AgentMessage, 0),
-		startedAt:            time.Now(),
-		originalBudget:       config.Budget,
-		seenCommits:          make(map[string]bool),
+		config:         config,
+		ready:          make(chan struct{}),
+		inbox:          make(chan string, 100),
+		subscribers:    make([]chan *AgentMessage, 0),
+		startedAt:      time.Now(),
+		originalBudget: config.Budget,
+		gitState: AgentGitState{
+			seenCommits:   make(map[string]bool),
+			gitRemoteAddr: config.GitRemoteAddr,
+		},
 		outsideHostname:      config.OutsideHostname,
 		outsideOS:            config.OutsideOS,
 		outsideWorkingDir:    config.OutsideWorkingDir,
@@ -777,7 +796,6 @@ func NewAgent(config AgentConfig) *Agent {
 		stateMachine:         NewStateMachine(),
 		workingDir:           config.WorkingDir,
 		outsideHTTP:          config.OutsideHTTP,
-		gitRemoteAddr:        config.GitRemoteAddr,
 	}
 	return agent
 }
@@ -796,29 +814,34 @@ func (a *Agent) Init(ini AgentInit) error {
 	ctx := a.config.Context
 	slog.InfoContext(ctx, "agent initializing")
 
-	// Fetch, if so configured.
-	if ini.InDocker && a.config.Commit != "" && a.config.GitRemoteAddr != "" {
+	// If a remote git addr was specified, we configure the remote
+	if a.gitState.gitRemoteAddr != "" {
+		slog.InfoContext(ctx, "Configuring git remote", slog.String("remote", a.gitState.gitRemoteAddr))
+		cmd := exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", a.gitState.gitRemoteAddr)
+		cmd.Dir = a.workingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git remote add: %s: %v", out, err)
+		}
+		// sketch-host is a git repo hosted by "outtie sketch". When it notices a 'git fetch',
+		// it runs "git fetch" underneath the covers to get its latest commits. By configuring
+		// an additional remote.sketch-host.fetch, we make "origin/main" on innie sketch look like
+		// origin/main on outtie sketch, which should make it easier to rebase.
+		cmd = exec.CommandContext(ctx, "git", "config", "--add", "remote.sketch-host.fetch",
+			"+refs/heads/feature/*:refs/remotes/origin/feature/*")
+		cmd.Dir = a.workingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git config --add: %s: %v", out, err)
+		}
+	}
+
+	// If a commit was specified, we fetch and reset to it.
+	if a.config.Commit != "" && a.gitState.gitRemoteAddr != "" {
 		slog.InfoContext(ctx, "updating git repo", slog.String("commit", a.config.Commit))
 
 		cmd := exec.CommandContext(ctx, "git", "stash")
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git stash: %s: %v", out, err)
-		}
-		// sketch-host is a git repo hosted by "outtie sketch". When it notices a 'git fetch',
-		// it runs "git fetch" underneath the covers to get its latest commits. By configuring
-		// an additional remote.sketch-host.fetch, we make "origin/main" on innie sketch look like
-		// origin/main on outtie sketch, which should make it easier to rebase.
-		cmd = exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", a.gitRemoteAddr)
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git remote add: %s: %v", out, err)
-		}
-		cmd = exec.CommandContext(ctx, "git", "config", "--add", "remote.sketch-host.fetch",
-			"+refs/heads/feature/*:refs/remotes/origin/feature/*")
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git config --add: %s: %v", out, err)
 		}
 		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
 		cmd.Dir = a.workingDir
@@ -891,7 +914,7 @@ func (a *Agent) Init(ini AgentInit) error {
 
 		a.gitOrigin = getGitOrigin(ctx, a.workingDir)
 	}
-	a.lastHEAD = a.SketchGitBase()
+	a.gitState.lastHEAD = a.SketchGitBase()
 	a.convo = a.initConvo()
 	close(a.ready)
 	return nil
@@ -915,7 +938,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	bashPermissionCheck := func(command string) error {
 		// Check if branch name is set
 		a.mu.Lock()
-		branchSet := a.branchName != ""
+		branchSet := a.gitState.BranchName() != ""
 		a.mu.Unlock()
 
 		// If branch is set, all commands are allowed
@@ -1596,22 +1619,34 @@ func removeGitHooks(_ context.Context, repoPath string) error {
 	return nil
 }
 
+func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
+	msgs, commits, error := a.gitState.handleGitCommits(ctx, a.SessionID(), a.repoRoot, a.SketchGitBaseRef())
+	for _, msg := range msgs {
+		a.pushToOutbox(ctx, msg)
+	}
+	return commits, error
+}
+
 // handleGitCommits() highlights new commits to the user. When running
 // under docker, new HEADs are pushed to a branch according to the title.
-func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
-	if a.repoRoot == "" {
-		return nil, nil
+func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string, repoRoot string, baseRef string) ([]AgentMessage, []*GitCommit, error) {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+
+	msgs := []AgentMessage{}
+	if repoRoot == "" {
+		return msgs, nil, nil
 	}
 
-	head, err := resolveRef(ctx, a.repoRoot, "HEAD")
+	head, err := resolveRef(ctx, repoRoot, "HEAD")
 	if err != nil {
-		return nil, err
+		return msgs, nil, err
 	}
-	if head == a.lastHEAD {
-		return nil, nil // nothing to do
+	if head == ags.lastHEAD {
+		return msgs, nil, nil // nothing to do
 	}
 	defer func() {
-		a.lastHEAD = head
+		ags.lastHEAD = head
 	}()
 
 	// Get new commits. Because it's possible that the agent does rebases, fixups, and
@@ -1623,11 +1658,11 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 	// Format: <hash>\0<subject>\0<body>\0
 	// This uses NULL bytes as separators to avoid issues with newlines in commit messages
 	// Limit to 100 commits to avoid overwhelming the user
-	cmd := exec.CommandContext(ctx, "git", "log", "-n", "100", "--pretty=format:%H%x00%s%x00%b%x00", "^"+a.SketchGitBaseRef(), head)
-	cmd.Dir = a.repoRoot
+	cmd := exec.CommandContext(ctx, "git", "log", "-n", "100", "--pretty=format:%H%x00%s%x00%b%x00", "^"+baseRef, head)
+	cmd.Dir = repoRoot
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get git log: %w", err)
+		return msgs, nil, fmt.Errorf("failed to get git log: %w", err)
 	}
 
 	// Parse git log output and filter out already seen commits
@@ -1642,18 +1677,18 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 		}
 
 		// Skip if we've seen this commit before. If our head has changed, always include that.
-		if a.seenCommits[commit.Hash] && commit.Hash != head {
+		if ags.seenCommits[commit.Hash] && commit.Hash != head {
 			continue
 		}
 
 		// Mark this commit as seen
-		a.seenCommits[commit.Hash] = true
+		ags.seenCommits[commit.Hash] = true
 
 		// Add to our list of new commits
 		commits = append(commits, &commit)
 	}
 
-	if a.gitRemoteAddr != "" {
+	if ags.gitRemoteAddr != "" {
 		if headCommit == nil {
 			// I think this can only happen if we have a bug or if there's a race.
 			headCommit = &GitCommit{}
@@ -1662,7 +1697,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 			commits = append(commits, headCommit)
 		}
 
-		originalBranch := cmp.Or(a.branchName, "sketch/"+a.config.SessionID)
+		originalBranch := cmp.Or(ags.branchName, "sketch/"+sessionID)
 		branch := originalBranch
 
 		// TODO: I don't love the force push here. We could see if the push is a fast-forward, and,
@@ -1678,8 +1713,8 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 				branch = fmt.Sprintf("%s%d", originalBranch, retries)
 			}
 
-			cmd = exec.Command("git", "push", "--force", a.gitRemoteAddr, "HEAD:refs/heads/"+branch)
-			cmd.Dir = a.workingDir
+			cmd = exec.Command("git", "push", "--force", ags.gitRemoteAddr, "HEAD:refs/heads/"+branch)
+			cmd.Dir = repoRoot
 			out, err = cmd.CombinedOutput()
 
 			if err == nil {
@@ -1700,12 +1735,12 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 		}
 
 		if err != nil {
-			a.pushToOutbox(ctx, errorMessage(fmt.Errorf("git push to host: %s: %v", out, err)))
+			msgs = append(msgs, errorMessage(fmt.Errorf("git push to host: %s: %v", out, err)))
 		} else {
 			headCommit.PushedBranch = branch
 			// Update the agent's branch name if we ended up using a different one
 			if branch != originalBranch {
-				a.branchName = branch
+				ags.branchName = branch
 			}
 		}
 	}
@@ -1717,9 +1752,9 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 			Timestamp: time.Now(),
 			Commits:   commits,
 		}
-		a.pushToOutbox(ctx, msg)
+		msgs = append(msgs, msg)
 	}
-	return commits, nil
+	return msgs, commits, nil
 }
 
 func cleanBranchName(s string) string {
@@ -1846,6 +1881,7 @@ func getGitOrigin(ctx context.Context, dir string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// TODO(philip): Remove together with restartConversation
 func (a *Agent) initGitRevision(ctx context.Context, workingDir, revision string) error {
 	cmd := exec.CommandContext(ctx, "git", "stash")
 	cmd.Dir = workingDir
@@ -1862,7 +1898,7 @@ func (a *Agent) initGitRevision(ctx context.Context, workingDir, revision string
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("git checkout %s: %s: %w", revision, out, err)
 	}
-	a.lastHEAD = revision
+	a.gitState.lastHEAD = revision
 	return nil
 }
 
