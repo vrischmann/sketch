@@ -17,7 +17,6 @@ import "./sketch-call-status";
 import "./sketch-terminal";
 import "./sketch-timeline";
 import "./sketch-view-mode-select";
-import "./sketch-restart-modal";
 
 import { createRef, ref } from "lit/directives/ref.js";
 import { SketchChatInput } from "./sketch-chat-input";
@@ -236,7 +235,6 @@ export class SketchAppShell extends LitElement {
       margin-right: 50px;
     }
 
-    .restart-button,
     .stop-button,
     .end-button {
       background: #2196f3;
@@ -250,16 +248,6 @@ export class SketchAppShell extends LitElement {
       display: flex;
       align-items: center;
       gap: 6px;
-    }
-
-    .restart-button:hover {
-      background-color: #0b7dda;
-    }
-
-    .restart-button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-      opacity: 0.6;
     }
 
     .stop-button {
@@ -306,7 +294,6 @@ export class SketchAppShell extends LitElement {
         display: none;
       }
 
-      .restart-button,
       .stop-button {
         padding: 6px;
       }
@@ -400,8 +387,7 @@ export class SketchAppShell extends LitElement {
     first_message_index: 0,
   };
 
-  @state()
-  private restartModalOpen = false;
+
 
   // Mutation observer to detect when new messages are added
   private mutationObserver: MutationObserver | null = null;
@@ -941,13 +927,7 @@ export class SketchAppShell extends LitElement {
     }
   }
 
-  openRestartModal() {
-    this.restartModalOpen = true;
-  }
 
-  handleRestartModalClose() {
-    this.restartModalOpen = false;
-  }
 
   async _handleMutlipleChoiceSelected(e: CustomEvent) {
     const chatInput = this.shadowRoot?.querySelector(
@@ -1017,27 +997,6 @@ export class SketchAppShell extends LitElement {
         <sketch-view-mode-select></sketch-view-mode-select>
 
         <div class="refresh-control">
-          <button
-            id="restartButton"
-            class="restart-button"
-            ?disabled=${this.containerState.message_count === 0}
-            @click=${this.openRestartModal}
-          >
-            <svg
-              class="button-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            <span class="button-text">Restart</span>
-          </button>
           <button
             id="stopButton"
             class="stop-button"
@@ -1170,12 +1129,7 @@ export class SketchAppShell extends LitElement {
         <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
       </div>
 
-      <sketch-restart-modal
-        ?open=${this.restartModalOpen}
-        @close=${this.handleRestartModalClose}
-        .containerState=${this.containerState}
-        .messages=${this.messages}
-      ></sketch-restart-modal>
+
     `;
   }
 

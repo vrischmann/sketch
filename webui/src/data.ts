@@ -375,35 +375,7 @@ export class DataManager {
     }
   }
 
-  /**
-   * Restart the conversation
-   */
-  public async restart(
-    revision: string,
-    initialPrompt: string,
-  ): Promise<boolean> {
-    try {
-      const response = await fetch("restart", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          revision,
-          initial_prompt: initialPrompt,
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error restarting conversation:", error);
-      return false;
-    }
-  }
 
   /**
    * Download the conversation data
