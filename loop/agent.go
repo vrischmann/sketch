@@ -116,10 +116,6 @@ type CodingAgent interface {
 	// OpenBrowser is a best-effort attempt to open a browser at url in outside sketch.
 	OpenBrowser(url string)
 
-	// RestartConversation resets the conversation history
-	RestartConversation(ctx context.Context, rev string, initialPrompt string) error
-	// SuggestReprompt suggests a re-prompt based on the current conversation.
-	SuggestReprompt(ctx context.Context) (string, error)
 	// IsInContainer returns true if the agent is running in a container
 	IsInContainer() bool
 	// FirstMessageIndex returns the index of the first message in the current conversation
@@ -1879,82 +1875,6 @@ func getGitOrigin(ctx context.Context, dir string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
-}
-
-// TODO(philip): Remove together with restartConversation
-func (a *Agent) initGitRevision(ctx context.Context, workingDir, revision string) error {
-	cmd := exec.CommandContext(ctx, "git", "stash")
-	cmd.Dir = workingDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git stash: %s: %v", out, err)
-	}
-	cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
-	cmd.Dir = workingDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git fetch: %s: %w", out, err)
-	}
-	cmd = exec.CommandContext(ctx, "git", "checkout", "-f", revision)
-	cmd.Dir = workingDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git checkout %s: %s: %w", revision, out, err)
-	}
-	a.gitState.lastHEAD = revision
-	return nil
-}
-
-func (a *Agent) RestartConversation(ctx context.Context, rev string, initialPrompt string) error {
-	a.mu.Lock()
-	a.title = ""
-	a.firstMessageIndex = len(a.history)
-	a.convo = a.initConvo()
-	gitReset := func() error {
-		if a.config.InDocker && rev != "" {
-			err := a.initGitRevision(ctx, a.workingDir, rev)
-			if err != nil {
-				return err
-			}
-		} else if !a.config.InDocker && rev != "" {
-			return fmt.Errorf("Not resetting git repo when working outside of a container.")
-		}
-		return nil
-	}
-	err := gitReset()
-	a.mu.Unlock()
-	if err != nil {
-		a.pushToOutbox(a.config.Context, errorMessage(err))
-	}
-
-	a.pushToOutbox(a.config.Context, AgentMessage{
-		Type: AgentMessageType, Content: "Conversation restarted.",
-	})
-	if initialPrompt != "" {
-		a.UserMessage(ctx, initialPrompt)
-	}
-	return nil
-}
-
-func (a *Agent) SuggestReprompt(ctx context.Context) (string, error) {
-	msg := `The user has requested a suggestion for a re-prompt.
-
-	Given the current conversation thus far, suggest a re-prompt that would
-	capture the instructions and feedback so far, as well as any
-	research or other information that would be helpful in implementing
-	the task.
-
-	Reply with ONLY the reprompt text.
-	`
-	userMessage := llm.UserStringMessage(msg)
-	// By doing this in a subconversation, the agent doesn't call tools (because
-	// there aren't any), and there's not a concurrency risk with on-going other
-	// outstanding conversations.
-	convo := a.convo.SubConvoWithHistory()
-	resp, err := convo.SendMessage(userMessage)
-	if err != nil {
-		a.pushToOutbox(ctx, errorMessage(err))
-		return "", err
-	}
-	textContent := collectTextContent(resp)
-	return textContent, nil
 }
 
 // systemPromptData contains the data used to render the system prompt template
