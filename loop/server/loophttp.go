@@ -1373,6 +1373,16 @@ func (s *Server) handleGitSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-commit the changes
+	err = git_tools.AutoCommitDiffViewChanges(r.Context(), repoDir, requestBody.Path)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error auto-committing changes: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Detect git changes to push and notify user
+	s.agent.DetectGitChanges(r.Context())
+
 	// Return simple success response
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))

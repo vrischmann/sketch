@@ -104,6 +104,9 @@ type CodingAgent interface {
 	// SessionID returns the unique session identifier.
 	SessionID() string
 
+	// DetectGitChanges checks for new git commits and pushes them if found
+	DetectGitChanges(ctx context.Context)
+
 	// OutstandingLLMCallCount returns the number of outstanding LLM calls.
 	OutstandingLLMCallCount() int
 
@@ -1417,7 +1420,18 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *llm.Response) (bo
 	return shouldContinue && !toolEndsTurn, resp
 }
 
-// processGitChanges checks for new git commits and runs autoformatters if needed
+// DetectGitChanges checks for new git commits and pushes them if found
+func (a *Agent) DetectGitChanges(ctx context.Context) {
+	// Check for git commits
+	_, err := a.handleGitCommits(ctx)
+	if err != nil {
+		// Just log the error, don't stop execution
+		slog.WarnContext(ctx, "Failed to check for new git commits", "error", err)
+	}
+}
+
+// processGitChanges checks for new git commits, runs autoformatters if needed, and returns any messages generated
+// This is used internally by the agent loop
 func (a *Agent) processGitChanges(ctx context.Context) []string {
 	// Check for git commits after tool execution
 	newCommits, err := a.handleGitCommits(ctx)

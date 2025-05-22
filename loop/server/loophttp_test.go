@@ -242,8 +242,7 @@ func (m *mockAgent) RestartConversation(ctx context.Context, rev string, initial
 func (m *mockAgent) SuggestReprompt(ctx context.Context) (string, error) { return "", nil }
 func (m *mockAgent) IsInContainer() bool                                 { return false }
 func (m *mockAgent) FirstMessageIndex() int                              { return 0 }
-
-// TestSSEStream tests the SSE stream endpoint
+func (m *mockAgent) DetectGitChanges(ctx context.Context)                {} // TestSSEStream tests the SSE stream endpoint
 func TestSSEStream(t *testing.T) {
 	// Create a mock agent with initial messages
 	mockAgent := &mockAgent{
