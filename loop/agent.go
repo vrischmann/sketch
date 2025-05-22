@@ -794,9 +794,12 @@ func (a *Agent) Init(ini AgentInit) error {
 		return fmt.Errorf("Agent.Init: already initialized")
 	}
 	ctx := a.config.Context
+	slog.InfoContext(ctx, "agent initializing")
 
 	// Fetch, if so configured.
 	if ini.InDocker && a.config.Commit != "" && a.config.GitRemoteAddr != "" {
+		slog.InfoContext(ctx, "updating git repo", slog.String("commit", a.config.Commit))
+
 		cmd := exec.CommandContext(ctx, "git", "stash")
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {

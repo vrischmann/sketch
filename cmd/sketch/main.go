@@ -438,6 +438,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		OneShot:       flags.oneShot,
 		GitRemoteAddr: flags.gitRemoteURL,
 		OutsideHTTP:   flags.outsideHTTP,
+		Commit:        flags.commit,
 	}
 	agent := loop.NewAgent(agentConfig)
 
