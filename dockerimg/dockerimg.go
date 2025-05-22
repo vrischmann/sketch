@@ -575,6 +575,29 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 }
 
 func buildLinuxSketchBin(ctx context.Context) (string, error) {
+	// Detect if race detector is enabled and use a different cache path
+	raceEnabled := RaceEnabled()
+	cacheSuffix := ""
+	if raceEnabled {
+		cacheSuffix = "-race"
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	linuxGopath := filepath.Join(homeDir, ".cache", "sketch", "linuxgo"+cacheSuffix)
+	if err := os.MkdirAll(linuxGopath, 0o777); err != nil {
+		return "", err
+	}
+
+	// When race detector is enabled, use Docker to build the Linux binary
+	if raceEnabled {
+		return buildLinuxSketchBinWithDocker(ctx, linuxGopath)
+	}
+
+	// Standard non-race build using cross-compilation
 	// Change to directory containing dockerimg.go for module detection
 	_, codeFile, _, _ := runtime.Caller(0)
 	codeDir := filepath.Dir(codeFile)
@@ -590,15 +613,6 @@ func buildLinuxSketchBin(ctx context.Context) (string, error) {
 		}
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	linuxGopath := filepath.Join(homeDir, ".cache", "sketch", "linuxgo")
-	if err := os.MkdirAll(linuxGopath, 0o777); err != nil {
-		return "", err
-	}
-
 	verToInstall := "@latest"
 	if out, err := exec.Command("go", "list", "-m").CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to run go list -m: %s: %v", out, err)
@@ -610,7 +624,10 @@ func buildLinuxSketchBin(ctx context.Context) (string, error) {
 	}
 
 	start := time.Now()
-	cmd := exec.CommandContext(ctx, "go", "install", "sketch.dev/cmd/sketch"+verToInstall)
+	args := []string{"install"}
+	args = append(args, "sketch.dev/cmd/sketch"+verToInstall)
+
+	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Env = append(
 		os.Environ(),
 		"GOOS=linux",
@@ -1002,4 +1019,81 @@ func parseDockerArgs(args string) []string {
 	}
 
 	return result
+}
+
+// buildLinuxSketchBinWithDocker builds the Linux sketch binary using Docker when race detector is enabled.
+// This avoids cross-compilation issues with CGO which is required for the race detector.
+//
+// TODO: We should maybe mount a volume into /root/go so that we can cache the go.mod download
+// and so forth...
+func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (string, error) {
+	// Find the git repo root
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("could not get current directory: %w", err)
+	}
+
+	gitRoot, err := findGitRoot(ctx, currentDir)
+	if err != nil {
+		return "", fmt.Errorf("could not find git root, cannot build with race detector outside a git repo: %w", err)
+	}
+
+	slog.DebugContext(ctx, "building Linux sketch binary with race detector using Docker", "git_root", gitRoot)
+
+	// Use the published Docker image tag
+	imageTag := dockerfileBaseHash()
+	imgName := fmt.Sprintf("%s:%s", dockerImgName, imageTag)
+
+	// Create destination directory for the binary
+	destPath := filepath.Join(linuxGopath, "bin")
+	if err := os.MkdirAll(destPath, 0o777); err != nil {
+		return "", fmt.Errorf("failed to create destination directory: %w", err)
+	}
+	destFile := filepath.Join(destPath, "sketch")
+
+	// Create a unique container name
+	containerID := fmt.Sprintf("sketch-race-build-%d", time.Now().UnixNano())
+
+	// Run a container with the repo mounted
+	start := time.Now()
+	slog.DebugContext(ctx, "running Docker container to build sketch with race detector")
+
+	// Use explicit output path for clarity
+	runArgs := []string{
+		"run",
+		"--name", containerID,
+		"-v", gitRoot + ":/app",
+		"-w", "/app",
+		imgName,
+		"sh", "-c", "cd /app && mkdir -p /tmp/sketch-out && go build -race -o /tmp/sketch-out/sketch sketch.dev/cmd/sketch",
+	}
+
+	out, err := combinedOutput(ctx, "docker", runArgs...)
+	if err != nil {
+		// Print the output to help with debugging
+		slog.ErrorContext(ctx, "docker run for race build failed",
+			slog.String("output", string(out)),
+			slog.String("error", err.Error()))
+		return "", fmt.Errorf("docker run failed: %s: %w", out, err)
+	}
+
+	slog.DebugContext(ctx, "built sketch with race detector in Docker", "elapsed", time.Since(start))
+
+	// Copy the binary from the container using the explicit path
+	out, err = combinedOutput(ctx, "docker", "cp", containerID+":/tmp/sketch-out/sketch", destFile)
+	if err != nil {
+		return "", fmt.Errorf("docker cp failed: %s: %w", out, err)
+	}
+
+	// Clean up the container
+	if out, err := combinedOutput(ctx, "docker", "rm", containerID); err != nil {
+		slog.WarnContext(ctx, "failed to remove container", "container", containerID, "error", err, "output", string(out))
+	}
+
+	// Make the binary executable
+	if err := os.Chmod(destFile, 0o755); err != nil {
+		return "", fmt.Errorf("failed to make binary executable: %w", err)
+	}
+
+	return destFile, nil
 }
