@@ -387,8 +387,6 @@ export class SketchAppShell extends LitElement {
     first_message_index: 0,
   };
 
-
-
   // Mutation observer to detect when new messages are added
   private mutationObserver: MutationObserver | null = null;
 
@@ -927,8 +925,6 @@ export class SketchAppShell extends LitElement {
     }
   }
 
-
-
   async _handleMutlipleChoiceSelected(e: CustomEvent) {
     const chatInput = this.shadowRoot?.querySelector(
       "sketch-chat-input",
@@ -1128,8 +1124,6 @@ export class SketchAppShell extends LitElement {
       <div id="chat-input">
         <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
       </div>
-
-
     `;
   }
 

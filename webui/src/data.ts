@@ -375,8 +375,6 @@ export class DataManager {
     }
   }
 
-
-
   /**
    * Download the conversation data
    */
