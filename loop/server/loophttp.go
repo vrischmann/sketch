@@ -1381,7 +1381,10 @@ func (s *Server) handleGitSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Detect git changes to push and notify user
-	s.agent.DetectGitChanges(r.Context())
+	if err = s.agent.DetectGitChanges(r.Context()); err != nil {
+		http.Error(w, fmt.Sprintf("Error detecting git changes: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	// Return simple success response
 	w.WriteHeader(http.StatusOK)

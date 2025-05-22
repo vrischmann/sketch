@@ -39,6 +39,28 @@ export class SketchContainerStatus extends LitElement {
       color: #0366d6;
     }
 
+    /* Pulse animation for new commits */
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .pulse {
+      animation: pulse 1.5s ease-in-out;
+      background-color: rgba(38, 132, 255, 0.1);
+      border-radius: 3px;
+    }
+
     .last-commit-title {
       color: #666;
       font-family: system-ui, sans-serif;
@@ -97,6 +119,32 @@ export class SketchContainerStatus extends LitElement {
       color: #999;
       font-style: italic;
       font-size: 12px;
+    }
+
+    .copied-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .copy-icon {
+      margin-left: 4px;
+      opacity: 0.7;
+    }
+
+    .copy-icon svg {
+      vertical-align: middle;
+    }
+
+    .last-commit-main:hover .copy-icon {
+      opacity: 1;
     }
 
     .info-container {
@@ -332,11 +380,33 @@ export class SketchContainerStatus extends LitElement {
         // Get the first commit from the list
         const commit = message.commits[0];
         if (commit) {
+          // Check if the commit hash has changed
+          const hasChanged =
+            !this.lastCommit || this.lastCommit.hash !== commit.hash;
+
           this.lastCommit = {
             hash: commit.hash,
             pushedBranch: commit.pushed_branch,
           };
           this.lastCommitCopied = false;
+
+          // Add pulse animation if the commit changed
+          if (hasChanged) {
+            // Find the last commit element
+            setTimeout(() => {
+              const lastCommitEl =
+                this.shadowRoot?.querySelector(".last-commit-main");
+              if (lastCommitEl) {
+                // Add the pulse class
+                lastCommitEl.classList.add("pulse");
+
+                // Remove the pulse class after animation completes
+                setTimeout(() => {
+                  lastCommitEl.classList.remove("pulse");
+                }, 1500);
+              }
+            }, 0);
+          }
         }
       }
     }
@@ -358,10 +428,10 @@ export class SketchContainerStatus extends LitElement {
       .writeText(textToCopy)
       .then(() => {
         this.lastCommitCopied = true;
-        // Reset the copied state after 2 seconds
+        // Reset the copied state after 1.5 seconds
         setTimeout(() => {
           this.lastCommitCopied = false;
-        }, 2000);
+        }, 1500);
       })
       .catch((err) => {
         console.error("Failed to copy commit info:", err);
@@ -620,9 +690,6 @@ export class SketchContainerStatus extends LitElement {
               @click=${(e: MouseEvent) => this.copyCommitInfo(e)}
               title="Click to copy"
             >
-              ${this.lastCommitCopied
-                ? html`<span class="copied-indicator">Copied!</span>`
-                : ""}
               ${this.lastCommit
                 ? this.lastCommit.pushedBranch
                   ? html`<span class="commit-branch-indicator main-grid-commit"
@@ -632,6 +699,45 @@ export class SketchContainerStatus extends LitElement {
                       >${this.lastCommit.hash.substring(0, 8)}</span
                     >`
                 : html`<span class="no-commit-indicator">N/A</span>`}
+              <span class="copy-icon">
+                ${this.lastCommitCopied
+                  ? html`<svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20 6L9 17l-5-5"></path>
+                    </svg>`
+                  : html`<svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <rect
+                        x="9"
+                        y="9"
+                        width="13"
+                        height="13"
+                        rx="2"
+                        ry="2"
+                      ></rect>
+                      <path
+                        d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                      ></path>
+                    </svg>`}
+              </span>
             </div>
           </div>
         </div>
