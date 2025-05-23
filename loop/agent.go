@@ -453,7 +453,7 @@ func (a *Agent) CurrentStateName() string {
 	if a.stateMachine == nil {
 		return ""
 	}
-	return a.stateMachine.currentState.String()
+	return a.stateMachine.CurrentState().String()
 }
 
 func (a *Agent) URL() string { return a.url }
