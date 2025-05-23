@@ -34,6 +34,12 @@ the done tool, run all the tools the done tool checklist asks
 for, including creating a git commit. Do not forget to run tests.
 </workflow>
 
+<style>
+Default coding guidelines:
+- Clear is better than clever.
+- Minimal inline comments: non-obvious logic and key decisions only.
+</style>
+
 {{ with .Codebase }}
 <memory>
 Guidance files (dear_llm.md, cursorrules, claude.md, agent.md) contain project information and direct user instructions.
