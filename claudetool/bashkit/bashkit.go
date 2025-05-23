@@ -9,6 +9,7 @@ import (
 
 var checks = []func(*syntax.CallExpr) error{
 	noGitConfigUsernameEmailChanges,
+	noBlindGitAdd,
 }
 
 // Check inspects bashScript and returns an error if it ought not be executed.
@@ -122,6 +123,48 @@ func WillRunGitCommit(bashScript string) (bool, error) {
 	})
 
 	return willCommit, nil
+}
+
+// noBlindGitAdd checks for git add commands that blindly add all files.
+// It rejects patterns like 'git add -A', 'git add .', 'git add --all', 'git add *'.
+func noBlindGitAdd(cmd *syntax.CallExpr) error {
+	if hasBlindGitAdd(cmd) {
+		return fmt.Errorf("permission denied: blind git add commands (git add -A, git add ., git add --all, git add *) are not allowed, specify files explicitly")
+	}
+	return nil
+}
+
+func hasBlindGitAdd(cmd *syntax.CallExpr) bool {
+	if len(cmd.Args) < 2 {
+		return false
+	}
+	if cmd.Args[0].Lit() != "git" {
+		return false
+	}
+
+	// Find the 'add' subcommand
+	addIndex := -1
+	for i, arg := range cmd.Args {
+		if arg.Lit() == "add" {
+			addIndex = i
+			break
+		}
+	}
+
+	if addIndex < 0 {
+		return false
+	}
+
+	// Check arguments after 'add' for blind patterns
+	for i := addIndex + 1; i < len(cmd.Args); i++ {
+		arg := cmd.Args[i].Lit()
+		// Check for blind add patterns
+		if arg == "-A" || arg == "--all" || arg == "." || arg == "*" {
+			return true
+		}
+	}
+
+	return false
 }
 
 // isGitCommitCommand checks if a command is 'git commit'.

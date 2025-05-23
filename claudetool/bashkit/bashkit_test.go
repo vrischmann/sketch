@@ -92,6 +92,91 @@ echo 'Done!'`,
 			wantErr:  false,
 			errMatch: "",
 		},
+		// Git add validation tests
+		{
+			name:     "git add with -A flag",
+			script:   "git add -A",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with --all flag",
+			script:   "git add --all",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with dot",
+			script:   "git add .",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with asterisk",
+			script:   "git add *",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with multiple flags including -A",
+			script:   "git add -v -A",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with specific file",
+			script:   "git add main.go",
+			wantErr:  false,
+			errMatch: "",
+		},
+		{
+			name:     "git add with multiple specific files",
+			script:   "git add main.go utils.go",
+			wantErr:  false,
+			errMatch: "",
+		},
+		{
+			name:     "git add with directory path",
+			script:   "git add src/main.go",
+			wantErr:  false,
+			errMatch: "",
+		},
+		{
+			name:     "git add with git flags before add",
+			script:   "git -C /path/to/repo add -A",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with valid flags",
+			script:   "git add -v main.go",
+			wantErr:  false,
+			errMatch: "",
+		},
+		{
+			name:     "git command without add",
+			script:   "git status",
+			wantErr:  false,
+			errMatch: "",
+		},
+		{
+			name:     "multiline script with blind git add",
+			script:   "echo 'Adding files' && git add -A && git commit -m 'Update'",
+			wantErr:  true,
+			errMatch: "blind git add commands",
+		},
+		{
+			name:     "git add with pattern that looks like blind but is specific",
+			script:   "git add file.A",
+			wantErr:  false,
+			errMatch: "",
+		},
+		{
+			name:     "commented blind git add",
+			script:   "# git add -A",
+			wantErr:  false,
+			errMatch: "",
+		},
 	}
 
 	for _, tc := range tests {
