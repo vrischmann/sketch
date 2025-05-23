@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	DefaultModel = Claude37Sonnet
+	DefaultModel = Claude4Sonnet
 	// See https://docs.anthropic.com/en/docs/about-claude/models/all-models for
 	// current maximums. There's currently a flag to enable 128k output (output-128k-2025-02-19)
 	DefaultMaxTokens = 8192
