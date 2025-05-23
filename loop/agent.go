@@ -2055,9 +2055,24 @@ fi
 
 # Only modify if at least one trailer needs to be added
 if [ "$needs_co_author" = true ] || [ "$needs_change_id" = true ]; then
-  # Ensure there's a blank line before trailers
-  if [ -s "$commit_file" ] && [ "$(tail -1 "$commit_file" | tr -d '\n')" != "" ]; then
-    echo "" >> "$commit_file"
+  # Ensure there's a proper blank line before trailers
+  if [ -s "$commit_file" ]; then
+    # Check if file ends with newline by reading last character
+    last_char=$(tail -c 1 "$commit_file")
+
+    if [ "$last_char" != "" ]; then
+      # File doesn't end with newline - add two newlines (complete line + blank line)
+      echo "" >> "$commit_file"
+      echo "" >> "$commit_file"
+    else
+      # File ends with newline - check if we already have a blank line
+      last_line=$(tail -1 "$commit_file")
+      if [ -n "$last_line" ]; then
+        # Last line has content - add one newline for blank line
+        echo "" >> "$commit_file"
+      fi
+      # If last line is empty, we already have a blank line - don't add anything
+    fi
   fi
 
   # Add trailers if needed
