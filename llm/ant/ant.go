@@ -30,6 +30,8 @@ const (
 	Claude35Sonnet = "claude-3-5-sonnet-20241022"
 	Claude35Haiku  = "claude-3-5-haiku-20241022"
 	Claude37Sonnet = "claude-3-7-sonnet-20250219"
+	Claude4Sonnet  = "claude-sonnet-4-20250514"
+	Claude4Opus    = "claude-opus-4-20250514"
 )
 
 // Service provides Claude completions.
@@ -239,6 +241,7 @@ var (
 		"max_tokens":    llm.StopReasonMaxTokens,
 		"end_turn":      llm.StopReasonEndTurn,
 		"tool_use":      llm.StopReasonToolUse,
+		"refusal":       llm.StopReasonRefusal,
 	}
 )
 
@@ -553,6 +556,18 @@ var modelCost = map[string]centsPer1MTokens{
 		Output:        1500, // $15
 		CacheRead:     30,   // $0.30
 		CacheCreation: 375,  // $3.75
+	},
+	Claude4Sonnet: {
+		Input:         300,  // $3
+		Output:        1500, // $15
+		CacheRead:     30,   // $0.30
+		CacheCreation: 375,  // $3.75
+	},
+	Claude4Opus: {
+		Input:         1500, // $15
+		Output:        7500, // $75
+		CacheRead:     150,  // $1.50
+		CacheCreation: 1875, // $18.75
 	},
 }
 

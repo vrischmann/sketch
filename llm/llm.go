@@ -169,6 +169,7 @@ const (
 	StopReasonMaxTokens
 	StopReasonEndTurn
 	StopReasonToolUse
+	StopReasonRefusal
 )
 
 type Response struct {
