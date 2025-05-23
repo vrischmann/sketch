@@ -462,6 +462,10 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 		resp, err := httpc.Do(req)
 		if err != nil {
+			// Don't retry httprr cache misses
+			if strings.Contains(err.Error(), "cached HTTP response not found") {
+				return nil, err
+			}
 			errs = errors.Join(errs, err)
 			continue
 		}
