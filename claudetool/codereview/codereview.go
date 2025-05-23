@@ -181,7 +181,7 @@ func (r *CodeReviewer) RequireNoUncommittedChanges(ctx context.Context) error {
 		}
 	}
 	if uncommitted.Len() > 0 {
-		return fmt.Errorf("uncommitted changes in repo, please commit or revert:\n%s", uncommitted.String())
+		return fmt.Errorf("uncommitted changes in repo, please commit relevant changes and revert/delete others:\n%s", uncommitted.String())
 	}
 	return nil
 }
