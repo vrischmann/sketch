@@ -133,6 +133,16 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-about-sketch>`;
+      case "todo_write":
+        return html`<sketch-tool-card-todo-write
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-todo-write>`;
+      case "todo_read":
+        return html`<sketch-tool-card-todo-read
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-todo-read>`;
     }
     return html`<sketch-tool-card-generic
       .open=${open}

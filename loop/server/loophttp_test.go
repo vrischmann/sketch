@@ -28,6 +28,7 @@ type mockAgent struct {
 	title                    string
 	branchName               string
 	workingDir               string
+	sessionID                string
 }
 
 func (m *mockAgent) NewIterator(ctx context.Context, nextMessageIdx int) loop.MessageIterator {
@@ -229,7 +230,8 @@ func (m *mockAgent) WorkingDir() string                          { return m.work
 func (m *mockAgent) RepoRoot() string                            { return m.workingDir }
 func (m *mockAgent) Diff(commit *string) (string, error)         { return "", nil }
 func (m *mockAgent) OS() string                                  { return "linux" }
-func (m *mockAgent) SessionID() string                           { return "test-session" }
+func (m *mockAgent) SessionID() string                           { return m.sessionID }
+func (m *mockAgent) CurrentTodoContent() string                  { return "" } // Mock returns empty for simplicity
 func (m *mockAgent) OutstandingLLMCallCount() int                { return 0 }
 func (m *mockAgent) OutstandingToolCalls() []string              { return nil }
 func (m *mockAgent) OutsideOS() string                           { return "linux" }

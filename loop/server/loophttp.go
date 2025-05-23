@@ -55,6 +55,18 @@ type TerminalResponse struct {
 	SessionID string `json:"sessionId"`
 }
 
+// TodoItem represents a single todo item for task management
+type TodoItem struct {
+	ID     string `json:"id"`
+	Task   string `json:"task"`
+	Status string `json:"status"` // queued, in-progress, completed
+}
+
+// TodoList represents a collection of todo items
+type TodoList struct {
+	Items []TodoItem `json:"items"`
+}
+
 type State struct {
 	// null or 1: "old"
 	// 2: supports SSE for message updates
@@ -82,6 +94,7 @@ type State struct {
 	InsideOS             string                        `json:"inside_os,omitempty"`
 	OutsideWorkingDir    string                        `json:"outside_working_dir,omitempty"`
 	InsideWorkingDir     string                        `json:"inside_working_dir,omitempty"`
+	TodoContent          string                        `json:"todo_content,omitempty"` // Contains todo list JSON data
 }
 
 type InitRequest struct {
@@ -1197,6 +1210,7 @@ func (s *Server) getState() State {
 		InContainer:          s.agent.IsInContainer(),
 		FirstMessageIndex:    s.agent.FirstMessageIndex(),
 		AgentState:           s.agent.CurrentStateName(),
+		TodoContent:          s.agent.CurrentTodoContent(),
 	}
 }
 

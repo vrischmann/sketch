@@ -31,6 +31,11 @@ var (
 	toolUseTemplTxt = `{{if .msg.ToolError}}〰️ {{end -}}
 {{if eq .msg.ToolName "think" -}}
  🧠 {{.input.thoughts -}}
+{{else if eq .msg.ToolName "todo_read" -}}
+ 📋 Reading todo list
+{{else if eq .msg.ToolName "todo_write" }}
+{{range .input.tasks}}{{if eq .status "queued"}}⚪{{else if eq .status "in-progress"}}🦉{{else if eq .status "completed"}}✅{{end}} {{.task}}
+{{end}}
 {{else if eq .msg.ToolName "keyword_search" -}}
  🔍 {{ .input.query}}: {{.input.search_terms -}}
 {{else if eq .msg.ToolName "bash" -}}

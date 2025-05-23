@@ -57,6 +57,8 @@ func TS() *go2ts.Go2TS {
 		loop.ToolCall{},
 		llm.Usage{},
 		server.State{},
+		server.TodoItem{},
+		server.TodoList{},
 		loop.MultipleChoiceOption{},
 		loop.MultipleChoiceParams{},
 		git_tools.DiffFile{},

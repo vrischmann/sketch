@@ -46,6 +46,7 @@ export interface AgentMessage {
 	elapsed?: Duration | null;
 	turnDuration?: Duration | null;
 	hide_output?: boolean;
+	todo_content?: string | null;
 	idx: number;
 }
 
@@ -85,6 +86,17 @@ export interface State {
 	inside_os?: string;
 	outside_working_dir?: string;
 	inside_working_dir?: string;
+	todo_content?: string;
+}
+
+export interface TodoItem {
+	id: string;
+	task: string;
+	status: string;
+}
+
+export interface TodoList {
+	items: TodoItem[] | null;
 }
 
 export interface MultipleChoiceOption {

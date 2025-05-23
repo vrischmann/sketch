@@ -126,6 +126,8 @@ type CodingAgent interface {
 	FirstMessageIndex() int
 
 	CurrentStateName() string
+	// CurrentTodoContent returns the current todo list data as JSON, or empty string if no todos exist
+	CurrentTodoContent() string
 }
 
 type CodingAgentMessageType string
@@ -179,6 +181,9 @@ type AgentMessage struct {
 	// HideOutput indicates that this message should not be rendered in the UI.
 	// This is useful for subconversations that generate output that shouldn't be shown to the user.
 	HideOutput bool `json:"hide_output,omitempty"`
+
+	// TodoContent contains the agent's todo file content when it has changed
+	TodoContent *string `json:"todo_content,omitempty"`
 
 	Idx int `json:"idx"`
 }
@@ -455,6 +460,17 @@ func (a *Agent) CurrentStateName() string {
 		return ""
 	}
 	return a.stateMachine.CurrentState().String()
+}
+
+// CurrentTodoContent returns the current todo list data as JSON.
+// It returns an empty string if no todos exist.
+func (a *Agent) CurrentTodoContent() string {
+	todoPath := claudetool.TodoFilePath(a.config.SessionID)
+	content, err := os.ReadFile(todoPath)
+	if err != nil {
+		return ""
+	}
+	return string(content)
 }
 
 func (a *Agent) URL() string { return a.url }
@@ -988,7 +1004,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword,
-		claudetool.Think, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
+		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
 
@@ -1395,8 +1411,9 @@ func (a *Agent) handleToolExecution(ctx context.Context, resp *llm.Response) (bo
 		// Transition to running tool state
 		a.stateMachine.Transition(ctx, StateRunningTool, "Executing requested tool")
 
-		// Add working directory to context for tool execution
+		// Add working directory and session ID to context for tool execution
 		ctx = claudetool.WithWorkingDir(ctx, a.workingDir)
+		ctx = claudetool.WithSessionID(ctx, a.config.SessionID)
 
 		// Execute the tools
 		var err error

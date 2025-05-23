@@ -742,6 +742,67 @@ export class SketchToolCardMultipleChoice extends LitElement {
   }
 }
 
+@customElement("sketch-tool-card-todo-write")
+export class SketchToolCardTodoWrite extends LitElement {
+  @property() toolCall: ToolCall;
+  @property() open: boolean;
+
+  static styles = css`
+    .summary-text {
+      font-style: italic;
+      color: #666;
+    }
+  `;
+
+  render() {
+    const inputData = JSON.parse(this.toolCall?.input || "{}");
+    const tasks = inputData.tasks || [];
+    
+    // Generate circles based on task status
+    const circles = tasks.map(task => {
+      switch(task.status) {
+        case 'completed': return '●'; // full circle
+        case 'in-progress': return '◐'; // half circle
+        case 'queued': 
+        default: return '○'; // empty circle
+      }
+    }).join(' ');
+    
+    return html`<sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
+      <span slot="summary" class="summary-text">
+        ${circles}
+      </span>
+      <div slot="result">
+        <pre>${this.toolCall?.result_message?.tool_result}</pre>
+      </div>
+    </sketch-tool-card>`;
+  }
+}
+
+@customElement("sketch-tool-card-todo-read")
+export class SketchToolCardTodoRead extends LitElement {
+  @property() toolCall: ToolCall;
+  @property() open: boolean;
+
+  static styles = css`
+    .summary-text {
+      font-style: italic;
+      color: #666;
+    }
+  `;
+
+  render() {
+    return html`<sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
+      <span slot="summary" class="summary-text">
+        Read todo list
+      </span>
+      <div slot="result">
+        <pre>${this.toolCall?.result_message?.tool_result}</pre>
+      </div>
+    </sketch-tool-card>`;
+  }
+}
+
 @customElement("sketch-tool-card-generic")
 export class SketchToolCardGeneric extends LitElement {
   @property() toolCall: ToolCall;
@@ -790,6 +851,8 @@ declare global {
     "sketch-tool-card-title": SketchToolCardTitle;
     "sketch-tool-card-precommit": SketchToolCardPrecommit;
     "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
+    "sketch-tool-card-todo-write": SketchToolCardTodoWrite;
+    "sketch-tool-card-todo-read": SketchToolCardTodoRead;
     // TODO: We haven't implemented this for browser tools.
   }
 }

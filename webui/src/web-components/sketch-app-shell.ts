@@ -17,6 +17,7 @@ import "./sketch-call-status";
 import "./sketch-terminal";
 import "./sketch-timeline";
 import "./sketch-view-mode-select";
+import "./sketch-todo-panel";
 
 import { createRef, ref } from "lit/directives/ref.js";
 import { SketchChatInput } from "./sketch-chat-input";
@@ -139,6 +140,15 @@ export class SketchAppShell extends LitElement {
       height: 100%; /* Ensure it takes full height of parent */
     }
 
+    /* Adjust view container when todo panel is visible in chat mode */
+    #view-container-inner.with-todo-panel {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
     #chat-input {
       align-self: flex-end;
       width: 100%;
@@ -195,6 +205,87 @@ export class SketchAppShell extends LitElement {
       display: flex;
       flex-direction: column;
       width: 100%;
+      height: 100%;
+    }
+
+    /* Chat timeline container - takes full width, memory panel will be positioned separately */
+    .chat-timeline-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      margin-right: 0; /* Default - no memory panel */
+      transition: margin-right 0.2s ease; /* Smooth transition */
+    }
+
+    /* Adjust chat timeline container when todo panel is visible */
+    .chat-timeline-container.with-todo-panel {
+      margin-right: 400px; /* Make space for fixed todo panel */
+      width: calc(100% - 400px); /* Explicitly set width to prevent overlap */
+    }
+
+    /* Todo panel container - fixed to right side */
+    .todo-panel-container {
+      position: fixed;
+      top: 48px; /* Below top banner */
+      right: 15px; /* Leave space for scroll bar */
+      width: 400px;
+      bottom: var(
+        --chat-input-height,
+        90px
+      ); /* Dynamic height based on chat input size */
+      background-color: #fafafa;
+      border-left: 1px solid #e0e0e0;
+      z-index: 100;
+      display: none; /* Hidden by default */
+      transition: bottom 0.2s ease; /* Smooth transition when height changes */
+      /* Add fuzzy gradient at bottom to blend with text entry */
+      background: linear-gradient(
+        to bottom,
+        #fafafa 0%,
+        #fafafa 90%,
+        rgba(250, 250, 250, 0.5) 95%,
+        rgba(250, 250, 250, 0.2) 100%
+      );
+    }
+
+    .todo-panel-container.visible {
+      display: block;
+    }
+
+    /* Responsive adjustments for todo panel */
+    @media (max-width: 1200px) {
+      .todo-panel-container {
+        width: 350px;
+        /* bottom is still controlled by --chat-input-height CSS variable */
+      }
+      .chat-timeline-container.with-todo-panel {
+        margin-right: 350px;
+        width: calc(100% - 350px);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .todo-panel-container {
+        width: 300px;
+        /* bottom is still controlled by --chat-input-height CSS variable */
+      }
+      .chat-timeline-container.with-todo-panel {
+        margin-right: 300px;
+        width: calc(100% - 300px);
+      }
+    }
+
+    /* On very small screens, hide todo panel or make it overlay */
+    @media (max-width: 768px) {
+      .todo-panel-container.visible {
+        display: none; /* Hide on mobile */
+      }
+      .chat-timeline-container.with-todo-panel {
+        margin-right: 0;
+        width: 100%;
+      }
     }
 
     /* Monaco diff2 view needs to take all available space */
@@ -345,6 +436,13 @@ export class SketchAppShell extends LitElement {
   @state()
   private _windowFocused: boolean = document.hasFocus();
 
+  // Track if the todo panel should be visible
+  @state()
+  private _todoPanelVisible: boolean = false;
+
+  // ResizeObserver for tracking chat input height changes
+  private chatInputResizeObserver: ResizeObserver | null = null;
+
   @property()
   connectionErrorMessage: string = "";
 
@@ -476,6 +574,12 @@ export class SketchAppShell extends LitElement {
         }
       }, 100);
     }
+
+    // Check if todo panel should be visible on initial load
+    this.checkTodoPanelVisibility();
+
+    // Set up ResizeObserver for chat input to update todo panel height
+    this.setupChatInputObserver();
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -507,6 +611,12 @@ export class SketchAppShell extends LitElement {
     if (this.mutationObserver) {
       this.mutationObserver.disconnect();
       this.mutationObserver = null;
+    }
+
+    // Disconnect chat input resize observer if it exists
+    if (this.chatInputResizeObserver) {
+      this.chatInputResizeObserver.disconnect();
+      this.chatInputResizeObserver = null;
     }
   }
 
@@ -787,6 +897,48 @@ export class SketchAppShell extends LitElement {
     }
   }
 
+  // Check if todo panel should be visible based on latest todo content from messages or state
+  private checkTodoPanelVisibility(): void {
+    // Find the latest todo content from messages first
+    let latestTodoContent = "";
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      const message = this.messages[i];
+      if (message.todo_content !== undefined) {
+        latestTodoContent = message.todo_content || "";
+        break;
+      }
+    }
+
+    // If no todo content found in messages, check the current state
+    if (latestTodoContent === "" && this.containerState?.todo_content) {
+      latestTodoContent = this.containerState.todo_content;
+    }
+
+    // Parse the todo data to check if there are any actual todos
+    let hasTodos = false;
+    if (latestTodoContent.trim()) {
+      try {
+        const todoData = JSON.parse(latestTodoContent);
+        hasTodos = todoData.items && todoData.items.length > 0;
+      } catch (error) {
+        // Invalid JSON, treat as no todos
+        hasTodos = false;
+      }
+    }
+
+    this._todoPanelVisible = hasTodos;
+
+    // Update todo panel content if visible
+    if (hasTodos) {
+      const todoPanel = this.shadowRoot?.querySelector(
+        "sketch-todo-panel",
+      ) as any;
+      if (todoPanel && todoPanel.updateTodoContent) {
+        todoPanel.updateTodoContent(latestTodoContent);
+      }
+    }
+  }
+
   private handleDataChanged(eventData: {
     state: State;
     newMessages: AgentMessage[];
@@ -833,6 +985,14 @@ export class SketchAppShell extends LitElement {
           break; // Only show one notification per batch of messages
         }
       }
+    }
+
+    // Check if todo panel should be visible after agent loop iteration
+    this.checkTodoPanelVisibility();
+
+    // Ensure chat input observer is set up when new data comes in
+    if (!this.chatInputResizeObserver) {
+      this.setupChatInputObserver();
     }
   }
 
@@ -973,6 +1133,40 @@ export class SketchAppShell extends LitElement {
 
   private scrollContainerRef = createRef<HTMLElement>();
 
+  /**
+   * Set up ResizeObserver to monitor chat input height changes
+   */
+  private setupChatInputObserver(): void {
+    // Wait for DOM to be ready
+    this.updateComplete.then(() => {
+      const chatInputElement = this.shadowRoot?.querySelector("#chat-input");
+      if (chatInputElement && !this.chatInputResizeObserver) {
+        this.chatInputResizeObserver = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            this.updateTodoPanelHeight(entry.contentRect.height);
+          }
+        });
+
+        this.chatInputResizeObserver.observe(chatInputElement);
+
+        // Initial height calculation
+        const rect = chatInputElement.getBoundingClientRect();
+        this.updateTodoPanelHeight(rect.height);
+      }
+    });
+  }
+
+  /**
+   * Update the CSS custom property that controls todo panel bottom position
+   */
+  private updateTodoPanelHeight(chatInputHeight: number): void {
+    // Add some padding (20px) between todo panel and chat input
+    const bottomOffset = chatInputHeight;
+
+    // Update the CSS custom property on the host element
+    this.style.setProperty("--chat-input-height", `${bottomOffset}px`);
+  }
+
   render() {
     return html`
       <div id="top-banner">
@@ -1081,17 +1275,41 @@ export class SketchAppShell extends LitElement {
       </div>
 
       <div id="view-container" ${ref(this.scrollContainerRef)}>
-        <div id="view-container-inner">
+        <div
+          id="view-container-inner"
+          class="${this._todoPanelVisible && this.viewMode === "chat"
+            ? "with-todo-panel"
+            : ""}"
+        >
           <div
             class="chat-view ${this.viewMode === "chat" ? "view-active" : ""}"
           >
-            <sketch-timeline
-              .messages=${this.messages}
-              .scrollContainer=${this.scrollContainerRef}
-              .agentState=${this.containerState?.agent_state}
-              .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
-              .toolCalls=${this.containerState?.outstanding_tool_calls || []}
-            ></sketch-timeline>
+            <div
+              class="chat-timeline-container ${this._todoPanelVisible &&
+              this.viewMode === "chat"
+                ? "with-todo-panel"
+                : ""}"
+            >
+              <sketch-timeline
+                .messages=${this.messages}
+                .scrollContainer=${this.scrollContainerRef}
+                .agentState=${this.containerState?.agent_state}
+                .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
+                .toolCalls=${this.containerState?.outstanding_tool_calls || []}
+              ></sketch-timeline>
+            </div>
+          </div>
+
+          <!-- Todo panel positioned outside the main flow - only visible in chat view -->
+          <div
+            class="todo-panel-container ${this._todoPanelVisible &&
+            this.viewMode === "chat"
+              ? "visible"
+              : ""}"
+          >
+            <sketch-todo-panel
+              .visible=${this._todoPanelVisible && this.viewMode === "chat"}
+            ></sketch-todo-panel>
           </div>
           <div
             class="diff-view ${this.viewMode === "diff" ? "view-active" : ""}"
@@ -1175,6 +1393,9 @@ export class SketchAppShell extends LitElement {
         this.containerStatusElement.updateLastCommitInfo(this.messages);
       }
     }
+
+    // Set up chat input height observer for todo panel
+    this.setupChatInputObserver();
   }
 }
 

@@ -74,9 +74,9 @@ export class SketchTimeline extends LitElement {
     }
     #jump-to-latest {
       display: none;
-      position: fixed;
-      bottom: 100px;
-      right: 0;
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
       background: rgb(33, 150, 243);
       color: white;
       border-radius: 8px;
@@ -85,6 +85,7 @@ export class SketchTimeline extends LitElement {
       font-size: x-large;
       opacity: 0.5;
       cursor: pointer;
+      z-index: 50;
     }
     #jump-to-latest:hover {
       opacity: 1;
@@ -292,29 +293,31 @@ export class SketchTimeline extends LitElement {
     // Check if messages array is empty and render welcome box if it is
     if (this.messages.length === 0) {
       return html`
-        <div id="scroll-container">
-          <div class="welcome-box">
-            <h2 class="welcome-box-title">How to use Sketch</h2>
-            <p class="welcome-box-content">
-              Sketch is an agentic coding assistant.
-            </p>
+        <div style="position: relative; height: 100%;">
+          <div id="scroll-container">
+            <div class="welcome-box">
+              <h2 class="welcome-box-title">How to use Sketch</h2>
+              <p class="welcome-box-content">
+                Sketch is an agentic coding assistant.
+              </p>
 
-            <p class="welcome-box-content">
-              Sketch has created a container with your repo.
-            </p>
+              <p class="welcome-box-content">
+                Sketch has created a container with your repo.
+              </p>
 
-            <p class="welcome-box-content">
-              Ask it to implement a task or answer a question in the chat box
-              below. It can edit and run your code, all in the container. Sketch
-              will create commits in a newly created git branch, which you can
-              look at and comment on in the Diff tab. Once you're done, you'll
-              find that branch available in your (original) repo.
-            </p>
-            <p class="welcome-box-content">
-              Because Sketch operates a container per session, you can run
-              Sketch in parallel to work on multiple ideas or even the same idea
-              with different approaches.
-            </p>
+              <p class="welcome-box-content">
+                Ask it to implement a task or answer a question in the chat box
+                below. It can edit and run your code, all in the container. Sketch
+                will create commits in a newly created git branch, which you can
+                look at and comment on in the Diff tab. Once you're done, you'll
+                find that branch available in your (original) repo.
+              </p>
+              <p class="welcome-box-content">
+                Because Sketch operates a container per session, you can run
+                Sketch in parallel to work on multiple ideas or even the same idea
+                with different approaches.
+              </p>
+            </div>
           </div>
         </div>
       `;
@@ -325,56 +328,58 @@ export class SketchTimeline extends LitElement {
       this.llmCalls > 0 || (this.toolCalls && this.toolCalls.length > 0);
 
     return html`
-      <div id="scroll-container">
-        <div class="timeline-container">
-          ${repeat(
-            this.messages.filter((msg) => !msg.hide_output),
-            this.messageKey,
-            (message, index) => {
-              let previousMessageIndex =
-                this.messages.findIndex((m) => m === message) - 1;
-              let previousMessage =
-                previousMessageIndex >= 0
-                  ? this.messages[previousMessageIndex]
-                  : undefined;
-
-              // Skip hidden messages when determining previous message
-              while (previousMessage && previousMessage.hide_output) {
-                previousMessageIndex--;
-                previousMessage =
+      <div style="position: relative; height: 100%;">
+        <div id="scroll-container">
+          <div class="timeline-container">
+            ${repeat(
+              this.messages.filter((msg) => !msg.hide_output),
+              this.messageKey,
+              (message, index) => {
+                let previousMessageIndex =
+                  this.messages.findIndex((m) => m === message) - 1;
+                let previousMessage =
                   previousMessageIndex >= 0
                     ? this.messages[previousMessageIndex]
                     : undefined;
-              }
 
-              return html`<sketch-timeline-message
-                .message=${message}
-                .previousMessage=${previousMessage}
-                .open=${false}
-              ></sketch-timeline-message>`;
-            },
-          )}
-          ${isThinking
-            ? html`
-                <div class="thinking-indicator">
-                  <div class="thinking-bubble">
-                    <div class="thinking-dots">
-                      <div class="dot"></div>
-                      <div class="dot"></div>
-                      <div class="dot"></div>
+                // Skip hidden messages when determining previous message
+                while (previousMessage && previousMessage.hide_output) {
+                  previousMessageIndex--;
+                  previousMessage =
+                    previousMessageIndex >= 0
+                      ? this.messages[previousMessageIndex]
+                      : undefined;
+                }
+
+                return html`<sketch-timeline-message
+                  .message=${message}
+                  .previousMessage=${previousMessage}
+                  .open=${false}
+                ></sketch-timeline-message>`;
+              },
+            )}
+            ${isThinking
+              ? html`
+                  <div class="thinking-indicator">
+                    <div class="thinking-bubble">
+                      <div class="thinking-dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              `
-            : ""}
+                `
+              : ""}
+          </div>
         </div>
-      </div>
-      <div
-        id="jump-to-latest"
-        class="${this.scrollingState}"
-        @click=${this.scrollToBottom}
-      >
-        ⇩
+        <div
+          id="jump-to-latest"
+          class="${this.scrollingState}"
+          @click=${this.scrollToBottom}
+        >
+          ⇩
+        </div>
       </div>
     `;
   }
