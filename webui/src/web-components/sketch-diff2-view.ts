@@ -493,6 +493,15 @@ export class SketchDiff2View extends LitElement {
               `Could not get working copy for deleted file ${file.path}, using empty content`,
             );
             this.modifiedCode = "";
+          } else if (file.status === "A" && file.new_hash) {
+            // For added files that don't exist in working directory,
+            // fall back to the committed content
+            console.warn(
+              `Could not get working copy for added file ${file.path}, using committed content`,
+            );
+            this.modifiedCode = await this.gitService.getFileContent(
+              file.new_hash,
+            );
           } else {
             // For any other file status, propagate the error
             console.error(
