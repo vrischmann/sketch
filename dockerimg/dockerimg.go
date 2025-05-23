@@ -1065,7 +1065,7 @@ func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (str
 		"-v", gitRoot + ":/app",
 		"-w", "/app",
 		imgName,
-		"sh", "-c", "cd /app && mkdir -p /tmp/sketch-out && go build -race -o /tmp/sketch-out/sketch sketch.dev/cmd/sketch",
+		"sh", "-c", "cd /app && mkdir -p /tmp/sketch-out && go build -buildvcs=false -race -o /tmp/sketch-out/sketch sketch.dev/cmd/sketch",
 	}
 
 	out, err := combinedOutput(ctx, "docker", runArgs...)
