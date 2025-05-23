@@ -109,6 +109,10 @@ func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 		keep = append(keep, term)
 	}
 
+	if len(keep) == 0 {
+		return llm.TextContent("each of those search terms yielded too many results"), nil
+	}
+
 	// peel off keywords until we get a result that fits in the query window
 	var out string
 	for {
