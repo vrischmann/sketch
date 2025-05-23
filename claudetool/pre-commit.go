@@ -26,7 +26,9 @@ func CommitMessageStyleHint(ctx context.Context, repoRoot string) (string, error
 		fmt.Fprintf(buf, "<commit_message_style_analysis>%s</commit_message_style_analysis>\n\n", analysis)
 	}
 
-	cmd := exec.Command("git", "show", "-s", "--format='<commit_message_style_example>%n%B</commit_message_style_example>'", strings.Join(commitSHAs, " "))
+	args := []string{"show", "-s", "--format='<commit_message_style_example>%n%B</commit_message_style_example>'"}
+	args = append(args, commitSHAs...)
+	cmd := exec.Command("git", args...)
 	cmd.Dir = repoRoot
 	out, err := cmd.CombinedOutput()
 	if err == nil {
