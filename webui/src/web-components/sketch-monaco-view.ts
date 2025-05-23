@@ -441,7 +441,7 @@ export class CodeDiffEditor extends LitElement {
                   Cancel
                 </button>
                 <button class="submit-button" @click="${this.submitComment}">
-                  Submit
+                  Add
                 </button>
               </div>
             </div>
