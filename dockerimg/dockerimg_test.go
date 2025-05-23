@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -223,5 +224,37 @@ To do so:
 		} else {
 			t.Fatalf("checkTagExists: %v", err)
 		}
+	}
+}
+
+func TestGetHostGoCacheDirs(t *testing.T) {
+	ctx := context.Background()
+
+	// Test getHostGoCacheDir
+	goCacheDir, err := getHostGoCacheDir(ctx)
+	if err != nil {
+		t.Fatalf("getHostGoCacheDir failed: %v", err)
+	}
+	if goCacheDir == "" {
+		t.Fatal("getHostGoCacheDir returned empty string")
+	}
+	t.Logf("GOCACHE: %s", goCacheDir)
+
+	// Test getHostGoModCacheDir
+	goModCacheDir, err := getHostGoModCacheDir(ctx)
+	if err != nil {
+		t.Fatalf("getHostGoModCacheDir failed: %v", err)
+	}
+	if goModCacheDir == "" {
+		t.Fatal("getHostGoModCacheDir returned empty string")
+	}
+	t.Logf("GOMODCACHE: %s", goModCacheDir)
+
+	// Both should be absolute paths
+	if !filepath.IsAbs(goCacheDir) {
+		t.Errorf("GOCACHE is not an absolute path: %s", goCacheDir)
+	}
+	if !filepath.IsAbs(goModCacheDir) {
+		t.Errorf("GOMODCACHE is not an absolute path: %s", goModCacheDir)
 	}
 }

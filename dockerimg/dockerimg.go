@@ -1023,9 +1023,7 @@ func parseDockerArgs(args string) []string {
 
 // buildLinuxSketchBinWithDocker builds the Linux sketch binary using Docker when race detector is enabled.
 // This avoids cross-compilation issues with CGO which is required for the race detector.
-//
-// TODO: We should maybe mount a volume into /root/go so that we can cache the go.mod download
-// and so forth...
+// Mounts host Go module cache and build cache for faster subsequent builds.
 func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (string, error) {
 	// Find the git repo root
 	currentDir, err := os.Getwd()
@@ -1038,7 +1036,17 @@ func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (str
 		return "", fmt.Errorf("could not find git root, cannot build with race detector outside a git repo: %w", err)
 	}
 
-	slog.DebugContext(ctx, "building Linux sketch binary with race detector using Docker", "git_root", gitRoot)
+	// Get host Go cache directories to mount for faster builds
+	goCacheDir, err := getHostGoCacheDir(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get host GOCACHE: %w", err)
+	}
+	goModCacheDir, err := getHostGoModCacheDir(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get host GOMODCACHE: %w", err)
+	}
+
+	slog.DebugContext(ctx, "building Linux sketch binary with race detector using Docker", "git_root", gitRoot, "gocache", goCacheDir, "gomodcache", goModCacheDir)
 
 	// Use the published Docker image tag
 	imageTag := dockerfileBaseHash()
@@ -1054,7 +1062,7 @@ func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (str
 	// Create a unique container name
 	containerID := fmt.Sprintf("sketch-race-build-%d", time.Now().UnixNano())
 
-	// Run a container with the repo mounted
+	// Run a container with the repo mounted and Go caches for faster builds
 	start := time.Now()
 	slog.DebugContext(ctx, "running Docker container to build sketch with race detector")
 
@@ -1063,6 +1071,8 @@ func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (str
 		"run",
 		"--name", containerID,
 		"-v", gitRoot + ":/app",
+		"-v", goCacheDir + ":/root/.cache/go-build",
+		"-v", goModCacheDir + ":/go/pkg/mod",
 		"-w", "/app",
 		imgName,
 		"sh", "-c", "cd /app && mkdir -p /tmp/sketch-out && go build -buildvcs=false -race -o /tmp/sketch-out/sketch sketch.dev/cmd/sketch",
@@ -1096,4 +1106,22 @@ func buildLinuxSketchBinWithDocker(ctx context.Context, linuxGopath string) (str
 	}
 
 	return destFile, nil
+}
+
+// getHostGoCacheDir returns the host's GOCACHE directory
+func getHostGoCacheDir(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "go", "env", "GOCACHE").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get GOCACHE: %s: %w", out, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// getHostGoModCacheDir returns the host's GOMODCACHE directory
+func getHostGoModCacheDir(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "go", "env", "GOMODCACHE").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get GOMODCACHE: %s: %w", out, err)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
