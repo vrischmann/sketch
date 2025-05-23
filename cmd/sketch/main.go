@@ -284,6 +284,16 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		// When not using skaband, get API key from environment or flag
+		envName := "ANTHROPIC_API_KEY"
+		if flags.modelName == "gemini" {
+			envName = gem.GeminiAPIKeyEnv
+		}
+		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)
+		if apiKey == "" {
+			return fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
+		}
 	}
 
 	// Get current working directory
