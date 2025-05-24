@@ -17,10 +17,8 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-RUN npm install -g corepack && corepack enable || true
-
-# Install Go dependencies if go.mod exists
-RUN if [ -f go.mod ]; then go mod tidy; fi
+RUN npm install -g corepack || true
+RUN corepack enable || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

@@ -17,12 +17,7 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-RUN if [ -f requirements.txt ]; then pip3 install -r requirements.txt || true; fi
 
-RUN if [ -f package.json ]; then npm install || true; fi
-
-# Install any project-specific linters and tools
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

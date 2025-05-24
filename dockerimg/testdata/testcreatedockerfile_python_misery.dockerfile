@@ -17,15 +17,9 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-RUN apt-get update && apt-get install -y python3.11 python3.11-venv python3-pip || true
-
-# Install DVC (Data Version Control)
-RUN pip3 install dvc || true
-
-# Set up Python 3.11 as the default Python version if available
-RUN if command -v python3.11 &> /dev/null; then \
-      update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1; \
-    fi || true
+RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3.11-venv python3.11-dev python3-pip || true
+RUN python3.11 -m pip install --upgrade pip || true
+RUN python3.11 -m pip install dvc || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

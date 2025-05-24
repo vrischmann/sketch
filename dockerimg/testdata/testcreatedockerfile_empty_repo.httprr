@@ -1,14 +1,14 @@
 httprr trace v1
-3831 2022
+3829 1654
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
-Content-Length: 3634
+Content-Length: 3632
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 
 {
- "model": "claude-3-7-sonnet-20250219",
+ "model": "claude-sonnet-4-20250514",
  "messages": [
   {
    "role": "user",
@@ -49,25 +49,25 @@ Content-Type: application/json
 }HTTP/2.0 200 OK
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
-Anthropic-Ratelimit-Input-Tokens-Remaining: 191000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-20T02:20:41Z
+Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-24T19:26:34Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-20T02:20:41Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-24T19:26:35Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-20T02:20:35Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-24T19:26:32Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
-Anthropic-Ratelimit-Tokens-Remaining: 271000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-20T02:20:41Z
+Anthropic-Ratelimit-Tokens-Remaining: 280000
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-24T19:26:34Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 94285b132c007ad9-SJC
+Cf-Ray: 944f2f6bfce6cf2e-SJC
 Content-Type: application/json
-Date: Tue, 20 May 2025 02:20:41 GMT
-Request-Id: req_011CPHyy3GAwqsKthn5XDGWq
+Date: Sat, 24 May 2025 19:26:35 GMT
+Request-Id: req_011CPSuSK4eHncWRpcdktYD5
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01CfhEVAodDgD6uP9AG7e7tH","type":"message","role":"assistant","model":"claude-3-7-sonnet-20250219","content":[{"type":"text","text":"I'll help you create a Dockerfile for your Go project by calling the dockerfile tool with appropriate extra commands.\n\nFrom the template you provided, I can see this is primarily a Go project, but may have Python dependencies as well. I'll keep the extra commands minimal while ensuring Python setup commands can continue even if they fail."},{"type":"tool_use","id":"toolu_01MKdb5bTTvguR3fuF63dzc3","name":"dockerfile","input":{"extra_cmds":"RUN if [ -f requirements.txt ]; then pip3 install -r requirements.txt || true; fi\n\nRUN if [ -f package.json ]; then npm install || true; fi\n\n# Install any project-specific linters and tools\nRUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true"}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":1295,"cache_read_input_tokens":0,"output_tokens":206}}
+{"id":"msg_01FLx3RCrgBwRUJPmaVHcqJh","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"I'll call the dockerfile tool to create a Dockerfile for this Go project. Since this appears to be a straightforward Go project and the base template already includes comprehensive tooling, I'll keep the extra commands minimal."},{"type":"tool_use","id":"toolu_016D9ZU3qDRwiYQkx2zCd6Dz","name":"dockerfile","input":{"extra_cmds":""}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":1295,"cache_read_input_tokens":0,"output_tokens":97,"service_tier":"standard"}}
