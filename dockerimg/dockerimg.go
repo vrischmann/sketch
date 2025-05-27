@@ -484,7 +484,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-p", hostPort + ":80", // forward container port 80 to a host port
 		"-e", "SKETCH_MODEL_API_KEY=" + config.ModelAPIKey,
 	}
-	if !config.OneShot {
+	if !(config.OneShot || !config.TermUI) {
 		cmdArgs = append(cmdArgs, "-t")
 	}
 
