@@ -798,8 +798,24 @@ export class CodeDiffEditor extends LitElement {
       };
 
       try {
-        // Get the selected text
-        this.selectedText = model.getValueInRange(e.selection);
+        // Expand selection to full lines for better context
+        const expandedSelection = {
+          startLineNumber: e.selection.startLineNumber,
+          startColumn: 1, // Start at beginning of line
+          endLineNumber: e.selection.endLineNumber,
+          endColumn: model.getLineMaxColumn(e.selection.endLineNumber), // End at end of line
+        };
+
+        // Get the selected text using the expanded selection
+        this.selectedText = model.getValueInRange(expandedSelection);
+        
+        // Update the selection range to reflect the full lines
+        this.selectionRange = {
+          startLineNumber: expandedSelection.startLineNumber,
+          startColumn: expandedSelection.startColumn,
+          endLineNumber: expandedSelection.endLineNumber,
+          endColumn: expandedSelection.endColumn,
+        };
       } catch (error) {
         console.error("Error getting selected text:", error);
         return;
