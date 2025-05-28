@@ -63,8 +63,8 @@ func DialAndServeLoop(ctx context.Context, skabandAddr, sessionID, clientPubKey 
 	for {
 		if err := DialAndServe(ctx, skabandAddr, sessionID, clientPubKey, skabandHandler); err != nil {
 			// NOTE: *just* backoff the logging. Backing off dialing
-			// is bad UX. Doing so saves negligble CPU and doing so
-			// without huring UX requires interrupting the backoff with
+			// is bad UX. Doing so saves negligible CPU and doing so
+			// without hurting UX requires interrupting the backoff with
 			// wake-from-sleep and network-up events from the OS,
 			// which are a pain to plumb.
 			if time.Since(lastErrLog) > 1*time.Minute {
