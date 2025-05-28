@@ -161,8 +161,9 @@ export class DefaultGitDataService implements GitDataService {
       const response = await fetch(url);
 
       if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(
-          `Failed to fetch working copy content: ${response.statusText}`,
+          `Failed to fetch working copy content (${response.status}): ${errorText}`,
         );
       }
 
