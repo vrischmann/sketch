@@ -532,19 +532,28 @@ export class CodeDiffEditor extends LitElement {
     }
   }
 
+  private _extensionToLanguageMap: Map<string, string> | null = null;
+
   private getLanguageForFile(filename: string): string {
-    const extension = filename.split(".").pop()?.toLowerCase() || "";
-    const langMap: Record<string, string> = {
-      js: "javascript",
-      ts: "typescript",
-      py: "python",
-      html: "html",
-      css: "css",
-      json: "json",
-      md: "markdown",
-      go: "go",
-    };
-    return langMap[extension] || "plaintext";
+    // Get the file extension (including the dot for exact matching)
+    const extension = "." + (filename.split(".").pop()?.toLowerCase() || "");
+
+    // Build the extension-to-language map on first use
+    if (!this._extensionToLanguageMap) {
+      this._extensionToLanguageMap = new Map();
+      const languages = monaco.languages.getLanguages();
+
+      for (const language of languages) {
+        if (language.extensions) {
+          for (const ext of language.extensions) {
+            // Monaco extensions already include the dot, so use them directly
+            this._extensionToLanguageMap.set(ext.toLowerCase(), language.id);
+          }
+        }
+      }
+    }
+
+    return this._extensionToLanguageMap.get(extension) || "plaintext";
   }
 
   /**
