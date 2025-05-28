@@ -104,7 +104,10 @@ def main():
     req = urllib.request.Request(
         webhook_url,
         data=json_payload.encode('utf-8'),
-        headers={'Content-Type': 'application/json'}
+        headers={
+            'Content-Type': 'application/json',
+            'User-Agent': 'sketch.dev developers'
+        }
     )
     
     try:
@@ -113,6 +116,8 @@ def main():
                 print("Discord notification sent successfully")
             else:
                 print(f"Discord webhook returned status: {response.status}")
+                response_body = response.read().decode('utf-8')
+                print(f"Response body: {response_body}")
                 sys.exit(1)
     except urllib.error.HTTPError as e:
         print(f"Discord webhook HTTP error: {e.code} - {e.reason}")
