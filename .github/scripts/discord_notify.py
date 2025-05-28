@@ -8,10 +8,6 @@ from datetime import datetime, timezone
 
 def validate_environment():
     """Validate required environment variables."""
-    if os.environ.get('CI') != '1':
-        print("Error: CI environment variable must be set to '1'")
-        sys.exit(1)
-    
     if not os.environ.get('GITHUB_SHA'):
         print("Error: GITHUB_SHA environment variable is required")
         sys.exit(1)
