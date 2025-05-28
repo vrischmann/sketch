@@ -925,8 +925,20 @@ export class CodeDiffEditor extends LitElement {
       const editorLabel =
         this.activeEditor === "original" ? "[Original]" : "[Modified]";
 
+      // Add line number information if available
+      let lineInfo = "";
+      if (this.selectionRange) {
+        const startLine = this.selectionRange.startLineNumber;
+        const endLine = this.selectionRange.endLineNumber;
+        if (startLine === endLine) {
+          lineInfo = ` (line ${startLine})`;
+        } else {
+          lineInfo = ` (lines ${startLine}-${endLine})`;
+        }
+      }
+
       // Format the comment in a readable way
-      const formattedComment = `\`\`\`\n${fileContext} ${editorLabel}:\n${this.selectedText}\n\`\`\`\n\n${this.commentText}`;
+      const formattedComment = `\`\`\`\n${fileContext} ${editorLabel}${lineInfo}:\n${this.selectedText}\n\`\`\`\n\n${this.commentText}`;
 
       // Close UI before dispatching to prevent interaction conflicts
       this.closeCommentBox();
