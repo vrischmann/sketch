@@ -50,6 +50,7 @@ jobs:
           fetch-depth: 0
 
       - name: Push to main
+        id: push
         run: |
           COMMIT_TO_PUSH="HEAD"
           if [[ "${{ needs.formatting.outputs.commit_sha }}" != "" ]]; then
@@ -57,6 +58,22 @@ jobs:
             COMMIT_TO_PUSH="${{ needs.formatting.outputs.commit_sha }}"
           fi
 
+          # Get the actual commit SHA that we're pushing
+          COMMIT_SHA=$(git rev-parse "${COMMIT_TO_PUSH}")
+          echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+
           git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "${COMMIT_TO_PUSH}":main
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Checkout pushed commit for Discord notification
+        if: success()
+        run: |
+          git checkout ${{ steps.push.outputs.commit_sha }}
+
+      - name: Send Discord notification
+        if: success()
+        env:
+          DISCORD_WEBHOOK_FOR_COMMITS: ${{ secrets.DISCORD_WEBHOOK_FOR_COMMITS }}
+          GITHUB_SHA: ${{ steps.push.outputs.commit_sha }}
+        run: python3 .github/scripts/discord_notify.py
