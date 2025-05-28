@@ -1206,8 +1206,8 @@ func (s *Server) handleGitRawDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the git working directory from agent
-	repoDir := s.agent.WorkingDir()
+	// Get the git repository root directory from agent
+	repoDir := s.agent.RepoRoot()
 
 	// Parse query parameters
 	query := r.URL.Query()
@@ -1249,8 +1249,8 @@ func (s *Server) handleGitShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the git working directory from agent
-	repoDir := s.agent.WorkingDir()
+	// Get the git repository root directory from agent
+	repoDir := s.agent.RepoRoot()
 
 	// Parse query parameters
 	hash := r.URL.Query().Get("hash")
@@ -1286,8 +1286,8 @@ func (s *Server) handleGitRecentLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the git working directory and initial commit from agent
-	repoDir := s.agent.WorkingDir()
+	// Get the git repository root directory and initial commit from agent
+	repoDir := s.agent.RepoRoot()
 	initialCommit := s.agent.SketchGitBaseRef()
 
 	// Call the git_tools function
@@ -1311,8 +1311,8 @@ func (s *Server) handleGitCat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the git working directory from agent
-	repoDir := s.agent.WorkingDir()
+	// Get the git repository root directory from agent
+	repoDir := s.agent.RepoRoot()
 
 	// Parse query parameters
 	query := r.URL.Query()
@@ -1345,8 +1345,8 @@ func (s *Server) handleGitSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the git working directory from agent
-	repoDir := s.agent.WorkingDir()
+	// Get the git repository root directory from agent
+	repoDir := s.agent.RepoRoot()
 
 	// Parse request body
 	var requestBody struct {

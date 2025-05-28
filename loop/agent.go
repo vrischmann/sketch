@@ -78,6 +78,7 @@ type CodingAgent interface {
 	OriginalBudget() conversation.Budget
 
 	WorkingDir() string
+	RepoRoot() string
 
 	// Diff returns a unified diff of changes made since the agent was instantiated.
 	// If commit is non-nil, it shows the diff for just that specific commit.
@@ -726,6 +727,11 @@ func (a *Agent) OnResponse(ctx context.Context, convo *conversation.Convo, id st
 // WorkingDir implements CodingAgent.
 func (a *Agent) WorkingDir() string {
 	return a.workingDir
+}
+
+// RepoRoot returns the git repository root directory.
+func (a *Agent) RepoRoot() string {
+	return a.repoRoot
 }
 
 // MessageCount implements CodingAgent.

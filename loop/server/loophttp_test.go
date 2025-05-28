@@ -226,6 +226,7 @@ func (m *mockAgent) CancelToolUse(id string, cause error) error  { return nil }
 func (m *mockAgent) TotalUsage() conversation.CumulativeUsage    { return conversation.CumulativeUsage{} }
 func (m *mockAgent) OriginalBudget() conversation.Budget         { return conversation.Budget{} }
 func (m *mockAgent) WorkingDir() string                          { return m.workingDir }
+func (m *mockAgent) RepoRoot() string                            { return m.workingDir }
 func (m *mockAgent) Diff(commit *string) (string, error)         { return "", nil }
 func (m *mockAgent) OS() string                                  { return "linux" }
 func (m *mockAgent) SessionID() string                           { return "test-session" }
