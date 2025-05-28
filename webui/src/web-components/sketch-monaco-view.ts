@@ -70,7 +70,6 @@ export class CodeDiffEditor extends LitElement {
   editableRight?: boolean;
   private container: Ref<HTMLElement> = createRef();
   editor?: monaco.editor.IStandaloneDiffEditor;
-  @property() language?: string = "javascript";
 
   // Save state properties
   @state() private saveState: "idle" | "modified" | "saving" | "saved" = "idle";
@@ -545,7 +544,7 @@ export class CodeDiffEditor extends LitElement {
       md: "markdown",
       go: "go",
     };
-    return langMap[extension] || this.language || "plaintext";
+    return langMap[extension] || "plaintext";
   }
 
   /**
