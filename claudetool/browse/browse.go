@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,7 +149,19 @@ func errorResponse(err error) string {
 type navigateInput struct {
 	URL     string `json:"url"`
 	Timeout string `json:"timeout,omitempty"`
-} // NewNavigateTool creates a tool for navigating to URLs
+}
+
+// isPort80 reports whether urlStr definitely uses port 80.
+func isPort80(urlStr string) bool {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return false
+	}
+	port := parsedURL.Port()
+	return port == "80" || (port == "" && parsedURL.Scheme == "http")
+}
+
+// NewNavigateTool creates a tool for navigating to URLs
 func (b *BrowseTools) NewNavigateTool() *llm.Tool {
 	return &llm.Tool{
 		Name:        "browser_navigate",
@@ -175,6 +188,10 @@ func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) ([]llm
 	var input navigateInput
 	if err := json.Unmarshal(m, &input); err != nil {
 		return llm.TextContent(errorResponse(fmt.Errorf("invalid input: %w", err))), nil
+	}
+
+	if isPort80(input.URL) {
+		return llm.TextContent(errorResponse(fmt.Errorf("port 80 is not the port you're looking for--it is the main sketch server"))), nil
 	}
 
 	browserCtx, err := b.GetBrowserContext()
