@@ -143,6 +143,11 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-todo-read>`;
+      case "keyword_search":
+        return html`<sketch-tool-card-keyword-search
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-keyword-search>`;
     }
     return html`<sketch-tool-card-generic
       .open=${open}

@@ -757,21 +757,84 @@ export class SketchToolCardTodoWrite extends LitElement {
   render() {
     const inputData = JSON.parse(this.toolCall?.input || "{}");
     const tasks = inputData.tasks || [];
-    
+
     // Generate circles based on task status
-    const circles = tasks.map(task => {
-      switch(task.status) {
-        case 'completed': return '●'; // full circle
-        case 'in-progress': return '◐'; // half circle
-        case 'queued': 
-        default: return '○'; // empty circle
-      }
-    }).join(' ');
-    
+    const circles = tasks
+      .map((task) => {
+        switch (task.status) {
+          case "completed":
+            return "●"; // full circle
+          case "in-progress":
+            return "◐"; // half circle
+          case "queued":
+          default:
+            return "○"; // empty circle
+        }
+      })
+      .join(" ");
+
     return html`<sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-      <span slot="summary" class="summary-text">
-        ${circles}
-      </span>
+      <span slot="summary" class="summary-text"> ${circles} </span>
+      <div slot="result">
+        <pre>${this.toolCall?.result_message?.tool_result}</pre>
+      </div>
+    </sketch-tool-card>`;
+  }
+}
+
+@customElement("sketch-tool-card-keyword-search")
+export class SketchToolCardKeywordSearch extends LitElement {
+  @property() toolCall: ToolCall;
+  @property() open: boolean;
+
+  static styles = css`
+    .summary-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .query-line {
+      color: #333;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: normal;
+      white-space: normal;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      line-height: 1.2;
+    }
+    .keywords-line {
+      color: #666;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: normal;
+      white-space: normal;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      line-height: 1.2;
+      margin-top: 1px;
+    }
+  `;
+
+  render() {
+    const inputData = JSON.parse(this.toolCall?.input || "{}");
+    const query = inputData.query || "";
+    const searchTerms = inputData.search_terms || [];
+
+    return html`<sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
+      <div slot="summary" class="summary-container">
+        <div class="query-line">🔍 ${query}</div>
+        <div class="keywords-line">🗝️ ${searchTerms.join(", ")}</div>
+      </div>
+      <div slot="input">
+        <div><strong>Query:</strong> ${query}</div>
+        <div><strong>Search terms:</strong> ${searchTerms.join(", ")}</div>
+      </div>
       <div slot="result">
         <pre>${this.toolCall?.result_message?.tool_result}</pre>
       </div>
@@ -793,9 +856,7 @@ export class SketchToolCardTodoRead extends LitElement {
 
   render() {
     return html`<sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-      <span slot="summary" class="summary-text">
-        Read todo list
-      </span>
+      <span slot="summary" class="summary-text"> Read todo list </span>
       <div slot="result">
         <pre>${this.toolCall?.result_message?.tool_result}</pre>
       </div>
@@ -853,6 +914,7 @@ declare global {
     "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
     "sketch-tool-card-todo-write": SketchToolCardTodoWrite;
     "sketch-tool-card-todo-read": SketchToolCardTodoRead;
+    "sketch-tool-card-keyword-search": SketchToolCardKeywordSearch;
     // TODO: We haven't implemented this for browser tools.
   }
 }
