@@ -193,10 +193,50 @@ export class SketchTimeline extends LitElement {
    * Scroll to the bottom of the timeline
    */
   private scrollToBottom(): void {
-    this.scrollContainer.value?.scrollTo({
-      top: this.scrollContainer.value?.scrollHeight,
-      behavior: "smooth",
+    if (!this.scrollContainer.value) return;
+    
+    // Use instant scroll to ensure we reach the exact bottom
+    this.scrollContainer.value.scrollTo({
+      top: this.scrollContainer.value.scrollHeight,
+      behavior: "instant",
     });
+  }
+  
+  /**
+   * Scroll to bottom with retry logic to handle dynamic content
+   */
+  private scrollToBottomWithRetry(): void {
+    if (!this.scrollContainer.value) return;
+    
+    let attempts = 0;
+    const maxAttempts = 5;
+    const retryInterval = 50;
+    
+    const tryScroll = () => {
+      if (!this.scrollContainer.value) return;
+      
+      const container = this.scrollContainer.value;
+      const targetScrollTop = container.scrollHeight - container.clientHeight;
+      
+      // Scroll to the calculated position
+      container.scrollTo({
+        top: targetScrollTop,
+        behavior: "instant",
+      });
+      
+      attempts++;
+      
+      // Check if we're actually at the bottom
+      const actualScrollTop = container.scrollTop;
+      const isAtBottom = Math.abs(targetScrollTop - actualScrollTop) <= 1;
+      
+      if (!isAtBottom && attempts < maxAttempts) {
+        // Still not at bottom and we have attempts left, try again
+        setTimeout(tryScroll, retryInterval);
+      }
+    };
+    
+    tryScroll();
   }
 
   /**
@@ -206,7 +246,8 @@ export class SketchTimeline extends LitElement {
     // If messages have changed, scroll to bottom if needed
     if (changedProperties.has("messages") && this.messages.length > 0) {
       if (this.scrollingState == "pinToLatest") {
-        setTimeout(() => this.scrollToBottom(), 50);
+        // Use longer timeout and retry logic to handle dynamic content
+        setTimeout(() => this.scrollToBottomWithRetry(), 100);
       }
     }
     if (changedProperties.has("scrollContainer")) {
@@ -234,12 +275,14 @@ export class SketchTimeline extends LitElement {
   }
 
   private _handleScroll(event) {
+    if (!this.scrollContainer.value) return;
+    
+    const container = this.scrollContainer.value;
     const isAtBottom =
       Math.abs(
-        this.scrollContainer.value.scrollHeight -
-          this.scrollContainer.value.clientHeight -
-          this.scrollContainer.value.scrollTop,
-      ) <= 1;
+        container.scrollHeight - container.clientHeight - container.scrollTop
+      ) <= 3; // Increased tolerance to 3px for better detection
+    
     if (isAtBottom) {
       this.scrollingState = "pinToLatest";
     } else {
@@ -376,7 +419,7 @@ export class SketchTimeline extends LitElement {
         <div
           id="jump-to-latest"
           class="${this.scrollingState}"
-          @click=${this.scrollToBottom}
+          @click=${this.scrollToBottomWithRetry}
         >
           ⇩
         </div>
