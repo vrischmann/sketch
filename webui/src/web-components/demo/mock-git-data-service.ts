@@ -40,6 +40,7 @@ export class MockGitDataService implements GitDataService {
   private mockDiffFiles: GitDiffFile[] = [
     {
       path: "src/components/FilePicker.js",
+      old_path: "",
       status: "A",
       new_mode: "100644",
       old_mode: "000000",
@@ -50,6 +51,7 @@ export class MockGitDataService implements GitDataService {
     },
     {
       path: "src/components/RangePicker.js",
+      old_path: "",
       status: "A",
       new_mode: "100644",
       old_mode: "000000",
@@ -60,6 +62,7 @@ export class MockGitDataService implements GitDataService {
     },
     {
       path: "src/components/App.js",
+      old_path: "",
       status: "M",
       new_mode: "100644",
       old_mode: "100644",
@@ -70,6 +73,7 @@ export class MockGitDataService implements GitDataService {
     },
     {
       path: "src/styles/main.css",
+      old_path: "",
       status: "M",
       new_mode: "100644",
       old_mode: "100644",

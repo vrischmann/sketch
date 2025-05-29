@@ -111,6 +111,7 @@ export interface MultipleChoiceParams {
 
 export interface DiffFile {
 	path: string;
+	old_path: string;
 	old_mode: string;
 	new_mode: string;
 	old_hash: string;

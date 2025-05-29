@@ -205,7 +205,8 @@ export class SketchDiffFilePicker extends LitElement {
   formatFileOption(file: GitDiffFile): string {
     const statusSymbol = this.getFileStatusSymbol(file.status);
     const changesInfo = this.getChangesInfo(file);
-    return `${statusSymbol} ${file.path}${changesInfo}`;
+    const pathInfo = this.getPathInfo(file);
+    return `${statusSymbol} ${pathInfo}${changesInfo}`;
   }
 
   /**
@@ -231,6 +232,18 @@ export class SketchDiffFilePicker extends LitElement {
   }
 
   /**
+   * Get path information for display, handling renames and copies
+   */
+  getPathInfo(file: GitDiffFile): string {
+    if (file.old_path && file.old_path !== "") {
+      // For renames and copies, show old_path -> new_path
+      return `${file.old_path} → ${file.path}`;
+    }
+    // For regular files, just show the path
+    return file.path;
+  }
+
+  /**
    * Get a short symbol for the file status
    */
   getFileStatusSymbol(status: string): string {
@@ -244,6 +257,14 @@ export class SketchDiffFilePicker extends LitElement {
       case "R":
         return "R";
       default:
+        // Handle copy statuses like C096, C100, etc.
+        if (status.toUpperCase().startsWith("C")) {
+          return "C";
+        }
+        // Handle rename statuses like R096, R100, etc.
+        if (status.toUpperCase().startsWith("R")) {
+          return "R";
+        }
         return "?";
     }
   }
@@ -262,6 +283,14 @@ export class SketchDiffFilePicker extends LitElement {
       case "R":
         return "Renamed";
       default:
+        // Handle copy statuses like C096, C100, etc.
+        if (status.toUpperCase().startsWith("C")) {
+          return "Copied";
+        }
+        // Handle rename statuses like R096, R100, etc.
+        if (status.toUpperCase().startsWith("R")) {
+          return "Renamed";
+        }
         return "Unknown";
     }
   }

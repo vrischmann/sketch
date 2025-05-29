@@ -14,25 +14,29 @@ import (
 // DiffFile represents a file in a Git diff
 type DiffFile struct {
 	Path      string `json:"path"`
+	OldPath   string `json:"old_path"` // Original path for renames and copies
 	OldMode   string `json:"old_mode"`
 	NewMode   string `json:"new_mode"`
 	OldHash   string `json:"old_hash"`
 	NewHash   string `json:"new_hash"`
-	Status    string `json:"status"`    // A=added, M=modified, D=deleted, etc.
+	Status    string `json:"status"`    // A=added, M=modified, D=deleted, R=renamed, C=copied
 	Additions int    `json:"additions"` // Number of lines added
 	Deletions int    `json:"deletions"` // Number of lines deleted
-} // GitRawDiff returns a structured representation of the Git diff between two commits or references
+}
+
+// GitRawDiff returns a structured representation of the Git diff between two commits or references
 // If 'to' is empty, it will show unstaged changes (diff with working directory)
 func GitRawDiff(repoDir, from, to string) ([]DiffFile, error) {
-	// Git command to generate the diff in raw format with full hashes and numstat
+	// Git command to generate the diff in raw format with full hashes and rename/copy detection
+	// --find-copies-harder enables more aggressive copy detection
 	var rawCmd, numstatCmd *exec.Cmd
 	if to == "" {
 		// If 'to' is empty, show unstaged changes
-		rawCmd = exec.Command("git", "-C", repoDir, "diff", "--raw", "--abbrev=40", from)
+		rawCmd = exec.Command("git", "-C", repoDir, "diff", "--raw", "--abbrev=40", "-M", "-C", "--find-copies-harder", from)
 		numstatCmd = exec.Command("git", "-C", repoDir, "diff", "--numstat", from)
 	} else {
 		// Normal diff between two refs
-		rawCmd = exec.Command("git", "-C", repoDir, "diff", "--raw", "--abbrev=40", from, to)
+		rawCmd = exec.Command("git", "-C", repoDir, "diff", "--raw", "--abbrev=40", "-M", "-C", "--find-copies-harder", from, to)
 		numstatCmd = exec.Command("git", "-C", repoDir, "diff", "--numstat", from, to)
 	}
 
@@ -115,6 +119,7 @@ func parseRawDiffWithNumstat(rawOutput, numstatOutput string) ([]DiffFile, error
 }
 
 // parseRawDiff converts git diff --raw output into structured format
+// Handles both regular changes and rename/copy operations
 func parseRawDiff(diffOutput string) ([]DiffFile, error) {
 	var files []DiffFile
 	if diffOutput == "" {
@@ -127,6 +132,7 @@ func parseRawDiff(diffOutput string) ([]DiffFile, error) {
 		line := scanner.Text()
 		// Format: :oldmode newmode oldhash newhash status\tpath
 		// Example: :000000 100644 0000000000000000000000000000000000000000 6b33680ae6de90edd5f627c84147f7a41aa9d9cf A        git_tools/git_tools.go
+		// For renames: :100644 100644 oldHash newHash R100\told_path\tnew_path
 		if !strings.HasPrefix(line, ":") {
 			continue
 		}
@@ -142,23 +148,57 @@ func parseRawDiff(diffOutput string) ([]DiffFile, error) {
 		newHash := parts[3]
 		status := parts[4]
 
-		// The path is everything after the status character and tab
-		pathIndex := strings.Index(line, status) + len(status) + 1 // +1 for the tab
-		path := ""
-		if pathIndex < len(line) {
-			path = strings.TrimSpace(line[pathIndex:])
+		// Find the tab after the status field
+		tabIndex := strings.Index(line, "\t")
+		if tabIndex == -1 {
+			continue // No tab found, malformed line
 		}
 
-		files = append(files, DiffFile{
-			Path:      path,
-			OldMode:   oldMode,
-			NewMode:   newMode,
-			OldHash:   oldHash,
-			NewHash:   newHash,
-			Status:    status,
-			Additions: 0, // Will be filled by numstat data
-			Deletions: 0, // Will be filled by numstat data
-		})
+		// Extract paths after the tab
+		pathPart := line[tabIndex+1:]
+
+		// Handle rename/copy operations (status starts with R or C)
+		if strings.HasPrefix(status, "R") || strings.HasPrefix(status, "C") {
+			// For renames/copies, the path part contains: old_path\tnew_path
+			pathParts := strings.Split(pathPart, "\t")
+			if len(pathParts) == 2 {
+				// Preserve rename/copy as a single entry with both paths
+				oldPath := pathParts[0]
+				newPath := pathParts[1]
+
+				files = append(files, DiffFile{
+					Path:    newPath, // New path as primary path
+					OldPath: oldPath, // Original path for rename/copy
+					OldMode: oldMode,
+					NewMode: newMode,
+					OldHash: oldHash,
+					NewHash: newHash,
+					Status:  status, // Preserve original R* or C* status
+				})
+			} else {
+				// Malformed rename, treat as regular change
+				files = append(files, DiffFile{
+					Path:    pathPart,
+					OldPath: "",
+					OldMode: oldMode,
+					NewMode: newMode,
+					OldHash: oldHash,
+					NewHash: newHash,
+					Status:  status,
+				})
+			}
+		} else {
+			// Regular change (A, M, D)
+			files = append(files, DiffFile{
+				Path:    pathPart,
+				OldPath: "", // No old path for regular changes
+				OldMode: oldMode,
+				NewMode: newMode,
+				OldHash: oldHash,
+				NewHash: newHash,
+				Status:  status,
+			})
+		}
 	}
 
 	return files, nil
