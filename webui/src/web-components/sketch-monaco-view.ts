@@ -808,7 +808,7 @@ export class CodeDiffEditor extends LitElement {
 
         // Get the selected text using the expanded selection
         this.selectedText = model.getValueInRange(expandedSelection);
-        
+
         // Update the selection range to reflect the full lines
         this.selectionRange = {
           startLineNumber: expandedSelection.startLineNumber,
