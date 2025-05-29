@@ -32,7 +32,9 @@ func CommitMessageStyleHint(ctx context.Context, repoRoot string) (string, error
 	cmd.Dir = repoRoot
 	out, err := cmd.CombinedOutput()
 	if err == nil {
-		fmt.Fprintf(buf, "<commit_message_style_examples>%s</commit_message_style_examples>\n\n", out)
+		// Filter out git trailers from examples
+		cleanedExamples := filterGitTrailers(string(out))
+		fmt.Fprintf(buf, "<commit_message_style_examples>%s</commit_message_style_examples>\n\n", cleanedExamples)
 	} else {
 		slog.DebugContext(ctx, "failed to get commit messages", "shas", commitSHAs, "out", string(out), "err", err)
 	}
@@ -68,7 +70,8 @@ func representativeCommitSHAs(ctx context.Context, repoRoot string) ([]string, s
 - Special notations or tags
 - Capitalization and punctuation
 
-Ignore Change-ID and Co-authored-by lines in your analysis.
+Do NOT mention in any way Change-ID or Co-authored-by git trailer lines in your analysis, not even their existence.
+Those are added automatically by git hooks; they are NOT part of the commit message style.
 
 First, provide a concise analysis of the predominant patterns.
 Then select up to 3 commit hashes that best exemplify the repository's commit style.
@@ -101,6 +104,20 @@ Finally, output these selected commit hashes, one per line, without commentary.
 
 	result = result[:min(len(result), 3)]
 	return result, analysis, nil
+}
+
+// filterGitTrailers removes git trailers (Co-authored-by, Change-ID) from commit message examples
+func filterGitTrailers(input string) string {
+	buf := new(strings.Builder)
+	for line := range strings.Lines(input) {
+		lowerLine := strings.ToLower(line)
+		if strings.HasPrefix(lowerLine, "co-authored-by:") || strings.HasPrefix(lowerLine, "change-id:") {
+			continue
+		}
+		buf.WriteString(line)
+	}
+
+	return buf.String()
 }
 
 // isHexString reports whether a string only contains hexadecimal characters
