@@ -16,7 +16,7 @@ export class SketchToolCardBrowserEval extends LitElement {
       color: #444;
       word-break: break-all;
     }
-    
+
     .expression-input {
       font-family: monospace;
       background: rgba(0, 0, 0, 0.05);
@@ -40,7 +40,8 @@ export class SketchToolCardBrowserEval extends LitElement {
     }
 
     // Truncate expression for summary if too long
-    const displayExpression = expression.length > 50 ? expression.substring(0, 50) + "..." : expression;
+    const displayExpression =
+      expression.length > 50 ? expression.substring(0, 50) + "..." : expression;
 
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
@@ -48,7 +49,9 @@ export class SketchToolCardBrowserEval extends LitElement {
           📱 ${displayExpression}
         </span>
         <div slot="input">
-          <div>Evaluate: <span class="expression-input">${expression}</span></div>
+          <div>
+            Evaluate: <span class="expression-input">${expression}</span>
+          </div>
         </div>
         <div slot="result">
           ${this.toolCall?.result_message?.tool_result

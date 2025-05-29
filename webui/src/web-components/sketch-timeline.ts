@@ -194,48 +194,48 @@ export class SketchTimeline extends LitElement {
    */
   private scrollToBottom(): void {
     if (!this.scrollContainer.value) return;
-    
+
     // Use instant scroll to ensure we reach the exact bottom
     this.scrollContainer.value.scrollTo({
       top: this.scrollContainer.value.scrollHeight,
       behavior: "instant",
     });
   }
-  
+
   /**
    * Scroll to bottom with retry logic to handle dynamic content
    */
   private scrollToBottomWithRetry(): void {
     if (!this.scrollContainer.value) return;
-    
+
     let attempts = 0;
     const maxAttempts = 5;
     const retryInterval = 50;
-    
+
     const tryScroll = () => {
       if (!this.scrollContainer.value) return;
-      
+
       const container = this.scrollContainer.value;
       const targetScrollTop = container.scrollHeight - container.clientHeight;
-      
+
       // Scroll to the calculated position
       container.scrollTo({
         top: targetScrollTop,
         behavior: "instant",
       });
-      
+
       attempts++;
-      
+
       // Check if we're actually at the bottom
       const actualScrollTop = container.scrollTop;
       const isAtBottom = Math.abs(targetScrollTop - actualScrollTop) <= 1;
-      
+
       if (!isAtBottom && attempts < maxAttempts) {
         // Still not at bottom and we have attempts left, try again
         setTimeout(tryScroll, retryInterval);
       }
     };
-    
+
     tryScroll();
   }
 
@@ -276,13 +276,13 @@ export class SketchTimeline extends LitElement {
 
   private _handleScroll(event) {
     if (!this.scrollContainer.value) return;
-    
+
     const container = this.scrollContainer.value;
     const isAtBottom =
       Math.abs(
-        container.scrollHeight - container.clientHeight - container.scrollTop
+        container.scrollHeight - container.clientHeight - container.scrollTop,
       ) <= 3; // Increased tolerance to 3px for better detection
-    
+
     if (isAtBottom) {
       this.scrollingState = "pinToLatest";
     } else {
@@ -350,15 +350,15 @@ export class SketchTimeline extends LitElement {
 
               <p class="welcome-box-content">
                 Ask it to implement a task or answer a question in the chat box
-                below. It can edit and run your code, all in the container. Sketch
-                will create commits in a newly created git branch, which you can
-                look at and comment on in the Diff tab. Once you're done, you'll
-                find that branch available in your (original) repo.
+                below. It can edit and run your code, all in the container.
+                Sketch will create commits in a newly created git branch, which
+                you can look at and comment on in the Diff tab. Once you're
+                done, you'll find that branch available in your (original) repo.
               </p>
               <p class="welcome-box-content">
                 Because Sketch operates a container per session, you can run
-                Sketch in parallel to work on multiple ideas or even the same idea
-                with different approaches.
+                Sketch in parallel to work on multiple ideas or even the same
+                idea with different approaches.
               </p>
             </div>
           </div>

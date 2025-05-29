@@ -16,7 +16,7 @@ export class SketchToolCardBrowserReadImage extends LitElement {
       color: #444;
       word-break: break-all;
     }
-    
+
     .path-input {
       font-family: monospace;
       background: rgba(0, 0, 0, 0.05);
@@ -40,13 +40,11 @@ export class SketchToolCardBrowserReadImage extends LitElement {
     }
 
     // Show just the filename in summary
-    const filename = path.split('/').pop() || path;
+    const filename = path.split("/").pop() || path;
 
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          🖼️ ${filename}
-        </span>
+        <span slot="summary" class="summary-text"> 🖼️ ${filename} </span>
         <div slot="input">
           <div>Read image: <span class="path-input">${path}</span></div>
         </div>

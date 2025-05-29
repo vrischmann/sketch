@@ -21,9 +21,7 @@ export class SketchToolCardBrowserClearConsoleLogs extends LitElement {
   render() {
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          🧹 Clear console logs
-        </span>
+        <span slot="summary" class="summary-text"> 🧹 Clear console logs </span>
         <div slot="input">
           <div>Clear all console logs</div>
         </div>

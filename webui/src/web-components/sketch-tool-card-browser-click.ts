@@ -16,7 +16,7 @@ export class SketchToolCardBrowserClick extends LitElement {
       color: #444;
       word-break: break-all;
     }
-    
+
     .selector-input {
       font-family: monospace;
       background: rgba(0, 0, 0, 0.05);
@@ -41,9 +41,7 @@ export class SketchToolCardBrowserClick extends LitElement {
 
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          🖱️ ${selector}
-        </span>
+        <span slot="summary" class="summary-text"> 🖱️ ${selector} </span>
         <div slot="input">
           <div>Click: <span class="selector-input">${selector}</span></div>
         </div>

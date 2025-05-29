@@ -16,7 +16,7 @@ export class SketchToolCardBrowserType extends LitElement {
       color: #444;
       word-break: break-all;
     }
-    
+
     .selector-input {
       font-family: monospace;
       background: rgba(0, 0, 0, 0.05);
@@ -25,7 +25,7 @@ export class SketchToolCardBrowserType extends LitElement {
       display: inline-block;
       word-break: break-all;
     }
-    
+
     .text-input {
       font-family: monospace;
       background: rgba(0, 100, 0, 0.05);

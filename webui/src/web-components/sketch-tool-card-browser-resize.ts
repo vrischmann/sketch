@@ -16,7 +16,7 @@ export class SketchToolCardBrowserResize extends LitElement {
       color: #444;
       word-break: break-all;
     }
-    
+
     .size-input {
       font-family: monospace;
       background: rgba(0, 0, 0, 0.05);
@@ -43,11 +43,11 @@ export class SketchToolCardBrowserResize extends LitElement {
 
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          🖼️ ${width}x${height}
-        </span>
+        <span slot="summary" class="summary-text"> 🖼️ ${width}x${height} </span>
         <div slot="input">
-          <div>Resize to: <span class="size-input">${width}x${height}</span></div>
+          <div>
+            Resize to: <span class="size-input">${width}x${height}</span>
+          </div>
         </div>
         <div slot="result">
           ${this.toolCall?.result_message?.tool_result

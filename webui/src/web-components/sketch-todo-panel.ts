@@ -49,7 +49,12 @@ export class SketchTodoPanel extends LitElement {
       overflow-y: auto;
       padding: 8px;
       padding-bottom: 20px; /* Extra bottom padding for better scrolling */
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
       font-size: 12px;
       line-height: 1.4;
       /* Ensure scrollbar is always accessible */
@@ -102,15 +107,11 @@ export class SketchTodoPanel extends LitElement {
       border-left: 3px solid #e0e0e0;
     }
 
-
-
     .todo-status-icon {
       font-size: 14px;
       margin-top: 1px;
       flex-shrink: 0;
     }
-
-
 
     .todo-main {
       flex: 1;
@@ -123,8 +124,6 @@ export class SketchTodoPanel extends LitElement {
       color: #333;
       word-wrap: break-word;
     }
-
-
 
     .todo-header-text {
       display: flex;
@@ -153,8 +152,12 @@ export class SketchTodoPanel extends LitElement {
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
     }
   `;
 
@@ -175,21 +178,19 @@ export class SketchTodoPanel extends LitElement {
     }
   }
 
-
-
   private renderTodoItem(item: TodoItem) {
-    const statusIcon = {
-      queued: '⚪',
-      'in-progress': '🦉',
-      completed: '✅'
-    }[item.status] || '?';
+    const statusIcon =
+      {
+        queued: "⚪",
+        "in-progress": "🦉",
+        completed: "✅",
+      }[item.status] || "?";
 
     return html`
       <div class="todo-item ${item.status}">
         <div class="todo-status-icon">${statusIcon}</div>
         <div class="todo-main">
           <div class="todo-content-text">${item.task}</div>
-
         </div>
       </div>
     `;
@@ -201,7 +202,16 @@ export class SketchTodoPanel extends LitElement {
     }
 
     const todoIcon = html`
-      <svg class="todo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        class="todo-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d="M9 11l3 3L22 4"></path>
         <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
       </svg>
@@ -217,21 +227,25 @@ export class SketchTodoPanel extends LitElement {
       `;
     } else if (this.error) {
       contentElement = html`
-        <div class="todo-content error">
-          Error: ${this.error}
-        </div>
+        <div class="todo-content error">Error: ${this.error}</div>
       `;
-    } else if (!this.todoList || !this.todoList.items || this.todoList.items.length === 0) {
+    } else if (
+      !this.todoList ||
+      !this.todoList.items ||
+      this.todoList.items.length === 0
+    ) {
       contentElement = html`
-        <div class="todo-content empty">
-          No todos available
-        </div>
+        <div class="todo-content empty">No todos available</div>
       `;
     } else {
       const totalCount = this.todoList.items.length;
-      const completedCount = this.todoList.items.filter(item => item.status === 'completed').length;
-      const inProgressCount = this.todoList.items.filter(item => item.status === 'in-progress').length;
-      
+      const completedCount = this.todoList.items.filter(
+        (item) => item.status === "completed",
+      ).length;
+      const inProgressCount = this.todoList.items.filter(
+        (item) => item.status === "in-progress",
+      ).length;
+
       contentElement = html`
         <div class="todo-header">
           <div class="todo-header-text">
@@ -241,14 +255,12 @@ export class SketchTodoPanel extends LitElement {
           </div>
         </div>
         <div class="todo-content">
-          ${this.todoList.items.map(item => this.renderTodoItem(item))}
+          ${this.todoList.items.map((item) => this.renderTodoItem(item))}
         </div>
       `;
     }
 
-    return html`
-      ${contentElement}
-    `;
+    return html` ${contentElement} `;
   }
 }
 

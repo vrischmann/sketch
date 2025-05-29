@@ -16,7 +16,7 @@ export class SketchToolCardBrowserRecentConsoleLogs extends LitElement {
       color: #444;
       word-break: break-all;
     }
-    
+
     .limit-input {
       font-family: monospace;
       background: rgba(0, 0, 0, 0.05);
@@ -45,7 +45,10 @@ export class SketchToolCardBrowserRecentConsoleLogs extends LitElement {
           📜 Console logs (${limit})
         </span>
         <div slot="input">
-          <div>Get recent console logs: <span class="limit-input">limit ${limit}</span></div>
+          <div>
+            Get recent console logs:
+            <span class="limit-input">limit ${limit}</span>
+          </div>
         </div>
         <div slot="result">
           ${this.toolCall?.result_message?.tool_result
