@@ -305,6 +305,73 @@ func TestReadImageTool(t *testing.T) {
 	}
 }
 
+// TestDefaultViewportSize verifies that the browser starts with the correct default viewport size
+func TestDefaultViewportSize(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Skip if CI or headless testing environment
+	if os.Getenv("CI") != "" || os.Getenv("HEADLESS_TEST") != "" {
+		t.Skip("Skipping browser test in CI/headless environment")
+	}
+
+	tools := NewBrowseTools(ctx)
+	defer tools.Close()
+
+	// Initialize browser (which should set default viewport to 1280x720)
+	err := tools.Initialize()
+	if err != nil {
+		if strings.Contains(err.Error(), "browser automation not available") {
+			t.Skip("Browser automation not available in this environment")
+		} else {
+			t.Fatalf("Failed to initialize browser: %v", err)
+		}
+	}
+
+	// Navigate to a simple page to ensure the browser is ready
+	navInput := json.RawMessage(`{"url": "about:blank"}`)
+	content, err := tools.NewNavigateTool().Run(ctx, navInput)
+	if err != nil {
+		t.Fatalf("Navigation error: %v", err)
+	}
+	if !strings.Contains(content[0].Text, "success") {
+		t.Fatalf("Expected success in navigation response, got: %s", content[0].Text)
+	}
+
+	// Check default viewport dimensions via JavaScript
+	evalInput := json.RawMessage(`{"expression": "({width: window.innerWidth, height: window.innerHeight})"}`)
+	content, err = tools.NewEvalTool().Run(ctx, evalInput)
+	if err != nil {
+		t.Fatalf("Evaluation error: %v", err)
+	}
+
+	// Parse the result to verify dimensions
+	var response struct {
+		Result struct {
+			Width  float64 `json:"width"`
+			Height float64 `json:"height"`
+		} `json:"result"`
+	}
+
+	if err := json.Unmarshal([]byte(content[0].Text), &response); err != nil {
+		t.Fatalf("Failed to parse evaluation response: %v", err)
+	}
+
+	// Verify the default viewport size is 1280x720
+	expectedWidth := 1280.0
+	expectedHeight := 720.0
+
+	if response.Result.Width != expectedWidth {
+		t.Errorf("Expected default width %v, got %v", expectedWidth, response.Result.Width)
+	}
+
+	if response.Result.Height != expectedHeight {
+		t.Errorf("Expected default height %v, got %v", expectedHeight, response.Result.Height)
+	}
+
+	t.Logf("✅ Default viewport size verified: %vx%v", response.Result.Width, response.Result.Height)
+}
+
 // TestResizeTool tests the browser resize functionality
 func TestResizeTool(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -92,6 +92,13 @@ func (b *BrowseTools) Initialize() error {
 			b.initErr = fmt.Errorf("failed to start browser (please apt get chromium or equivalent): %w", err)
 			return
 		}
+
+		// Set default viewport size to 1280x720 (16:9 widescreen)
+		if err := chromedp.Run(browserCtx, chromedp.EmulateViewport(1280, 720)); err != nil {
+			b.initErr = fmt.Errorf("failed to set default viewport: %w", err)
+			return
+		}
+
 		b.initialized = true
 	})
 
