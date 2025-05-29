@@ -158,7 +158,7 @@ export class CodeDiffEditor extends LitElement {
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => {
         this.requestSave();
-      }
+      },
     );
 
     console.log("Keyboard shortcuts set up for Monaco editor");
