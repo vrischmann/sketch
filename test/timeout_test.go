@@ -10,7 +10,7 @@ import (
 
 func TestBashTimeout(t *testing.T) {
 	// Create a bash tool
-	bashTool := claudetool.NewBashTool(nil)
+	bashTool := claudetool.NewBashTool(nil, claudetool.NoBashToolJITInstall)
 
 	// Create a command that will output text and then sleep
 	cmd := `echo "Starting command..."; echo "This should appear in partial output"; sleep 5; echo "This shouldn't appear"`

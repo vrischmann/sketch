@@ -5,16 +5,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"sketch.dev/claudetool/bashkit"
 	"sketch.dev/llm"
+	"sketch.dev/llm/conversation"
 )
 
 // PermissionCallback is a function type for checking if a command is allowed to run
@@ -24,12 +27,20 @@ type PermissionCallback func(command string) error
 type BashTool struct {
 	// CheckPermission is called before running any command, if set
 	CheckPermission PermissionCallback
+	// EnableJITInstall enables just-in-time tool installation for missing commands
+	EnableJITInstall bool
 }
 
+const (
+	EnableBashToolJITInstall = true
+	NoBashToolJITInstall     = false
+)
+
 // NewBashTool creates a new Bash tool with optional permission callback
-func NewBashTool(checkPermission PermissionCallback) *llm.Tool {
+func NewBashTool(checkPermission PermissionCallback, enableJITInstall bool) *llm.Tool {
 	tool := &BashTool{
-		CheckPermission: checkPermission,
+		CheckPermission:  checkPermission,
+		EnableJITInstall: enableJITInstall,
 	}
 
 	return &llm.Tool{
@@ -41,7 +52,7 @@ func NewBashTool(checkPermission PermissionCallback) *llm.Tool {
 }
 
 // The Bash tool executes shell commands with bash -c and optional timeout
-var Bash = NewBashTool(nil)
+var Bash = NewBashTool(nil, NoBashToolJITInstall)
 
 const (
 	bashName        = "bash"
@@ -118,6 +129,14 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, e
 	if b.CheckPermission != nil {
 		if err := b.CheckPermission(req.Command); err != nil {
 			return nil, err
+		}
+	}
+
+	// Check for missing tools and try to install them if needed, best effort only
+	if b.EnableJITInstall {
+		err := b.checkAndInstallMissingTools(ctx, req.Command)
+		if err != nil {
+			slog.DebugContext(ctx, "failed to auto-install missing tools", "error", err)
 		}
 	}
 
@@ -309,4 +328,177 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 func BashRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	// Use the default Bash tool which has no permission callback
 	return Bash.Run(ctx, m)
+}
+
+// checkAndInstallMissingTools analyzes a bash command and attempts to automatically install any missing tools.
+func (b *BashTool) checkAndInstallMissingTools(ctx context.Context, command string) error {
+	commands, err := bashkit.ExtractCommands(command)
+	if err != nil {
+		return err
+	}
+
+	autoInstallMu.Lock()
+	defer autoInstallMu.Unlock()
+
+	var missing []string
+	for _, cmd := range commands {
+		if doNotAttemptToolInstall[cmd] {
+			continue
+		}
+		_, err := exec.LookPath(cmd)
+		if err == nil {
+			doNotAttemptToolInstall[cmd] = true // spare future LookPath calls
+			continue
+		}
+		missing = append(missing, cmd)
+	}
+
+	err = b.installTools(ctx, missing)
+	if err != nil {
+		return err
+	}
+	for _, cmd := range missing {
+		doNotAttemptToolInstall[cmd] = true // either it's installed or it's not--either way, we're done with it
+	}
+	return nil
+}
+
+// commandExists checks if a command exists using exec.LookPath
+func commandExists(command string) bool {
+	// If it's an absolute or relative path, check if the file exists
+	if strings.Contains(command, "/") {
+		_, err := os.Stat(command)
+		return err == nil
+	}
+
+	// Otherwise, use exec.LookPath to find it in PATH
+	_, err := exec.LookPath(command)
+	return err == nil
+}
+
+// Command safety check cache to avoid repeated LLM calls
+var (
+	autoInstallMu           sync.Mutex
+	doNotAttemptToolInstall = make(map[string]bool) // set to true if the tool should not be auto-installed
+)
+
+// installTools installs missing tools.
+func (b *BashTool) installTools(ctx context.Context, missing []string) error {
+	slog.InfoContext(ctx, "installTools subconvo", "tools", missing)
+
+	info := conversation.ToolCallInfoFromContext(ctx)
+	if info.Convo == nil {
+		return fmt.Errorf("no conversation context available for tool installation")
+	}
+	subConvo := info.Convo.SubConvo()
+	subConvo.Hidden = true
+	subBash := NewBashTool(nil, NoBashToolJITInstall)
+
+	done := false
+	doneTool := &llm.Tool{
+		Name:        "done",
+		Description: "Call this tool once when finished processing all commands, providing the installation status for each.",
+		InputSchema: json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "command_name": {
+            "type": "string",
+            "description": "The name of the command"
+          },
+          "installed": {
+            "type": "boolean",
+            "description": "Whether the command was installed"
+          }
+        },
+        "required": ["command_name", "installed"]
+      }
+    }
+  },
+  "required": ["results"]
+}`),
+		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+			type InstallResult struct {
+				CommandName string `json:"command_name"`
+				Installed   bool   `json:"installed"`
+			}
+			type DoneInput struct {
+				Results []InstallResult `json:"results"`
+			}
+			var doneInput DoneInput
+			err := json.Unmarshal(input, &doneInput)
+			results := doneInput.Results
+			if err != nil {
+				slog.WarnContext(ctx, "failed to parse install results", "raw", string(input), "error", err)
+			} else {
+				slog.InfoContext(ctx, "auto-tool installation complete", "results", results)
+			}
+			done = true
+			return llm.TextContent(""), nil
+		},
+	}
+
+	subConvo.Tools = []*llm.Tool{
+		subBash,
+		doneTool,
+	}
+
+	const autoinstallSystemPrompt = `The assistant powers an entirely automated auto-installer tool.
+
+The user will provide a list of commands that were not found on the system.
+
+The assistant's task:
+
+First, decide whether each command is mainstream and safe for automatic installation in a development environment. Skip any commands that could cause security issues, legal problems, or consume excessive resources.
+
+For each appropriate command:
+
+1. Detect the system's package manager and install the command using standard repositories only (no source builds, no curl|bash installs).
+2. Make a minimal verification attempt (package manager success is sufficient).
+3. If installation fails after reasonable attempts, mark as failed and move on.
+
+Once all commands have been processed, call the "done" tool with the status of each command.
+`
+
+	subConvo.SystemPrompt = autoinstallSystemPrompt
+
+	cmds := new(strings.Builder)
+	cmds.WriteString("<commands>\n")
+	for _, cmd := range missing {
+		cmds.WriteString("<command>")
+		cmds.WriteString(cmd)
+		cmds.WriteString("</command>\n")
+	}
+	cmds.WriteString("</commands>\n")
+
+	resp, err := subConvo.SendUserTextMessage(cmds.String())
+	if err != nil {
+		return err
+	}
+
+	for !done {
+		if resp.StopReason != llm.StopReasonToolUse {
+			return fmt.Errorf("subagent finished without calling tool")
+		}
+
+		ctxWithWorkDir := WithWorkingDir(ctx, WorkingDir(ctx))
+		results, _, err := subConvo.ToolResultContents(ctxWithWorkDir, resp)
+		if err != nil {
+			return err
+		}
+
+		resp, err = subConvo.SendMessage(llm.Message{
+			Role:    llm.MessageRoleUser,
+			Content: results,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -102,9 +102,9 @@ func TestCancelToolUse(t *testing.T) {
 					cancelledWithErr = err
 				}
 
-				convo.muToolUseCancel.Lock()
+				convo.toolUseCancelMu.Lock()
 				convo.toolUseCancel[tt.toolUseID] = mockCancel
-				convo.muToolUseCancel.Unlock()
+				convo.toolUseCancelMu.Unlock()
 			}
 
 			err := convo.CancelToolUse(tt.toolUseID, tt.cancelErr)
@@ -126,9 +126,9 @@ func TestCancelToolUse(t *testing.T) {
 
 			// Verify the toolUseID was removed from the map if it was initially added
 			if tt.setupToolUse {
-				convo.muToolUseCancel.Lock()
+				convo.toolUseCancelMu.Lock()
 				_, exists := convo.toolUseCancel[tt.toolUseID]
-				convo.muToolUseCancel.Unlock()
+				convo.toolUseCancelMu.Unlock()
 
 				if exists {
 					t.Errorf("toolUseID %s still exists in the map after cancellation", tt.toolUseID)

@@ -91,7 +91,7 @@ type Convo struct {
 	// Listener receives messages being sent.
 	Listener Listener
 
-	muToolUseCancel *sync.Mutex
+	toolUseCancelMu sync.Mutex
 	toolUseCancel   map[string]context.CancelCauseFunc
 
 	// Protects usage. This is used for subconversations (that share part of CumulativeUsage) as well.
@@ -118,15 +118,14 @@ func newConvoID() string {
 func New(ctx context.Context, srv llm.Service) *Convo {
 	id := newConvoID()
 	return &Convo{
-		Ctx:             skribe.ContextWithAttr(ctx, slog.String("convo_id", id)),
-		Service:         srv,
-		PromptCaching:   true,
-		usage:           newUsage(),
-		Listener:        &NoopListener{},
-		ID:              id,
-		muToolUseCancel: &sync.Mutex{},
-		toolUseCancel:   map[string]context.CancelCauseFunc{},
-		mu:              &sync.Mutex{},
+		Ctx:           skribe.ContextWithAttr(ctx, slog.String("convo_id", id)),
+		Service:       srv,
+		PromptCaching: true,
+		usage:         newUsage(),
+		Listener:      &NoopListener{},
+		ID:            id,
+		toolUseCancel: map[string]context.CancelCauseFunc{},
+		mu:            &sync.Mutex{},
 	}
 }
 
@@ -143,10 +142,11 @@ func (c *Convo) SubConvo() *Convo {
 		Parent:        c,
 		// For convenience, sub-convo usage shares tool uses map with parent,
 		// all other fields separate, propagated in AddResponse
-		usage:    newUsageWithSharedToolUses(c.usage),
-		mu:       c.mu,
-		Listener: c.Listener,
-		ID:       id,
+		usage:         newUsageWithSharedToolUses(c.usage),
+		mu:            c.mu,
+		Listener:      c.Listener,
+		ID:            id,
+		toolUseCancel: map[string]context.CancelCauseFunc{},
 		// Do not copy Budget. Each budget is independent,
 		// and OverBudget checks whether any ancestor is over budget.
 	}
@@ -200,8 +200,7 @@ func (c *Convo) SendUserTextMessage(s string, otherContents ...llm.Content) (*ll
 func (c *Convo) messageRequest(msg llm.Message) *llm.Request {
 	system := []llm.SystemContent{}
 	if c.SystemPrompt != "" {
-		var d llm.SystemContent
-		d = llm.SystemContent{Type: "text", Text: c.SystemPrompt}
+		d := llm.SystemContent{Type: "text", Text: c.SystemPrompt}
 		if c.PromptCaching {
 			d.Cache = true
 		}
@@ -381,8 +380,8 @@ func (c *Convo) GetID() string {
 }
 
 func (c *Convo) CancelToolUse(toolUseID string, err error) error {
-	c.muToolUseCancel.Lock()
-	defer c.muToolUseCancel.Unlock()
+	c.toolUseCancelMu.Lock()
+	defer c.toolUseCancelMu.Unlock()
 	cancel, ok := c.toolUseCancel[toolUseID]
 	if !ok {
 		return fmt.Errorf("cannot cancel %s: no cancel function registered for this tool_use_id. All I have is %+v", toolUseID, c.toolUseCancel)
@@ -393,8 +392,8 @@ func (c *Convo) CancelToolUse(toolUseID string, err error) error {
 }
 
 func (c *Convo) newToolUseContext(ctx context.Context, toolUseID string) (context.Context, context.CancelFunc) {
-	c.muToolUseCancel.Lock()
-	defer c.muToolUseCancel.Unlock()
+	c.toolUseCancelMu.Lock()
+	defer c.toolUseCancelMu.Unlock()
 	ctx, cancel := context.WithCancelCause(ctx)
 	c.toolUseCancel[toolUseID] = cancel
 	return ctx, func() { c.CancelToolUse(toolUseID, nil) }

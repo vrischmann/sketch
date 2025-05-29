@@ -982,8 +982,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 		return nil
 	}
 
-	// Create a custom bash tool with the permission check
-	bashTool := claudetool.NewBashTool(bashPermissionCheck)
+	bashTool := claudetool.NewBashTool(bashPermissionCheck, claudetool.EnableBashToolJITInstall)
 
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display
