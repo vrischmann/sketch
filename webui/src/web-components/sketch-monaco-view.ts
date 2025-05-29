@@ -112,7 +112,7 @@ export class CodeDiffEditor extends LitElement {
 
   // Custom event to request save action from external components
   private requestSave() {
-    if (this.saveState !== "modified") return;
+    if (!this.editableRight || this.saveState !== "modified") return;
 
     this.saveState = "saving";
 
@@ -146,6 +146,22 @@ export class CodeDiffEditor extends LitElement {
       // Return to modified state on error
       this.saveState = "modified";
     }
+  }
+
+  // Rescue people with strong save-constantly habits
+  private setupKeyboardShortcuts() {
+    if (!this.editor) return;
+    const modifiedEditor = this.editor.getModifiedEditor();
+    if (!modifiedEditor) return;
+
+    modifiedEditor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+      () => {
+        this.requestSave();
+      }
+    );
+
+    console.log("Keyboard shortcuts set up for Monaco editor");
   }
 
   // Setup content change listener for debounced save
@@ -625,6 +641,8 @@ export class CodeDiffEditor extends LitElement {
 
         // Set up selection change event listeners for both editors
         this.setupSelectionChangeListeners();
+
+        this.setupKeyboardShortcuts();
 
         // If this is an editable view, set the correct read-only state for each editor
         if (this.editableRight) {
