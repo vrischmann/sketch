@@ -894,7 +894,7 @@ func (a *Agent) Init(ini AgentInit) error {
 			return fmt.Errorf("resolveRef: %w", err)
 		}
 
-		if err := setupGitHooks(a.workingDir); err != nil {
+		if err := setupGitHooks(a.repoRoot); err != nil {
 			slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
 		}
 
