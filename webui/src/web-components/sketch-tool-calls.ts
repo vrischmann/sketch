@@ -5,6 +5,17 @@ import { ToolCall } from "../types";
 import "./sketch-tool-card";
 import "./sketch-tool-card-take-screenshot";
 import "./sketch-tool-card-about-sketch";
+import "./sketch-tool-card-browser-navigate";
+import "./sketch-tool-card-browser-click";
+import "./sketch-tool-card-browser-type";
+import "./sketch-tool-card-browser-wait-for";
+import "./sketch-tool-card-browser-get-text";
+import "./sketch-tool-card-browser-eval";
+import "./sketch-tool-card-browser-scroll-into-view";
+import "./sketch-tool-card-browser-resize";
+import "./sketch-tool-card-browser-read-image";
+import "./sketch-tool-card-browser-recent-console-logs";
+import "./sketch-tool-card-browser-clear-console-logs";
 
 @customElement("sketch-tool-calls")
 export class SketchToolCalls extends LitElement {
@@ -143,11 +154,66 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-todo-read>`;
+      case "browser_navigate":
+        return html`<sketch-tool-card-browser-navigate
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-navigate>`;
       case "keyword_search":
         return html`<sketch-tool-card-keyword-search
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-keyword-search>`;
+      case "browser_click":
+        return html`<sketch-tool-card-browser-click
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-click>`;
+      case "browser_type":
+        return html`<sketch-tool-card-browser-type
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-type>`;
+      case "browser_wait_for":
+        return html`<sketch-tool-card-browser-wait-for
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-wait-for>`;
+      case "browser_get_text":
+        return html`<sketch-tool-card-browser-get-text
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-get-text>`;
+      case "browser_eval":
+        return html`<sketch-tool-card-browser-eval
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-eval>`;
+      case "browser_scroll_into_view":
+        return html`<sketch-tool-card-browser-scroll-into-view
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-scroll-into-view>`;
+      case "browser_resize":
+        return html`<sketch-tool-card-browser-resize
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-resize>`;
+      case "browser_read_image":
+        return html`<sketch-tool-card-browser-read-image
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-read-image>`;
+      case "browser_recent_console_logs":
+        return html`<sketch-tool-card-browser-recent-console-logs
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-recent-console-logs>`;
+      case "browser_clear_console_logs":
+        return html`<sketch-tool-card-browser-clear-console-logs
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-clear-console-logs>`;
     }
     return html`<sketch-tool-card-generic
       .open=${open}

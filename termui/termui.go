@@ -59,6 +59,30 @@ var (
 {{ range .input.responseOptions -}}
   - {{ .caption}}: {{.responseText}}
 {{end -}}
+{{else if eq .msg.ToolName "browser_navigate" -}}
+ 🌐 {{.input.url -}}
+{{else if eq .msg.ToolName "browser_click" -}}
+ 🖱️  {{.input.selector -}}
+{{else if eq .msg.ToolName "browser_type" -}}
+ ⌨️  {{.input.selector}}: "{{.input.text}}"
+{{else if eq .msg.ToolName "browser_wait_for" -}}
+ ⏳ {{.input.selector -}}
+{{else if eq .msg.ToolName "browser_get_text" -}}
+ 📖 {{.input.selector -}}
+{{else if eq .msg.ToolName "browser_eval" -}}
+ 📱 {{.input.expression -}}
+{{else if eq .msg.ToolName "browser_take_screenshot" -}}
+ 📸 Screenshot
+{{else if eq .msg.ToolName "browser_scroll_into_view" -}}
+ 🔄 {{.input.selector -}}
+{{else if eq .msg.ToolName "browser_resize" -}}
+ 🖼️  {{.input.width}}x{{.input.height -}}
+{{else if eq .msg.ToolName "browser_read_image" -}}
+ 🖼️  {{.input.path -}}
+{{else if eq .msg.ToolName "browser_recent_console_logs" -}}
+ 📜 Console logs
+{{else if eq .msg.ToolName "browser_clear_console_logs" -}}
+ 🧹 Clear console logs
 {{else -}}
  🛠️  {{ .msg.ToolName}}: {{.msg.ToolInput -}}
 {{end -}}
