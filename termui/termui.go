@@ -50,8 +50,6 @@ var (
 🌱 git branch: sketch/{{.input.branch_name}}
 {{else if eq .msg.ToolName "about_sketch" -}}
 📚 About Sketch
-{{else if eq .msg.ToolName "str_replace_editor" -}}
- ✏️  {{.input.file_path -}}
 {{else if eq .msg.ToolName "codereview" -}}
  🐛  Running automated code review, may be slow
 {{else if eq .msg.ToolName "multiplechoice" -}}

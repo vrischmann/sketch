@@ -24,7 +24,7 @@ Follow this broad workflow:
 
 To make edits reliably and efficiently, first think about the intent of the edit,
 and what set of patches will achieve that intent.
-{{.EditPrompt}}
+Then use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call.
 
 Complete every task exhaustively - no matter how repetitive or tedious.
 Partial work, pattern demonstrations, or stubs with TODOs are not acceptable, unless explicitly permitted by the user.

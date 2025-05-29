@@ -770,18 +770,17 @@ func (a *Agent) OriginalBudget() conversation.Budget {
 
 // AgentConfig contains configuration for creating a new Agent.
 type AgentConfig struct {
-	Context          context.Context
-	Service          llm.Service
-	Budget           conversation.Budget
-	GitUsername      string
-	GitEmail         string
-	SessionID        string
-	ClientGOOS       string
-	ClientGOARCH     string
-	InDocker         bool
-	UseAnthropicEdit bool
-	OneShot          bool
-	WorkingDir       string
+	Context      context.Context
+	Service      llm.Service
+	Budget       conversation.Budget
+	GitUsername  string
+	GitEmail     string
+	SessionID    string
+	ClientGOOS   string
+	ClientGOARCH string
+	InDocker     bool
+	OneShot      bool
+	WorkingDir   string
 	// Outside information
 	OutsideHostname   string
 	OutsideOS         string
@@ -1002,7 +1001,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 	browserTools = bTools
 
 	convo.Tools = []*llm.Tool{
-		bashTool, claudetool.Keyword,
+		bashTool, claudetool.Keyword, claudetool.Patch,
 		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
@@ -1013,11 +1012,6 @@ func (a *Agent) initConvo() *conversation.Convo {
 	}
 
 	convo.Tools = append(convo.Tools, browserTools...)
-	if a.config.UseAnthropicEdit {
-		convo.Tools = append(convo.Tools, claudetool.AnthropicEditTool)
-	} else {
-		convo.Tools = append(convo.Tools, claudetool.Patch)
-	}
 	convo.Listener = a
 	return convo
 }
@@ -1916,7 +1910,6 @@ func getGitOrigin(ctx context.Context, dir string) string {
 
 // systemPromptData contains the data used to render the system prompt template
 type systemPromptData struct {
-	EditPrompt    string
 	ClientGOOS    string
 	ClientGOARCH  string
 	WorkingDir    string
@@ -1927,16 +1920,7 @@ type systemPromptData struct {
 
 // renderSystemPrompt renders the system prompt template.
 func (a *Agent) renderSystemPrompt() string {
-	// Determine the appropriate edit prompt based on config
-	var editPrompt string
-	if a.config.UseAnthropicEdit {
-		editPrompt = "Then use the str_replace_editor tool to make those edits. For short complete file replacements, you may use the bash tool with cat and heredoc stdin."
-	} else {
-		editPrompt = "Then use the patch tool to make those edits. Combine all edits to any given file into a single patch tool call."
-	}
-
 	data := systemPromptData{
-		EditPrompt:    editPrompt,
 		ClientGOOS:    a.config.ClientGOOS,
 		ClientGOARCH:  a.config.ClientGOARCH,
 		WorkingDir:    a.workingDir,

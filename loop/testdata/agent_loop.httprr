@@ -1,5 +1,5 @@
 httprr trace v1
-20299 2495
+20299 2778
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: Go-http-client/1.1
@@ -69,6 +69,54 @@ Content-Type: application/json
        "type": "string"
       },
       "description": "List of search terms in descending order of importance."
+     }
+    }
+   }
+  },
+  {
+   "name": "patch",
+   "description": "File modification tool for precise text edits.\n\nOperations:\n- replace: Substitute text with new content\n- append_eof: Append new text at the end of the file\n- prepend_bof: Insert new text at the beginning of the file\n- overwrite: Replace the entire file with new content (automatically creates the file)\n\nUsage notes:\n- All inputs are interpreted literally (no automatic newline or whitespace handling)\n- For replace operations, oldText must appear EXACTLY ONCE in the file",
+   "input_schema": {
+    "type": "object",
+    "required": [
+     "path",
+     "patches"
+    ],
+    "properties": {
+     "path": {
+      "type": "string",
+      "description": "Absolute path to the file to patch"
+     },
+     "patches": {
+      "type": "array",
+      "description": "List of patch requests to apply",
+      "items": {
+       "type": "object",
+       "required": [
+        "operation",
+        "newText"
+       ],
+       "properties": {
+        "operation": {
+         "type": "string",
+         "enum": [
+          "replace",
+          "append_eof",
+          "prepend_bof",
+          "overwrite"
+         ],
+         "description": "Type of operation to perform"
+        },
+        "oldText": {
+         "type": "string",
+         "description": "Text to locate for the operation (must be unique in file, required for replace)"
+        },
+        "newText": {
+         "type": "string",
+         "description": "The new text to use (empty for deletions)"
+        }
+       }
+      }
      }
     }
    }
@@ -542,54 +590,6 @@ Content-Type: application/json
      "path"
     ]
    }
-  },
-  {
-   "name": "patch",
-   "description": "File modification tool for precise text edits.\n\nOperations:\n- replace: Substitute text with new content\n- append_eof: Append new text at the end of the file\n- prepend_bof: Insert new text at the beginning of the file\n- overwrite: Replace the entire file with new content (automatically creates the file)\n\nUsage notes:\n- All inputs are interpreted literally (no automatic newline or whitespace handling)\n- For replace operations, oldText must appear EXACTLY ONCE in the file",
-   "input_schema": {
-    "type": "object",
-    "required": [
-     "path",
-     "patches"
-    ],
-    "properties": {
-     "path": {
-      "type": "string",
-      "description": "Absolute path to the file to patch"
-     },
-     "patches": {
-      "type": "array",
-      "description": "List of patch requests to apply",
-      "items": {
-       "type": "object",
-       "required": [
-        "operation",
-        "newText"
-       ],
-       "properties": {
-        "operation": {
-         "type": "string",
-         "enum": [
-          "replace",
-          "append_eof",
-          "prepend_bof",
-          "overwrite"
-         ],
-         "description": "Type of operation to perform"
-        },
-        "oldText": {
-         "type": "string",
-         "description": "Text to locate for the operation (must be unique in file, required for replace)"
-        },
-        "newText": {
-         "type": "string",
-         "description": "The new text to use (empty for deletions)"
-        }
-       }
-      }
-     }
-    }
-   }
   }
  ],
  "system": [
@@ -605,24 +605,24 @@ Content-Type: application/json
 Anthropic-Organization-Id: 3c473a21-7208-450a-a9f8-80aebda45c1b
 Anthropic-Ratelimit-Input-Tokens-Limit: 200000
 Anthropic-Ratelimit-Input-Tokens-Remaining: 200000
-Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-29T17:27:03Z
+Anthropic-Ratelimit-Input-Tokens-Reset: 2025-05-30T15:57:41Z
 Anthropic-Ratelimit-Output-Tokens-Limit: 80000
 Anthropic-Ratelimit-Output-Tokens-Remaining: 80000
-Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-29T17:27:08Z
+Anthropic-Ratelimit-Output-Tokens-Reset: 2025-05-30T15:57:47Z
 Anthropic-Ratelimit-Requests-Limit: 4000
 Anthropic-Ratelimit-Requests-Remaining: 3999
-Anthropic-Ratelimit-Requests-Reset: 2025-05-29T17:27:01Z
+Anthropic-Ratelimit-Requests-Reset: 2025-05-30T15:57:39Z
 Anthropic-Ratelimit-Tokens-Limit: 280000
 Anthropic-Ratelimit-Tokens-Remaining: 280000
-Anthropic-Ratelimit-Tokens-Reset: 2025-05-29T17:27:03Z
+Anthropic-Ratelimit-Tokens-Reset: 2025-05-30T15:57:41Z
 Cf-Cache-Status: DYNAMIC
-Cf-Ray: 9477b339e89417ee-SJC
+Cf-Ray: 947f6db1dc082349-SJC
 Content-Type: application/json
-Date: Thu, 29 May 2025 17:27:09 GMT
-Request-Id: req_011CPcDNHrEZY5uavYRd4Wsk
+Date: Fri, 30 May 2025 15:57:47 GMT
+Request-Id: req_011CPdzMxBJ1hScfsMghVkJA
 Server: cloudflare
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Via: 1.1 google
 X-Robots-Tag: none
 
-{"id":"msg_01PbteLNxXTMFWyxMUWxhpPM","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Here are the tools available to me:\n\n**File & Code Operations:**\n- `patch` - Modify files with precise text edits\n- `keyword_search` - Search codebase with keywords\n- `bash` - Execute shell commands\n- `codereview` - Run automated code review\n\n**Project Management:**\n- `todo_read` / `todo_write` - Manage task lists\n- `think` - Record thoughts and plans\n- `precommit` - Create git branch for work\n- `done` - Complete work with checklist verification\n\n**Browser Automation:**\n- `browser_navigate` - Navigate to URLs\n- `browser_click` - Click elements\n- `browser_type` - Type into inputs\n- `browser_wait_for` - Wait for elements\n- `browser_get_text` - Read page text\n- `browser_eval` - Execute JavaScript\n- `browser_scroll_into_view` - Scroll elements into view\n- `browser_resize` - Resize browser window\n- `browser_take_screenshot` - Capture screenshots\n- `browser_read_image` - Read image files\n- `browser_recent_console_logs` / `browser_clear_console_logs` - Manage console logs\n\n**User Interface:**\n- `title` - Set conversation title\n- `multiplechoice` - Present multiple choice questions\n- `about_sketch` - Get Sketch platform information"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":3,"cache_creation_input_tokens":4648,"cache_read_input_tokens":0,"output_tokens":320,"service_tier":"standard"}}
+{"id":"msg_01WmU5PvHrPn5NU59qBJUsu8","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Here are the tools available to me:\n\n**File Operations:**\n- `patch` - Modify files with precise text edits (replace, append, prepend, overwrite)\n- `keyword_search` - Search for files using keywords and queries\n\n**Shell & System:**\n- `bash` - Execute shell commands with optional background execution\n- `think` - Internal note-taking and planning tool\n\n**Task Management:**\n- `todo_read` - Read current todo list\n- `todo_write` - Create and manage structured task lists\n\n**Git & Code Review:**\n- `precommit` - Create git branch and get commit message guidance\n- `codereview` - Run automated code review\n\n**Browser Automation:**\n- `browser_navigate` - Navigate to URLs\n- `browser_click` - Click elements by CSS selector\n- `browser_type` - Type text into input fields\n- `browser_wait_for` - Wait for elements to appear\n- `browser_get_text` - Read text from elements\n- `browser_eval` - Execute JavaScript\n- `browser_scroll_into_view` - Scroll elements into view\n- `browser_resize` - Resize browser window\n- `browser_take_screenshot` - Capture screenshots\n- `browser_read_image` - Read image files\n- `browser_recent_console_logs` - Get console logs\n- `browser_clear_console_logs` - Clear console logs\n\n**Meta Tools:**\n- `title` - Set conversation title\n- `done` - Complete work with verification checklist\n- `about_sketch` - Get help about Sketch functionality\n- `multiplechoice` - Present multiple choice questions to user"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":3,"cache_creation_input_tokens":4648,"cache_read_input_tokens":0,"output_tokens":376,"service_tier":"standard"}}
