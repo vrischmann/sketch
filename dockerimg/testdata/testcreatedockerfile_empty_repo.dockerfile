@@ -1,4 +1,4 @@
-FROM ghcr.io/boldsoftware/sketch:538be6f879a81c5caca6bc08e5c2097c
+FROM ghcr.io/boldsoftware/sketch:a73fec46b81f26cba546a2f4c44ff381
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -7,7 +7,7 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME" && \
     git config --global http.postBuffer 524288000
 
-LABEL sketch_context="af8725fa8dcb4a7f3f5a08244c8050b45ad556442f3f2cfd25130b39c0f592bd"
+LABEL sketch_context="9e6f89a8e401b079da53432e57e9d9d8bf3e4241e9ff65ce06c6795939432d3f"
 COPY . /app
 RUN rm -f /app/tmp-sketch-dockerfile
 
