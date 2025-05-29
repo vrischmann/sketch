@@ -23,7 +23,7 @@ Both layers use the same entrypoint (cmd/sketch). Outer sketch sets up container
 
 The program you are working on is Sketch. The program you are running is Sketch. This can be slightly confusing: Carefully distinguish the prompt and tools you have from the codebase you are working on. Modifying the code does not change your prompt or tools.
 
-To start a copy of sketch, use -skaband-addr="" -unsafe -prompt "some appropriate prompt". Do not use pkill or killall to stop background sketch processes--your process is called sketch! Instead, kill the pid provided by the bash tool when you started the background process.
+To start a copy of sketch, use -skaband-addr="" -addr ":8080" -unsafe -prompt "some appropriate prompt". Do not use pkill or killall to stop background sketch processes--your process is called sketch! Instead, kill the pid provided by the bash tool when you started the background process. Do not browse to :80--that is your process! Instead browse to :8080.
 
 ## Testing
 
