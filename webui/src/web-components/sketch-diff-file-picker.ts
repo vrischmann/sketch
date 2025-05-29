@@ -85,10 +85,13 @@ export class SketchDiffFilePicker extends LitElement {
       cursor: not-allowed;
     }
 
-    .file-info {
+    .file-position {
       font-size: 14px;
       color: var(--text-muted, #666);
-      margin-left: 8px;
+      font-weight: 500;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
       white-space: nowrap;
     }
 
@@ -176,6 +179,7 @@ export class SketchDiffFilePicker extends LitElement {
           >
             Previous
           </button>
+          ${this.selectedIndex >= 0 ? this.renderFilePosition() : ""}
           <button
             @click=${this.handleNext}
             ?disabled=${this.selectedIndex >= this.files.length - 1}
@@ -183,18 +187,14 @@ export class SketchDiffFilePicker extends LitElement {
             Next
           </button>
         </div>
-
-        ${this.selectedIndex >= 0 ? this.renderFileInfo() : ""}
       </div>
     `;
   }
 
-  renderFileInfo() {
-    const file = this.files[this.selectedIndex];
+  renderFilePosition() {
     return html`
-      <div class="file-info">
-        ${this.getFileStatusName(file.status)} | ${this.selectedIndex + 1} of
-        ${this.files.length}
+      <div class="file-position">
+        ${this.selectedIndex + 1} of ${this.files.length}
       </div>
     `;
   }
@@ -204,7 +204,30 @@ export class SketchDiffFilePicker extends LitElement {
    */
   formatFileOption(file: GitDiffFile): string {
     const statusSymbol = this.getFileStatusSymbol(file.status);
-    return `${statusSymbol} ${file.path}`;
+    const changesInfo = this.getChangesInfo(file);
+    return `${statusSymbol} ${file.path}${changesInfo}`;
+  }
+
+  /**
+   * Get changes information (+/-) for display
+   */
+  getChangesInfo(file: GitDiffFile): string {
+    const additions = file.additions || 0;
+    const deletions = file.deletions || 0;
+
+    if (additions === 0 && deletions === 0) {
+      return "";
+    }
+
+    const parts = [];
+    if (additions > 0) {
+      parts.push(`+${additions}`);
+    }
+    if (deletions > 0) {
+      parts.push(`-${deletions}`);
+    }
+
+    return ` (${parts.join(", ")})`;
   }
 
   /**
