@@ -332,6 +332,9 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		Mounts:            flags.mounts,
 		ExperimentFlag:    flags.experimentFlag.String(),
 		TermUI:            flags.termUI,
+		MaxDollars:        flags.maxDollars,
+		MaxIterations:     flags.maxIterations,
+		MaxWallTime:       flags.maxWallTime,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
