@@ -6,8 +6,7 @@ import { aggregateAgentMessages } from "./aggregateAgentMessages";
 
 import "./sketch-chat-input";
 import "./sketch-container-status";
-import "./sketch-diff-view";
-import { SketchDiffView } from "./sketch-diff-view";
+
 import "./sketch-diff2-view";
 import { SketchDiff2View } from "./sketch-diff2-view";
 import { DefaultGitDataService } from "./git-data-service";
@@ -22,7 +21,7 @@ import "./sketch-todo-panel";
 import { createRef, ref } from "lit/directives/ref.js";
 import { SketchChatInput } from "./sketch-chat-input";
 
-type ViewMode = "chat" | "diff" | "diff2" | "terminal";
+type ViewMode = "chat" | "diff2" | "terminal";
 
 @customElement("sketch-app-shell")
 export class SketchAppShell extends LitElement {
@@ -178,7 +177,6 @@ export class SketchAppShell extends LitElement {
     }
 
     /* Allow the container to expand to full width and height in diff mode */
-    #view-container-inner.diff-active,
     #view-container-inner.diff2-active {
       max-width: 100%;
       width: 100%;
@@ -192,7 +190,6 @@ export class SketchAppShell extends LitElement {
 
     /* Individual view styles */
     .chat-view,
-    .diff-view,
     .diff2-view,
     .terminal-view {
       display: none; /* Hidden by default */
@@ -630,13 +627,13 @@ export class SketchAppShell extends LitElement {
     // Only add view parameter if not in default chat view
     if (mode !== "chat") {
       url.searchParams.set("view", mode);
-      const diffView = this.shadowRoot?.querySelector(
-        ".diff-view",
-      ) as SketchDiffView;
+      const diff2View = this.shadowRoot?.querySelector(
+        "sketch-diff2-view",
+      ) as SketchDiff2View;
 
-      // If in diff view and there's a commit hash, include that too
-      if (mode === "diff" && diffView.commitHash) {
-        url.searchParams.set("commit", diffView.commitHash);
+      // If in diff2 view and there's a commit hash, include that too
+      if (mode === "diff2" && diff2View?.commit) {
+        url.searchParams.set("commit", diff2View.commit);
       }
     }
 
@@ -656,7 +653,7 @@ export class SketchAppShell extends LitElement {
    * Handle view mode selection event
    */
   private _handleViewModeSelect(event: CustomEvent) {
-    const mode = event.detail.mode as "chat" | "diff" | "diff2" | "terminal";
+    const mode = event.detail.mode as "chat" | "diff2" | "terminal";
     this.toggleViewMode(mode, true);
   }
 
@@ -698,7 +695,7 @@ export class SketchAppShell extends LitElement {
   }
 
   /**
-   * Toggle between different view modes: chat, diff, terminal
+   * Toggle between different view modes: chat, diff2, terminal
    */
   private toggleViewMode(mode: ViewMode, updateHistory: boolean): void {
     // Don't do anything if the mode is already active
@@ -719,25 +716,18 @@ export class SketchAppShell extends LitElement {
         "#view-container-inner",
       );
       const chatView = this.shadowRoot?.querySelector(".chat-view");
-      const diffView = this.shadowRoot?.querySelector(".diff-view");
       const diff2View = this.shadowRoot?.querySelector(".diff2-view");
       const terminalView = this.shadowRoot?.querySelector(".terminal-view");
 
       // Remove active class from all views
       chatView?.classList.remove("view-active");
-      diffView?.classList.remove("view-active");
       diff2View?.classList.remove("view-active");
       terminalView?.classList.remove("view-active");
 
-      // Add/remove diff-active class on view container
-      if (mode === "diff") {
-        viewContainerInner?.classList.add("diff-active");
-        viewContainerInner?.classList.remove("diff2-active");
-      } else if (mode === "diff2") {
+      // Add/remove diff2-active class on view container
+      if (mode === "diff2") {
         viewContainerInner?.classList.add("diff2-active");
-        viewContainerInner?.classList.remove("diff-active");
       } else {
-        viewContainerInner?.classList.remove("diff-active");
         viewContainerInner?.classList.remove("diff2-active");
       }
 
@@ -745,17 +735,6 @@ export class SketchAppShell extends LitElement {
       switch (mode) {
         case "chat":
           chatView?.classList.add("view-active");
-          break;
-        case "diff":
-          diffView?.classList.add("view-active");
-          // Load diff content if we have a diff view
-          const diffViewComp =
-            this.shadowRoot?.querySelector("sketch-diff-view");
-          if (diffViewComp && this.currentCommitHash) {
-            (diffViewComp as any).showCommitDiff(this.currentCommitHash);
-          } else if (diffViewComp) {
-            (diffViewComp as any).loadDiffContent();
-          }
           break;
 
         case "diff2":
@@ -1311,14 +1290,6 @@ export class SketchAppShell extends LitElement {
               .visible=${this._todoPanelVisible && this.viewMode === "chat"}
             ></sketch-todo-panel>
           </div>
-          <div
-            class="diff-view ${this.viewMode === "diff" ? "view-active" : ""}"
-          >
-            <sketch-diff-view
-              .commitHash=${this.currentCommitHash}
-            ></sketch-diff-view>
-          </div>
-
           <div
             class="diff2-view ${this.viewMode === "diff2" ? "view-active" : ""}"
           >

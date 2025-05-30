@@ -6,7 +6,7 @@ import "./sketch-container-status";
 export class SketchViewModeSelect extends LitElement {
   // Current active mode
   @property()
-  activeMode: "chat" | "diff" | "diff2" | "terminal" = "chat";
+  activeMode: "chat" | "diff2" | "terminal" = "chat";
   // Header bar: view mode buttons
 
   static styles = css`
@@ -87,7 +87,7 @@ export class SketchViewModeSelect extends LitElement {
   /**
    * Handle view mode button clicks
    */
-  private _handleViewModeClick(mode: "chat" | "diff" | "diff2" | "terminal") {
+  private _handleViewModeClick(mode: "chat" | "diff2" | "terminal") {
     // Dispatch a custom event to notify the app shell to change the view
     const event = new CustomEvent("view-mode-select", {
       detail: { mode },

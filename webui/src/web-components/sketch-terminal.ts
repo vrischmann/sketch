@@ -91,7 +91,7 @@ export class SketchTerminal extends LitElement {
    * Handle view mode selection event to detect when terminal becomes visible
    */
   private _handleViewModeSelect(event: CustomEvent) {
-    const mode = event.detail.mode as "chat" | "diff" | "terminal";
+    const mode = event.detail.mode as "chat" | "diff2" | "terminal";
     if (mode === "terminal") {
       // Terminal tab is now visible
       if (!this.isInitialized) {
@@ -112,13 +112,13 @@ export class SketchTerminal extends LitElement {
   // Load xterm CSS into the shadow DOM
   private async loadXtermlCSS() {
     try {
-      // Check if diff2html styles are already loaded
+      // Check if xterm styles are already loaded
       const styleId = "xterm-styles";
       if (this.shadowRoot?.getElementById(styleId)) {
         return; // Already loaded
       }
 
-      // Fetch the diff2html CSS
+      // Fetch the xterm CSS
       const response = await fetch("static/xterm.css");
 
       if (!response.ok) {
