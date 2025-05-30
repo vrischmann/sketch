@@ -353,6 +353,10 @@ func (b *BashTool) checkAndInstallMissingTools(ctx context.Context, command stri
 		missing = append(missing, cmd)
 	}
 
+	if len(missing) == 0 {
+		return nil
+	}
+
 	err = b.installTools(ctx, missing)
 	if err != nil {
 		return err
