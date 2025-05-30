@@ -80,32 +80,6 @@ func TestExtractCommands(t *testing.T) {
 	}
 }
 
-func TestIsBuiltin(t *testing.T) {
-	tests := []struct {
-		name     string
-		command  string
-		expected bool
-	}{
-		{"echo is builtin", "echo", true},
-		{"cd is builtin", "cd", true},
-		{"test is builtin", "test", true},
-		{"[ is builtin", "[", true},
-		{"ls is not builtin", "ls", false},
-		{"curl is not builtin", "curl", false},
-		{"python3 is not builtin", "python3", false},
-		{"nonexistent is not builtin", "nonexistent", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isBuiltin(tt.command)
-			if result != tt.expected {
-				t.Errorf("IsBuiltin(%q) = %v, want %v", tt.command, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestExtractCommandsErrorHandling(t *testing.T) {
 	// Test with syntactically invalid bash
 	invalidBash := "if [ incomplete"

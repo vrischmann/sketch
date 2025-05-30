@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -52,7 +53,7 @@ func ExtractCommands(command string) ([]string, error) {
 			// commands with slashes are user-specified executables/scripts
 			return true
 		}
-		if isBuiltin(cmdName) {
+		if interp.IsBuiltin(cmdName) {
 			return true
 		}
 		if !seen[cmdName] {
@@ -63,20 +64,4 @@ func ExtractCommands(command string) ([]string, error) {
 	})
 
 	return commands, nil
-}
-
-// isBuiltin checks if a command is a shell built-in using the same logic as mvdan.cc/sh/v3/interp
-// This is copied from mvdan.cc/sh/v3/interp.isBuiltin since it's not exported
-// See https://github.com/mvdan/sh/issues/1164
-func isBuiltin(name string) bool {
-	switch name {
-	case "true", ":", "false", "exit", "set", "shift", "unset",
-		"echo", "printf", "break", "continue", "pwd", "cd",
-		"wait", "builtin", "trap", "type", "source", ".", "command",
-		"dirs", "pushd", "popd", "umask", "alias", "unalias",
-		"fg", "bg", "getopts", "eval", "test", "[", "exec",
-		"return", "read", "mapfile", "readarray", "shopt":
-		return true
-	}
-	return false
 }

@@ -363,19 +363,6 @@ func (b *BashTool) checkAndInstallMissingTools(ctx context.Context, command stri
 	return nil
 }
 
-// commandExists checks if a command exists using exec.LookPath
-func commandExists(command string) bool {
-	// If it's an absolute or relative path, check if the file exists
-	if strings.Contains(command, "/") {
-		_, err := os.Stat(command)
-		return err == nil
-	}
-
-	// Otherwise, use exec.LookPath to find it in PATH
-	_, err := exec.LookPath(command)
-	return err == nil
-}
-
 // Command safety check cache to avoid repeated LLM calls
 var (
 	autoInstallMu           sync.Mutex
