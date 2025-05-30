@@ -282,9 +282,9 @@ func (c *Convo) insertMissingToolResults(mr *llm.Request, msg *llm.Message) {
 			}},
 		}
 		prefix = append(prefix, content)
-		msg.Content = append(prefix, msg.Content...)
-		mr.Messages[len(mr.Messages)-1].Content = msg.Content
 	}
+	msg.Content = append(prefix, msg.Content...)
+	mr.Messages[len(mr.Messages)-1].Content = msg.Content
 	slog.DebugContext(c.Ctx, "inserted missing tool results")
 }
 
@@ -367,7 +367,7 @@ func (c *Convo) ToolResultCancelContents(resp *llm.Response) ([]llm.Content, err
 		content.ToolError = true
 		content.ToolResult = []llm.Content{{
 			Type: llm.ContentTypeText,
-			Text: "user canceled this too_use",
+			Text: "user canceled this tool_use",
 		}}
 		toolResults = append(toolResults, content)
 	}

@@ -5,10 +5,12 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
 	"sketch.dev/httprr"
+	"sketch.dev/llm"
 	"sketch.dev/llm/ant"
 )
 
@@ -132,6 +134,163 @@ func TestCancelToolUse(t *testing.T) {
 
 				if exists {
 					t.Errorf("toolUseID %s still exists in the map after cancellation", tt.toolUseID)
+				}
+			}
+		})
+	}
+}
+
+// TestInsertMissingToolResults tests the insertMissingToolResults function
+// to ensure it doesn't create duplicate tool results when multiple tool uses are missing results.
+func TestInsertMissingToolResults(t *testing.T) {
+	tests := []struct {
+		name            string
+		messages        []llm.Message
+		currentMsg      llm.Message
+		expectedCount   int
+		expectedToolIDs []string
+	}{
+		{
+			name: "Single missing tool result",
+			messages: []llm.Message{
+				{
+					Role: llm.MessageRoleAssistant,
+					Content: []llm.Content{
+						{
+							Type: llm.ContentTypeToolUse,
+							ID:   "tool1",
+						},
+					},
+				},
+			},
+			currentMsg: llm.Message{
+				Role:    llm.MessageRoleUser,
+				Content: []llm.Content{},
+			},
+			expectedCount:   1,
+			expectedToolIDs: []string{"tool1"},
+		},
+		{
+			name: "Multiple missing tool results",
+			messages: []llm.Message{
+				{
+					Role: llm.MessageRoleAssistant,
+					Content: []llm.Content{
+						{
+							Type: llm.ContentTypeToolUse,
+							ID:   "tool1",
+						},
+						{
+							Type: llm.ContentTypeToolUse,
+							ID:   "tool2",
+						},
+						{
+							Type: llm.ContentTypeToolUse,
+							ID:   "tool3",
+						},
+					},
+				},
+			},
+			currentMsg: llm.Message{
+				Role:    llm.MessageRoleUser,
+				Content: []llm.Content{},
+			},
+			expectedCount:   3,
+			expectedToolIDs: []string{"tool1", "tool2", "tool3"},
+		},
+		{
+			name: "No missing tool results when results already present",
+			messages: []llm.Message{
+				{
+					Role: llm.MessageRoleAssistant,
+					Content: []llm.Content{
+						{
+							Type: llm.ContentTypeToolUse,
+							ID:   "tool1",
+						},
+					},
+				},
+			},
+			currentMsg: llm.Message{
+				Role: llm.MessageRoleUser,
+				Content: []llm.Content{
+					{
+						Type:      llm.ContentTypeToolResult,
+						ToolUseID: "tool1",
+					},
+				},
+			},
+			expectedCount:   1, // Only the existing one
+			expectedToolIDs: []string{"tool1"},
+		},
+		{
+			name: "No tool uses in previous message",
+			messages: []llm.Message{
+				{
+					Role: llm.MessageRoleAssistant,
+					Content: []llm.Content{
+						{
+							Type: llm.ContentTypeText,
+							Text: "Just some text",
+						},
+					},
+				},
+			},
+			currentMsg: llm.Message{
+				Role:    llm.MessageRoleUser,
+				Content: []llm.Content{},
+			},
+			expectedCount:   0,
+			expectedToolIDs: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := &ant.Service{}
+			convo := New(context.Background(), srv)
+
+			// Create request with messages
+			req := &llm.Request{
+				Messages: append(tt.messages, tt.currentMsg),
+			}
+
+			// Call insertMissingToolResults
+			msg := tt.currentMsg
+			convo.insertMissingToolResults(req, &msg)
+
+			// Count tool results in the message
+			toolResultCount := 0
+			toolIDs := []string{}
+			for _, content := range msg.Content {
+				if content.Type == llm.ContentTypeToolResult {
+					toolResultCount++
+					toolIDs = append(toolIDs, content.ToolUseID)
+				}
+			}
+
+			// Verify count
+			if toolResultCount != tt.expectedCount {
+				t.Errorf("Expected %d tool results, got %d", tt.expectedCount, toolResultCount)
+			}
+
+			// Verify no duplicates by checking unique tool IDs
+			seenIDs := make(map[string]int)
+			for _, id := range toolIDs {
+				seenIDs[id]++
+			}
+
+			// Check for duplicates
+			for id, count := range seenIDs {
+				if count > 1 {
+					t.Errorf("Duplicate tool result for ID %s: found %d times", id, count)
+				}
+			}
+
+			// Verify all expected tool IDs are present
+			for _, expectedID := range tt.expectedToolIDs {
+				if !slices.Contains(toolIDs, expectedID) {
+					t.Errorf("Expected tool ID %s not found in results", expectedID)
 				}
 			}
 		})
