@@ -1069,8 +1069,17 @@ export class SketchAppShell extends LitElement {
       "sketch-chat-input",
     ) as SketchChatInput;
     if (chatInput) {
-      chatInput.content = e.detail.responseText;
+      if (chatInput.content && chatInput.content.trim() !== "") {
+        chatInput.content += "\n\n";
+      }
+      chatInput.content += e.detail.responseText;
       chatInput.focus();
+      // Adjust textarea height to accommodate new content
+      requestAnimationFrame(() => {
+        if (chatInput.adjustChatSpacing) {
+          chatInput.adjustChatSpacing();
+        }
+      });
     }
   }
 
