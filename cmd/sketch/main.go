@@ -209,6 +209,7 @@ func parseCLIFlags() CLIFlags {
 	flag.Float64Var(&flags.maxDollars, "max-dollars", 10.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
 	flag.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
 	flag.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
+	flag.StringVar(&flags.prompt, "p", "", "prompt to send to sketch (alias for -prompt)")
 	flag.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
 	flag.StringVar(&flags.llmAPIKey, "llm-api-key", "", "API key for the LLM provider; if not set, will be read from an env var")
 	flag.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
