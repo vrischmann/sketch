@@ -429,14 +429,14 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 	}
 
 	agentConfig := loop.AgentConfig{
-		Context:      ctx,
-		Service:      llmService,
-		Budget:       budget,
-		GitUsername:  flags.gitUsername,
-		GitEmail:     flags.gitEmail,
-		SessionID:    flags.sessionID,
-		ClientGOOS:   runtime.GOOS,
-		ClientGOARCH: runtime.GOARCH,
+		Context:           ctx,
+		Service:           llmService,
+		Budget:            budget,
+		GitUsername:       flags.gitUsername,
+		GitEmail:          flags.gitEmail,
+		SessionID:         flags.sessionID,
+		ClientGOOS:        runtime.GOOS,
+		ClientGOARCH:      runtime.GOARCH,
 		OutsideHostname:   flags.outsideHostname,
 		OutsideOS:         flags.outsideOS,
 		OutsideWorkingDir: flags.outsideWorkingDir,
