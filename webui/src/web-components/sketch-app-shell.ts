@@ -1014,19 +1014,26 @@ export class SketchAppShell extends LitElement {
       event.preventDefault();
       event.stopPropagation();
     }
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      "Ending the session will shut down the underlying container. Are you sure?",
-    );
-    if (!confirmed) return;
+
+    // Show custom dialog with survey
+    const surveyResult = await this.showEndSessionSurvey();
+    if (!surveyResult) return; // User cancelled
 
     try {
+      const requestBody: any = { reason: "user requested end of session" };
+
+      // Add survey data if provided
+      if (surveyResult.happy !== null) {
+        requestBody.happy = surveyResult.happy;
+        requestBody.comment = surveyResult.comment;
+      }
+
       const response = await fetch("end", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ reason: "user requested end of session" }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -1153,6 +1160,173 @@ export class SketchAppShell extends LitElement {
 
     // Update the CSS custom property on the host element
     this.style.setProperty("--chat-input-height", `${bottomOffset}px`);
+  }
+
+  /**
+   * Show end session survey dialog
+   */
+  private async showEndSessionSurvey(): Promise<{
+    happy: boolean | null;
+    comment: string;
+  } | null> {
+    return new Promise((resolve) => {
+      // Create modal overlay
+      const overlay = document.createElement("div");
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+
+      // Create modal content
+      const modal = document.createElement("div");
+      modal.style.cssText = `
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      `;
+
+      modal.innerHTML = `
+        <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">End Session</h3>
+        <p style="margin: 0 0 20px 0; color: #666;">Ending the session will shut down the underlying container. Are you sure?</p>
+        
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 0 0 12px 0; font-weight: 500;">How was your experience?</p>
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <button id="thumbs-up" style="
+              background: #f8f9fa;
+              border: 2px solid #dee2e6;
+              border-radius: 6px;
+              padding: 8px 16px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+            ">
+              👍 Good
+            </button>
+            <button id="thumbs-down" style="
+              background: #f8f9fa;
+              border: 2px solid #dee2e6;
+              border-radius: 6px;
+              padding: 8px 16px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 14px;
+            ">
+              👎 Not so good
+            </button>
+          </div>
+          
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">Any additional feedback? (optional)</label>
+          <textarea id="feedback-text" placeholder="Tell us what went well or what could be improved..." style="
+            width: 100%;
+            min-height: 80px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 14px;
+            box-sizing: border-box;
+          "></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button id="cancel-btn" style="
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+          ">Cancel</button>
+          <button id="end-btn" style="
+            background: #dc3545;
+            border: 1px solid #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+          ">End Session</button>
+        </div>
+      `;
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      let selectedRating: boolean | null = null;
+
+      // Handle thumbs up/down selection
+      const thumbsUp = modal.querySelector("#thumbs-up") as HTMLButtonElement;
+      const thumbsDown = modal.querySelector(
+        "#thumbs-down",
+      ) as HTMLButtonElement;
+      const feedbackText = modal.querySelector(
+        "#feedback-text",
+      ) as HTMLTextAreaElement;
+      const cancelBtn = modal.querySelector("#cancel-btn") as HTMLButtonElement;
+      const endBtn = modal.querySelector("#end-btn") as HTMLButtonElement;
+
+      const updateButtonStyles = () => {
+        thumbsUp.style.background =
+          selectedRating === true ? "#d4edda" : "#f8f9fa";
+        thumbsUp.style.borderColor =
+          selectedRating === true ? "#28a745" : "#dee2e6";
+        thumbsDown.style.background =
+          selectedRating === false ? "#f8d7da" : "#f8f9fa";
+        thumbsDown.style.borderColor =
+          selectedRating === false ? "#dc3545" : "#dee2e6";
+      };
+
+      thumbsUp.addEventListener("click", () => {
+        selectedRating = true;
+        updateButtonStyles();
+      });
+
+      thumbsDown.addEventListener("click", () => {
+        selectedRating = false;
+        updateButtonStyles();
+      });
+
+      cancelBtn.addEventListener("click", () => {
+        document.body.removeChild(overlay);
+        resolve(null);
+      });
+
+      endBtn.addEventListener("click", () => {
+        const result = {
+          happy: selectedRating,
+          comment: feedbackText.value.trim(),
+        };
+        document.body.removeChild(overlay);
+        resolve(result);
+      });
+
+      // Close on overlay click
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+          resolve(null);
+        }
+      });
+
+      // Focus the modal
+      modal.focus();
+    });
   }
 
   render() {

@@ -61,6 +61,11 @@ export interface CumulativeUsage {
 	tool_uses: { [key: string]: number } | null;
 }
 
+export interface EndFeedback {
+	happy: boolean;
+	comment: string;
+}
+
 export interface State {
 	state_version: number;
 	message_count: number;
@@ -87,6 +92,7 @@ export interface State {
 	outside_working_dir?: string;
 	inside_working_dir?: string;
 	todo_content?: string;
+	end?: EndFeedback | null;
 }
 
 export interface TodoItem {

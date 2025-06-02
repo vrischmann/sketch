@@ -95,6 +95,7 @@ type State struct {
 	OutsideWorkingDir    string                        `json:"outside_working_dir,omitempty"`
 	InsideWorkingDir     string                        `json:"inside_working_dir,omitempty"`
 	TodoContent          string                        `json:"todo_content,omitempty"` // Contains todo list JSON data
+	End                  *loop.EndFeedback             `json:"end,omitempty"`          // End session feedback
 }
 
 type InitRequest struct {
@@ -121,6 +122,8 @@ type Server struct {
 	terminalSessions map[string]*terminalSession
 	sshAvailable     bool
 	sshError         string
+	// WaitGroup for clients waiting for end
+	endWaitGroup sync.WaitGroup
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -676,7 +679,9 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		// Parse the request body (optional)
 		var requestBody struct {
-			Reason string `json:"reason"`
+			Reason  string `json:"reason"`
+			Happy   *bool  `json:"happy,omitempty"`
+			Comment string `json:"comment,omitempty"`
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -691,6 +696,16 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			endReason = requestBody.Reason
 		}
 
+		// Store end feedback if provided
+		if requestBody.Happy != nil {
+			feedback := &loop.EndFeedback{
+				Happy:   *requestBody.Happy,
+				Comment: requestBody.Comment,
+			}
+			s.agent.SetEndFeedback(feedback)
+			slog.Info("End session feedback received", "happy", feedback.Happy, "comment", feedback.Comment)
+		}
+
 		// Send success response before exiting
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "ending", "reason": endReason})
@@ -701,9 +716,29 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		// Log that we're shutting down
 		slog.Info("Ending session", "reason", endReason)
 
-		// Exit the process after a short delay to allow response to be sent
+		// Wait for skaband clients that are waiting for end (with timeout)
 		go func() {
-			time.Sleep(100 * time.Millisecond)
+			startTime := time.Now()
+			// Wait up to 2 seconds for waiting clients to receive the end message
+			done := make(chan struct{})
+			go func() {
+				s.endWaitGroup.Wait()
+				close(done)
+			}()
+
+			select {
+			case <-done:
+				slog.Info("All waiting clients notified of end")
+			case <-time.After(2 * time.Second):
+				slog.Info("Timeout waiting for clients, proceeding with shutdown")
+			}
+
+			// Ensure we've been running for at least 100ms to allow response to be sent
+			elapsed := time.Since(startTime)
+			if elapsed < 100*time.Millisecond {
+				time.Sleep(100*time.Millisecond - elapsed)
+			}
+
 			os.Exit(0)
 		}()
 	})
@@ -1023,6 +1058,17 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check if this client is waiting for end
+	waitForEnd := r.URL.Query().Get("wait_for_end") == "true"
+	if waitForEnd {
+		s.endWaitGroup.Add(1)
+		defer func() {
+			if waitForEnd {
+				s.endWaitGroup.Done()
+			}
+		}()
+	}
+
 	// Ensure 'from' is valid
 	currentCount := s.agent.MessageCount()
 	if fromIndex < 0 {
@@ -1138,6 +1184,12 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 			// Get updated state
 			state = s.getState()
 
+			// Check if end feedback is present and this client was waiting for it
+			if waitForEnd && state.End != nil {
+				s.endWaitGroup.Done()
+				waitForEnd = false // Mark that we've handled the end condition
+			}
+
 			// Send updated state after the state transition
 			fmt.Fprintf(w, "event: state\n")
 			fmt.Fprintf(w, "data: ")
@@ -1164,6 +1216,12 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 
 			// Get updated state
 			state = s.getState()
+
+			// Check if end feedback is present and this client was waiting for it
+			if waitForEnd && state.End != nil {
+				s.endWaitGroup.Done()
+				waitForEnd = false // Mark that we've handled the end condition
+			}
 
 			// Send updated state after the message
 			fmt.Fprintf(w, "event: state\n")
@@ -1211,6 +1269,7 @@ func (s *Server) getState() State {
 		FirstMessageIndex:    s.agent.FirstMessageIndex(),
 		AgentState:           s.agent.CurrentStateName(),
 		TodoContent:          s.agent.CurrentTodoContent(),
+		End:                  s.agent.GetEndFeedback(),
 	}
 }
 

@@ -34,6 +34,12 @@ const (
 	userCancelMessage = "user requested agent to stop handling responses"
 )
 
+// EndFeedback represents user feedback when ending a session
+type EndFeedback struct {
+	Happy   bool   `json:"happy"`
+	Comment string `json:"comment"`
+}
+
 type MessageIterator interface {
 	// Next blocks until the next message is available. It may
 	// return nil if the underlying iterator context is done.
@@ -128,6 +134,10 @@ type CodingAgent interface {
 	CurrentStateName() string
 	// CurrentTodoContent returns the current todo list data as JSON, or empty string if no todos exist
 	CurrentTodoContent() string
+	// GetEndFeedback returns the end session feedback
+	GetEndFeedback() *EndFeedback
+	// SetEndFeedback sets the end session feedback
+	SetEndFeedback(feedback *EndFeedback)
 }
 
 type CodingAgentMessageType string
@@ -378,6 +388,9 @@ type Agent struct {
 
 	// Port monitoring
 	portMonitor *PortMonitor
+
+	// End session feedback
+	endFeedback *EndFeedback
 }
 
 // NewIterator implements CodingAgent.
@@ -474,6 +487,20 @@ func (a *Agent) CurrentTodoContent() string {
 		return ""
 	}
 	return string(content)
+}
+
+// SetEndFeedback sets the end session feedback
+func (a *Agent) SetEndFeedback(feedback *EndFeedback) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.endFeedback = feedback
+}
+
+// GetEndFeedback gets the end session feedback
+func (a *Agent) GetEndFeedback() *EndFeedback {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.endFeedback
 }
 
 func (a *Agent) URL() string { return a.url }
