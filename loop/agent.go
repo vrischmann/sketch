@@ -1077,7 +1077,7 @@ func (a *Agent) Init(ini AgentInit) error {
 			return fmt.Errorf("resolveRef: %w", err)
 		}
 
-		if a.config.InDocker {
+		if a.IsInContainer() {
 			if err := setupGitHooks(a.repoRoot); err != nil {
 				slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
 			}
