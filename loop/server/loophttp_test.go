@@ -3,6 +3,7 @@ package server_test
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -249,6 +250,7 @@ func (m *mockAgent) FirstMessageIndex() int                     { return 0 }
 func (m *mockAgent) DetectGitChanges(ctx context.Context) error { return nil }
 func (m *mockAgent) GetEndFeedback() *loop.EndFeedback          { return m.endFeedback }
 func (m *mockAgent) SetEndFeedback(feedback *loop.EndFeedback)  { m.endFeedback = feedback }
+func (m *mockAgent) GetPortMonitor() *loop.PortMonitor          { return loop.NewPortMonitor() }
 
 // TestEndFeedback tests the end session feedback functionality
 func TestEndFeedback(t *testing.T) {
@@ -550,4 +552,70 @@ func TestCompactHandler(t *testing.T) {
 
 	// No HTTP endpoint to test anymore - compaction is done via /compact message
 	t.Log("Mock CompactConversation works correctly")
+}
+
+// TestPortEventsEndpoint tests the /port-events HTTP endpoint
+func TestPortEventsEndpoint(t *testing.T) {
+	// Create a mock agent that implements the CodingAgent interface
+	agent := &mockAgent{}
+
+	// Create a server with the mock agent
+	server, err := server.New(agent, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Test GET /port-events
+	req, err := http.NewRequest("GET", "/port-events", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	server.ServeHTTP(rr, req)
+
+	// Should return 200 OK
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, status)
+	}
+
+	// Should return JSON content type
+	contentType := rr.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", contentType)
+	}
+
+	// Should return valid JSON (empty array since mock returns no events)
+	var events []any
+	if err := json.Unmarshal(rr.Body.Bytes(), &events); err != nil {
+		t.Errorf("Failed to parse JSON response: %v", err)
+	}
+
+	// Should be empty array for mock agent
+	if len(events) != 0 {
+		t.Errorf("Expected empty events array, got %d events", len(events))
+	}
+}
+
+// TestPortEventsEndpointMethodNotAllowed tests that non-GET requests are rejected
+func TestPortEventsEndpointMethodNotAllowed(t *testing.T) {
+	agent := &mockAgent{}
+	server, err := server.New(agent, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Test POST /port-events (should be rejected)
+	req, err := http.NewRequest("POST", "/port-events", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	server.ServeHTTP(rr, req)
+
+	// Should return 405 Method Not Allowed
+	if status := rr.Code; status != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status code %d, got %d", http.StatusMethodNotAllowed, status)
+	}
 }

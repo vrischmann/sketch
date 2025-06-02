@@ -385,6 +385,16 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		gitSrv.ps1URL.Store(&ps1URL)
 	}()
 
+	// Start automatic port tunneling if SSH is available
+	if sshAvailable {
+		go func() {
+			containerURL := "http://" + localAddr
+			tunnelManager := NewTunnelManager(containerURL, cntrName, 10) // Allow up to 10 concurrent tunnels
+			tunnelManager.Start(ctx)
+			slog.InfoContext(ctx, "Started automatic port tunnel manager", "container", cntrName)
+		}()
+	}
+
 	go func() {
 		cmd := exec.CommandContext(ctx, "docker", "attach", cntrName)
 		cmd.Stdin = os.Stdin

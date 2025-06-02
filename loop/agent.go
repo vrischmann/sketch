@@ -143,6 +143,8 @@ type CodingAgent interface {
 	// CompactConversation compacts the current conversation by generating a summary
 	// and restarting the conversation with that summary as the initial context
 	CompactConversation(ctx context.Context) error
+	// GetPortMonitor returns the port monitor instance for accessing port events
+	GetPortMonitor() *PortMonitor
 }
 
 type CodingAgentMessageType string
@@ -2336,4 +2338,9 @@ func updateOrCreateHook(hookPath, content, distinctiveLine string) error {
 	}
 
 	return nil
+}
+
+// GetPortMonitor returns the port monitor instance for accessing port events
+func (a *Agent) GetPortMonitor() *PortMonitor {
+	return a.portMonitor
 }

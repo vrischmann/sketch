@@ -242,6 +242,44 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		io.WriteString(w, "{}\n")
 	})
 
+	// Handler for /port-events - returns recent port change events
+	s.mux.HandleFunc("/port-events", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Get the 'since' query parameter for filtering events
+		sinceParam := r.URL.Query().Get("since")
+		var events []loop.PortEvent
+
+		// Get port monitor from agent
+		portMonitor := agent.GetPortMonitor()
+		if portMonitor == nil {
+			// Return empty array if port monitor not available
+			events = []loop.PortEvent{}
+		} else if sinceParam != "" {
+			// Parse the since timestamp
+			sinceTime, err := time.Parse(time.RFC3339, sinceParam)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Invalid 'since' timestamp format: %v", err), http.StatusBadRequest)
+				return
+			}
+			events = portMonitor.GetRecentEvents(sinceTime)
+		} else {
+			// Return all recent events
+			events = portMonitor.GetAllRecentEvents()
+		}
+
+		// Encode and return the events
+		if err := json.NewEncoder(w).Encode(events); err != nil {
+			slog.ErrorContext(r.Context(), "Error encoding port events response", slog.Any("err", err))
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+	})
+
 	// Handler for /messages?start=N&end=M (start/end are optional)
 	s.mux.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
