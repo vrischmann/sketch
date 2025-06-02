@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"slices"
 	"strconv"
@@ -1921,13 +1922,16 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 		// if it's not, we could make a backup with a unique name (perhaps append a timestamp) and
 		// then use push with lease to replace.
 
+		// Parse the original branch name to extract base name and starting number
+		baseBranch, startNum := parseBranchNameAndNumber(originalBranch)
+
 		// Try up to 10 times with different branch names if the branch is checked out on the remote
 		var out []byte
 		var err error
 		for retries := range 10 {
 			if retries > 0 {
-				// Add a numeric suffix to the branch name
-				branch = fmt.Sprintf("%s%d", originalBranch, retries)
+				// Increment from the starting number (foo1->foo2, foo2->foo3, etc.)
+				branch = fmt.Sprintf("%s%d", baseBranch, startNum+retries)
 			}
 
 			cmd = exec.Command("git", "push", "--force", ags.gitRemoteAddr, "HEAD:refs/heads/"+branch)
@@ -1958,6 +1962,12 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 			// Update the agent's branch name if we ended up using a different one
 			if branch != originalBranch {
 				ags.branchName = branch
+				// Notify user why the branch name was changed
+				msgs = append(msgs, AgentMessage{
+					Type:      AutoMessageType,
+					Timestamp: time.Now(),
+					Content:   fmt.Sprintf("Branch renamed from %s to %s because the original branch is currently checked out on the remote.", originalBranch, branch),
+				})
 			}
 		}
 	}
@@ -1990,6 +2000,27 @@ func cleanBranchName(s string) string {
 		}
 		return -1
 	}, s)
+}
+
+// parseBranchNameAndNumber extracts the base branch name and starting number.
+// For "sketch/foo1" returns ("sketch/foo", 1)
+// For "sketch/foo" returns ("sketch/foo", 0)
+func parseBranchNameAndNumber(branchName string) (baseBranch string, startNum int) {
+	re := regexp.MustCompile(`^(.+?)(\d+)$`)
+	matches := re.FindStringSubmatch(branchName)
+
+	if len(matches) != 3 {
+		// No trailing digits found
+		return branchName, 0
+	}
+
+	num, err := strconv.Atoi(matches[2])
+	if err != nil {
+		// If parsing fails, treat as no number
+		return branchName, 0
+	}
+
+	return matches[1], num
 }
 
 // parseGitLog parses the output of git log with format '%H%x00%s%x00%b%x00'
