@@ -34,6 +34,26 @@ const (
 	Claude4Opus    = "claude-opus-4-20250514"
 )
 
+// TokenContextWindow returns the maximum token context window size for this service
+func (s *Service) TokenContextWindow() int {
+	model := s.Model
+	if model == "" {
+		model = DefaultModel
+	}
+
+	switch model {
+	case Claude35Sonnet, Claude37Sonnet:
+		return 200000
+	case Claude35Haiku:
+		return 200000
+	case Claude4Sonnet, Claude4Opus:
+		return 200000
+	default:
+		// Default for unknown models
+		return 200000
+	}
+}
+
 // Service provides Claude completions.
 // Fields should not be altered concurrently with calling any method on Service.
 type Service struct {

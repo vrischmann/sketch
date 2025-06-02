@@ -442,6 +442,29 @@ func calculateUsage(req *gemini.Request, res *gemini.Response) llm.Usage {
 	}
 }
 
+// TokenContextWindow returns the maximum token context window size for this service
+func (s *Service) TokenContextWindow() int {
+	model := s.Model
+	if model == "" {
+		model = DefaultModel
+	}
+
+	// Gemini models generally have large context windows
+	switch model {
+	case "gemini-2.5-pro-preview-03-25":
+		return 1000000 // 1M tokens for Gemini 2.5 Pro
+	case "gemini-2.0-flash-exp":
+		return 1000000 // 1M tokens for Gemini 2.0 Flash
+	case "gemini-1.5-pro", "gemini-1.5-pro-latest":
+		return 2000000 // 2M tokens for Gemini 1.5 Pro
+	case "gemini-1.5-flash", "gemini-1.5-flash-latest":
+		return 1000000 // 1M tokens for Gemini 1.5 Flash
+	default:
+		// Default for unknown models
+		return 1000000
+	}
+}
+
 // Do sends a request to Gemini.
 func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error) {
 	// Log the incoming request for debugging

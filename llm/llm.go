@@ -13,6 +13,8 @@ import (
 type Service interface {
 	// Do sends a request to an LLM.
 	Do(context.Context, *Request) (*Response, error)
+	// TokenContextWindow returns the maximum token context window size for this service
+	TokenContextWindow() int
 }
 
 // MustSchema validates that schema is a valid JSON schema and returns it as a json.RawMessage.

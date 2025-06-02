@@ -261,6 +261,7 @@ type MockConvoInterface struct {
 	toolResultCancelContentsFunc func(resp *llm.Response) ([]llm.Content, error)
 	cancelToolUseFunc            func(toolUseID string, cause error) error
 	cumulativeUsageFunc          func() conversation.CumulativeUsage
+	lastUsageFunc                func() llm.Usage
 	resetBudgetFunc              func(conversation.Budget)
 	overBudgetFunc               func() error
 	getIDFunc                    func() string
@@ -307,6 +308,13 @@ func (m *MockConvoInterface) CumulativeUsage() conversation.CumulativeUsage {
 		return m.cumulativeUsageFunc()
 	}
 	return conversation.CumulativeUsage{}
+}
+
+func (m *MockConvoInterface) LastUsage() llm.Usage {
+	if m.lastUsageFunc != nil {
+		return m.lastUsageFunc()
+	}
+	return llm.Usage{}
 }
 
 func (m *MockConvoInterface) ResetBudget(budget conversation.Budget) {
@@ -483,6 +491,10 @@ func (c *mockConvoInterface) SubConvoWithHistory() *conversation.Convo {
 
 func (m *mockConvoInterface) CumulativeUsage() conversation.CumulativeUsage {
 	return conversation.CumulativeUsage{}
+}
+
+func (m *mockConvoInterface) LastUsage() llm.Usage {
+	return llm.Usage{}
 }
 
 func (m *mockConvoInterface) ResetBudget(conversation.Budget) {}

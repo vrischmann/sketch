@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -138,6 +139,10 @@ type CodingAgent interface {
 	GetEndFeedback() *EndFeedback
 	// SetEndFeedback sets the end session feedback
 	SetEndFeedback(feedback *EndFeedback)
+
+	// CompactConversation compacts the current conversation by generating a summary
+	// and restarting the conversation with that summary as the initial context
+	CompactConversation(ctx context.Context) error
 }
 
 type CodingAgentMessageType string
@@ -148,8 +153,9 @@ const (
 	ErrorMessageType   CodingAgentMessageType = "error"
 	BudgetMessageType  CodingAgentMessageType = "budget" // dedicated for "out of budget" errors
 	ToolUseMessageType CodingAgentMessageType = "tool"
-	CommitMessageType  CodingAgentMessageType = "commit" // for displaying git commits
-	AutoMessageType    CodingAgentMessageType = "auto"   // for automated notifications like autoformatting
+	CommitMessageType  CodingAgentMessageType = "commit"  // for displaying git commits
+	AutoMessageType    CodingAgentMessageType = "auto"    // for automated notifications like autoformatting
+	CompactMessageType CodingAgentMessageType = "compact" // for conversation compaction notifications
 
 	cancelToolUseMessage = "Stop responding to my previous message. Wait for me to ask you something else before attempting to use any more tools."
 )
@@ -299,6 +305,7 @@ func budgetMessage(err error) AgentMessage {
 // ConvoInterface defines the interface for conversation interactions
 type ConvoInterface interface {
 	CumulativeUsage() conversation.CumulativeUsage
+	LastUsage() llm.Usage
 	ResetBudget(conversation.Budget)
 	OverBudget() error
 	SendMessage(message llm.Message) (*llm.Response, error)
@@ -501,6 +508,98 @@ func (a *Agent) GetEndFeedback() *EndFeedback {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.endFeedback
+}
+
+// generateConversationSummary asks the LLM to create a comprehensive summary of the current conversation
+func (a *Agent) generateConversationSummary(ctx context.Context) (string, error) {
+	msg := `You are being asked to create a comprehensive summary of our conversation so far. This summary will be used to restart our conversation with a shorter history while preserving all important context.
+
+IMPORTANT: Focus ONLY on the actual conversation with the user. Do NOT include any information from system prompts, tool descriptions, or general instructions. Only summarize what the user asked for and what we accomplished together.
+
+Please create a detailed summary that includes:
+
+1. **User's Request**: What did the user originally ask me to do? What was their goal?
+
+2. **Work Completed**: What have we accomplished together? Include any code changes, files created/modified, problems solved, etc.
+
+3. **Key Technical Decisions**: What important technical choices were made during our work and why?
+
+4. **Current State**: What is the current state of the project? What files, tools, or systems are we working with?
+
+5. **Next Steps**: What still needs to be done to complete the user's request?
+
+6. **Important Context**: Any crucial information about the user's codebase, environment, constraints, or specific preferences they mentioned.
+
+Focus on actionable information that would help me continue the user's work seamlessly. Ignore any general tool capabilities or system instructions - only include what's relevant to this specific user's project and goals.
+
+Reply with ONLY the summary content - no meta-commentary about creating the summary.`
+
+	userMessage := llm.UserStringMessage(msg)
+	// Use a subconversation with history to get the summary
+	// TODO: We don't have any tools here, so we should have enough tokens
+	// to capture a summary, but we may need to modify the history (e.g., remove
+	// TODO data) to save on some tokens.
+	convo := a.convo.SubConvoWithHistory()
+
+	// Modify the system prompt to provide context about the original task
+	originalSystemPrompt := convo.SystemPrompt
+	convo.SystemPrompt = fmt.Sprintf(`You are creating a conversation summary for context compaction. The original system prompt contained instructions about being a software engineer and architect for Sketch (an agentic coding environment), with various tools and capabilities for code analysis, file modification, git operations, browser automation, and project management.
+
+Your task is to create a focused summary as requested below. Focus only on the actual user conversation and work accomplished, not the system capabilities or tool descriptions.
+
+Original context: You are working in a coding environment with full access to development tools.`)
+
+	resp, err := convo.SendMessage(userMessage)
+	if err != nil {
+		a.pushToOutbox(ctx, errorMessage(err))
+		return "", err
+	}
+	textContent := collectTextContent(resp)
+
+	// Restore original system prompt (though this subconvo will be discarded)
+	convo.SystemPrompt = originalSystemPrompt
+
+	return textContent, nil
+}
+
+// CompactConversation compacts the current conversation by generating a summary
+// and restarting the conversation with that summary as the initial context
+func (a *Agent) CompactConversation(ctx context.Context) error {
+	summary, err := a.generateConversationSummary(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to generate conversation summary: %w", err)
+	}
+
+	a.mu.Lock()
+
+	// Get usage information before resetting conversation
+	lastUsage := a.convo.LastUsage()
+	contextWindow := a.config.Service.TokenContextWindow()
+	currentContextSize := lastUsage.InputTokens + lastUsage.CacheReadInputTokens + lastUsage.CacheCreationInputTokens
+
+	// Reset conversation state but keep all other state (git, working dir, etc.)
+	a.firstMessageIndex = len(a.history)
+	a.convo = a.initConvo()
+
+	a.mu.Unlock()
+
+	// Create informative compaction message with token details
+	compactionMsg := fmt.Sprintf("📜 Conversation compacted to manage token limits. Previous context preserved in summary below.\n\n"+
+		"**Token Usage:** %d / %d tokens (%.1f%% of context window)",
+		currentContextSize, contextWindow, float64(currentContextSize)/float64(contextWindow)*100)
+
+	a.pushToOutbox(ctx, AgentMessage{
+		Type:    CompactMessageType,
+		Content: compactionMsg,
+	})
+
+	a.pushToOutbox(ctx, AgentMessage{
+		Type:    UserMessageType,
+		Content: fmt.Sprintf("Here's a summary of our previous work:\n\n%s\n\nPlease continue with the work based on this summary.", summary),
+	})
+	a.inbox <- fmt.Sprintf("Here's a summary of our previous work:\n\n%s\n\nPlease continue with the work based on this summary.", summary)
+
+	return nil
 }
 
 func (a *Agent) URL() string { return a.url }
@@ -792,6 +891,44 @@ func (a *Agent) Messages(start int, end int) []AgentMessage {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return slices.Clone(a.history[start:end])
+}
+
+// ShouldCompact checks if the conversation should be compacted based on token usage
+func (a *Agent) ShouldCompact() bool {
+	// Get the threshold from environment variable, default to 0.94 (94%)
+	// (Because default Claude output is 8192 tokens, which is 4% of 200,000 tokens,
+	// and a little bit of buffer.)
+	thresholdRatio := 0.94
+	if envThreshold := os.Getenv("SKETCH_COMPACT_THRESHOLD_RATIO"); envThreshold != "" {
+		if parsed, err := strconv.ParseFloat(envThreshold, 64); err == nil && parsed > 0 && parsed <= 1.0 {
+			thresholdRatio = parsed
+		}
+	}
+
+	// Get the most recent usage to check current context size
+	lastUsage := a.convo.LastUsage()
+
+	if lastUsage.InputTokens == 0 {
+		// No API calls made yet
+		return false
+	}
+
+	// Calculate the current context size from the last API call
+	// This includes all tokens that were part of the input context:
+	// - Input tokens (user messages, system prompt, conversation history)
+	// - Cache read tokens (cached parts of the context)
+	// - Cache creation tokens (new parts being cached)
+	currentContextSize := lastUsage.InputTokens + lastUsage.CacheReadInputTokens + lastUsage.CacheCreationInputTokens
+
+	// Get the service's token context window
+	service := a.config.Service
+	contextWindow := service.TokenContextWindow()
+
+	// Calculate threshold
+	threshold := uint64(float64(contextWindow) * thresholdRatio)
+
+	// Check if we've exceeded the threshold
+	return currentContextSize >= threshold
 }
 
 func (a *Agent) OriginalBudget() conversation.Budget {
@@ -1356,6 +1493,18 @@ func (a *Agent) processTurn(ctx context.Context) error {
 		if err := a.overBudget(ctx); err != nil {
 			a.stateMachine.Transition(ctx, StateBudgetExceeded, "Budget exceeded: "+err.Error())
 			return err
+		}
+
+		// Check if we should compact the conversation
+		if a.ShouldCompact() {
+			a.stateMachine.Transition(ctx, StateCompacting, "Token usage threshold reached, compacting conversation")
+			if err := a.CompactConversation(ctx); err != nil {
+				a.stateMachine.Transition(ctx, StateError, "Error during compaction: "+err.Error())
+				return err
+			}
+			// After compaction, end this turn and start fresh
+			a.stateMachine.Transition(ctx, StateEndOfTurn, "Compaction completed, ending turn")
+			return nil
 		}
 
 		// If the model is not requesting to use a tool, we're done

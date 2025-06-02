@@ -28,6 +28,9 @@ export class SketchTimeline extends LitElement {
   @property({ attribute: false })
   scrollContainer: Ref<HTMLElement>;
 
+  @property({ attribute: false })
+  firstMessageIndex: number = 0;
+
   static styles = css`
     /* Hide views initially to prevent flash of content */
     .timeline-container .timeline,
@@ -398,6 +401,7 @@ export class SketchTimeline extends LitElement {
                   .message=${message}
                   .previousMessage=${previousMessage}
                   .open=${false}
+                  .firstMessageIndex=${this.firstMessageIndex}
                 ></sketch-timeline-message>`;
               },
             )}

@@ -188,6 +188,11 @@ func (m *MockConvo) CumulativeUsage() conversation.CumulativeUsage {
 	return conversation.CumulativeUsage{}
 }
 
+func (m *MockConvo) LastUsage() llm.Usage {
+	m.recordCall("LastUsage")
+	return llm.Usage{}
+}
+
 func (m *MockConvo) OverBudget() error {
 	m.recordCall("OverBudget")
 	return nil

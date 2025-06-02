@@ -98,6 +98,8 @@ type Convo struct {
 	mu *sync.Mutex
 	// usage tracks usage for this conversation and all sub-conversations.
 	usage *CumulativeUsage
+	// lastUsage tracks the usage from the most recent API call
+	lastUsage llm.Usage
 }
 
 // newConvoID generates a new 8-byte random id.
@@ -327,6 +329,10 @@ func (c *Convo) SendMessage(msg llm.Message) (*llm.Response, error) {
 	// Propagate usage to all ancestors (including us).
 	for x := c; x != nil; x = x.Parent {
 		x.usage.Add(resp.Usage)
+		// Store the most recent usage (only on the current conversation, not ancestors)
+		if x == c {
+			x.lastUsage = resp.Usage
+		}
 	}
 	c.Listener.OnResponse(c.Ctx, c, id, resp)
 	return resp, err
@@ -543,6 +549,16 @@ func (c *Convo) CumulativeUsage() CumulativeUsage {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.usage.Clone()
+}
+
+// LastUsage returns the usage from the most recent API call
+func (c *Convo) LastUsage() llm.Usage {
+	if c == nil {
+		return llm.Usage{}
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.lastUsage
 }
 
 func (u *CumulativeUsage) WallTime() time.Duration {

@@ -627,6 +627,25 @@ func (s *Service) calculateCostFromTokens(u llm.Usage) float64 {
 	return dollars
 }
 
+// TokenContextWindow returns the maximum token context window size for this service
+func (s *Service) TokenContextWindow() int {
+	model := cmp.Or(s.Model, DefaultModel)
+
+	// OpenAI models generally have 128k context windows
+	// Some newer models have larger windows, but 128k is a safe default
+	switch model.ModelName {
+	case "gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14", "gpt-4.1-nano-2025-04-14":
+		return 200000 // 200k for newer GPT-4.1 models
+	case "gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18":
+		return 128000 // 128k for GPT-4o models
+	case "o3-2025-04-16", "o3-mini-2025-04-16":
+		return 200000 // 200k for O3 models
+	default:
+		// Default for unknown models
+		return 128000
+	}
+}
+
 // Do sends a request to OpenAI using the go-openai package.
 func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error) {
 	// Configure the OpenAI client

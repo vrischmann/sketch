@@ -240,15 +240,15 @@ func (m *mockAgent) OutsideHostname() string                     { return "test-
 func (m *mockAgent) OutsideWorkingDir() string                   { return "/app" }
 func (m *mockAgent) GitOrigin() string                           { return "" }
 func (m *mockAgent) OpenBrowser(url string)                      {}
-func (m *mockAgent) RestartConversation(ctx context.Context, rev string, initialPrompt string) error {
+func (m *mockAgent) CompactConversation(ctx context.Context) error {
+	// Mock implementation - just return nil
 	return nil
 }
-func (m *mockAgent) SuggestReprompt(ctx context.Context) (string, error) { return "", nil }
-func (m *mockAgent) IsInContainer() bool                                 { return false }
-func (m *mockAgent) FirstMessageIndex() int                              { return 0 }
-func (m *mockAgent) DetectGitChanges(ctx context.Context) error          { return nil }
-func (m *mockAgent) GetEndFeedback() *loop.EndFeedback                   { return m.endFeedback }
-func (m *mockAgent) SetEndFeedback(feedback *loop.EndFeedback)           { m.endFeedback = feedback }
+func (m *mockAgent) IsInContainer() bool                        { return false }
+func (m *mockAgent) FirstMessageIndex() int                     { return 0 }
+func (m *mockAgent) DetectGitChanges(ctx context.Context) error { return nil }
+func (m *mockAgent) GetEndFeedback() *loop.EndFeedback          { return m.endFeedback }
+func (m *mockAgent) SetEndFeedback(feedback *loop.EndFeedback)  { m.endFeedback = feedback }
 
 // TestEndFeedback tests the end session feedback functionality
 func TestEndFeedback(t *testing.T) {
@@ -308,7 +308,9 @@ func TestEndFeedback(t *testing.T) {
 			t.Errorf("Expected Comment to be 'Could be better', got %s", retrieved.Comment)
 		}
 	}
-} // TestSSEStream tests the SSE stream endpoint
+}
+
+// TestSSEStream tests the SSE stream endpoint
 func TestSSEStream(t *testing.T) {
 	// Create a mock agent with initial messages
 	mockAgent := &mockAgent{
@@ -532,4 +534,20 @@ func TestGitShowHandler(t *testing.T) {
 	}
 }
 
-// Removing duplicate method definition
+func TestCompactHandler(t *testing.T) {
+	// Test that mock CompactConversation works
+	mockAgent := &mockAgent{
+		messages:     []loop.AgentMessage{},
+		messageCount: 0,
+		sessionID:    "test-session",
+	}
+
+	ctx := context.Background()
+	err := mockAgent.CompactConversation(ctx)
+	if err != nil {
+		t.Errorf("Mock CompactConversation failed: %v", err)
+	}
+
+	// No HTTP endpoint to test anymore - compaction is done via /compact message
+	t.Log("Mock CompactConversation works correctly")
+}

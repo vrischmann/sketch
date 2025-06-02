@@ -16,6 +16,9 @@ export class SketchTimelineMessage extends LitElement {
   @property()
   open: boolean = false;
 
+  @property()
+  firstMessageIndex: number = 0;
+
   @state()
   showInfo: boolean = false;
 
@@ -373,6 +376,60 @@ export class SketchTimelineMessage extends LitElement {
 
     .error .message-content {
       border-left-color: #f44336;
+    }
+
+    /* Compact message styling - distinct visual separation */
+    .compact {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      border: 2px solid #fd7e14;
+      border-radius: 12px;
+      margin: 20px 0;
+      padding: 0;
+    }
+
+    .compact .message-content {
+      border-left: 4px solid #fd7e14;
+      background: rgba(253, 126, 20, 0.05);
+      font-weight: 500;
+    }
+
+    .compact .message-text {
+      color: #8b4513;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .compact::before {
+      content: "📚 CONVERSATION EPOCH";
+      display: block;
+      text-align: center;
+      font-size: 11px;
+      font-weight: bold;
+      color: #8b4513;
+      background: #fd7e14;
+      color: white;
+      padding: 4px 8px;
+      margin: 0;
+      border-radius: 8px 8px 0 0;
+      letter-spacing: 1px;
+    }
+
+    /* Pre-compaction messages get a subtle diagonal stripe background */
+    .pre-compaction {
+      background: repeating-linear-gradient(
+        45deg,
+        #ffffff,
+        #ffffff 10px,
+        #f8f8f8 10px,
+        #f8f8f8 20px
+      );
+      opacity: 0.85;
+      border-left: 3px solid #ddd;
+    }
+
+    .pre-compaction .message-content {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(1px);
     }
 
     /* Make message type display bold but without the IRC-style markers */
@@ -917,11 +974,15 @@ export class SketchTimelineMessage extends LitElement {
     const isEndOfTurn =
       this.message?.end_of_turn && !this.message?.parent_conversation_id;
 
+    const isPreCompaction =
+      this.message?.idx !== undefined &&
+      this.message.idx < this.firstMessageIndex;
+
     return html`
       <div
         class="message ${this.message?.type} ${isEndOfTurn
           ? "end-of-turn"
-          : ""}"
+          : ""} ${isPreCompaction ? "pre-compaction" : ""}"
       >
         <div class="message-container">
           <!-- Left area (empty for simplicity) -->
