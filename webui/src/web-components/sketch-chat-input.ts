@@ -126,6 +126,7 @@ export class SketchChatInput extends LitElement {
   constructor() {
     super();
     this._handleDiffComment = this._handleDiffComment.bind(this);
+    this._handleTodoComment = this._handleTodoComment.bind(this);
     this._handleDragOver = this._handleDragOver.bind(this);
     this._handleDragEnter = this._handleDragEnter.bind(this);
     this._handleDragLeave = this._handleDragLeave.bind(this);
@@ -135,6 +136,7 @@ export class SketchChatInput extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener("diff-comment", this._handleDiffComment);
+    window.addEventListener("todo-comment", this._handleTodoComment);
   }
 
   // Utility function to handle file uploads (used by both paste and drop handlers)
@@ -271,10 +273,22 @@ export class SketchChatInput extends LitElement {
     requestAnimationFrame(() => this.adjustChatSpacing());
   }
 
+  private _handleTodoComment(event: CustomEvent) {
+    const { comment } = event.detail;
+    if (!comment) return;
+
+    if (this.content != "") {
+      this.content += "\n\n";
+    }
+    this.content += comment;
+    requestAnimationFrame(() => this.adjustChatSpacing());
+  }
+
   // See https://lit.dev/docs/components/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener("diff-comment", this._handleDiffComment);
+    window.removeEventListener("todo-comment", this._handleTodoComment);
 
     // Clean up drag and drop event listeners
     const container = this.renderRoot.querySelector(".chat-container");
