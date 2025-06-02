@@ -141,6 +141,14 @@ var (
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
+	TogetherDeepseekR1 = Model{
+		UserName:  "together-deepseek-r1",
+		ModelName: "deepseek-ai/DeepSeek-R1",
+		URL:       TogetherURL,
+		Cost:      ModelCost{Input: 300, Output: 700},
+		APIKeyEnv: TogetherAPIKeyEnv,
+	}
+
 	TogetherLlama4Maverick = Model{
 		UserName:  "together-llama4-maverick",
 		ModelName: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
@@ -246,6 +254,7 @@ var ModelsRegistry = []Model{
 	Gemini25Flash,
 	Gemini25Pro,
 	TogetherDeepseekV3,
+	TogetherDeepseekR1,
 	TogetherLlama4Maverick,
 	TogetherLlama3_3_70B,
 	TogetherMistralSmall,
