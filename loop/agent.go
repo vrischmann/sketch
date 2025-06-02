@@ -375,6 +375,9 @@ type Agent struct {
 
 	// Track outstanding tool calls by ID with their names
 	outstandingToolCalls map[string]string
+
+	// Port monitoring
+	portMonitor *PortMonitor
 }
 
 // NewIterator implements CodingAgent.
@@ -816,6 +819,7 @@ func NewAgent(config AgentConfig) *Agent {
 		stateMachine:         NewStateMachine(),
 		workingDir:           config.WorkingDir,
 		outsideHTTP:          config.OutsideHTTP,
+		portMonitor:          NewPortMonitor(),
 	}
 	return agent
 }
@@ -1209,6 +1213,12 @@ func (a *Agent) CancelTurn(cause error) {
 }
 
 func (a *Agent) Loop(ctxOuter context.Context) {
+	// Start port monitoring when the agent loop begins
+	// Only monitor ports when running in a container
+	if a.IsInContainer() {
+		a.portMonitor.Start(ctxOuter)
+	}
+
 	for {
 		select {
 		case <-ctxOuter.Done():
