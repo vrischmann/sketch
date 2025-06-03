@@ -1077,8 +1077,10 @@ func (a *Agent) Init(ini AgentInit) error {
 			return fmt.Errorf("resolveRef: %w", err)
 		}
 
-		if err := setupGitHooks(a.repoRoot); err != nil {
-			slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
+		if a.config.InDocker {
+			if err := setupGitHooks(a.repoRoot); err != nil {
+				slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
+			}
 		}
 
 		cmd := exec.CommandContext(ctx, "git", "tag", "-f", a.SketchGitBaseRef(), "HEAD")
