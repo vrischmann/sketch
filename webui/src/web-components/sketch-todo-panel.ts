@@ -378,15 +378,17 @@ export class SketchTodoPanel extends LitElement {
             <div class="todo-content-text">${item.task}</div>
           </div>
           <div class="todo-actions-column">
-            ${showCommentButton ? html`
-              <button 
-                class="comment-button" 
-                @click="${() => this.openCommentBox(item)}"
-                title="Add comment about this TODO item"
-              >
-                💬
-              </button>
-            ` : ""}
+            ${showCommentButton
+              ? html`
+                  <button
+                    class="comment-button"
+                    @click="${() => this.openCommentBox(item)}"
+                    title="Add comment about this TODO item"
+                  >
+                    💬
+                  </button>
+                `
+              : ""}
           </div>
         </div>
       </div>
@@ -458,20 +460,19 @@ export class SketchTodoPanel extends LitElement {
     }
 
     return html`
-      ${contentElement}
-      
-      ${this.showCommentBox ? this.renderCommentBox() : ""}
+      ${contentElement} ${this.showCommentBox ? this.renderCommentBox() : ""}
     `;
   }
 
   private renderCommentBox() {
     if (!this.commentingItem) return "";
 
-    const statusText = {
-      queued: "Queued",
-      "in-progress": "In Progress", 
-      completed: "Completed"
-    }[this.commentingItem.status] || this.commentingItem.status;
+    const statusText =
+      {
+        queued: "Queued",
+        "in-progress": "In Progress",
+        completed: "Completed",
+      }[this.commentingItem.status] || this.commentingItem.status;
 
     return html`
       <div class="comment-overlay" @click="${this.handleOverlayClick}">
@@ -482,19 +483,19 @@ export class SketchTodoPanel extends LitElement {
               ×
             </button>
           </div>
-          
+
           <div class="todo-context">
             <div class="todo-context-status">Status: ${statusText}</div>
             <div class="todo-context-task">${this.commentingItem.task}</div>
           </div>
-          
+
           <textarea
             class="comment-textarea"
             placeholder="Type your comment about this TODO item..."
             .value="${this.commentText}"
             @input="${this.handleCommentInput}"
           ></textarea>
-          
+
           <div class="comment-actions">
             <button class="cancel-button" @click="${this.closeCommentBox}">
               Cancel
@@ -541,11 +542,12 @@ export class SketchTodoPanel extends LitElement {
     }
 
     // Format the comment similar to diff comments
-    const statusText = {
-      queued: "Queued",
-      "in-progress": "In Progress", 
-      completed: "Completed"
-    }[this.commentingItem.status] || this.commentingItem.status;
+    const statusText =
+      {
+        queued: "Queued",
+        "in-progress": "In Progress",
+        completed: "Completed",
+      }[this.commentingItem.status] || this.commentingItem.status;
 
     const formattedComment = `\`\`\`
 TODO Item (${statusText}): ${this.commentingItem.task}
@@ -561,7 +563,7 @@ ${this.commentText}`;
     });
 
     this.dispatchEvent(event);
-    
+
     // Close the comment box
     this.closeCommentBox();
   }
