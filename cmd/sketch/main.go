@@ -199,53 +199,90 @@ type CLIFlags struct {
 func parseCLIFlags() CLIFlags {
 	var flags CLIFlags
 
-	flag.StringVar(&flags.addr, "addr", "localhost:0", "local debug HTTP server address")
-	flag.StringVar(&flags.skabandAddr, "skaband-addr", "https://sketch.dev", "URL of the skaband server")
-	flag.BoolVar(&flags.unsafe, "unsafe", false, "run directly without a docker container")
-	flag.BoolVar(&flags.openBrowser, "open", true, "open sketch URL in system browser; on by default except if -one-shot is used or a ssh connection is detected")
-	flag.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
-	flag.Uint64Var(&flags.maxIterations, "max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
-	flag.DurationVar(&flags.maxWallTime, "max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
-	flag.Float64Var(&flags.maxDollars, "max-dollars", 10.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
-	flag.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
-	flag.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
-	flag.StringVar(&flags.prompt, "p", "", "prompt to send to sketch (alias for -prompt)")
-	flag.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
-	flag.StringVar(&flags.llmAPIKey, "llm-api-key", "", "API key for the LLM provider; if not set, will be read from an env var")
-	flag.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
-	flag.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
-	flag.BoolVar(&flags.version, "version", false, "print the version and exit")
-	flag.StringVar(&flags.workingDir, "C", "", "when set, change to this directory before running")
-	flag.IntVar(&flags.sshPort, "ssh_port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
-	flag.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
-	flag.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
-	flag.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
-	flag.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
-	flag.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
+	// Create separate flagsets for user-visible and internal flags
+	userFlags := flag.NewFlagSet("sketch", flag.ExitOnError)
+	internalFlags := flag.NewFlagSet("sketch-internal", flag.ContinueOnError)
 
-	// Flags geared towards sketch developers or sketch internals:
-	flag.StringVar(&flags.gitUsername, "git-username", "", "(internal) username for git commits")
-	flag.StringVar(&flags.gitEmail, "git-email", "", "(internal) email for git commits")
-	flag.StringVar(&flags.sessionID, "session-id", skabandclient.NewSessionID(), "(internal) unique session-id for a sketch process")
-	flag.BoolVar(&flags.record, "httprecord", true, "(debugging) Record trace (if httprr is set)")
-	flag.BoolVar(&flags.noCleanup, "nocleanup", false, "(debugging) do not clean up docker containers on exit")
-	flag.StringVar(&flags.containerLogDest, "save-container-logs", "", "(debugging) host path to save container logs to on exit")
-	flag.StringVar(&flags.outsideHostname, "outside-hostname", "", "(internal) hostname on the outside system")
-	flag.StringVar(&flags.outsideOS, "outside-os", "", "(internal) OS on the outside system")
-	flag.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
-	flag.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
-	flag.Var(&flags.experimentFlag, "x", "enable experimental features (comma-separated list or repeat flag; use 'list' to show all)")
+	// User-visible flags
+	userFlags.StringVar(&flags.addr, "addr", "localhost:0", "local HTTP server")
+	userFlags.StringVar(&flags.skabandAddr, "skaband-addr", "https://sketch.dev", "URL of the skaband server; set to empty to disable sketch.dev integration")
+	userFlags.BoolVar(&flags.unsafe, "unsafe", false, "run without a docker container")
+	userFlags.BoolVar(&flags.openBrowser, "open", true, "open sketch URL in system browser; on by default except if -one-shot is used or a ssh connection is detected")
+	userFlags.Uint64Var(&flags.maxIterations, "max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
+	userFlags.DurationVar(&flags.maxWallTime, "max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
+	userFlags.Float64Var(&flags.maxDollars, "max-dollars", 10.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
+	userFlags.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
+	userFlags.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
+	userFlags.StringVar(&flags.prompt, "p", "", "prompt to send to sketch (alias for -prompt)")
+	userFlags.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
+	userFlags.StringVar(&flags.llmAPIKey, "llm-api-key", "", "API key for the LLM provider; if not set, will be read from an env var")
+	userFlags.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
+	userFlags.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
+	userFlags.BoolVar(&flags.version, "version", false, "print the version and exit")
+	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
+	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
+	userFlags.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
+	userFlags.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
+	userFlags.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
+	userFlags.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
 
-	flag.StringVar(&flags.gitRemoteURL, "git-remote-url", "", "(internal) git remote for outside sketch")
-	flag.StringVar(&flags.commit, "commit", "", "(internal) the git commit reference to check out from git remote url")
-	flag.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
+	// Internal flags (for sketch developers or internal use)
+	// Args to sketch innie:
+	internalFlags.StringVar(&flags.gitUsername, "git-username", "", "(internal) username for git commits")
+	internalFlags.StringVar(&flags.gitEmail, "git-email", "", "(internal) email for git commits")
+	internalFlags.StringVar(&flags.sessionID, "session-id", skabandclient.NewSessionID(), "(internal) unique session-id for a sketch process")
+	internalFlags.BoolVar(&flags.record, "httprecord", true, "(debugging) Record trace (if httprr is set)")
+	internalFlags.BoolVar(&flags.noCleanup, "nocleanup", false, "(debugging) do not clean up docker containers on exit")
+	internalFlags.StringVar(&flags.containerLogDest, "save-container-logs", "", "(debugging) host path to save container logs to on exit")
+	internalFlags.StringVar(&flags.outsideHostname, "outside-hostname", "", "(internal) hostname on the outside system")
+	internalFlags.StringVar(&flags.outsideOS, "outside-os", "", "(internal) OS on the outside system")
+	internalFlags.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
+	internalFlags.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
+	internalFlags.StringVar(&flags.gitRemoteURL, "git-remote-url", "", "(internal) git remote for outside sketch")
+	internalFlags.StringVar(&flags.commit, "commit", "", "(internal) the git commit reference to check out from git remote url")
+	internalFlags.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
 
-	flag.Parse()
+	// Developer flags
+	internalFlags.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
+	internalFlags.Var(&flags.experimentFlag, "x", "enable experimental features (comma-separated list or repeat flag; use 'list' to show all)")
+	// This is really only useful for someone running with "go run"
+	userFlags.StringVar(&flags.workingDir, "C", "", "when set, change to this directory before running")
+
+	// Custom usage function that shows only user-visible flags by default
+	userFlags.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		userFlags.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nFor additional internal/debugging flags, use -help-internal\n")
+	}
+
+	// Check if user requested internal help
+	if len(os.Args) > 1 && os.Args[1] == "-help-internal" {
+		fmt.Fprintf(os.Stderr, "Internal/debugging flags for %s:\n", os.Args[0])
+		internalFlags.PrintDefaults()
+		os.Exit(0)
+	}
+
+	// Create a combined flagset for actual parsing by merging the two flagsets
+	allFlags := flag.NewFlagSet("sketch-all", flag.ExitOnError)
+	allFlags.Usage = userFlags.Usage
+
+	// Copy all flags from userFlags to allFlags
+	userFlags.VisitAll(func(f *flag.Flag) {
+		allFlags.Var(f.Value, f.Name, f.Usage)
+	})
+
+	// Copy all flags from internalFlags to allFlags
+	internalFlags.VisitAll(func(f *flag.Flag) {
+		allFlags.Var(f.Value, f.Name, f.Usage)
+	})
+
+	// Parse all arguments with the combined flagset
+	allFlags.Parse(os.Args[1:])
 
 	// -open's default value is not a simple true/false; it depends on other flags and conditions.
 	// Distinguish between -open default value vs explicitly set.
 	openExplicit := false
-	flag.Visit(func(f *flag.Flag) {
+	allFlags.Visit(func(f *flag.Flag) {
 		if f.Name == "open" {
 			openExplicit = true
 		}
