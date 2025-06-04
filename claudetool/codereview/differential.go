@@ -29,7 +29,7 @@ import (
 func (r *CodeReviewer) Tool() *llm.Tool {
 	spec := &llm.Tool{
 		Name:        "codereview",
-		Description: `Run an automated code review.`,
+		Description: `Run an automated code review before presenting git commits to the user. Call if/when you've completed your current work and are ready for user feedback.`,
 		// If you modify this, update the termui template for prettier rendering.
 		InputSchema: llm.EmptySchema(),
 		Run:         r.Run,
