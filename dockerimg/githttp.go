@@ -83,7 +83,7 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if this is a .git/info/refs request for git-upload-pack service (which happens during git fetch)
-	// Use `GIT_CURL_VERBOSE=1 git fetch sketch-host` to inspect what's going on under the covers for git.
+	// Use `GIT_CURL_VERBOSE=1 git fetch origin` to inspect what's going on under the covers for git.
 	if r.Method == http.MethodGet && strings.Contains(r.URL.Path, ".git/info/refs") && r.URL.Query().Get("service") == "git-upload-pack" {
 		slog.InfoContext(r.Context(), "detected git info/refs request, running git fetch origin")
 

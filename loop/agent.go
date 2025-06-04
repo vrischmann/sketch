@@ -1005,24 +1005,25 @@ func (a *Agent) Init(ini AgentInit) error {
 	ctx := a.config.Context
 	slog.InfoContext(ctx, "agent initializing")
 
-	// If a remote git addr was specified, we configure the remote
+	// If a remote git addr was specified, we configure the origin remote
 	if a.gitState.gitRemoteAddr != "" {
 		slog.InfoContext(ctx, "Configuring git remote", slog.String("remote", a.gitState.gitRemoteAddr))
-		cmd := exec.CommandContext(ctx, "git", "remote", "add", "sketch-host", a.gitState.gitRemoteAddr)
+
+		// Remove existing origin remote if it exists
+		cmd := exec.CommandContext(ctx, "git", "remote", "remove", "origin")
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git remote add: %s: %v", out, err)
+			// Ignore error if origin doesn't exist
+			slog.DebugContext(ctx, "git remote remove origin (ignoring if not exists)", slog.String("output", string(out)))
 		}
-		// sketch-host is a git repo hosted by "outtie sketch". When it notices a 'git fetch',
-		// it runs "git fetch" underneath the covers to get its latest commits. By configuring
-		// an additional remote.sketch-host.fetch, we make "origin/main" on innie sketch look like
-		// origin/main on outtie sketch, which should make it easier to rebase.
-		cmd = exec.CommandContext(ctx, "git", "config", "--add", "remote.sketch-host.fetch",
-			"+refs/heads/feature/*:refs/remotes/origin/feature/*")
+
+		// Add the new remote as origin
+		cmd = exec.CommandContext(ctx, "git", "remote", "add", "origin", a.gitState.gitRemoteAddr)
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git config --add: %s: %v", out, err)
+			return fmt.Errorf("git remote add origin: %s: %v", out, err)
 		}
+
 	}
 
 	// If a commit was specified, we fetch and reset to it.
@@ -1034,7 +1035,7 @@ func (a *Agent) Init(ini AgentInit) error {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git stash: %s: %v", out, err)
 		}
-		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "sketch-host")
+		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "origin")
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git fetch: %s: %w", out, err)
@@ -1247,7 +1248,6 @@ func branchExists(dir, branchName string) bool {
 	refs := []string{
 		"refs/heads/",
 		"refs/remotes/origin/",
-		"refs/remotes/sketch-host/",
 	}
 	for _, ref := range refs {
 		cmd := exec.Command("git", "show-ref", "--verify", "--quiet", ref+branchName)
