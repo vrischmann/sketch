@@ -115,6 +115,9 @@ type ContainerConfig struct {
 
 	// Outtie's HTTP server
 	OutsideHTTP string
+
+	// Prefix for git branches created by sketch
+	BranchPrefix string
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -541,6 +544,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-termui="+fmt.Sprintf("%t", config.TermUI),
 		"-verbose="+fmt.Sprintf("%t", config.Verbose),
 		"-x="+config.ExperimentFlag,
+		"-branch-prefix="+config.BranchPrefix,
 	)
 	if config.Model != "" {
 		cmdArgs = append(cmdArgs, "-model="+config.Model)

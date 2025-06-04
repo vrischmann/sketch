@@ -28,6 +28,7 @@ type mockAgent struct {
 	initialCommit            string
 	title                    string
 	branchName               string
+	branchPrefix             string
 	workingDir               string
 	sessionID                string
 }
@@ -232,6 +233,7 @@ func (m *mockAgent) RepoRoot() string                            { return m.work
 func (m *mockAgent) Diff(commit *string) (string, error)         { return "", nil }
 func (m *mockAgent) OS() string                                  { return "linux" }
 func (m *mockAgent) SessionID() string                           { return m.sessionID }
+func (m *mockAgent) BranchPrefix() string                        { return m.branchPrefix }
 func (m *mockAgent) CurrentTodoContent() string                  { return "" } // Mock returns empty for simplicity
 func (m *mockAgent) OutstandingLLMCallCount() int                { return 0 }
 func (m *mockAgent) OutstandingToolCalls() []string              { return nil }
@@ -262,6 +264,7 @@ func TestSSEStream(t *testing.T) {
 		initialCommit:            "abcd1234",
 		title:                    "Test Title",
 		branchName:               "sketch/test-branch",
+		branchPrefix:             "sketch/",
 	}
 
 	// Add the initial messages before creating the server
@@ -395,7 +398,8 @@ func TestSSEStream(t *testing.T) {
 func TestGitRawDiffHandler(t *testing.T) {
 	// Create a mock agent
 	mockAgent := &mockAgent{
-		workingDir: t.TempDir(), // Use a temp directory
+		workingDir:   t.TempDir(), // Use a temp directory
+		branchPrefix: "sketch/",
 	}
 
 	// Create the server with the mock agent
@@ -441,7 +445,8 @@ func TestGitRawDiffHandler(t *testing.T) {
 func TestGitShowHandler(t *testing.T) {
 	// Create a mock agent
 	mockAgent := &mockAgent{
-		workingDir: t.TempDir(), // Use a temp directory
+		workingDir:   t.TempDir(), // Use a temp directory
+		branchPrefix: "sketch/",
 	}
 
 	// Create the server with the mock agent
@@ -480,6 +485,7 @@ func TestCompactHandler(t *testing.T) {
 		messages:     []loop.AgentMessage{},
 		messageCount: 0,
 		sessionID:    "test-session",
+		branchPrefix: "sketch/",
 	}
 
 	ctx := context.Background()
@@ -495,7 +501,9 @@ func TestCompactHandler(t *testing.T) {
 // TestPortEventsEndpoint tests the /port-events HTTP endpoint
 func TestPortEventsEndpoint(t *testing.T) {
 	// Create a mock agent that implements the CodingAgent interface
-	agent := &mockAgent{}
+	agent := &mockAgent{
+		branchPrefix: "sketch/",
+	}
 
 	// Create a server with the mock agent
 	server, err := server.New(agent, nil)
@@ -537,7 +545,9 @@ func TestPortEventsEndpoint(t *testing.T) {
 
 // TestPortEventsEndpointMethodNotAllowed tests that non-GET requests are rejected
 func TestPortEventsEndpointMethodNotAllowed(t *testing.T) {
-	agent := &mockAgent{}
+	agent := &mockAgent{
+		branchPrefix: "sketch/",
+	}
 	server, err := server.New(agent, nil)
 	if err != nil {
 		t.Fatalf("Failed to create server: %v", err)

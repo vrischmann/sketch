@@ -1,7 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property, state } from "lit/decorators.js";
-import { ToolCall, MultipleChoiceOption, MultipleChoiceParams } from "../types";
+import { ToolCall, MultipleChoiceOption, MultipleChoiceParams, State } from "../types";
 import { marked, MarkedOptions, Renderer } from "marked";
 import DOMPurify from "dompurify";
 
@@ -600,6 +600,9 @@ export class SketchToolCardPrecommit extends LitElement {
   @property()
   open: boolean;
 
+  @property()
+  state: State;
+
   static styles = css`
     .summary-text {
       font-style: italic;
@@ -630,10 +633,10 @@ export class SketchToolCardPrecommit extends LitElement {
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
         <span slot="summary" class="summary-text">
-          Branch: sketch/${inputData.branch_name}
+          Branch: ${this.state?.branch_prefix}${inputData.branch_name}
         </span>
         <div slot="input">
-          <div>Set branch to: <code>sketch/${inputData.branch_name}</code></div>
+          <div>Set branch to: <code>${this.state?.branch_prefix}${inputData.branch_name}</code></div>
         </div>
       </sketch-tool-card>
     `;

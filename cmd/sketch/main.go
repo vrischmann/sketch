@@ -204,6 +204,7 @@ type CLIFlags struct {
 	gitRemoteURL      string
 	commit            string
 	outsideHTTP       string
+	branchPrefix      string
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -234,6 +235,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
 	userFlags.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
 	userFlags.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
+	userFlags.StringVar(&flags.branchPrefix, "branch-prefix", "sketch/", "prefix for git branches created by sketch")
 
 	// Internal flags (for sketch developers or internal use)
 	// Args to sketch innie:
@@ -393,6 +395,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		ExperimentFlag: flags.experimentFlag.String(),
 		TermUI:         flags.termUI,
 		MaxDollars:     flags.maxDollars,
+		BranchPrefix:   flags.branchPrefix,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -508,6 +511,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		GitRemoteAddr: flags.gitRemoteURL,
 		OutsideHTTP:   flags.outsideHTTP,
 		Commit:        flags.commit,
+		BranchPrefix:  flags.branchPrefix,
 	}
 	agent := loop.NewAgent(agentConfig)
 

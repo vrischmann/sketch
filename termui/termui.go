@@ -47,7 +47,7 @@ var (
 {{else if eq .msg.ToolName "title" -}}
 🏷️  {{.input.title}}
 {{else if eq .msg.ToolName "precommit" -}}
-🌱 git branch: sketch/{{.input.branch_name}}
+🌱 git branch: {{.branch_prefix}}{{.input.branch_name}}
 {{else if eq .msg.ToolName "about_sketch" -}}
 📚 About Sketch
 {{else if eq .msg.ToolName "codereview" -}}
@@ -159,7 +159,7 @@ func (ui *TermUI) LogToolUse(resp *loop.AgentMessage) {
 		return
 	}
 	buf := bytes.Buffer{}
-	if err := toolUseTmpl.Execute(&buf, map[string]any{"msg": resp, "input": inputData, "output": resp.ToolResult}); err != nil {
+	if err := toolUseTmpl.Execute(&buf, map[string]any{"msg": resp, "input": inputData, "output": resp.ToolResult, "branch_prefix": ui.agent.BranchPrefix()}); err != nil {
 		ui.AppendSystemMessage("error: %v", err)
 		return
 	}

@@ -66,6 +66,9 @@ type CodingAgent interface {
 	// Loop begins the agent loop returns only when ctx is cancelled.
 	Loop(ctx context.Context)
 
+	// BranchPrefix returns the configured branch prefix
+	BranchPrefix() string
+
 	CancelTurn(cause error)
 
 	CancelToolUse(toolUseID string, cause error) error
@@ -935,11 +938,18 @@ type AgentConfig struct {
 	GitRemoteAddr string
 	// Commit to checkout from Outtie
 	Commit string
+	// Prefix for git branches created by sketch
+	BranchPrefix string
 }
 
 // NewAgent creates a new Agent.
 // It is not usable until Init() is called.
 func NewAgent(config AgentConfig) *Agent {
+	// Set default branch prefix if not specified
+	if config.BranchPrefix == "" {
+		config.BranchPrefix = "sketch/"
+	}
+
 	agent := &Agent{
 		config:         config,
 		ready:          make(chan struct{}),
@@ -1312,13 +1322,13 @@ func (a *Agent) precommitTool() *llm.Tool {
 			if params.BranchName != cleanBranchName(params.BranchName) {
 				return nil, fmt.Errorf("branch_name parameter must be alphanumeric hyphenated slug")
 			}
-			branchName := "sketch/" + params.BranchName
+			branchName := a.config.BranchPrefix + params.BranchName
 			if branchExists(a.workingDir, branchName) {
 				return nil, fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
 			}
 
 			a.SetBranch(branchName)
-			response := fmt.Sprintf("switched to branch sketch/%q - DO NOT change branches unless explicitly requested", branchName)
+			response := fmt.Sprintf("switched to branch %q - DO NOT change branches unless explicitly requested", branchName)
 
 			styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
 			if err != nil {
@@ -1336,6 +1346,11 @@ func (a *Agent) precommitTool() *llm.Tool {
 
 func (a *Agent) Ready() <-chan struct{} {
 	return a.ready
+}
+
+// BranchPrefix returns the configured branch prefix
+func (a *Agent) BranchPrefix() string {
+	return a.config.BranchPrefix
 }
 
 func (a *Agent) UserMessage(ctx context.Context, msg string) {
@@ -1815,7 +1830,7 @@ func removeGitHooks(_ context.Context, repoPath string) error {
 }
 
 func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
-	msgs, commits, error := a.gitState.handleGitCommits(ctx, a.SessionID(), a.repoRoot, a.SketchGitBaseRef())
+	msgs, commits, error := a.gitState.handleGitCommits(ctx, a.SessionID(), a.repoRoot, a.SketchGitBaseRef(), a.config.BranchPrefix)
 	for _, msg := range msgs {
 		a.pushToOutbox(ctx, msg)
 	}
@@ -1824,7 +1839,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 
 // handleGitCommits() highlights new commits to the user. When running
 // under docker, new HEADs are pushed to a branch according to the title.
-func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string, repoRoot string, baseRef string) ([]AgentMessage, []*GitCommit, error) {
+func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string, repoRoot string, baseRef string, branchPrefix string) ([]AgentMessage, []*GitCommit, error) {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
 
@@ -1892,7 +1907,7 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 			commits = append(commits, headCommit)
 		}
 
-		originalBranch := cmp.Or(ags.branchName, "sketch/"+sessionID)
+		originalBranch := cmp.Or(ags.branchName, branchPrefix+sessionID)
 		branch := originalBranch
 
 		// TODO: I don't love the force push here. We could see if the push is a fast-forward, and,

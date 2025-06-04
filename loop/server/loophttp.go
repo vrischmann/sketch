@@ -76,6 +76,7 @@ type State struct {
 	InitialCommit        string                        `json:"initial_commit"`
 	Title                string                        `json:"title"`
 	BranchName           string                        `json:"branch_name,omitempty"`
+	BranchPrefix         string                        `json:"branch_prefix,omitempty"`
 	Hostname             string                        `json:"hostname"`    // deprecated
 	WorkingDir           string                        `json:"working_dir"` // deprecated
 	OS                   string                        `json:"os"`          // deprecated
@@ -1267,6 +1268,7 @@ func (s *Server) getState() State {
 		InitialCommit:        s.agent.SketchGitBase(),
 		Title:                s.agent.Title(),
 		BranchName:           s.agent.BranchName(),
+		BranchPrefix:         s.agent.BranchPrefix(),
 		OS:                   s.agent.OS(),
 		OutsideHostname:      s.agent.OutsideHostname(),
 		InsideHostname:       s.hostname,
