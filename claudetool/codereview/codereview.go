@@ -176,8 +176,8 @@ func (r *CodeReviewer) RequireNoUncommittedChanges(ctx context.Context) error {
 	}
 	uncommitted := new(strings.Builder)
 	for _, status := range statuses {
-		if !r.initialStatusesContainFile(status.Path) {
-			fmt.Fprintf(uncommitted, "%s %s\n", status.Path, status.RawStatus)
+		if !statusesContainFile(r.initialStatus, status.Path) {
+			fmt.Fprintf(uncommitted, "%s %s\n", status.RawStatus, status.Path)
 		}
 	}
 	if uncommitted.Len() > 0 {
@@ -186,13 +186,22 @@ func (r *CodeReviewer) RequireNoUncommittedChanges(ctx context.Context) error {
 	return nil
 }
 
-func (r *CodeReviewer) initialStatusesContainFile(file string) bool {
-	for _, s := range r.initialStatus {
+func statusesContainFile(statuses []fileStatus, file string) bool {
+	for _, s := range statuses {
 		if s.Path == file {
 			return true
 		}
 	}
 	return false
+}
+
+// parseGitStatusLine parses a single line from git status --porcelain output.
+// Returns the file path and status, or empty strings if the line should be ignored.
+func parseGitStatusLine(line string) (path, status string) {
+	if len(line) <= 3 {
+		return "", "" // empty line or invalid format
+	}
+	return strings.TrimSpace(line[3:]), line[:2]
 }
 
 type fileStatus struct {
@@ -210,14 +219,10 @@ func (r *CodeReviewer) repoStatus(ctx context.Context) ([]fileStatus, error) {
 	}
 	var statuses []fileStatus
 	for line := range strings.Lines(string(out)) {
-		if len(line) == 0 {
-			continue
+		path, status := parseGitStatusLine(line)
+		if path == "" {
+			continue // empty or invalid line
 		}
-		if len(line) < 3 {
-			return nil, fmt.Errorf("invalid status line: %s", line)
-		}
-		path := line[3:]
-		status := line[:2]
 		absPath := r.absPath(path)
 		statuses = append(statuses, fileStatus{Path: absPath, RawStatus: status})
 	}
@@ -343,12 +348,60 @@ func (r *CodeReviewer) changedFiles(ctx context.Context, fromCommit, toCommit st
 			continue
 		}
 		path := r.absPath(line)
-		if r.initialStatusesContainFile(path) {
+		if statusesContainFile(r.initialStatus, path) {
 			continue
 		}
 		files = append(files, path)
 	}
 	return files, nil
+}
+
+// runGenerate runs go generate on all packages and returns a list of files changed.
+// Errors returned will be reported to the LLM.
+func (r *CodeReviewer) runGenerate(ctx context.Context, packages []string) ([]string, error) {
+	if len(packages) == 0 {
+		return nil, nil
+	}
+
+	args := []string{"generate"}
+	for _, pkg := range packages {
+		// Sigh. Working around test packages is a PITA.
+		if strings.HasSuffix(pkg, ".test") || strings.HasSuffix(pkg, "_test") {
+			continue
+		}
+		args = append(args, pkg)
+	}
+	gen := exec.CommandContext(ctx, "go", args...)
+	gen.Dir = r.repoRoot
+	out, err := gen.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("$ go %s\n%s", strings.Join(args, " "), out)
+	}
+
+	status := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	status.Dir = r.repoRoot
+	statusOut, err := status.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get git status: %w", err)
+	}
+
+	var changed []string
+	for line := range strings.Lines(string(statusOut)) {
+		path, _ := parseGitStatusLine(line)
+		if path == "" {
+			continue
+		}
+		changed = append(changed, filepath.Join(r.repoRoot, path))
+	}
+
+	return changed, nil
+}
+
+// isGoRepository checks if the repository contains a go.mod file
+// TODO: check in subdirs?
+func (r *CodeReviewer) isGoRepository() bool {
+	_, err := os.Stat(filepath.Join(r.repoRoot, "go.mod"))
+	return err == nil
 }
 
 // ModTidy runs go mod tidy if go module files have changed.
@@ -403,11 +456,10 @@ func (r *CodeReviewer) ModTidy(ctx context.Context) ([]string, error) {
 	var changedByTidy []string
 
 	for line := range strings.Lines(string(statusOut)) {
-		if len(line) <= 3 {
-			// empty line, defensiveness to avoid panics
-			continue
+		file, _ := parseGitStatusLine(line)
+		if file == "" {
+			continue // empty or invalid line
 		}
-		file := line[3:]
 		if !isGoModFile(file) {
 			continue
 		}

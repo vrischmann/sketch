@@ -86,8 +86,25 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	var errorMessages []string // problems we want the model to address
 	var infoMessages []string  // info the model should consider
 
+	// Run 'go generate' early, so that it can potentially fix tests that would otherwise fail.
+	generateChanges, err := r.runGenerate(ctx, allPkgList)
+	if err != nil {
+		errorMessages = append(errorMessages, err.Error())
+	}
+	if len(generateChanges) > 0 {
+		buf := new(strings.Builder)
+		buf.WriteString("The following files were changed by running `go generate`:\n\n")
+		for _, f := range generateChanges {
+			buf.WriteString(f)
+			buf.WriteString("\n")
+		}
+		buf.WriteString("\nPlease amend your latest git commit with these changes.\n")
+		infoMessages = append(infoMessages, buf.String())
+	}
+
 	// Find potentially related files that should also be considered
 	// TODO: add some caching here, since this depends only on the initial commit and the changed files, not the details of the changes
+	// TODO: arrange for this to run even in non-Go repos!
 	relatedFiles, err := r.findRelatedFiles(ctx, changedFiles)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to find related files", "err", err)

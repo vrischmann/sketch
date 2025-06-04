@@ -81,12 +81,15 @@ func a() {
     x := 42 // new gopls issue to view mixed info/error lines
 }
 
+-- .commit --
+Update file a.go only (again)
+
 -- .run_test --
 # Info
 
 Potentially related files:
 
-- p.go (33%)
+- p.go (30%)
 
 These files have historically changed with the files you have modified. Consider whether they require updates as well.
 
