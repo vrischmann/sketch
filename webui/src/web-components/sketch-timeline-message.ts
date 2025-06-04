@@ -4,6 +4,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { AgentMessage } from "../types";
 import { marked, MarkedOptions, Renderer, Tokens } from "marked";
 import mermaid from "mermaid";
+import DOMPurify from "dompurify";
 import "./sketch-tool-calls";
 @customElement("sketch-timeline-message")
 export class SketchTimelineMessage extends LitElement {
@@ -807,19 +808,95 @@ export class SketchTimelineMessage extends LitElement {
                </div>`;
       };
 
-      // Set markdown options for proper code block highlighting and safety
+      // Set markdown options for proper code block highlighting
       const markedOptions: MarkedOptions = {
         gfm: true, // GitHub Flavored Markdown
         breaks: true, // Convert newlines to <br>
         async: false,
         renderer: renderer,
-        // DOMPurify is recommended for production, but not included in this implementation
       };
-      return marked.parse(markdownContent, markedOptions) as string;
+
+      // Parse markdown and sanitize the output HTML with DOMPurify
+      const htmlOutput = marked.parse(markdownContent, markedOptions) as string;
+      return DOMPurify.sanitize(htmlOutput, {
+        // Allow common HTML elements that are safe
+        ALLOWED_TAGS: [
+          "p",
+          "br",
+          "strong",
+          "em",
+          "b",
+          "i",
+          "u",
+          "s",
+          "code",
+          "pre",
+          "h1",
+          "h2",
+          "h3",
+          "h4",
+          "h5",
+          "h6",
+          "ul",
+          "ol",
+          "li",
+          "blockquote",
+          "a",
+          "div",
+          "span", // For mermaid diagrams and code blocks
+          "svg",
+          "g",
+          "path",
+          "rect",
+          "circle",
+          "text",
+          "line",
+          "polygon", // For mermaid SVG
+          "button", // For code copy buttons
+        ],
+        ALLOWED_ATTR: [
+          "href",
+          "title",
+          "target",
+          "rel", // For links
+          "class",
+          "id", // For styling and functionality
+          "data-*", // For code copy buttons
+          // SVG attributes for mermaid diagrams
+          "viewBox",
+          "width",
+          "height",
+          "xmlns",
+          "fill",
+          "stroke",
+          "stroke-width",
+          "d",
+          "x",
+          "y",
+          "x1",
+          "y1",
+          "x2",
+          "y2",
+          "cx",
+          "cy",
+          "r",
+          "rx",
+          "ry",
+          "points",
+          "transform",
+          "text-anchor",
+          "font-size",
+          "font-family",
+        ],
+        // Allow data attributes for functionality
+        ALLOW_DATA_ATTR: true,
+        // Keep whitespace for code formatting
+        KEEP_CONTENT: true,
+      });
     } catch (error) {
       console.error("Error rendering markdown:", error);
-      // Fallback to plain text if markdown parsing fails
-      return markdownContent;
+      // Fallback to sanitized plain text if markdown parsing fails
+      return DOMPurify.sanitize(markdownContent);
     }
   }
 

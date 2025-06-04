@@ -2,19 +2,59 @@ import { css, html, LitElement } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { ToolCall, MultipleChoiceOption, MultipleChoiceParams } from "../types";
-import { marked, MarkedOptions } from "marked";
+import { marked, MarkedOptions, Renderer } from "marked";
+import DOMPurify from "dompurify";
 
-// Shared utility function for markdown rendering
+// Shared utility function for markdown rendering with DOMPurify sanitization
 function renderMarkdown(markdownContent: string): string {
   try {
-    return marked.parse(markdownContent, {
+    // Parse markdown with default settings
+    const htmlOutput = marked.parse(markdownContent, {
       gfm: true,
       breaks: true,
       async: false,
     }) as string;
+
+    // Sanitize the output HTML with DOMPurify
+    return DOMPurify.sanitize(htmlOutput, {
+      // Allow common safe HTML elements
+      ALLOWED_TAGS: [
+        "p",
+        "br",
+        "strong",
+        "em",
+        "b",
+        "i",
+        "u",
+        "s",
+        "code",
+        "pre",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+        "a",
+      ],
+      ALLOWED_ATTR: [
+        "href",
+        "title",
+        "target",
+        "rel", // For links
+        "class", // For basic styling
+      ],
+      // Keep content formatting
+      KEEP_CONTENT: true,
+    });
   } catch (error) {
     console.error("Error rendering markdown:", error);
-    return markdownContent;
+    // Fallback to sanitized plain text if markdown parsing fails
+    return DOMPurify.sanitize(markdownContent);
   }
 }
 
