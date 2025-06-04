@@ -202,6 +202,7 @@ type CLIFlags struct {
 	mounts            StringSliceFlag
 	termUI            bool
 	gitRemoteURL      string
+	upstream          string
 	commit            string
 	outsideHTTP       string
 	branchPrefix      string
@@ -250,6 +251,7 @@ func parseCLIFlags() CLIFlags {
 	internalFlags.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
 	internalFlags.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
 	internalFlags.StringVar(&flags.gitRemoteURL, "git-remote-url", "", "(internal) git remote for outside sketch")
+	internalFlags.StringVar(&flags.upstream, "upstream", "", "(internal) upstream branch for git work")
 	internalFlags.StringVar(&flags.commit, "commit", "", "(internal) the git commit reference to check out from git remote url")
 	internalFlags.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
 
@@ -509,6 +511,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		InDocker:      flags.outsideHostname != "",
 		OneShot:       flags.oneShot,
 		GitRemoteAddr: flags.gitRemoteURL,
+		Upstream:      flags.upstream,
 		OutsideHTTP:   flags.outsideHTTP,
 		Commit:        flags.commit,
 		BranchPrefix:  flags.branchPrefix,

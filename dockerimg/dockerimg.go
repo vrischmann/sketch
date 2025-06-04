@@ -110,6 +110,9 @@ type ContainerConfig struct {
 
 	GitRemoteUrl string
 
+	// Upstream branch for git work
+	Upstream string
+
 	// Commit hash to checkout from GetRemoteUrl
 	Commit string
 
@@ -201,6 +204,13 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	} else {
 		commit = strings.TrimSpace(string(out))
 	}
+
+	var upstream string
+	if out, err := combinedOutput(ctx, "git", "branch", "--show-current"); err != nil {
+		slog.DebugContext(ctx, "git branch --show-current failed (continuing)", "error", err)
+	} else {
+		upstream = strings.TrimSpace(string(out))
+	}
 	if out, err := combinedOutput(ctx, "git", "config", "http.receivepack", "true"); err != nil {
 		return fmt.Errorf("git config http.receivepack true: %s: %w", out, err)
 	}
@@ -212,6 +222,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 
 	config.OutsideHTTP = fmt.Sprintf("http://sketch:%s@host.docker.internal:%s", gitSrv.pass, gitSrv.gitPort)
 	config.GitRemoteUrl = fmt.Sprintf("http://sketch:%s@host.docker.internal:%s/.git", gitSrv.pass, gitSrv.gitPort)
+	config.Upstream = upstream
 	config.Commit = commit
 
 	// Create the sketch container
@@ -555,6 +566,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 			panic("Commit should have been set when GitRemoteUrl was set")
 		}
 		cmdArgs = append(cmdArgs, "-commit="+config.Commit)
+		cmdArgs = append(cmdArgs, "-upstream="+config.Upstream)
 	}
 	if config.OutsideHTTP != "" {
 		cmdArgs = append(cmdArgs, "-outside-http="+config.OutsideHTTP)

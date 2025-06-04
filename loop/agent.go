@@ -320,6 +320,7 @@ type AgentGitState struct {
 	mu            sync.Mutex      // protects following
 	lastHEAD      string          // hash of the last HEAD that was pushed to the host
 	gitRemoteAddr string          // HTTP URL of the host git repo
+	upstream      string          // upstream branch for git work
 	seenCommits   map[string]bool // Track git commits we've already seen (by hash)
 	branchName    string
 }
@@ -334,6 +335,12 @@ func (ags *AgentGitState) BranchName() string {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
 	return ags.branchName
+}
+
+func (ags *AgentGitState) Upstream() string {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	return ags.upstream
 }
 
 type Agent struct {
@@ -914,6 +921,11 @@ func (a *Agent) OriginalBudget() conversation.Budget {
 	return a.originalBudget
 }
 
+// Upstream returns the upstream branch for git work
+func (a *Agent) Upstream() string {
+	return a.gitState.Upstream()
+}
+
 // AgentConfig contains configuration for creating a new Agent.
 type AgentConfig struct {
 	Context      context.Context
@@ -936,6 +948,8 @@ type AgentConfig struct {
 	OutsideHTTP string
 	// Outtie's Git server
 	GitRemoteAddr string
+	// Upstream branch for git work
+	Upstream string
 	// Commit to checkout from Outtie
 	Commit string
 	// Prefix for git branches created by sketch
@@ -960,6 +974,7 @@ func NewAgent(config AgentConfig) *Agent {
 		gitState: AgentGitState{
 			seenCommits:   make(map[string]bool),
 			gitRemoteAddr: config.GitRemoteAddr,
+			upstream:      config.Upstream,
 		},
 		outsideHostname:      config.OutsideHostname,
 		outsideOS:            config.OutsideOS,
