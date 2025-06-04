@@ -129,6 +129,25 @@ func run() error {
 	}
 }
 
+// expandTilde expands ~ in the given path to the user's home directory
+func expandTilde(path string) (string, error) {
+	if path == "~" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return path, err
+		}
+		return homeDir, nil
+	}
+	if strings.HasPrefix(path, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return path, err
+		}
+		return strings.Replace(path, "~", homeDir, 1), nil
+	}
+	return path, nil
+}
+
 // CLIFlags holds all command-line arguments
 // StringSliceFlag is a custom flag type that allows for repeated flag values.
 // It collects all values into a slice.
@@ -281,6 +300,20 @@ func parseCLIFlags() CLIFlags {
 		// Not explicitly set.
 		// Calculate the right default value: true except with one-shot mode or if we're running in a ssh session.
 		flags.openBrowser = !flags.oneShot && os.Getenv("SSH_CONNECTION") == ""
+	}
+
+	// expand ~ in mounts
+	for i, mount := range flags.mounts {
+		host, container, ok := strings.Cut(mount, ":")
+		if !ok {
+			continue
+		}
+		expanded, err := expandTilde(host)
+		if err != nil {
+			slog.Warn("failed to expand tilde in mount path", "path", host, "error", err)
+			continue
+		}
+		flags.mounts[i] = expanded + ":" + container
 	}
 
 	return flags
