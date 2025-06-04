@@ -1,5 +1,5 @@
 # This is a copy of queue-main.yml, but with a different branch pattern.
-# It does not push the result anywhere; it logs instead.
+# It does not push the result anywhere or notify Discord; it logs instead.
 # It is meant for people changing how the commit queue works:
 # You can hack on the workflows, push to queue-dev-$USER, and iterate.
 # Please keep this file in sync with queue-main.yml.
@@ -65,21 +65,3 @@ jobs:
           echo "Would push to main: ${COMMIT_TO_PUSH}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Send Discord notifications for all commits that would be pushed
-        if: success()
-        env:
-          DISCORD_WEBHOOK_FOR_COMMITS: ${{ secrets.DISCORD_WEBHOOK_FOR_COMMITS }}
-        run: |
-          COMMITS="${{ steps.push.outputs.commits_to_notify }}"
-          if [[ -z "$COMMITS" ]]; then
-            echo "No commits to notify about"
-            exit 0
-          fi
-          
-          echo "Sending Discord notifications for commits that would be pushed: $COMMITS"
-          for commit_sha in $COMMITS; do
-            echo "Sending notification for commit: $commit_sha"
-            git checkout "$commit_sha"
-            GITHUB_SHA="$commit_sha" python3 .github/scripts/discord_notify.py
-          done
