@@ -95,7 +95,6 @@ type State struct {
 	OutsideWorkingDir    string                        `json:"outside_working_dir,omitempty"`
 	InsideWorkingDir     string                        `json:"inside_working_dir,omitempty"`
 	TodoContent          string                        `json:"todo_content,omitempty"` // Contains todo list JSON data
-	End                  *loop.EndFeedback             `json:"end,omitempty"`          // End session feedback
 }
 
 type InitRequest struct {
@@ -734,16 +733,6 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			endReason = requestBody.Reason
 		}
 
-		// Store end feedback if provided
-		if requestBody.Happy != nil {
-			feedback := &loop.EndFeedback{
-				Happy:   *requestBody.Happy,
-				Comment: requestBody.Comment,
-			}
-			s.agent.SetEndFeedback(feedback)
-			slog.Info("End session feedback received", "happy", feedback.Happy, "comment", feedback.Comment)
-		}
-
 		// Send success response before exiting
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "ending", "reason": endReason})
@@ -1222,12 +1211,6 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 			// Get updated state
 			state = s.getState()
 
-			// Check if end feedback is present and this client was waiting for it
-			if waitForEnd && state.End != nil {
-				s.endWaitGroup.Done()
-				waitForEnd = false // Mark that we've handled the end condition
-			}
-
 			// Send updated state after the state transition
 			fmt.Fprintf(w, "event: state\n")
 			fmt.Fprintf(w, "data: ")
@@ -1254,12 +1237,6 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 
 			// Get updated state
 			state = s.getState()
-
-			// Check if end feedback is present and this client was waiting for it
-			if waitForEnd && state.End != nil {
-				s.endWaitGroup.Done()
-				waitForEnd = false // Mark that we've handled the end condition
-			}
 
 			// Send updated state after the message
 			fmt.Fprintf(w, "event: state\n")
@@ -1307,7 +1284,6 @@ func (s *Server) getState() State {
 		FirstMessageIndex:    s.agent.FirstMessageIndex(),
 		AgentState:           s.agent.CurrentStateName(),
 		TodoContent:          s.agent.CurrentTodoContent(),
-		End:                  s.agent.GetEndFeedback(),
 	}
 }
 

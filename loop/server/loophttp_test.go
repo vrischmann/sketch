@@ -30,7 +30,6 @@ type mockAgent struct {
 	branchName               string
 	workingDir               string
 	sessionID                string
-	endFeedback              *loop.EndFeedback
 }
 
 func (m *mockAgent) NewIterator(ctx context.Context, nextMessageIdx int) loop.MessageIterator {
@@ -248,69 +247,8 @@ func (m *mockAgent) CompactConversation(ctx context.Context) error {
 func (m *mockAgent) IsInContainer() bool                        { return false }
 func (m *mockAgent) FirstMessageIndex() int                     { return 0 }
 func (m *mockAgent) DetectGitChanges(ctx context.Context) error { return nil }
-func (m *mockAgent) GetEndFeedback() *loop.EndFeedback          { return m.endFeedback }
-func (m *mockAgent) SetEndFeedback(feedback *loop.EndFeedback)  { m.endFeedback = feedback }
-func (m *mockAgent) GetPortMonitor() *loop.PortMonitor          { return loop.NewPortMonitor() }
 
-// TestEndFeedback tests the end session feedback functionality
-func TestEndFeedback(t *testing.T) {
-	// Test basic EndFeedback struct functionality
-	feedback := &loop.EndFeedback{
-		Happy:   true,
-		Comment: "Great experience!",
-	}
-
-	if feedback.Happy != true {
-		t.Errorf("Expected Happy to be true, got %v", feedback.Happy)
-	}
-	if feedback.Comment != "Great experience!" {
-		t.Errorf("Expected Comment to be 'Great experience!', got %s", feedback.Comment)
-	}
-
-	// Test mock agent methods
-	mockAgent := &mockAgent{
-		sessionID:    "test-session",
-		workingDir:   "/test",
-		messageCount: 0,
-	}
-
-	// Test initial state (no feedback)
-	if mockAgent.GetEndFeedback() != nil {
-		t.Error("Expected initial feedback to be nil")
-	}
-
-	// Test setting feedback
-	mockAgent.SetEndFeedback(feedback)
-	retrieved := mockAgent.GetEndFeedback()
-	if retrieved == nil {
-		t.Error("Expected feedback to be set, got nil")
-	} else {
-		if retrieved.Happy != true {
-			t.Errorf("Expected Happy to be true, got %v", retrieved.Happy)
-		}
-		if retrieved.Comment != "Great experience!" {
-			t.Errorf("Expected Comment to be 'Great experience!', got %s", retrieved.Comment)
-		}
-	}
-
-	// Test setting different feedback
-	negativeFeedback := &loop.EndFeedback{
-		Happy:   false,
-		Comment: "Could be better",
-	}
-	mockAgent.SetEndFeedback(negativeFeedback)
-	retrieved = mockAgent.GetEndFeedback()
-	if retrieved == nil {
-		t.Error("Expected feedback to be set, got nil")
-	} else {
-		if retrieved.Happy != false {
-			t.Errorf("Expected Happy to be false, got %v", retrieved.Happy)
-		}
-		if retrieved.Comment != "Could be better" {
-			t.Errorf("Expected Comment to be 'Could be better', got %s", retrieved.Comment)
-		}
-	}
-}
+func (m *mockAgent) GetPortMonitor() *loop.PortMonitor { return loop.NewPortMonitor() }
 
 // TestSSEStream tests the SSE stream endpoint
 func TestSSEStream(t *testing.T) {
