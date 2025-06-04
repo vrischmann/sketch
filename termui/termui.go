@@ -247,12 +247,7 @@ Special commands:
 		case "budget":
 			originalBudget := ui.agent.OriginalBudget()
 			ui.AppendSystemMessage("💰 Budget summary:")
-			if originalBudget.MaxResponses > 0 {
-				ui.AppendSystemMessage("- Max responses: %d", originalBudget.MaxResponses)
-			}
-			if originalBudget.MaxWallTime > 0 {
-				ui.AppendSystemMessage("- Max wall time: %v", originalBudget.MaxWallTime)
-			}
+
 			ui.AppendSystemMessage("- Max total cost: %0.2f", originalBudget.MaxDollars)
 		case "browser", "open", "b":
 			if ui.httpURL != "" {

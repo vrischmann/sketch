@@ -60,7 +60,7 @@ func TestAgentLoop(t *testing.T) {
 	if err := os.Chdir("/"); err != nil {
 		t.Fatal(err)
 	}
-	budget := conversation.Budget{MaxResponses: 100}
+	budget := conversation.Budget{MaxDollars: 10.0}
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

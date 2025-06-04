@@ -106,9 +106,7 @@ type ContainerConfig struct {
 	TermUI bool
 
 	// Budget configuration
-	MaxDollars    float64
-	MaxIterations uint64
-	MaxWallTime   time.Duration
+	MaxDollars float64
 
 	GitRemoteUrl string
 
@@ -539,8 +537,6 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-outside-os="+config.OutsideOS,
 		"-outside-working-dir="+config.OutsideWorkingDir,
 		fmt.Sprintf("-max-dollars=%f", config.MaxDollars),
-		fmt.Sprintf("-max-iterations=%d", config.MaxIterations),
-		fmt.Sprintf("-max-wall-time=%s", config.MaxWallTime.String()),
 		"-open=false",
 		"-termui="+fmt.Sprintf("%t", config.TermUI),
 		"-verbose="+fmt.Sprintf("%t", config.Verbose),

@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
@@ -152,24 +151,22 @@ func (f *StringSliceFlag) Get() any {
 }
 
 type CLIFlags struct {
-	addr          string
-	skabandAddr   string
-	unsafe        bool
-	openBrowser   bool
-	httprrFile    string
-	maxIterations uint64
-	maxWallTime   time.Duration
-	maxDollars    float64
-	oneShot       bool
-	prompt        string
-	modelName     string
-	llmAPIKey     string
-	listModels    bool
-	verbose       bool
-	version       bool
-	workingDir    string
-	sshPort       int
-	forceRebuild  bool
+	addr         string
+	skabandAddr  string
+	unsafe       bool
+	openBrowser  bool
+	httprrFile   string
+	maxDollars   float64
+	oneShot      bool
+	prompt       string
+	modelName    string
+	llmAPIKey    string
+	listModels   bool
+	verbose      bool
+	version      bool
+	workingDir   string
+	sshPort      int
+	forceRebuild bool
 
 	gitUsername       string
 	gitEmail          string
@@ -203,8 +200,6 @@ func parseCLIFlags() CLIFlags {
 	userFlags.StringVar(&flags.skabandAddr, "skaband-addr", "https://sketch.dev", "URL of the skaband server; set to empty to disable sketch.dev integration")
 	userFlags.BoolVar(&flags.unsafe, "unsafe", false, "run without a docker container")
 	userFlags.BoolVar(&flags.openBrowser, "open", true, "open sketch URL in system browser; on by default except if -one-shot is used or a ssh connection is detected")
-	userFlags.Uint64Var(&flags.maxIterations, "max-iterations", 0, "maximum number of iterations the agent should perform per turn, 0 to disable limit")
-	userFlags.DurationVar(&flags.maxWallTime, "max-wall-time", 0, "maximum time the agent should run per turn, 0 to disable limit")
 	userFlags.Float64Var(&flags.maxDollars, "max-dollars", 10.0, "maximum dollars the agent should spend per turn, 0 to disable limit")
 	userFlags.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
 	userFlags.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
@@ -365,8 +360,6 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		ExperimentFlag: flags.experimentFlag.String(),
 		TermUI:         flags.termUI,
 		MaxDollars:     flags.maxDollars,
-		MaxIterations:  flags.maxIterations,
-		MaxWallTime:    flags.maxWallTime,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -459,9 +452,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		return fmt.Errorf("failed to initialize LLM service: %w", err)
 	}
 	budget := conversation.Budget{
-		MaxResponses: flags.maxIterations,
-		MaxWallTime:  flags.maxWallTime,
-		MaxDollars:   flags.maxDollars,
+		MaxDollars: flags.maxDollars,
 	}
 
 	agentConfig := loop.AgentConfig{

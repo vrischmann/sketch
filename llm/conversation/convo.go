@@ -607,9 +607,7 @@ func (u CumulativeUsage) Attr() slog.Attr {
 // A Budget represents the maximum amount of resources that may be spent on a conversation.
 // Note that the default (zero) budget is unlimited.
 type Budget struct {
-	MaxResponses uint64        // if > 0, max number of iterations (=responses)
-	MaxDollars   float64       // if > 0, max dollars that may be spent
-	MaxWallTime  time.Duration // if > 0, max wall time that may be spent
+	MaxDollars float64 // if > 0, max dollars that may be spent
 }
 
 // OverBudget returns an error if the convo (or any of its parents) has exceeded its budget.
@@ -630,28 +628,15 @@ func (c *Convo) ResetBudget(budget Budget) {
 	if c.Budget.MaxDollars > 0 {
 		c.Budget.MaxDollars += c.CumulativeUsage().TotalCostUSD
 	}
-	if c.Budget.MaxResponses > 0 {
-		c.Budget.MaxResponses += c.CumulativeUsage().Responses
-	}
-	if c.Budget.MaxWallTime > 0 {
-		c.Budget.MaxWallTime += c.usage.WallTime()
-	}
 }
 
 func (c *Convo) overBudget() error {
 	usage := c.CumulativeUsage()
 	// TODO: stop before we exceed the budget instead of after?
-	// Top priority is money, then time, then response count.
 	var err error
 	cont := "Continuing to chat will reset the budget."
 	if c.Budget.MaxDollars > 0 && usage.TotalCostUSD >= c.Budget.MaxDollars {
 		err = errors.Join(err, fmt.Errorf("$%.2f spent, budget is $%.2f. %s", usage.TotalCostUSD, c.Budget.MaxDollars, cont))
-	}
-	if c.Budget.MaxWallTime > 0 && usage.WallTime() >= c.Budget.MaxWallTime {
-		err = errors.Join(err, fmt.Errorf("%v elapsed, budget is %v. %s", usage.WallTime().Truncate(time.Second), c.Budget.MaxWallTime.Truncate(time.Second), cont))
-	}
-	if c.Budget.MaxResponses > 0 && usage.Responses >= c.Budget.MaxResponses {
-		err = errors.Join(err, fmt.Errorf("%d responses received, budget is %d. %s", usage.Responses, c.Budget.MaxResponses, cont))
 	}
 	return err
 }
