@@ -1005,6 +1005,11 @@ func (a *Agent) Init(ini AgentInit) error {
 	ctx := a.config.Context
 	slog.InfoContext(ctx, "agent initializing")
 
+	if !ini.NoGit {
+		// Capture the original origin before we potentially replace it below
+		a.gitOrigin = getGitOrigin(ctx, a.workingDir)
+	}
+
 	// If a remote git addr was specified, we configure the origin remote
 	if a.gitState.gitRemoteAddr != "" {
 		slog.InfoContext(ctx, "Configuring git remote", slog.String("remote", a.gitState.gitRemoteAddr))
@@ -1106,7 +1111,6 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.codereview = codereview
 
-		a.gitOrigin = getGitOrigin(ctx, a.workingDir)
 	}
 	a.gitState.lastHEAD = a.SketchGitBase()
 	a.convo = a.initConvo()
