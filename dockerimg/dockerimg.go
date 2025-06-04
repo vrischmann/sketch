@@ -90,9 +90,6 @@ type ContainerConfig struct {
 	// Initial prompt
 	Prompt string
 
-	// Initial commit to use as starting point. Resolved into Commit on the host.
-	InitialCommit string
-
 	// Verbose enables verbose output
 	Verbose bool
 
@@ -198,8 +195,8 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 
 	// Get the current host git commit
 	var commit string
-	if out, err := combinedOutput(ctx, "git", "rev-parse", config.InitialCommit); err != nil {
-		return fmt.Errorf("git rev-parse %s: %w", config.InitialCommit, err)
+	if out, err := combinedOutput(ctx, "git", "rev-parse", "HEAD"); err != nil {
+		return fmt.Errorf("git rev-parse HEAD: %w", err)
 	} else {
 		commit = strings.TrimSpace(string(out))
 	}

@@ -117,11 +117,6 @@ func run() error {
 	// Detect if we're inside the sketch container
 	inInsideSketch := flagArgs.outsideHostname != ""
 
-	// Validate initial commit and unsafe flag combination
-	if flagArgs.unsafe && flagArgs.initialCommit != "HEAD" {
-		return fmt.Errorf("cannot use -initial-commit with -unsafe, they are incompatible")
-	}
-
 	// Dispatch to the appropriate execution path
 	if inInsideSketch {
 		// We're running inside the Docker container
@@ -157,25 +152,25 @@ func (f *StringSliceFlag) Get() any {
 }
 
 type CLIFlags struct {
-	addr              string
-	skabandAddr       string
-	unsafe            bool
-	openBrowser       bool
-	httprrFile        string
-	maxIterations     uint64
-	maxWallTime       time.Duration
-	maxDollars        float64
-	oneShot           bool
-	prompt            string
-	modelName         string
-	llmAPIKey         string
-	listModels        bool
-	verbose           bool
-	version           bool
-	workingDir        string
-	sshPort           int
-	forceRebuild      bool
-	initialCommit     string
+	addr          string
+	skabandAddr   string
+	unsafe        bool
+	openBrowser   bool
+	httprrFile    string
+	maxIterations uint64
+	maxWallTime   time.Duration
+	maxDollars    float64
+	oneShot       bool
+	prompt        string
+	modelName     string
+	llmAPIKey     string
+	listModels    bool
+	verbose       bool
+	version       bool
+	workingDir    string
+	sshPort       int
+	forceRebuild  bool
+
 	gitUsername       string
 	gitEmail          string
 	experimentFlag    experiment.Flag
@@ -221,7 +216,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.version, "version", false, "print the version and exit")
 	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
-	userFlags.StringVar(&flags.initialCommit, "initial-commit", "HEAD", "the git commit reference to use as starting point (incompatible with -unsafe)")
+
 	userFlags.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
 	userFlags.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
 	userFlags.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
@@ -363,15 +358,15 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		OutsideWorkingDir: cwd,
 		OneShot:           flags.oneShot,
 		Prompt:            flags.prompt,
-		InitialCommit:     flags.initialCommit,
-		Verbose:           flags.verbose,
-		DockerArgs:        flags.dockerArgs,
-		Mounts:            flags.mounts,
-		ExperimentFlag:    flags.experimentFlag.String(),
-		TermUI:            flags.termUI,
-		MaxDollars:        flags.maxDollars,
-		MaxIterations:     flags.maxIterations,
-		MaxWallTime:       flags.maxWallTime,
+
+		Verbose:        flags.verbose,
+		DockerArgs:     flags.dockerArgs,
+		Mounts:         flags.mounts,
+		ExperimentFlag: flags.experimentFlag.String(),
+		TermUI:         flags.termUI,
+		MaxDollars:     flags.maxDollars,
+		MaxIterations:  flags.maxIterations,
+		MaxWallTime:    flags.maxWallTime,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
