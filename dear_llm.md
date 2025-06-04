@@ -7,17 +7,14 @@ Both layers use the same entrypoint (cmd/sketch). Outer sketch sets up container
 
 ## Core Packages
 
-- termui, webui: Both interfaces operate at all times
-- loop: Central state machine that manages agent conversation flow
-- claudetools: Tool calls available to LLMs
-- llm: Common LLM interface and conversation management, with provider-specific integrations
+- termui, webui: both interfaces operate at all times
+- loop: state machine that manages agent conversation flow
 
 ## Development Guidelines
 
 - Do NOT git add or modify .gitignore, makefiles, or executable binaries unless requested
-- When changing tool schemas, update both termui and webui
-- For unsafe/recursive development, use `-unsafe` flag
-- Unless explicitly requested, do not add backwards compatibility shims
+- When adding, removing, or changing tools, update both termui and webui
+- Unless explicitly requested, do not add backwards compatibility shims. Just change all the relevant code.
 
 ## Meta
 
