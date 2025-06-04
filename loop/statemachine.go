@@ -292,7 +292,7 @@ func (sm *StateMachine) TransitionWithEvent(ctx context.Context, newState State,
 	}
 
 	// Log the transition
-	slog.InfoContext(ctx, "State transition",
+	slog.DebugContext(ctx, "State transition",
 		"from", sm.previousState.String(),
 		"to", sm.currentState.String(),
 		"event", event.Description,
