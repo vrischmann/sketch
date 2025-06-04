@@ -44,17 +44,11 @@ jobs:
         working-directory: ./webui
         run: npm ci
 
-      # Setup for gofumpt
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: stable
-          cache: true
-
       - name: Install gofumpt v0.8.0
         run: |
-          go install mvdan.cc/gofumpt@v0.8.0
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          curl -L https://github.com/mvdan/gofumpt/releases/download/v0.8.0/gofumpt_v0.8.0_linux_amd64 -o /tmp/gofumpt
+          chmod +x /tmp/gofumpt
+          sudo mv /tmp/gofumpt /usr/local/bin/gofumpt
 
       - name: Check formatting
         if: inputs.auto_fix != true
