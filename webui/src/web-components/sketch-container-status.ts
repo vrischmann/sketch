@@ -207,10 +207,6 @@ export class SketchContainerStatus extends LitElement {
       cursor: default;
     }
 
-    .cost {
-      color: #2e7d32;
-    }
-
     .info-item a {
       --tw-text-opacity: 1;
       color: rgb(37 99 235 / var(--tw-text-opacity, 1));
@@ -246,7 +242,7 @@ export class SketchContainerStatus extends LitElement {
 
     .main-info-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
       width: 100%;
     }
@@ -614,18 +610,37 @@ export class SketchContainerStatus extends LitElement {
   render() {
     return html`
       <div class="info-container">
-        <!-- Main visible info in two columns - hostname/dir and repo/cost -->
+        <!-- Main visible info in two columns - github/hostname/dir and last commit -->
         <div class="main-info-grid">
-          <!-- First column: hostname and working dir -->
+          <!-- First column: GitHub repo (or hostname) and working dir -->
           <div class="info-column">
             <div class="info-item">
-              <span
-                id="hostname"
-                class="info-value"
-                title="${this.getHostnameTooltip()}"
-              >
-                ${this.formatHostname()}
-              </span>
+              ${(() => {
+                const github = this.formatGitHubRepo(this.state?.git_origin);
+                if (github) {
+                  return html`
+                    <a
+                      href="${github.url}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="github-link"
+                      title="${this.state?.git_origin}"
+                    >
+                      ${github.formatted}
+                    </a>
+                  `;
+                } else {
+                  return html`
+                    <span
+                      id="hostname"
+                      class="info-value"
+                      title="${this.getHostnameTooltip()}"
+                    >
+                      ${this.formatHostname()}
+                    </span>
+                  `;
+                }
+              })()}
             </div>
             <div class="info-item">
               <span
@@ -638,49 +653,7 @@ export class SketchContainerStatus extends LitElement {
             </div>
           </div>
 
-          <!-- Second column: git repo, agent state, and cost -->
-          <div class="info-column">
-            ${this.state?.git_origin
-              ? html`
-                  <div class="info-item">
-                    ${(() => {
-                      const github = this.formatGitHubRepo(
-                        this.state?.git_origin,
-                      );
-                      if (github) {
-                        return html`
-                          <a
-                            href="${github.url}"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="github-link"
-                            title="${this.state?.git_origin}"
-                          >
-                            ${github.formatted}
-                          </a>
-                        `;
-                      } else {
-                        return html`
-                          <span id="gitOrigin" class="info-value"
-                            >${this.state?.git_origin}</span
-                          >
-                        `;
-                      }
-                    })()}
-                  </div>
-                `
-              : ""}
-
-            <div class="info-item">
-              <span id="totalCost" class="info-value cost"
-                >$${(this.state?.total_usage?.total_cost_usd || 0).toFixed(
-                  2,
-                )}</span
-              >
-            </div>
-          </div>
-
-          <!-- Third column: Last Commit -->
+          <!-- Second column: Last Commit -->
           <div class="info-column last-commit-column">
             <div class="info-item">
               <span class="info-label">Last Commit</span>
@@ -774,6 +747,16 @@ export class SketchContainerStatus extends LitElement {
                 >${this.state?.session_id || "N/A"}</span
               >
             </div>
+            <div class="info-item">
+              <span class="info-label">Hostname:</span>
+              <span
+                id="hostnameDetail"
+                class="info-value"
+                title="${this.getHostnameTooltip()}"
+              >
+                ${this.formatHostname()}
+              </span>
+            </div>
             ${this.state?.agent_state
               ? html`
                   <div class="info-item">
@@ -800,6 +783,18 @@ export class SketchContainerStatus extends LitElement {
                 >${formatNumber(this.state?.total_usage?.output_tokens)}</span
               >
             </div>
+            ${(this.state?.total_usage?.total_cost_usd || 0) > 0
+              ? html`
+                  <div class="info-item">
+                    <span class="info-label">Total cost:</span>
+                    <span id="totalCost" class="info-value cost"
+                      >$${(this.state?.total_usage?.total_cost_usd).toFixed(
+                        2,
+                      )}</span
+                    >
+                  </div>
+                `
+              : ""}
             <div
               class="info-item"
               style="grid-column: 1 / -1; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;"
