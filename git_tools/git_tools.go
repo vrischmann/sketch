@@ -238,20 +238,26 @@ func GitRecentLog(repoDir string, initialCommitHash string) ([]GitLogEntry, erro
 
 // getGitLog gets the git log with the specified format using the provided fromCommit
 func getGitLog(repoDir string, fromCommit string) ([]GitLogEntry, error) {
-	// Check if fromCommit~10 exists (10 commits before fromCommit)
-	checkCmd := exec.Command("git", "-C", repoDir, "rev-parse", "--verify", fromCommit+"~10")
-	if err := checkCmd.Run(); err != nil {
-		// If fromCommit~10 doesn't exist, use just fromCommit..HEAD as the range
-		cmd := exec.Command("git", "-C", repoDir, "log", "-n", "1000", "--oneline", "--decorate", "--pretty=%H%x00%s%x00%d", fromCommit+"..HEAD")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("error executing git log: %w - %s", err, string(out))
+	// Try to find the best commit range, starting from 10 commits back and working down to 0
+	var fromRange string
+	for i := 10; i >= 0; i-- {
+		if i == 0 {
+			// Use just fromCommit..HEAD as the range (no offset)
+			fromRange = fromCommit + "..HEAD"
+			break
 		}
-		return parseGitLog(string(out))
+
+		// Check if fromCommit~i exists
+		checkCmd := exec.Command("git", "-C", repoDir, "rev-parse", "--verify", fromCommit+fmt.Sprintf("~%d", i))
+		if err := checkCmd.Run(); err == nil {
+			// This offset works, use it
+			fromRange = fromCommit + fmt.Sprintf("~%d..HEAD", i)
+			break
+		}
 	}
 
-	// Use fromCommit~10..HEAD range with the specified format for easy parsing
-	cmd := exec.Command("git", "-C", repoDir, "log", "-n", "1000", "--oneline", "--decorate", "--pretty=%H%x00%s%x00%d", fromCommit+"~10..HEAD")
+	// Use the determined range with the specified format for easy parsing
+	cmd := exec.Command("git", "-C", repoDir, "log", "-n", "1000", "--oneline", "--decorate", "--pretty=%H%x00%s%x00%d", fromRange)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error executing git log: %w - %s", err, string(out))
