@@ -66,7 +66,7 @@ export interface State {
 	message_count: number;
 	total_usage?: CumulativeUsage | null;
 	initial_commit: string;
-	title: string;
+	slug?: string;
 	branch_name?: string;
 	branch_prefix?: string;
 	hostname: string;

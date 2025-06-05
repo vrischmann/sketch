@@ -17,8 +17,8 @@ The component hierarchy and containment relationship is structured as follows:
            - **sketch-tool-card-done**
            - **sketch-tool-card-patch**
            - **sketch-tool-card-take-screenshot**
-           - **sketch-tool-card-title**
-           - **sketch-tool-card-precommit**
+           - **sketch-tool-card-set-slug**
+           - **sketch-tool-card-commit-message-style**
            - **sketch-tool-card-multiple-choice**
            - **sketch-tool-card-generic** (fallback for unknown tools)
              - All of these specialized components **contain** or **compose with** the base **sketch-tool-card**

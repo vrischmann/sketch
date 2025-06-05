@@ -91,7 +91,7 @@ func TestAgentLoop(t *testing.T) {
 	}
 
 	// Setup a test message that will trigger a simple, predictable response
-	userMessage := "What tools are available to you? Please just list them briefly. (Do not call the title tool.)"
+	userMessage := "What tools are available to you? Please just list them briefly. (Do not call the set-slug tool.)"
 
 	// Send the message to the agent
 	agent.UserMessage(ctx, userMessage)
@@ -805,96 +805,5 @@ func TestPushToOutbox(t *testing.T) {
 	expected := "test resultnested result"
 	if received.Content != expected {
 		t.Errorf("Expected Content to be %q, got %q", expected, received.Content)
-	}
-}
-
-func TestBranchNamingIncrement(t *testing.T) {
-	testCases := []struct {
-		name             string
-		originalBranch   string
-		expectedBranches []string
-	}{
-		{
-			name:           "base branch without number",
-			originalBranch: "sketch/test-branch",
-			expectedBranches: []string{
-				"sketch/test-branch",  // retries = 0
-				"sketch/test-branch1", // retries = 1
-				"sketch/test-branch2", // retries = 2
-				"sketch/test-branch3", // retries = 3
-			},
-		},
-		{
-			name:           "branch already has number",
-			originalBranch: "sketch/test-branch1",
-			expectedBranches: []string{
-				"sketch/test-branch1", // retries = 0
-				"sketch/test-branch2", // retries = 1
-				"sketch/test-branch3", // retries = 2
-				"sketch/test-branch4", // retries = 3
-			},
-		},
-		{
-			name:           "branch with larger number",
-			originalBranch: "sketch/test-branch42",
-			expectedBranches: []string{
-				"sketch/test-branch42", // retries = 0
-				"sketch/test-branch43", // retries = 1
-				"sketch/test-branch44", // retries = 2
-				"sketch/test-branch45", // retries = 3
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Parse the original branch name to extract base name and starting number
-			baseBranch, startNum := parseBranchNameAndNumber(tc.originalBranch)
-
-			// Simulate the retry logic
-			for retries := range len(tc.expectedBranches) {
-				var branch string
-				if retries > 0 {
-					// This is the same logic used in the actual code
-					branch = fmt.Sprintf("%s%d", baseBranch, startNum+retries)
-				} else {
-					branch = tc.originalBranch
-				}
-
-				if branch != tc.expectedBranches[retries] {
-					t.Errorf("Retry %d: expected %s, got %s", retries, tc.expectedBranches[retries], branch)
-				}
-			}
-		})
-	}
-}
-
-func TestParseBranchNameAndNumber(t *testing.T) {
-	testCases := []struct {
-		branchName     string
-		expectedBase   string
-		expectedNumber int
-	}{
-		{"sketch/test-branch", "sketch/test-branch", 0},
-		{"sketch/test-branch1", "sketch/test-branch", 1},
-		{"sketch/test-branch42", "sketch/test-branch", 42},
-		{"sketch/test-branch-foo", "sketch/test-branch-foo", 0},
-		{"sketch/test-branch-foo123", "sketch/test-branch-foo", 123},
-		{"main", "main", 0},
-		{"main2", "main", 2},
-		{"feature/abc123def", "feature/abc123def", 0},      // number in middle, not at end
-		{"feature/abc123def456", "feature/abc123def", 456}, // number at end
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.branchName, func(t *testing.T) {
-			base, num := parseBranchNameAndNumber(tc.branchName)
-			if base != tc.expectedBase {
-				t.Errorf("Base: expected %s, got %s", tc.expectedBase, base)
-			}
-			if num != tc.expectedNumber {
-				t.Errorf("Number: expected %d, got %d", tc.expectedNumber, num)
-			}
-		})
 	}
 }

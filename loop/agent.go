@@ -1,7 +1,6 @@
 package loop
 
 import (
-	"cmp"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -12,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime/debug"
 	"slices"
 	"strconv"
@@ -98,11 +96,14 @@ type CodingAgent interface {
 	// (Typically, this is "sketch-base")
 	SketchGitBaseRef() string
 
-	// Title returns the current title of the conversation.
-	Title() string
+	// Slug returns the slug identifier for this session.
+	Slug() string
 
 	// BranchName returns the git branch name for the conversation.
 	BranchName() string
+
+	// IncrementRetryNumber increments the retry number for branch naming conflicts.
+	IncrementRetryNumber()
 
 	// OS returns the operating system of the client.
 	OS() string
@@ -322,19 +323,58 @@ type AgentGitState struct {
 	gitRemoteAddr string          // HTTP URL of the host git repo
 	upstream      string          // upstream branch for git work
 	seenCommits   map[string]bool // Track git commits we've already seen (by hash)
-	branchName    string
+	slug          string          // Human-readable session identifier
+	retryNumber   int             // Number to append when branch conflicts occur
 }
 
-func (ags *AgentGitState) SetBranchName(branchName string) {
+func (ags *AgentGitState) SetSlug(slug string) {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
-	ags.branchName = branchName
+	if ags.slug != slug {
+		ags.retryNumber = 0
+	}
+	ags.slug = slug
 }
 
-func (ags *AgentGitState) BranchName() string {
+func (ags *AgentGitState) Slug() string {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
-	return ags.branchName
+	return ags.slug
+}
+
+func (ags *AgentGitState) IncrementRetryNumber() {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	ags.retryNumber++
+}
+
+// HasSeenCommits returns true if any commits have been processed
+func (ags *AgentGitState) HasSeenCommits() bool {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	return len(ags.seenCommits) > 0
+}
+
+func (ags *AgentGitState) RetryNumber() int {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	return ags.retryNumber
+}
+
+func (ags *AgentGitState) BranchName(prefix string) string {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	return ags.branchNameLocked(prefix)
+}
+
+func (ags *AgentGitState) branchNameLocked(prefix string) string {
+	if ags.slug == "" {
+		return ""
+	}
+	if ags.retryNumber == 0 {
+		return prefix + ags.slug
+	}
+	return fmt.Sprintf("%s%s%d", prefix, ags.slug, ags.retryNumber)
 }
 
 func (ags *AgentGitState) Upstream() string {
@@ -356,7 +396,6 @@ type Agent struct {
 	codebase          *onstart.Codebase
 	startedAt         time.Time
 	originalBudget    conversation.Budget
-	title             string
 	codereview        *codereview.CodeReviewer
 	// State machine to track agent state
 	stateMachine *StateMachine
@@ -590,17 +629,19 @@ func (a *Agent) CompactConversation(ctx context.Context) error {
 
 func (a *Agent) URL() string { return a.url }
 
-// Title returns the current title of the conversation.
-// If no title has been set, returns an empty string.
-func (a *Agent) Title() string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.title
-}
-
 // BranchName returns the git branch name for the conversation.
 func (a *Agent) BranchName() string {
-	return a.gitState.BranchName()
+	return a.gitState.BranchName(a.config.BranchPrefix)
+}
+
+// Slug returns the slug identifier for this conversation.
+func (a *Agent) Slug() string {
+	return a.gitState.Slug()
+}
+
+// IncrementRetryNumber increments the retry number for branch naming conflicts
+func (a *Agent) IncrementRetryNumber() {
+	a.gitState.IncrementRetryNumber()
 }
 
 // OutstandingLLMCallCount returns the number of outstanding LLM calls.
@@ -688,21 +729,15 @@ func (a *Agent) FirstMessageIndex() int {
 	return a.firstMessageIndex
 }
 
-// SetTitle sets the title of the conversation.
-func (a *Agent) SetTitle(title string) {
+// SetSlug sets a human-readable identifier for the conversation.
+func (a *Agent) SetSlug(slug string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.title = title
-}
 
-// SetBranch sets the branch name of the conversation.
-func (a *Agent) SetBranch(branchName string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.gitState.SetBranchName(branchName)
+	a.gitState.SetSlug(slug)
 	convo, ok := a.convo.(*conversation.Convo)
 	if ok {
-		convo.ExtraData["branch"] = branchName
+		convo.ExtraData["branch"] = a.BranchName()
 	}
 }
 
@@ -1132,28 +1167,16 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 	// Define a permission callback for the bash tool to check if the branch name is set before allowing git commits
 	bashPermissionCheck := func(command string) error {
-		// Check if branch name is set
-		a.mu.Lock()
-		branchSet := a.gitState.BranchName() != ""
-		a.mu.Unlock()
-
-		// If branch is set, all commands are allowed
-		if branchSet {
-			return nil
+		if a.gitState.Slug() != "" {
+			return nil // branch is set up
 		}
-
-		// If branch is not set, check if this is a git commit command
 		willCommit, err := bashkit.WillRunGitCommit(command)
 		if err != nil {
-			// If there's an error checking, we should allow the command to proceed
-			return nil
+			return nil // fail open
 		}
-
-		// If it's a git commit and branch is not set, return an error
 		if willCommit {
-			return fmt.Errorf("you must use the precommit tool before making git commits")
+			return fmt.Errorf("you must use the set-slug tool before making git commits")
 		}
-
 		return nil
 	}
 
@@ -1178,7 +1201,7 @@ func (a *Agent) initConvo() *conversation.Convo {
 
 	convo.Tools = []*llm.Tool{
 		bashTool, claudetool.Keyword, claudetool.Patch,
-		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.titleTool(), a.precommitTool(), makeDoneTool(a.codereview),
+		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.setSlugTool(), a.commitMessageStyleTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
 
@@ -1261,99 +1284,62 @@ func branchExists(dir, branchName string) bool {
 	return false
 }
 
-func (a *Agent) titleTool() *llm.Tool {
-	description := `Sets the conversation title.`
-	titleTool := &llm.Tool{
-		Name:        "title",
-		Description: description,
+func (a *Agent) setSlugTool() *llm.Tool {
+	return &llm.Tool{
+		Name:        "set-slug",
+		Description: `Set a short slug as an identifier for this conversation.`,
 		InputSchema: json.RawMessage(`{
 	"type": "object",
 	"properties": {
-		"title": {
+		"slug": {
 			"type": "string",
-			"description": "Brief title (3-6 words) in imperative tense. Focus on core action/component."
+			"description": "A 2-3 word alphanumeric hyphenated slug, imperative tense"
 		}
 	},
-	"required": ["title"]
+	"required": ["slug"]
 }`),
 		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
 			var params struct {
-				Title string `json:"title"`
+				Slug string `json:"slug"`
 			}
 			if err := json.Unmarshal(input, &params); err != nil {
 				return nil, err
 			}
-
-			// We don't allow changing the title once set to be consistent with the previous behavior
-			// and to prevent accidental title changes
-			t := a.Title()
-			if t != "" {
-				return nil, fmt.Errorf("title already set to: %s", t)
+			// Prevent slug changes if there have been git changes
+			// This lets the agent change its mind about a good slug,
+			// while ensuring that once a branch has been pushed, it remains stable.
+			if s := a.Slug(); s != "" && s != params.Slug && a.gitState.HasSeenCommits() {
+				return nil, fmt.Errorf("slug already set to %q", s)
 			}
-
-			if params.Title == "" {
-				return nil, fmt.Errorf("title parameter cannot be empty")
+			if params.Slug == "" {
+				return nil, fmt.Errorf("slug parameter cannot be empty")
 			}
-
-			a.SetTitle(params.Title)
-			response := fmt.Sprintf("Title set to %q", params.Title)
-			return llm.TextContent(response), nil
+			slug := cleanSlugName(params.Slug)
+			if slug == "" {
+				return nil, fmt.Errorf("slug parameter could not be converted to a valid slug")
+			}
+			a.SetSlug(slug)
+			// TODO: do this by a call to outie, rather than semi-guessing from innie
+			if branchExists(a.workingDir, a.BranchName()) {
+				return nil, fmt.Errorf("slug %q already exists; please choose a different slug", slug)
+			}
+			return llm.TextContent("OK"), nil
 		},
 	}
-	return titleTool
 }
 
-func (a *Agent) precommitTool() *llm.Tool {
-	description := `Creates a git branch for tracking work and provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
+func (a *Agent) commitMessageStyleTool() *llm.Tool {
+	description := `Provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
 	preCommit := &llm.Tool{
-		Name:        "precommit",
+		Name:        "commit-message-style",
 		Description: description,
-		InputSchema: json.RawMessage(`{
-	"type": "object",
-	"properties": {
-		"branch_name": {
-			"type": "string",
-			"description": "A 2-3 word alphanumeric hyphenated slug for the git branch name"
-		}
-	},
-	"required": ["branch_name"]
-}`),
+		InputSchema: llm.EmptySchema(),
 		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
-			var params struct {
-				BranchName string `json:"branch_name"`
-			}
-			if err := json.Unmarshal(input, &params); err != nil {
-				return nil, err
-			}
-
-			b := a.BranchName()
-			if b != "" {
-				return nil, fmt.Errorf("branch already set to %s; do not create a new branch", b)
-			}
-
-			if params.BranchName == "" {
-				return nil, fmt.Errorf("branch_name must not be empty")
-			}
-			if params.BranchName != cleanBranchName(params.BranchName) {
-				return nil, fmt.Errorf("branch_name parameter must be alphanumeric hyphenated slug")
-			}
-			branchName := a.config.BranchPrefix + params.BranchName
-			if branchExists(a.workingDir, branchName) {
-				return nil, fmt.Errorf("branch %q already exists; please choose a different branch name", branchName)
-			}
-
-			a.SetBranch(branchName)
-			response := fmt.Sprintf("switched to branch %q - DO NOT change branches unless explicitly requested", branchName)
-
 			styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
 			if err != nil {
 				slog.DebugContext(ctx, "failed to get commit message style hint", "err", err)
 			}
-			if len(styleHint) > 0 {
-				response += "\n\n" + styleHint
-			}
-
-			return llm.TextContent(response), nil
+			return llm.TextContent(styleHint), nil
 		},
 	}
 	return preCommit
@@ -1853,7 +1839,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 }
 
 // handleGitCommits() highlights new commits to the user. When running
-// under docker, new HEADs are pushed to a branch according to the title.
+// under docker, new HEADs are pushed to a branch according to the slug.
 func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string, repoRoot string, baseRef string, branchPrefix string) ([]AgentMessage, []*GitCommit, error) {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
@@ -1922,25 +1908,21 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 			commits = append(commits, headCommit)
 		}
 
-		originalBranch := cmp.Or(ags.branchName, branchPrefix+sessionID)
-		branch := originalBranch
-
 		// TODO: I don't love the force push here. We could see if the push is a fast-forward, and,
 		// if it's not, we could make a backup with a unique name (perhaps append a timestamp) and
 		// then use push with lease to replace.
 
-		// Parse the original branch name to extract base name and starting number
-		baseBranch, startNum := parseBranchNameAndNumber(originalBranch)
-
-		// Try up to 10 times with different branch names if the branch is checked out on the remote
+		// Try up to 10 times with incrementing retry numbers if the branch is checked out on the remote
 		var out []byte
 		var err error
+		originalRetryNumber := ags.retryNumber
+		originalBranchName := ags.branchNameLocked(branchPrefix)
 		for retries := range 10 {
 			if retries > 0 {
-				// Increment from the starting number (foo1->foo2, foo2->foo3, etc.)
-				branch = fmt.Sprintf("%s%d", baseBranch, startNum+retries)
+				ags.IncrementRetryNumber()
 			}
 
+			branch := ags.branchNameLocked(branchPrefix)
 			cmd = exec.Command("git", "push", "--force", ags.gitRemoteAddr, "HEAD:refs/heads/"+branch)
 			cmd.Dir = repoRoot
 			out, err = cmd.CombinedOutput()
@@ -1955,25 +1937,19 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 				// This is a different error, so don't retry
 				break
 			}
-
-			// If we're on the last retry, we'll report the error
-			if retries == 9 {
-				break
-			}
 		}
 
 		if err != nil {
 			msgs = append(msgs, errorMessage(fmt.Errorf("git push to host: %s: %v", out, err)))
 		} else {
-			headCommit.PushedBranch = branch
-			// Update the agent's branch name if we ended up using a different one
-			if branch != originalBranch {
-				ags.branchName = branch
-				// Notify user why the branch name was changed
+			finalBranch := ags.branchNameLocked(branchPrefix)
+			headCommit.PushedBranch = finalBranch
+			if ags.retryNumber != originalRetryNumber {
+				// Notify user that the branch name was changed, and why
 				msgs = append(msgs, AgentMessage{
 					Type:      AutoMessageType,
 					Timestamp: time.Now(),
-					Content:   fmt.Sprintf("Branch renamed from %s to %s because the original branch is currently checked out on the remote.", originalBranch, branch),
+					Content:   fmt.Sprintf("Branch renamed from %s to %s because the original branch is currently checked out on the remote.", originalBranchName, finalBranch),
 				})
 			}
 		}
@@ -1991,7 +1967,7 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 	return msgs, commits, nil
 }
 
-func cleanBranchName(s string) string {
+func cleanSlugName(s string) string {
 	return strings.Map(func(r rune) rune {
 		// lowercase
 		if r >= 'A' && r <= 'Z' {
@@ -2007,27 +1983,6 @@ func cleanBranchName(s string) string {
 		}
 		return -1
 	}, s)
-}
-
-// parseBranchNameAndNumber extracts the base branch name and starting number.
-// For "sketch/foo1" returns ("sketch/foo", 1)
-// For "sketch/foo" returns ("sketch/foo", 0)
-func parseBranchNameAndNumber(branchName string) (baseBranch string, startNum int) {
-	re := regexp.MustCompile(`^(.+?)(\d+)$`)
-	matches := re.FindStringSubmatch(branchName)
-
-	if len(matches) != 3 {
-		// No trailing digits found
-		return branchName, 0
-	}
-
-	num, err := strconv.Atoi(matches[2])
-	if err != nil {
-		// If parsing fails, treat as no number
-		return branchName, 0
-	}
-
-	return matches[1], num
 }
 
 // parseGitLog parses the output of git log with format '%H%x00%s%x00%b%x00'

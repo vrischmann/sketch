@@ -74,7 +74,7 @@ type State struct {
 	MessageCount         int                           `json:"message_count"`
 	TotalUsage           *conversation.CumulativeUsage `json:"total_usage,omitempty"`
 	InitialCommit        string                        `json:"initial_commit"`
-	Title                string                        `json:"title"`
+	Slug                 string                        `json:"slug,omitempty"`
 	BranchName           string                        `json:"branch_name,omitempty"`
 	BranchPrefix         string                        `json:"branch_prefix,omitempty"`
 	Hostname             string                        `json:"hostname"`    // deprecated
@@ -1266,7 +1266,7 @@ func (s *Server) getState() State {
 		WorkingDir:   getWorkingDir(),
 		// TODO: Rename this field to sketch-base?
 		InitialCommit:        s.agent.SketchGitBase(),
-		Title:                s.agent.Title(),
+		Slug:                 s.agent.Slug(),
 		BranchName:           s.agent.BranchName(),
 		BranchPrefix:         s.agent.BranchPrefix(),
 		OS:                   s.agent.OS(),

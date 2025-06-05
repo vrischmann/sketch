@@ -563,8 +563,8 @@ export class SketchToolCardThink extends LitElement {
   }
 }
 
-@customElement("sketch-tool-card-title")
-export class SketchToolCardTitle extends LitElement {
+@customElement("sketch-tool-card-set-slug")
+export class SketchToolCardSetSlug extends LitElement {
   @property() toolCall: ToolCall;
   @property() open: boolean;
 
@@ -587,18 +587,18 @@ export class SketchToolCardTitle extends LitElement {
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
         <span slot="summary" class="summary-text">
-          Title: "${inputData.title}"
+          Slug: "${inputData.slug}"
         </span>
         <div slot="input">
-          <div>Set title to: <b>${inputData.title}</b></div>
+          <div>Set slug to: <b>${inputData.slug}</b></div>
         </div>
       </sketch-tool-card>
     `;
   }
 }
 
-@customElement("sketch-tool-card-precommit")
-export class SketchToolCardPrecommit extends LitElement {
+@customElement("sketch-tool-card-commit-message-style")
+export class SketchToolCardCommitMessageStyle extends LitElement {
   @property()
   toolCall: ToolCall;
 
@@ -634,18 +634,8 @@ export class SketchToolCardPrecommit extends LitElement {
   }
 
   render() {
-    const inputData = JSON.parse(this.toolCall?.input || "{}");
     return html`
       <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          Branch: ${this.state?.branch_prefix}${inputData.branch_name}
-        </span>
-        <div slot="input">
-          <div>
-            Set branch to:
-            <code>${this.state?.branch_prefix}${inputData.branch_name}</code>
-          </div>
-        </div>
       </sketch-tool-card>
     `;
   }
@@ -960,8 +950,8 @@ declare global {
     "sketch-tool-card-done": SketchToolCardDone;
     "sketch-tool-card-patch": SketchToolCardPatch;
     "sketch-tool-card-think": SketchToolCardThink;
-    "sketch-tool-card-title": SketchToolCardTitle;
-    "sketch-tool-card-precommit": SketchToolCardPrecommit;
+    "sketch-tool-card-set-slug": SketchToolCardSetSlug;
+    "sketch-tool-card-commit-message-style": SketchToolCardCommitMessageStyle;
     "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
     "sketch-tool-card-todo-write": SketchToolCardTodoWrite;
     "sketch-tool-card-todo-read": SketchToolCardTodoRead;

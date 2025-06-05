@@ -164,7 +164,7 @@ export class SketchAppShell extends LitElement {
       text-overflow: ellipsis;
     }
 
-    .chat-title {
+    .slug-title {
       margin: 0;
       padding: 0;
       color: rgba(82, 82, 82, 0.85);
@@ -448,26 +448,26 @@ export class SketchAppShell extends LitElement {
   messages: AgentMessage[] = [];
 
   @property()
-  set title(value: string) {
-    const oldValue = this._title;
-    this._title = value;
-    this.requestUpdate("title", oldValue);
-    // Update document title when title property changes
+  set slug(value: string) {
+    const oldValue = this._slug;
+    this._slug = value;
+    this.requestUpdate("slug", oldValue);
+    // Update document title when slug property changes
     this.updateDocumentTitle();
   }
 
-  get title(): string {
-    return this._title;
+  get slug(): string {
+    return this._slug;
   }
 
-  private _title: string = "";
+  private _slug: string = "";
 
   private dataManager = new DataManager();
 
   @property({ attribute: false })
   containerState: State = {
     state_version: 2,
-    title: "",
+    slug: "",
     os: "",
     message_count: 0,
     hostname: "",
@@ -769,10 +769,10 @@ export class SketchAppShell extends LitElement {
   }
 
   /**
-   * Updates the document title based on current title and connection status
+   * Updates the document title based on current slug and connection status
    */
   private updateDocumentTitle(): void {
-    let docTitle = `sk: ${this.title || "untitled"}`;
+    let docTitle = `sk: ${this.slug || "untitled"}`;
 
     // Add red circle emoji if disconnected
     if (this.connectionStatus === "disconnected") {
@@ -856,8 +856,8 @@ export class SketchAppShell extends LitElement {
     )
       return;
 
-    // Create a title that includes the sketch title
-    const notificationTitle = `Sketch: ${this.title || "untitled"}`;
+    // Create a title that includes the sketch slug
+    const notificationTitle = `Sketch: ${this.slug || "untitled"}`;
 
     // Extract the beginning of the message content (first 100 chars)
     const messagePreview = message.content
@@ -937,9 +937,9 @@ export class SketchAppShell extends LitElement {
       }
 
       this.containerState = state;
-      this.title = state.title;
+      this.slug = state.slug || "";
 
-      // Update document title when sketch title changes
+      // Update document title when sketch slug changes
       this.updateDocumentTitle();
     }
 
@@ -1161,7 +1161,7 @@ export class SketchAppShell extends LitElement {
       <div id="top-banner">
         <div class="title-container">
           <h1 class="banner-title">sketch</h1>
-          <h2 id="chatTitle" class="chat-title">${this.title}</h2>
+          <h2 class="slug-title">${this.slug}</h2>
         </div>
 
         <!-- Container status info moved above tabs -->

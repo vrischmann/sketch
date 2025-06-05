@@ -26,11 +26,12 @@ type mockAgent struct {
 	subscribers              []chan *loop.AgentMessage
 	stateTransitionListeners []chan loop.StateTransition
 	initialCommit            string
-	title                    string
 	branchName               string
 	branchPrefix             string
 	workingDir               string
 	sessionID                string
+	slug                     string
+	retryNumber              int
 }
 
 func (m *mockAgent) NewIterator(ctx context.Context, nextMessageIdx int) loop.MessageIterator {
@@ -206,12 +207,6 @@ func (m *mockAgent) SketchGitBaseRef() string {
 	return "sketch-base-test-session"
 }
 
-func (m *mockAgent) Title() string {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.title
-}
-
 func (m *mockAgent) BranchName() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -250,6 +245,18 @@ func (m *mockAgent) IsInContainer() bool                        { return false }
 func (m *mockAgent) FirstMessageIndex() int                     { return 0 }
 func (m *mockAgent) DetectGitChanges(ctx context.Context) error { return nil }
 
+func (m *mockAgent) Slug() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.slug
+}
+
+func (m *mockAgent) IncrementRetryNumber() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.retryNumber++
+}
+
 func (m *mockAgent) GetPortMonitor() *loop.PortMonitor { return loop.NewPortMonitor() }
 
 // TestSSEStream tests the SSE stream endpoint
@@ -262,9 +269,9 @@ func TestSSEStream(t *testing.T) {
 		subscribers:              []chan *loop.AgentMessage{},
 		stateTransitionListeners: []chan loop.StateTransition{},
 		initialCommit:            "abcd1234",
-		title:                    "Test Title",
 		branchName:               "sketch/test-branch",
 		branchPrefix:             "sketch/",
+		slug:                     "test-slug",
 	}
 
 	// Add the initial messages before creating the server

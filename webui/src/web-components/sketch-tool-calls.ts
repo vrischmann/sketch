@@ -1,7 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
-import { ToolCall } from "../types";
+import { State, ToolCall } from "../types";
 import "./sketch-tool-card";
 import "./sketch-tool-card-take-screenshot";
 import "./sketch-tool-card-about-sketch";
@@ -24,6 +24,9 @@ export class SketchToolCalls extends LitElement {
 
   @property()
   open: boolean = false;
+
+  @property()
+  state: State;
 
   @state()
   expanded: boolean = false;
@@ -124,16 +127,17 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-think>`;
-      case "title":
-        return html`<sketch-tool-card-title
+      case "set-slug":
+        return html`<sketch-tool-card-set-slug
           .open=${open}
           .toolCall=${toolCall}
-        ></sketch-tool-card-title>`;
-      case "precommit":
-        return html`<sketch-tool-card-precommit
+        ></sketch-tool-card-set-slug>`;
+      case "commit-message-style":
+        return html`<sketch-tool-card-commit-message-style
           .open=${open}
           .toolCall=${toolCall}
-        ></sketch-tool-card-precommit>`;
+          .state=${this.state}
+        ></sketch-tool-card-commit-message-style>`;
       case "browser_take_screenshot":
         return html`<sketch-tool-card-take-screenshot
           .open=${open}

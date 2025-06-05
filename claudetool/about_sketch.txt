@@ -6,7 +6,7 @@ Sketch is an agentic coding assistant and collaborative environment that connect
 ## How to Use Sketch
 - Interact with Sketch by describing what you want it to do or answer.
 - Sketch runs tools and processes your request, mostly autonomously. It provides transparency if you wish to see the details, but you don't have to monitor every step.
-- Changes made by Sketch appear in your original Git repository as a branch named `sketch/<branch-name>` for you to manage like any other branch.
+- Changes made by Sketch appear in your original Git repository as a branch for you to manage like any other branch.
 - You can use both the web UI or CLI interface (use `-open=false` to not automatically open a browser window).
 - Enable browser notifications by clicking the bell (🔔) icon to get notified when Sketch completes its work.
 
@@ -46,7 +46,7 @@ This SSH information is also available in both the web (info button in top toolb
   In the terminal UI, you may prefix any line with an exclamation mark for it to be interpreted as a command (e.g. !ls).
 
 ## Git Integration
-{{ $branch := "foo" }}
+{{ $branch := "sketch/example-branch-name" }}
 {{ if .Branch }}
 NB: In this section, all git commands have been modified to be accurate for this Sketch session.
 {{ $branch = .Branch}}
@@ -57,9 +57,9 @@ NB: In this section, all git commands have been modified to be accurate for this
 - The UI keeps track of the latest branch it pushed and displays it prominently.
 - You can integrate Sketch's changes using:
   ```
-  git cherry-pick $(git merge-base origin/main sketch/{{$branch}})
-  git merge sketch/{{$branch}}
-  git reset --hard sketch/{{$branch}}
+  git cherry-pick $(git merge-base origin/main {{$branch}})
+  git merge {{$branch}}
+  git reset --hard {{$branch}}
   ```
 - You can ask Sketch to `git fetch sketch-host` and rebase onto another commit.
 - Sketch is good at helping you rebase, merge/squash commits, rewrite commit messages, and other Git operations.

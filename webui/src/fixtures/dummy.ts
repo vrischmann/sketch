@@ -358,11 +358,11 @@ export const initialState: State = {
       codereview: 1,
       done: 2,
       patch: 1,
-      title: 1,
+
     },
   },
   initial_commit: "a6c5a08a451ef1082774a7affb6af58775e7bc16",
-  title: "Add a line to dummy.txt and commit the change",
+  slug: "add-line-dummy-commit",
   hostname: "MacBook-Pro-9.local",
   session_id: "dummy-session",
   ssh_available: false,

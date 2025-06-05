@@ -44,10 +44,10 @@ var (
  ⌨️  {{.input.path -}}
 {{else if eq .msg.ToolName "done" -}}
 {{/* nothing to show here, the agent will write more in its next message */}}
-{{else if eq .msg.ToolName "title" -}}
-🏷️  {{.input.title}}
-{{else if eq .msg.ToolName "precommit" -}}
-🌱 git branch: {{.branch_prefix}}{{.input.branch_name}}
+{{else if eq .msg.ToolName "set-slug" -}}
+🐌 {{.input.slug}}
+{{else if eq .msg.ToolName "commit-message-style" -}}
+🌱 learn git commit message style
 {{else if eq .msg.ToolName "about_sketch" -}}
 📚 About Sketch
 {{else if eq .msg.ToolName "codereview" -}}

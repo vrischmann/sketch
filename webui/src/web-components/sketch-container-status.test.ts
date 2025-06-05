@@ -10,7 +10,7 @@ const mockCompleteState: State = {
   initial_commit: "abcdef1234567890",
   message_count: 42,
   os: "linux",
-  title: "Test Session",
+  slug: "test-session",
   total_usage: {
     input_tokens: 1000,
     output_tokens: 2000,
@@ -76,7 +76,7 @@ test("renders with partial state data", async ({ mount }) => {
     hostname: "partial-host",
     message_count: 10,
     os: "linux",
-    title: "Partial Test",
+    slug: "partial-test",
     session_id: "partial-session",
     ssh_available: false,
     total_usage: {
