@@ -901,7 +901,7 @@ func findDirDockerfiles(root string) (res []string, err error) {
 			return filepath.SkipDir
 		}
 		name := strings.ToLower(info.Name())
-		if name == "dockerfile" || strings.HasPrefix(name, "dockerfile.") {
+		if name == "dockerfile" || strings.HasPrefix(name, "dockerfile.") || strings.HasSuffix(name, ".dockerfile") {
 			res = append(res, path)
 		}
 		return nil
