@@ -21,7 +21,13 @@ type Request struct {
 
 // https://ai.google.dev/api/generate-content#response-body
 type Response struct {
-	Candidates []Candidate `json:"candidates"`
+	Candidates []Candidate   `json:"candidates"`
+	headers    http.Header   // captured HTTP response headers
+}
+
+// Header returns the HTTP response headers.
+func (r *Response) Header() http.Header {
+	return r.headers
 }
 
 type Candidate struct {
@@ -162,6 +168,7 @@ func (m Model) GenerateContent(ctx context.Context, req *Request) (*Response, er
 	if err := json.Unmarshal(body, &res); err != nil {
 		return nil, fmt.Errorf("GenerateContent: unmarshaling response: %w, %s", err, string(body))
 	}
+	res.headers = httpResp.Header
 	return &res, nil
 }
 

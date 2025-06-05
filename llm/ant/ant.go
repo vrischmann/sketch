@@ -166,11 +166,6 @@ func (u *usage) Add(other usage) {
 	u.CostUSD += other.CostUSD
 }
 
-type errorResponse struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
-}
-
 // response represents the response from the message API.
 type response struct {
 	ID           string    `json:"id"`
@@ -513,7 +508,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 				slog.InfoContext(ctx, "anthropic_retrying_with_larger_tokens", "message", "Retrying Anthropic API call with larger max tokens size")
 				// Retry with more output tokens.
 				largerMaxTokens = true
-				response.Usage.CostUSD = response.TotalDollars()
+				response.Usage.CostUSD = llm.CostUSDFromResponse(resp.Header)
 				partialUsage = response.Usage
 				continue
 			}
@@ -522,7 +517,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			if largerMaxTokens {
 				response.Usage.Add(partialUsage)
 			}
-			response.Usage.CostUSD = response.TotalDollars()
+			response.Usage.CostUSD = llm.CostUSDFromResponse(resp.Header)
 
 			return toLLMResponse(&response), nil
 		case resp.StatusCode >= 500 && resp.StatusCode < 600:
@@ -546,62 +541,4 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			continue
 		}
 	}
-}
-
-// cents per million tokens
-// (not dollars because i'm twitchy about using floats for money)
-type centsPer1MTokens struct {
-	Input         uint64
-	Output        uint64
-	CacheRead     uint64
-	CacheCreation uint64
-}
-
-// https://www.anthropic.com/pricing#anthropic-api
-var modelCost = map[string]centsPer1MTokens{
-	Claude37Sonnet: {
-		Input:         300,  // $3
-		Output:        1500, // $15
-		CacheRead:     30,   // $0.30
-		CacheCreation: 375,  // $3.75
-	},
-	Claude35Haiku: {
-		Input:         80,  // $0.80
-		Output:        400, // $4.00
-		CacheRead:     8,   // $0.08
-		CacheCreation: 100, // $1.00
-	},
-	Claude35Sonnet: {
-		Input:         300,  // $3
-		Output:        1500, // $15
-		CacheRead:     30,   // $0.30
-		CacheCreation: 375,  // $3.75
-	},
-	Claude4Sonnet: {
-		Input:         300,  // $3
-		Output:        1500, // $15
-		CacheRead:     30,   // $0.30
-		CacheCreation: 375,  // $3.75
-	},
-	Claude4Opus: {
-		Input:         1500, // $15
-		Output:        7500, // $75
-		CacheRead:     150,  // $1.50
-		CacheCreation: 1875, // $18.75
-	},
-}
-
-// TotalDollars returns the total cost to obtain this response, in dollars.
-func (mr *response) TotalDollars() float64 {
-	cpm, ok := modelCost[mr.Model]
-	if !ok {
-		panic(fmt.Sprintf("no pricing info for model: %s", mr.Model))
-	}
-	use := mr.Usage
-	megaCents := use.InputTokens*cpm.Input +
-		use.OutputTokens*cpm.Output +
-		use.CacheReadInputTokens*cpm.CacheRead +
-		use.CacheCreationInputTokens*cpm.CacheCreation
-	cents := float64(megaCents) / 1_000_000.0
-	return cents / 100.0
 }

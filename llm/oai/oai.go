@@ -38,15 +38,8 @@ type Model struct {
 	UserName         string // provided by the user to identify this model (e.g. "gpt4.1")
 	ModelName        string // provided to the service provide to specify which model to use (e.g. "gpt-4.1-2025-04-14")
 	URL              string
-	Cost             ModelCost
 	APIKeyEnv        string // environment variable name for the API key
 	IsReasoningModel bool   // whether this model is a reasoning model (e.g. O3, O4-mini)
-}
-
-type ModelCost struct {
-	Input       uint64 // in cents per million tokens
-	CachedInput uint64 // in cents per million tokens
-	Output      uint64 // in cents per million tokens
 }
 
 var (
@@ -56,7 +49,6 @@ var (
 		UserName:  "gpt4.1",
 		ModelName: "gpt-4.1-2025-04-14",
 		URL:       OpenAIURL,
-		Cost:      ModelCost{Input: 200, CachedInput: 50, Output: 800},
 		APIKeyEnv: OpenAIAPIKeyEnv,
 	}
 
@@ -64,7 +56,6 @@ var (
 		UserName:  "gpt4o",
 		ModelName: "gpt-4o-2024-08-06",
 		URL:       OpenAIURL,
-		Cost:      ModelCost{Input: 250, CachedInput: 125, Output: 1000},
 		APIKeyEnv: OpenAIAPIKeyEnv,
 	}
 
@@ -72,7 +63,6 @@ var (
 		UserName:  "gpt4o-mini",
 		ModelName: "gpt-4o-mini-2024-07-18",
 		URL:       OpenAIURL,
-		Cost:      ModelCost{Input: 15, CachedInput: 8, Output: 60}, // 8 is actually 7.5 GRRR round up for now oh well
 		APIKeyEnv: OpenAIAPIKeyEnv,
 	}
 
@@ -80,7 +70,6 @@ var (
 		UserName:  "gpt4.1-mini",
 		ModelName: "gpt-4.1-mini-2025-04-14",
 		URL:       OpenAIURL,
-		Cost:      ModelCost{Input: 40, CachedInput: 10, Output: 160},
 		APIKeyEnv: OpenAIAPIKeyEnv,
 	}
 
@@ -88,7 +77,6 @@ var (
 		UserName:  "gpt4.1-nano",
 		ModelName: "gpt-4.1-nano-2025-04-14",
 		URL:       OpenAIURL,
-		Cost:      ModelCost{Input: 10, CachedInput: 3, Output: 40}, // 3 is actually 2.5 GRRR round up for now oh well
 		APIKeyEnv: OpenAIAPIKeyEnv,
 	}
 
@@ -96,7 +84,6 @@ var (
 		UserName:         "o3",
 		ModelName:        "o3-2025-04-16",
 		URL:              OpenAIURL,
-		Cost:             ModelCost{Input: 1000, CachedInput: 250, Output: 4000},
 		APIKeyEnv:        OpenAIAPIKeyEnv,
 		IsReasoningModel: true,
 	}
@@ -105,7 +92,6 @@ var (
 		UserName:         "o4-mini",
 		ModelName:        "o4-mini-2025-04-16",
 		URL:              OpenAIURL,
-		Cost:             ModelCost{Input: 110, CachedInput: 28, Output: 440}, // 28 is actually 27.5 GRRR round up for now oh well
 		APIKeyEnv:        OpenAIAPIKeyEnv,
 		IsReasoningModel: true,
 	}
@@ -114,7 +100,6 @@ var (
 		UserName:  "gemini-flash-2.5",
 		ModelName: "gemini-2.5-flash-preview-04-17",
 		URL:       GeminiURL,
-		Cost:      ModelCost{Input: 15, Output: 60},
 		APIKeyEnv: GeminiAPIKeyEnv,
 	}
 
@@ -129,7 +114,6 @@ var (
 		// Whatever that means. Are we caching? I have no idea.
 		// How do you always manage to be the annoying one, Google?
 		// I'm not complicating things just for you.
-		Cost:      ModelCost{Input: 125, Output: 1000},
 		APIKeyEnv: GeminiAPIKeyEnv,
 	}
 
@@ -137,7 +121,6 @@ var (
 		UserName:  "together-deepseek-v3",
 		ModelName: "deepseek-ai/DeepSeek-V3",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 125, Output: 125},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -145,7 +128,6 @@ var (
 		UserName:  "together-deepseek-r1",
 		ModelName: "deepseek-ai/DeepSeek-R1",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 300, Output: 700},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -153,7 +135,6 @@ var (
 		UserName:  "together-llama4-maverick",
 		ModelName: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 27, Output: 85},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -161,7 +142,6 @@ var (
 		UserName:  "fireworks-llama4-maverick",
 		ModelName: "accounts/fireworks/models/llama4-maverick-instruct-basic",
 		URL:       FireworksURL,
-		Cost:      ModelCost{Input: 22, Output: 88},
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
@@ -169,7 +149,6 @@ var (
 		UserName:  "together-llama3-70b",
 		ModelName: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 88, Output: 88},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -177,7 +156,6 @@ var (
 		UserName:  "together-mistral-small",
 		ModelName: "mistralai/Mistral-Small-24B-Instruct-2501",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 80, Output: 80},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -185,7 +163,6 @@ var (
 		UserName:  "together-qwen3",
 		ModelName: "Qwen/Qwen3-235B-A22B-fp8-tput",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 20, Output: 60},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -193,7 +170,6 @@ var (
 		UserName:  "together-gemma2",
 		ModelName: "google/gemma-2-27b-it",
 		URL:       TogetherURL,
-		Cost:      ModelCost{Input: 80, Output: 80},
 		APIKeyEnv: TogetherAPIKeyEnv,
 	}
 
@@ -201,15 +177,12 @@ var (
 		UserName:  "llama.cpp",
 		ModelName: "llama.cpp local model",
 		URL:       LlamaCPPURL,
-		// zero cost
-		Cost: ModelCost{},
 	}
 
 	FireworksDeepseekV3 = Model{
 		UserName:  "fireworks-deepseek-v3",
 		ModelName: "accounts/fireworks/models/deepseek-v3-0324",
 		URL:       FireworksURL,
-		Cost:      ModelCost{Input: 90, Output: 90}, // not entirely sure about this, they don't list pricing anywhere convenient
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
@@ -217,7 +190,6 @@ var (
 		UserName:  "mistral-medium-3",
 		ModelName: "mistral-medium-latest",
 		URL:       MistralURL,
-		Cost:      ModelCost{Input: 40, Output: 200},
 		APIKeyEnv: MistralAPIKeyEnv,
 	}
 
@@ -225,7 +197,6 @@ var (
 		UserName:  "devstral-small",
 		ModelName: "devstral-small-latest",
 		URL:       MistralURL,
-		Cost:      ModelCost{Input: 100, Output: 300},
 		APIKeyEnv: MistralAPIKeyEnv,
 	}
 )
@@ -293,13 +264,6 @@ var (
 	fromLLMRole = map[llm.MessageRole]string{
 		llm.MessageRoleAssistant: "assistant",
 		llm.MessageRoleUser:      "user",
-	}
-	fromLLMContentType = map[llm.ContentType]string{
-		llm.ContentTypeText:             "text",
-		llm.ContentTypeToolUse:          "function", // OpenAI uses function instead of tool_call
-		llm.ContentTypeToolResult:       "tool_result",
-		llm.ContentTypeThinking:         "text", // Map thinking to text since OpenAI doesn't have thinking
-		llm.ContentTypeRedactedThinking: "text", // Map redacted_thinking to text
 	}
 	fromLLMToolChoiceType = map[llm.ToolChoiceType]string{
 		llm.ToolChoiceTypeAuto: "auto",
@@ -552,7 +516,7 @@ func toLLMContents(msg openai.ChatCompletionMessage) []llm.Content {
 }
 
 // toLLMUsage converts usage information from OpenAI to llm.Usage.
-func (s *Service) toLLMUsage(au openai.Usage) llm.Usage {
+func (s *Service) toLLMUsage(au openai.Usage, headers http.Header) llm.Usage {
 	// fmt.Printf("raw usage: %+v / %v / %v\n", au, au.PromptTokensDetails, au.CompletionTokensDetails)
 	in := uint64(au.PromptTokens)
 	var inc uint64
@@ -566,7 +530,7 @@ func (s *Service) toLLMUsage(au openai.Usage) llm.Usage {
 		CacheCreationInputTokens: in,
 		OutputTokens:             out,
 	}
-	u.CostUSD = s.calculateCostFromTokens(u)
+	u.CostUSD = llm.CostUSDFromResponse(headers)
 	return u
 }
 
@@ -583,7 +547,7 @@ func (s *Service) toLLMResponse(r *openai.ChatCompletionResponse) *llm.Response 
 			ID:    r.ID,
 			Model: r.Model,
 			Role:  llm.MessageRoleAssistant,
-			Usage: s.toLLMUsage(r.Usage),
+			Usage: s.toLLMUsage(r.Usage, r.Header()),
 		}
 	}
 
@@ -596,7 +560,7 @@ func (s *Service) toLLMResponse(r *openai.ChatCompletionResponse) *llm.Response 
 		Role:       toRoleFromString(choice.Message.Role),
 		Content:    toLLMContents(choice.Message),
 		StopReason: toStopReason(string(choice.FinishReason)),
-		Usage:      s.toLLMUsage(r.Usage),
+		Usage:      s.toLLMUsage(r.Usage, r.Header()),
 	}
 }
 
@@ -617,23 +581,6 @@ func toStopReason(reason string) llm.StopReason {
 		return sr
 	}
 	return llm.StopReasonStopSequence // Default
-}
-
-// calculateCostFromTokens calculates the cost in dollars for the given model and token counts.
-func (s *Service) calculateCostFromTokens(u llm.Usage) float64 {
-	cost := s.Model.Cost
-
-	// TODO: check this for correctness, i am skeptical
-	// Calculate cost in cents
-	megaCents := u.CacheCreationInputTokens*cost.Input +
-		u.CacheReadInputTokens*cost.CachedInput +
-		u.OutputTokens*cost.Output
-
-	cents := float64(megaCents) / 1_000_000
-	// Convert to dollars
-	dollars := cents / 100.0
-	// fmt.Printf("in_new=%d, in_cached=%d, out=%d, cost=%.2f\n", u.CacheCreationInputTokens, u.CacheReadInputTokens, u.OutputTokens, dollars)
-	return dollars
 }
 
 // TokenContextWindow returns the maximum token context window size for this service

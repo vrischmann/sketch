@@ -431,14 +431,9 @@ func calculateUsage(req *gemini.Request, res *gemini.Response) llm.Usage {
 		}
 	}
 
-	// For Gemini 2.5 Pro Preview pricing: $1.25 per 1M input tokens, $10 per 1M output tokens
-	// Convert to dollars
-	costUSD := float64(inputTokens)*1.25/1_000_000.0 + float64(outputTokens)*10/1_000_000.0
-
 	return llm.Usage{
 		InputTokens:  inputTokens,
 		OutputTokens: outputTokens,
-		CostUSD:      costUSD,
 	}
 }
 
@@ -573,6 +568,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 	ensureToolIDs(content)
 
 	usage := calculateUsage(gemReq, gemRes)
+	usage.CostUSD = llm.CostUSDFromResponse(gemRes.Header())
 
 	stopReason := llm.StopReasonEndTurn
 	for _, part := range content {
