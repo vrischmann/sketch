@@ -21,8 +21,8 @@ type Request struct {
 
 // https://ai.google.dev/api/generate-content#response-body
 type Response struct {
-	Candidates []Candidate   `json:"candidates"`
-	headers    http.Header   // captured HTTP response headers
+	Candidates []Candidate `json:"candidates"`
+	headers    http.Header // captured HTTP response headers
 }
 
 // Header returns the HTTP response headers.
