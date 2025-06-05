@@ -1016,9 +1016,12 @@ func (r *CodeReviewer) findRelatedFiles(ctx context.Context, changedFiles []stri
 		}
 	}
 
-	// Highest correlation first
+	// Highest correlation first, then sort by path.
 	slices.SortFunc(relatedFiles, func(a, b RelatedFile) int {
-		return -1 * cmp.Compare(a.Correlation, b.Correlation)
+		return cmp.Or(
+			-1*cmp.Compare(a.Correlation, b.Correlation),
+			cmp.Compare(a.Path, b.Path),
+		)
 	})
 
 	// Limit to 1 correlated file per input file.
