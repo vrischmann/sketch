@@ -391,7 +391,11 @@ func (r *CodeReviewer) runGenerate(ctx context.Context, packages []string) ([]st
 		if path == "" {
 			continue
 		}
-		changed = append(changed, filepath.Join(r.repoRoot, path))
+		absPath := filepath.Join(r.repoRoot, path)
+		if statusesContainFile(r.initialStatus, absPath) {
+			continue
+		}
+		changed = append(changed, absPath)
 	}
 
 	return changed, nil
