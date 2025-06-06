@@ -46,6 +46,26 @@ def get_commit_info():
         print(f"Failed to get commit information: {e}")
         sys.exit(1)
 
+def truncate_text(text, max_length):
+    """Truncate text to fit within Discord's limits."""
+    if len(text) <= max_length:
+        return text
+    # Find a good place to cut off, preferably at a sentence or paragraph boundary
+    truncated = text[:max_length - 3]  # Leave room for "..."
+    
+    # Try to cut at paragraph boundary
+    last_double_newline = truncated.rfind('\n\n')
+    if last_double_newline > max_length // 2:  # Only if we're not cutting too much
+        return truncated[:last_double_newline] + "\n\n..."
+    
+    # Try to cut at sentence boundary
+    last_period = truncated.rfind('. ')
+    if last_period > max_length // 2:  # Only if we're not cutting too much
+        return truncated[:last_period + 1] + " ..."
+    
+    # Otherwise just truncate with ellipsis
+    return truncated + "..."
+
 def main():
     # Validate we're running in the correct environment
     validate_environment()
@@ -65,12 +85,17 @@ def main():
     # Create timestamp
     timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-3] + 'Z'
 
+    # Truncate fields to fit Discord's limits
+    # Discord embed limits: title (256), description (4096), field value (1024)
+    title = truncate_text(commit_message, 256)
+    description = truncate_text(commit_body, 2000)  # Use 2000 to be safe
+    
     # Create Discord webhook payload
     payload = {
         "embeds": [
             {
-                "title": commit_message,
-                "description": commit_body,
+                "title": title,
+                "description": description,
                 "color": 5814783,
                 "fields": [
                     {
@@ -91,6 +116,12 @@ def main():
 
     # Convert to JSON
     json_payload = json.dumps(payload)
+    
+    # Debug: print payload size info
+    if os.environ.get('DISCORD_TEST_MODE') == '1':
+        print(f"Payload size: {len(json_payload)} bytes")
+        print(f"Title length: {len(payload['embeds'][0]['title'])} chars")
+        print(f"Description length: {len(payload['embeds'][0]['description'])} chars")
 
     # Test mode - just print the payload
     if os.environ.get('DISCORD_TEST_MODE') == '1':
