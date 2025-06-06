@@ -1,6 +1,6 @@
 module sketch.dev
 
-go 1.24.3
+go 1.24.4
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20250403032234-65de8f5d025b
