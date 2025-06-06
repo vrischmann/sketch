@@ -130,7 +130,6 @@ func (tm *TunnelManager) processPortEvent(ctx context.Context, event loop.PortEv
 
 	// Skip common system ports that we don't want to tunnel
 	if tm.shouldSkipPort(containerPort) {
-		slog.DebugContext(ctx, "Skipping system port", "port", containerPort)
 		return
 	}
 
