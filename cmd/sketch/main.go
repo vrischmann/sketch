@@ -516,6 +516,11 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		Commit:        flags.commit,
 		BranchPrefix:  flags.branchPrefix,
 	}
+
+	// Create SkabandClient if skaband address is provided
+	if flags.skabandAddr != "" && pubKey != "" {
+		agentConfig.SkabandClient = skabandclient.NewSkabandClient(flags.skabandAddr, pubKey)
+	}
 	agent := loop.NewAgent(agentConfig)
 
 	// Create the server
@@ -598,7 +603,9 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 				}
 			}
 		}
-		go skabandclient.DialAndServeLoop(ctx, flags.skabandAddr, flags.sessionID, pubKey, srv, connectFn)
+		if agentConfig.SkabandClient != nil {
+			go agentConfig.SkabandClient.DialAndServeLoop(ctx, flags.sessionID, srv, connectFn)
+		}
 	}
 
 	// Handle one-shot mode or mode without terminal UI

@@ -28,6 +28,7 @@ import (
 	"sketch.dev/llm"
 	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
+	"sketch.dev/skabandclient"
 )
 
 const (
@@ -989,6 +990,8 @@ type AgentConfig struct {
 	Commit string
 	// Prefix for git branches created by sketch
 	BranchPrefix string
+	// Skaband client for session history (optional)
+	SkabandClient *skabandclient.SkabandClient
 }
 
 // NewAgent creates a new Agent.
@@ -1211,6 +1214,13 @@ func (a *Agent) initConvo() *conversation.Convo {
 	}
 
 	convo.Tools = append(convo.Tools, browserTools...)
+
+	// Add session history tools if skaband client is available
+	if a.config.SkabandClient != nil {
+		sessionHistoryTools := claudetool.CreateSessionHistoryTools(a.config.SkabandClient, a.config.SessionID, a.gitOrigin)
+		convo.Tools = append(convo.Tools, sessionHistoryTools...)
+	}
+
 	convo.Listener = a
 	return convo
 }

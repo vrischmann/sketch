@@ -29,56 +29,21 @@ import (
 	"golang.org/x/net/http2"
 )
 
-// DialAndServeLoop is a redial loop around DialAndServe.
-func DialAndServeLoop(ctx context.Context, skabandAddr, sessionID, clientPubKey string, srv http.Handler, connectFn func(connected bool)) {
-	if _, err := os.Stat("/.dockerenv"); err == nil { // inDocker
-		if addr, err := LocalhostToDockerInternal(skabandAddr); err == nil {
-			skabandAddr = addr
-		}
-	}
+// SketchSession represents a sketch session with metadata
+type SketchSession struct {
+	ID               string    `json:"id"`
+	Title            string    `json:"title"`
+	FirstMessage     string    `json:"first_message"`
+	LastMessage      string    `json:"last_message"`
+	FirstMessageDate time.Time `json:"first_message_date"`
+	LastMessageDate  time.Time `json:"last_message_date"`
+}
 
-	var skabandConnected atomic.Bool
-	skabandHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/skabandinit" {
-			b, err := io.ReadAll(r.Body)
-			if err != nil {
-				fmt.Printf("skabandinit failed: %v\n", err)
-				return
-			}
-			m := map[string]string{}
-			if err := json.Unmarshal(b, &m); err != nil {
-				fmt.Printf("skabandinit failed: %v\n", err)
-				return
-			}
-			skabandConnected.Store(true)
-			if connectFn != nil {
-				connectFn(true)
-			}
-			return
-		}
-		srv.ServeHTTP(w, r)
-	})
-
-	var lastErrLog time.Time
-	for {
-		if err := DialAndServe(ctx, skabandAddr, sessionID, clientPubKey, skabandHandler); err != nil {
-			// NOTE: *just* backoff the logging. Backing off dialing
-			// is bad UX. Doing so saves negligible CPU and doing so
-			// without hurting UX requires interrupting the backoff with
-			// wake-from-sleep and network-up events from the OS,
-			// which are a pain to plumb.
-			if time.Since(lastErrLog) > 1*time.Minute {
-				slog.DebugContext(ctx, "skaband connection failed", "err", err)
-				lastErrLog = time.Now()
-			}
-		}
-		if skabandConnected.CompareAndSwap(true, false) {
-			if connectFn != nil {
-				connectFn(false)
-			}
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
+// SkabandClient provides HTTP client functionality for skaband server
+type SkabandClient struct {
+	addr      string
+	publicKey string
+	client    *http.Client
 }
 
 func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, h http.Handler) (err error) {
@@ -301,4 +266,150 @@ func NewSessionID() string {
 		s += strings.Repeat("0", 16-len(s))
 	}
 	return s[0:4] + "-" + s[4:8] + "-" + s[8:12] + "-" + s[12:16]
+}
+
+// NewSkabandClient creates a new skaband client
+func NewSkabandClient(addr, publicKey string) *SkabandClient {
+	// Apply localhost-to-docker-internal transformation if needed
+	if _, err := os.Stat("/.dockerenv"); err == nil { // inDocker
+		if newAddr, err := LocalhostToDockerInternal(addr); err == nil {
+			addr = newAddr
+		}
+	}
+
+	return &SkabandClient{
+		addr:      addr,
+		publicKey: publicKey,
+		client:    &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// ListRecentSketchSessionsMarkdown returns recent sessions as a markdown table
+func (c *SkabandClient) ListRecentSketchSessionsMarkdown(ctx context.Context, currentRepo, sessionID string) (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("SkabandClient is nil")
+	}
+
+	// Build URL with query parameters
+	baseURL := c.addr + "/api/sessions/recent"
+	if currentRepo != "" {
+		baseURL += "?repo=" + url.QueryEscape(currentRepo)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add headers
+	req.Header.Set("Public-Key", c.publicKey)
+	req.Header.Set("Session-ID", sessionID)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	return string(body), nil
+}
+
+// ReadSketchSession reads the full details of a specific session and returns formatted text
+func (c *SkabandClient) ReadSketchSession(ctx context.Context, targetSessionID, originSessionID string) (*string, error) {
+	if c == nil {
+		return nil, fmt.Errorf("SkabandClient is nil")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", c.addr+"/api/sessions/"+targetSessionID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add headers
+	req.Header.Set("Public-Key", c.publicKey)
+	req.Header.Set("Session-ID", originSessionID)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	response := string(body)
+	return &response, nil
+}
+
+// DialAndServeLoop is a redial loop around DialAndServe.
+func (c *SkabandClient) DialAndServeLoop(ctx context.Context, sessionID string, srv http.Handler, connectFn func(connected bool)) {
+	skabandAddr := c.addr
+	clientPubKey := c.publicKey
+
+	if _, err := os.Stat("/.dockerenv"); err == nil { // inDocker
+		if addr, err := LocalhostToDockerInternal(skabandAddr); err == nil {
+			skabandAddr = addr
+		}
+	}
+
+	var skabandConnected atomic.Bool
+	skabandHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/skabandinit" {
+			b, err := io.ReadAll(r.Body)
+			if err != nil {
+				fmt.Printf("skabandinit failed: %v\n", err)
+				return
+			}
+			m := map[string]string{}
+			if err := json.Unmarshal(b, &m); err != nil {
+				fmt.Printf("skabandinit failed: %v\n", err)
+				return
+			}
+			skabandConnected.Store(true)
+			if connectFn != nil {
+				connectFn(true)
+			}
+			return
+		}
+		srv.ServeHTTP(w, r)
+	})
+
+	var lastErrLog time.Time
+	for {
+		if err := DialAndServe(ctx, skabandAddr, sessionID, clientPubKey, skabandHandler); err != nil {
+			// NOTE: *just* backoff the logging. Backing off dialing
+			// is bad UX. Doing so saves negligible CPU and doing so
+			// without hurting UX requires interrupting the backoff with
+			// wake-from-sleep and network-up events from the OS,
+			// which are a pain to plumb.
+			if time.Since(lastErrLog) > 1*time.Minute {
+				slog.DebugContext(ctx, "skaband connection failed", "err", err)
+				lastErrLog = time.Now()
+			}
+		}
+		if skabandConnected.CompareAndSwap(true, false) {
+			if connectFn != nil {
+				connectFn(false)
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
 }

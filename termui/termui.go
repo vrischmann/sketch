@@ -81,6 +81,10 @@ var (
  📜 Console logs
 {{else if eq .msg.ToolName "browser_clear_console_logs" -}}
  🧹 Clear console logs
+{{else if eq .msg.ToolName "list_recent_sketch_sessions" -}}
+ 📚 List recent sketch sessions
+{{else if eq .msg.ToolName "read_sketch_session" -}}
+ 📖 Read session {{.input.session_id}}
 {{else -}}
  🛠️  {{ .msg.ToolName}}: {{.msg.ToolInput -}}
 {{end -}}
