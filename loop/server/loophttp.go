@@ -492,8 +492,26 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		s.handleTerminalInput(w, r, sessionID)
 	})
 
+	// Handler for interface selection via URL parameters (?m for mobile, ?d for desktop, auto-detect by default)
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Serve the sketch-app-shell.html file directly from the embedded filesystem
+		// Check URL parameters for interface selection
+		queryParams := r.URL.Query()
+
+		// Check if mobile interface is requested (?m parameter)
+		if queryParams.Has("m") {
+			// Serve the mobile-app-shell.html file
+			data, err := fs.ReadFile(webBundle, "mobile-app-shell.html")
+			if err != nil {
+				http.Error(w, "Mobile interface not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html")
+			w.Write(data)
+			return
+		}
+
+		// Check if desktop interface is explicitly requested (?d parameter)
+		// or serve desktop by default
 		data, err := fs.ReadFile(webBundle, "sketch-app-shell.html")
 		if err != nil {
 			http.Error(w, "File not found", http.StatusNotFound)
