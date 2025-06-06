@@ -431,6 +431,11 @@ export class SketchTimelineMessage extends LitElement {
     .pre-compaction .message-content {
       background: rgba(255, 255, 255, 0.7);
       backdrop-filter: blur(1px);
+      color: #333; /* Ensure dark text for readability */
+    }
+
+    .pre-compaction .message-text {
+      color: #333; /* Ensure dark text in message content */
     }
 
     /* Make message type display bold but without the IRC-style markers */
