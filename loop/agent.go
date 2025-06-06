@@ -2213,7 +2213,7 @@ echo "Please review this commit message and fix it if it is incorrect."
 echo "This hook only echos the commit message; it does not modify it."
 echo "Bash escaping is a common source of issues; to fix that, create a temp file and use 'git commit --amend -F COMMIT_MSG_FILE'."
 echo "<last_commit_message>"
-git log -1 --pretty=%B
+PAGER=cat git log -1 --pretty=%B
 echo "</last_commit_message>"
 echo "</post_commit_hook>"
 `
