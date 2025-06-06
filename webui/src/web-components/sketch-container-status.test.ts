@@ -42,10 +42,10 @@ test("render props", async ({ mount }) => {
   await expect(component.locator("#workingDir")).toContainText(
     mockCompleteState.working_dir,
   );
-  
+
   // Show details to access the popup elements
   component.locator(".info-toggle").click();
-  
+
   await expect(component.locator("#initialCommit")).toContainText(
     mockCompleteState.initial_commit.substring(0, 8),
   );
@@ -67,8 +67,6 @@ test("render props", async ({ mount }) => {
     "$" + mockCompleteState.total_usage.total_cost_usd.toFixed(2),
   );
 });
-
-
 
 test("renders with partial state data", async ({ mount }) => {
   const partialState: Partial<State> = {
@@ -99,7 +97,7 @@ test("renders with partial state data", async ({ mount }) => {
 
   // Check that elements with data are properly populated
   await expect(component.locator("#hostname")).toContainText("partial-host");
-  
+
   // Show details to access the popup elements
   component.locator(".info-toggle").click();
   await expect(component.locator("#messageCount")).toContainText("10");
@@ -119,5 +117,3 @@ test("renders with partial state data", async ({ mount }) => {
   // totalCost element should not exist when cost is 0
   await expect(component.locator("#totalCost")).toHaveCount(0);
 });
-
-

@@ -336,7 +336,7 @@ func TestFindDirDockerfilesIntegration(t *testing.T) {
 
 	for _, file := range testFiles {
 		path := filepath.Join(tmpDir, file)
-		if err := os.WriteFile(path, []byte("# test"), 0644); err != nil {
+		if err := os.WriteFile(path, []byte("# test"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -383,19 +383,19 @@ func TestFindRepoDockerfiles(t *testing.T) {
 
 	// Create subdirectories
 	subDir := filepath.Join(tmpDir, "subdir")
-	if err := os.MkdirAll(subDir, 0755); err != nil {
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create Dockerfile in subdirectory
 	subDockerfile := filepath.Join(subDir, "Dockerfile")
-	if err := os.WriteFile(subDockerfile, []byte("FROM ubuntu"), 0644); err != nil {
+	if err := os.WriteFile(subDockerfile, []byte("FROM ubuntu"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create Dockerfile.sketch in parent directory
 	rootSketchDockerfile := filepath.Join(tmpDir, "Dockerfile.sketch")
-	if err := os.WriteFile(rootSketchDockerfile, []byte("FROM alpine"), 0644); err != nil {
+	if err := os.WriteFile(rootSketchDockerfile, []byte("FROM alpine"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -427,7 +427,7 @@ func TestFindRepoDockerfiles(t *testing.T) {
 
 	// Test prioritization: create both Dockerfile and Dockerfile.sketch in same directory
 	rootDockerfile := filepath.Join(tmpDir, "Dockerfile")
-	if err := os.WriteFile(rootDockerfile, []byte("FROM debian"), 0644); err != nil {
+	if err := os.WriteFile(rootDockerfile, []byte("FROM debian"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

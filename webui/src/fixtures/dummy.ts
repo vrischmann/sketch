@@ -358,7 +358,6 @@ export const initialState: State = {
       codereview: 1,
       done: 2,
       patch: 1,
-
     },
   },
   initial_commit: "a6c5a08a451ef1082774a7affb6af58775e7bc16",
