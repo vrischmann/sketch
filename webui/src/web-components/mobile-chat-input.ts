@@ -10,6 +10,12 @@ export class MobileChatInput extends LitElement {
   @state()
   private inputValue = "";
 
+  @state()
+  private uploadsInProgress = 0;
+
+  @state()
+  private showUploadProgress = false;
+
   private textareaRef = createRef<HTMLTextAreaElement>();
 
   static styles = css`
@@ -119,6 +125,22 @@ export class MobileChatInput extends LitElement {
         font-size: 16px; /* Prevent zoom on iOS */
       }
     }
+
+    /* Upload progress indicator */
+    .upload-progress {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #fff9c4;
+      color: #856404;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
   `;
 
   private handleInput = (e: Event) => {
@@ -126,6 +148,80 @@ export class MobileChatInput extends LitElement {
     this.inputValue = target.value;
     this.adjustTextareaHeight();
   };
+
+  private handlePaste = async (e: ClipboardEvent) => {
+    // Check if the clipboard contains files
+    if (e.clipboardData && e.clipboardData.files.length > 0) {
+      const file = e.clipboardData.files[0];
+      
+      // Handle the file upload
+      e.preventDefault(); // Prevent default paste behavior
+      
+      // Get the current cursor position
+      const textarea = this.textareaRef.value;
+      const cursorPos = textarea ? textarea.selectionStart : this.inputValue.length;
+      await this.uploadFile(file, cursorPos);
+    }
+  };
+
+  // Utility function to handle file uploads
+  private async uploadFile(file: File, insertPosition: number) {
+    // Insert a placeholder at the cursor position
+    const textBefore = this.inputValue.substring(0, insertPosition);
+    const textAfter = this.inputValue.substring(insertPosition);
+
+    // Add a loading indicator
+    const loadingText = `[🔄 Uploading ${file.name}...]`;
+    this.inputValue = `${textBefore}${loadingText}${textAfter}`;
+
+    // Increment uploads in progress counter
+    this.uploadsInProgress++;
+    this.showUploadProgress = true;
+
+    // Adjust spacing immediately to show loading indicator
+    this.adjustTextareaHeight();
+
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Upload the file to the server using a relative path
+      const response = await fetch("./upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Replace the loading placeholder with the actual file path
+      this.inputValue = this.inputValue.replace(loadingText, `[${data.path}]`);
+
+      return data.path;
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+
+      // Replace loading indicator with error message
+      const errorText = `[Upload failed: ${error.message}]`;
+      this.inputValue = this.inputValue.replace(loadingText, errorText);
+
+      throw error;
+    } finally {
+      // Always decrement the counter, even if there was an error
+      this.uploadsInProgress--;
+      if (this.uploadsInProgress === 0) {
+        this.showUploadProgress = false;
+      }
+      this.adjustTextareaHeight();
+      if (this.textareaRef.value) {
+        this.textareaRef.value.focus();
+      }
+    }
+  }
 
   private handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -143,6 +239,12 @@ export class MobileChatInput extends LitElement {
   }
 
   private sendMessage = () => {
+    // Prevent sending if there are uploads in progress
+    if (this.uploadsInProgress > 0) {
+      console.log(`Message send prevented: ${this.uploadsInProgress} uploads in progress`);
+      return;
+    }
+
     const message = this.inputValue.trim();
     if (message && !this.disabled) {
       this.dispatchEvent(
@@ -165,10 +267,23 @@ export class MobileChatInput extends LitElement {
   updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
     this.adjustTextareaHeight();
+    
+    // Add paste event listener when component updates
+    if (this.textareaRef.value && !this.textareaRef.value.onpaste) {
+      this.textareaRef.value.addEventListener('paste', this.handlePaste);
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    // Clean up paste event listener
+    if (this.textareaRef.value) {
+      this.textareaRef.value.removeEventListener('paste', this.handlePaste);
+    }
   }
 
   render() {
-    const canSend = this.inputValue.trim().length > 0 && !this.disabled;
+    const canSend = this.inputValue.trim().length > 0 && !this.disabled && this.uploadsInProgress === 0;
 
     return html`
       <div class="input-container">
@@ -179,20 +294,31 @@ export class MobileChatInput extends LitElement {
             @input=${this.handleInput}
             @keydown=${this.handleKeyDown}
             placeholder="Message Sketch..."
-            ?disabled=${this.disabled}
+            ?disabled=${this.disabled || this.uploadsInProgress > 0}
             rows="1"
           ></textarea>
+          
+          ${this.showUploadProgress
+            ? html`
+                <div class="upload-progress">
+                  Uploading ${this.uploadsInProgress} file${this.uploadsInProgress > 1 ? 's' : ''}...
+                </div>
+              `
+            : ''}
         </div>
 
         <button
           class="send-button"
           @click=${this.sendMessage}
           ?disabled=${!canSend}
-          title="Send message"
+          title=${this.uploadsInProgress > 0 ? 'Please wait for upload to complete' : 'Send message'}
         >
-          <svg class="send-icon" viewBox="0 0 24 24">
-            <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
-          </svg>
+          ${this.uploadsInProgress > 0
+            ? html`<span style="font-size: 12px;">⏳</span>`
+            : html`<svg class="send-icon" viewBox="0 0 24 24">
+                      <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                    </svg>`
+          }
         </button>
       </div>
     `;
