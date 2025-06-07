@@ -32,6 +32,7 @@ type mockAgent struct {
 	sessionID                string
 	slug                     string
 	retryNumber              int
+	skabandAddr              string
 }
 
 func (m *mockAgent) NewIterator(ctx context.Context, nextMessageIdx int) loop.MessageIterator {
@@ -258,6 +259,7 @@ func (m *mockAgent) IncrementRetryNumber() {
 }
 
 func (m *mockAgent) GetPortMonitor() *loop.PortMonitor { return loop.NewPortMonitor() }
+func (m *mockAgent) SkabandAddr() string               { return m.skabandAddr }
 
 // TestSSEStream tests the SSE stream endpoint
 func TestSSEStream(t *testing.T) {

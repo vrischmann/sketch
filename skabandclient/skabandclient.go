@@ -268,6 +268,14 @@ func NewSessionID() string {
 	return s[0:4] + "-" + s[4:8] + "-" + s[8:12] + "-" + s[12:16]
 }
 
+// Addr returns the skaband server address
+func (c *SkabandClient) Addr() string {
+	if c == nil {
+		return ""
+	}
+	return c.addr
+}
+
 // NewSkabandClient creates a new skaband client
 func NewSkabandClient(addr, publicKey string) *SkabandClient {
 	// Apply localhost-to-docker-internal transformation if needed

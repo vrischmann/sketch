@@ -151,6 +151,7 @@ export class MobileShell extends LitElement {
         <mobile-title
           .connectionStatus=${this.connectionStatus}
           .isThinking=${isThinking}
+          .skabandAddr=${this.state?.skaband_addr}
         ></mobile-title>
 
         <mobile-chat

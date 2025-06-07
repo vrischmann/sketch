@@ -96,6 +96,7 @@ type State struct {
 	OutsideWorkingDir    string                        `json:"outside_working_dir,omitempty"`
 	InsideWorkingDir     string                        `json:"inside_working_dir,omitempty"`
 	TodoContent          string                        `json:"todo_content,omitempty"` // Contains todo list JSON data
+	SkabandAddr          string                        `json:"skaband_addr,omitempty"` // URL of the skaband server
 }
 
 type InitRequest struct {
@@ -1304,6 +1305,7 @@ func (s *Server) getState() State {
 		FirstMessageIndex:    s.agent.FirstMessageIndex(),
 		AgentState:           s.agent.CurrentStateName(),
 		TodoContent:          s.agent.CurrentTodoContent(),
+		SkabandAddr:          s.agent.SkabandAddr(),
 	}
 }
 

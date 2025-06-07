@@ -141,6 +141,8 @@ type CodingAgent interface {
 	CompactConversation(ctx context.Context) error
 	// GetPortMonitor returns the port monitor instance for accessing port events
 	GetPortMonitor() *PortMonitor
+	// SkabandAddr returns the skaband address if configured
+	SkabandAddr() string
 }
 
 type CodingAgentMessageType string
@@ -2347,4 +2349,12 @@ func updateOrCreateHook(hookPath, content, distinctiveLine string) error {
 // GetPortMonitor returns the port monitor instance for accessing port events
 func (a *Agent) GetPortMonitor() *PortMonitor {
 	return a.portMonitor
+}
+
+// SkabandAddr returns the skaband address if configured
+func (a *Agent) SkabandAddr() string {
+	if a.config.SkabandClient != nil {
+		return a.config.SkabandClient.Addr()
+	}
+	return ""
 }

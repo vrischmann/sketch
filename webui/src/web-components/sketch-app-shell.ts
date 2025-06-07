@@ -164,6 +164,57 @@ export class SketchAppShell extends LitElement {
       text-overflow: ellipsis;
     }
 
+    .banner-title a {
+      color: inherit;
+      text-decoration: none;
+      transition: opacity 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .banner-title a:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    .banner-title img {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
+
+    /* Mobile-specific styles for banner link */
+    @media (max-width: 768px) {
+      .title-container {
+        max-width: 50%; /* Allow more space on mobile */
+      }
+
+      .banner-title {
+        font-size: 16px; /* Slightly smaller on mobile */
+      }
+
+      .banner-title img {
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .title-container {
+        max-width: 60%; /* Even more space on very small screens */
+      }
+
+      .banner-title {
+        font-size: 14px;
+      }
+
+      .banner-title img {
+        width: 16px;
+        height: 16px;
+      }
+    }
+
     .slug-title {
       margin: 0;
       padding: 0;
@@ -1160,7 +1211,21 @@ export class SketchAppShell extends LitElement {
     return html`
       <div id="top-banner">
         <div class="title-container">
-          <h1 class="banner-title">sketch</h1>
+          <h1 class="banner-title">
+            ${this.containerState?.skaband_addr
+              ? html`<a
+                  href="${this.containerState.skaband_addr}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    src="${this.containerState.skaband_addr}/sketch.dev.png"
+                    alt="sketch"
+                  />
+                  sketch
+                </a>`
+              : html`sketch`}
+          </h1>
           <h2 class="slug-title">${this.slug}</h2>
         </div>
 

@@ -10,6 +10,9 @@ export class MobileTitle extends LitElement {
   @property({ type: Boolean })
   isThinking = false;
 
+  @property({ type: String })
+  skabandAddr?: string;
+
   static styles = css`
     :host {
       display: block;
@@ -29,6 +32,26 @@ export class MobileTitle extends LitElement {
       font-weight: 600;
       color: #212529;
       margin: 0;
+    }
+
+    .title a {
+      color: inherit;
+      text-decoration: none;
+      transition: opacity 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title a:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    .title img {
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
     }
 
     .status-indicator {
@@ -127,7 +150,18 @@ export class MobileTitle extends LitElement {
   render() {
     return html`
       <div class="title-container">
-        <h1 class="title">Sketch</h1>
+        <h1 class="title">
+          ${this.skabandAddr
+            ? html`<a
+                href="${this.skabandAddr}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img src="${this.skabandAddr}/sketch.dev.png" alt="sketch" />
+                Sketch
+              </a>`
+            : html`Sketch`}
+        </h1>
 
         <div class="status-indicator">
           ${this.isThinking
