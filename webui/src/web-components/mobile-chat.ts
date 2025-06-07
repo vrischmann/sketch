@@ -70,8 +70,6 @@ export class MobileChat extends LitElement {
       border-bottom-left-radius: 6px;
     }
 
-
-
     .thinking-message {
       align-self: flex-start;
       align-items: flex-start;
@@ -106,12 +104,20 @@ export class MobileChat extends LitElement {
       animation: thinking 1.4s ease-in-out infinite both;
     }
 
-    .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
-    .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
-    .thinking-dot:nth-child(3) { animation-delay: 0; }
+    .thinking-dot:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+    .thinking-dot:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+    .thinking-dot:nth-child(3) {
+      animation-delay: 0;
+    }
 
     @keyframes thinking {
-      0%, 80%, 100% {
+      0%,
+      80%,
+      100% {
         transform: scale(0.8);
         opacity: 0.5;
       }
@@ -161,18 +167,26 @@ export class MobileChat extends LitElement {
       font-weight: bold;
     }
 
-    .markdown-content h1 { font-size: 1.2em; }
-    .markdown-content h2 { font-size: 1.15em; }
-    .markdown-content h3 { font-size: 1.1em; }
+    .markdown-content h1 {
+      font-size: 1.2em;
+    }
+    .markdown-content h2 {
+      font-size: 1.15em;
+    }
+    .markdown-content h3 {
+      font-size: 1.1em;
+    }
     .markdown-content h4,
     .markdown-content h5,
-    .markdown-content h6 { font-size: 1.05em; }
+    .markdown-content h6 {
+      font-size: 1.05em;
+    }
 
     .markdown-content code {
       background-color: rgba(0, 0, 0, 0.08);
       padding: 2px 4px;
       border-radius: 3px;
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
       font-size: 0.9em;
     }
 
@@ -225,7 +239,10 @@ export class MobileChat extends LitElement {
 
   updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
-    if (changedProperties.has('messages') || changedProperties.has('isThinking')) {
+    if (
+      changedProperties.has("messages") ||
+      changedProperties.has("isThinking")
+    ) {
       this.scrollToBottom();
     }
   }
@@ -234,40 +251,52 @@ export class MobileChat extends LitElement {
     // Use requestAnimationFrame to ensure DOM is updated
     requestAnimationFrame(() => {
       if (this.scrollContainer.value) {
-        this.scrollContainer.value.scrollTop = this.scrollContainer.value.scrollHeight;
+        this.scrollContainer.value.scrollTop =
+          this.scrollContainer.value.scrollHeight;
       }
     });
   }
 
   private formatTime(timestamp: string): string {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
   private getMessageRole(message: AgentMessage): string {
-    if (message.type === 'user') {
-      return 'user';
+    if (message.type === "user") {
+      return "user";
     }
-    return 'assistant';
+    return "assistant";
   }
 
   private getMessageText(message: AgentMessage): string {
-    return message.content || '';
+    return message.content || "";
   }
 
   private shouldShowMessage(message: AgentMessage): boolean {
     // Show user, agent, and error messages with content
-    return (message.type === 'user' || message.type === 'agent' || message.type === 'error') && 
-           message.content && message.content.trim().length > 0;
+    return (
+      (message.type === "user" ||
+        message.type === "agent" ||
+        message.type === "error") &&
+      message.content &&
+      message.content.trim().length > 0
+    );
   }
 
   private renderMarkdown(markdownContent: string): string {
     try {
       // Create a custom renderer for mobile-optimized rendering
       const renderer = new Renderer();
-      
+
       // Override code renderer to simplify for mobile
-      renderer.code = function ({ text, lang }: { text: string; lang?: string }): string {
+      renderer.code = function ({
+        text,
+        lang,
+      }: {
+        text: string;
+        lang?: string;
+      }): string {
         const langClass = lang ? ` class="language-${lang}"` : "";
         return `<pre><code${langClass}>${text}</code></pre>`;
       };
@@ -284,8 +313,27 @@ export class MobileChat extends LitElement {
       const htmlOutput = marked.parse(markdownContent, markedOptions) as string;
       return DOMPurify.sanitize(htmlOutput, {
         ALLOWED_TAGS: [
-          "p", "br", "strong", "em", "b", "i", "u", "s", "code", "pre",
-          "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote", "a"
+          "p",
+          "br",
+          "strong",
+          "em",
+          "b",
+          "i",
+          "u",
+          "s",
+          "code",
+          "pre",
+          "h1",
+          "h2",
+          "h3",
+          "h4",
+          "h5",
+          "h6",
+          "ul",
+          "ol",
+          "li",
+          "blockquote",
+          "a",
         ],
         ALLOWED_ATTR: ["href", "title", "target", "rel", "class"],
         KEEP_CONTENT: true,
@@ -298,43 +346,47 @@ export class MobileChat extends LitElement {
   }
 
   render() {
-    const displayMessages = this.messages.filter(msg => this.shouldShowMessage(msg));
-    
+    const displayMessages = this.messages.filter((msg) =>
+      this.shouldShowMessage(msg),
+    );
+
     return html`
       <div class="chat-container" ${ref(this.scrollContainer)}>
-        ${displayMessages.length === 0 ? html`
-          <div class="empty-state">
-            Start a conversation with Sketch...
-          </div>
-        ` : displayMessages.map(message => {
-          const role = this.getMessageRole(message);
-          const text = this.getMessageText(message);
-          const timestamp = message.timestamp;
-          
-          return html`
-            <div class="message ${role}">
-              <div class="message-bubble">
-                ${role === 'assistant' 
-                  ? html`<div class="markdown-content">${unsafeHTML(this.renderMarkdown(text))}</div>`
-                  : text
-                }
+        ${displayMessages.length === 0
+          ? html`
+              <div class="empty-state">Start a conversation with Sketch...</div>
+            `
+          : displayMessages.map((message) => {
+              const role = this.getMessageRole(message);
+              const text = this.getMessageText(message);
+              const timestamp = message.timestamp;
+
+              return html`
+                <div class="message ${role}">
+                  <div class="message-bubble">
+                    ${role === "assistant"
+                      ? html`<div class="markdown-content">
+                          ${unsafeHTML(this.renderMarkdown(text))}
+                        </div>`
+                      : text}
+                  </div>
+                </div>
+              `;
+            })}
+        ${this.isThinking
+          ? html`
+              <div class="thinking-message">
+                <div class="thinking-bubble">
+                  <span class="thinking-text">Sketch is thinking</span>
+                  <div class="thinking-dots">
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                  </div>
+                </div>
               </div>
-            </div>
-          `;
-        })}
-        
-        ${this.isThinking ? html`
-          <div class="thinking-message">
-            <div class="thinking-bubble">
-              <span class="thinking-text">Sketch is thinking</span>
-              <div class="thinking-dots">
-                <div class="thinking-dot"></div>
-                <div class="thinking-dot"></div>
-                <div class="thinking-dot"></div>
-              </div>
-            </div>
-          </div>
-        ` : ''}
+            `
+          : ""}
       </div>
     `;
   }

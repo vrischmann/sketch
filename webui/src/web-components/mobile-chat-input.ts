@@ -153,13 +153,15 @@ export class MobileChatInput extends LitElement {
     // Check if the clipboard contains files
     if (e.clipboardData && e.clipboardData.files.length > 0) {
       const file = e.clipboardData.files[0];
-      
+
       // Handle the file upload
       e.preventDefault(); // Prevent default paste behavior
-      
+
       // Get the current cursor position
       const textarea = this.textareaRef.value;
-      const cursorPos = textarea ? textarea.selectionStart : this.inputValue.length;
+      const cursorPos = textarea
+        ? textarea.selectionStart
+        : this.inputValue.length;
       await this.uploadFile(file, cursorPos);
     }
   };
@@ -241,7 +243,9 @@ export class MobileChatInput extends LitElement {
   private sendMessage = () => {
     // Prevent sending if there are uploads in progress
     if (this.uploadsInProgress > 0) {
-      console.log(`Message send prevented: ${this.uploadsInProgress} uploads in progress`);
+      console.log(
+        `Message send prevented: ${this.uploadsInProgress} uploads in progress`,
+      );
       return;
     }
 
@@ -267,10 +271,10 @@ export class MobileChatInput extends LitElement {
   updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
     this.adjustTextareaHeight();
-    
+
     // Add paste event listener when component updates
     if (this.textareaRef.value && !this.textareaRef.value.onpaste) {
-      this.textareaRef.value.addEventListener('paste', this.handlePaste);
+      this.textareaRef.value.addEventListener("paste", this.handlePaste);
     }
   }
 
@@ -278,12 +282,15 @@ export class MobileChatInput extends LitElement {
     super.disconnectedCallback();
     // Clean up paste event listener
     if (this.textareaRef.value) {
-      this.textareaRef.value.removeEventListener('paste', this.handlePaste);
+      this.textareaRef.value.removeEventListener("paste", this.handlePaste);
     }
   }
 
   render() {
-    const canSend = this.inputValue.trim().length > 0 && !this.disabled && this.uploadsInProgress === 0;
+    const canSend =
+      this.inputValue.trim().length > 0 &&
+      !this.disabled &&
+      this.uploadsInProgress === 0;
 
     return html`
       <div class="input-container">
@@ -297,28 +304,30 @@ export class MobileChatInput extends LitElement {
             ?disabled=${this.disabled || this.uploadsInProgress > 0}
             rows="1"
           ></textarea>
-          
+
           ${this.showUploadProgress
             ? html`
                 <div class="upload-progress">
-                  Uploading ${this.uploadsInProgress} file${this.uploadsInProgress > 1 ? 's' : ''}...
+                  Uploading ${this.uploadsInProgress}
+                  file${this.uploadsInProgress > 1 ? "s" : ""}...
                 </div>
               `
-            : ''}
+            : ""}
         </div>
 
         <button
           class="send-button"
           @click=${this.sendMessage}
           ?disabled=${!canSend}
-          title=${this.uploadsInProgress > 0 ? 'Please wait for upload to complete' : 'Send message'}
+          title=${this.uploadsInProgress > 0
+            ? "Please wait for upload to complete"
+            : "Send message"}
         >
           ${this.uploadsInProgress > 0
             ? html`<span style="font-size: 12px;">⏳</span>`
             : html`<svg class="send-icon" viewBox="0 0 24 24">
-                      <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
-                    </svg>`
-          }
+                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+              </svg>`}
         </button>
       </div>
     `;
