@@ -2,6 +2,9 @@ package onstart
 
 import (
 	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -28,9 +31,87 @@ func TestAnalyzeCodebase(t *testing.T) {
 	})
 
 	t.Run("Non-ASCII Filenames", func(t *testing.T) {
+		// Create a temporary directory with unicode filenames for testing
+		tempDir := t.TempDir()
+
+		// Initialize git repository
+		cmd := exec.Command("git", "init")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to init git repo: %v", err)
+		}
+
+		cmd = exec.Command("git", "config", "user.name", "Test User")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to set git user.name: %v", err)
+		}
+
+		cmd = exec.Command("git", "config", "user.email", "test@example.com")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to set git user.email: %v", err)
+		}
+
+		// Configure git to handle unicode filenames properly
+		cmd = exec.Command("git", "config", "core.quotepath", "false")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to set git core.quotepath: %v", err)
+		}
+
+		cmd = exec.Command("git", "config", "core.precomposeunicode", "true")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to set git core.precomposeunicode: %v", err)
+		}
+
+		// Create test files with unicode characters dynamically
+		testFiles := map[string]string{
+			"测试文件.go":           "// Package test with Chinese characters in filename\npackage test\n\nfunc TestFunction() {\n\t// This is a test file\n}",
+			"café.js":           "// JavaScript file with French characters\nconsole.log('Hello from café!');",
+			"русский.py":        "# Python file with Russian characters\nprint('Привет мир!')",
+			"🚀rocket.md":        "# README with Emoji\n\nThis file has an emoji in the filename.",
+			"readme-español.md": "# Spanish README\n\nEste es un archivo de documentación.",
+			"Übung.html":        "<!DOCTYPE html>\n<html><head><title>German Exercise</title></head><body><h1>Übung</h1></body></html>",
+			"Makefile-日本語":      "# Japanese Makefile\nall:\n\techo 'Japanese makefile'",
+		}
+
+		// Create subdirectory
+		subdir := filepath.Join(tempDir, "subdir")
+		err := os.MkdirAll(subdir, 0o755)
+		if err != nil {
+			t.Fatalf("Failed to create subdir: %v", err)
+		}
+
+		// Add file in subdirectory
+		testFiles["subdir/claude.한국어.md"] = "# Korean Claude file\n\nThis is a guidance file with Korean characters."
+
+		// Write all test files
+		for filename, content := range testFiles {
+			fullPath := filepath.Join(tempDir, filename)
+			dir := filepath.Dir(fullPath)
+			if dir != tempDir {
+				err := os.MkdirAll(dir, 0o755)
+				if err != nil {
+					t.Fatalf("Failed to create directory %s: %v", dir, err)
+				}
+			}
+			err := os.WriteFile(fullPath, []byte(content), 0o644)
+			if err != nil {
+				t.Fatalf("Failed to write file %s: %v", filename, err)
+			}
+		}
+
+		// Add all files to git at once
+		cmd = exec.Command("git", "add", ".")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add files to git: %v", err)
+		}
+
 		// Test with non-ASCII characters in filenames
-		testdataPath := "./testdata"
-		codebase, err := AnalyzeCodebase(context.Background(), testdataPath)
+		codebase, err := AnalyzeCodebase(context.Background(), tempDir)
 		if err != nil {
 			t.Fatalf("AnalyzeCodebase failed with non-ASCII filenames: %v", err)
 		}
@@ -39,7 +120,7 @@ func TestAnalyzeCodebase(t *testing.T) {
 			t.Fatal("Expected non-nil codebase")
 		}
 
-		// We expect 8 files in our testdata directory
+		// We expect 8 files in our temp directory
 		expectedFiles := 8
 		if codebase.TotalFiles != expectedFiles {
 			t.Errorf("Expected %d files, got %d", expectedFiles, codebase.TotalFiles)
@@ -50,7 +131,7 @@ func TestAnalyzeCodebase(t *testing.T) {
 			".go":            1, // 测试文件.go
 			".js":            1, // café.js
 			".py":            1, // русский.py
-			".md":            3, // 🚀rocket.md, readme-español.md, claude-한국어.md
+			".md":            3, // 🚀rocket.md, readme-español.md, claude.한국어.md
 			".html":          1, // Übung.html
 			"<no-extension>": 1, // Makefile-日本語
 		}
