@@ -838,12 +838,12 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 
 	var gitUserEmail, gitUserName string
 	if out, err := combinedOutput(ctx, "git", "config", "--get", "user.email"); err != nil {
-		return "", fmt.Errorf("git config: %s: %v", out, err)
+		return "", fmt.Errorf("git user.email is not set. Please run 'git config --global user.email \"your.email@example.com\"' to set your email address")
 	} else {
 		gitUserEmail = strings.TrimSpace(string(out))
 	}
 	if out, err := combinedOutput(ctx, "git", "config", "--get", "user.name"); err != nil {
-		return "", fmt.Errorf("git config: %s: %v", out, err)
+		return "", fmt.Errorf("git user.name is not set. Please run 'git config --global user.name \"Your Name\"' to set your name")
 	} else {
 		gitUserName = strings.TrimSpace(string(out))
 	}
