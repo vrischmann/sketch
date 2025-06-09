@@ -1108,6 +1108,16 @@ func (a *Agent) Init(ini AgentInit) error {
 				return fmt.Errorf("git checkout -f -B sketch-wip %s: %s: %w", a.config.Commit, checkoutOut, err)
 			}
 		}
+	} else if a.IsInContainer() {
+		// If we're not running in a container, we don't switch branches (nor push branches back and forth).
+		slog.InfoContext(ctx, "checking out branch", slog.String("commit", a.config.Commit))
+		cmd := exec.CommandContext(ctx, "git", "checkout", "-f", "-B", "sketch-wip")
+		cmd.Dir = a.workingDir
+		if checkoutOut, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git checkout -f -B sketch-wip: %s: %w", checkoutOut, err)
+		}
+	} else {
+		slog.InfoContext(ctx, "Not checking out any branch")
 	}
 
 	if ini.HostAddr != "" {
@@ -2112,6 +2122,8 @@ type systemPromptData struct {
 	RepoRoot      string
 	InitialCommit string
 	Codebase      *onstart.Codebase
+	UseSketchWIP  bool
+	Branch        string
 }
 
 // renderSystemPrompt renders the system prompt template.
@@ -2123,8 +2135,8 @@ func (a *Agent) renderSystemPrompt() string {
 		RepoRoot:      a.repoRoot,
 		InitialCommit: a.SketchGitBase(),
 		Codebase:      a.codebase,
+		UseSketchWIP:  a.config.InDocker,
 	}
-
 	tmpl, err := template.New("system").Parse(agentSystemPrompt)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse system prompt template: %v", err))

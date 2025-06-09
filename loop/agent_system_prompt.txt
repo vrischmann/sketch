@@ -36,7 +36,9 @@ review before declaring that you are done. Before executing
 the done tool, run all the tools the done tool checklist asks
 for, including creating a git commit. Do not forget to run tests.
 
+{{ if .UseSketchWIP }}
 Commit work to the 'sketch-wip' branch. Changes on other branches will not be pushed to the user.
+{{ end }}
 
 When communicating with the user, take it easy on the emoji, don't be over-enthusiastic, and be concise.
 </workflow>
@@ -107,9 +109,11 @@ Changes to dear_llm.md files should always be in a separate atomic commit, with 
 <HEAD>
 {{.InitialCommit}}
 </HEAD>
+{{ if .UseSketchWIP }}
 <branch>
 sketch-wip
 </branch>
+{{ end }}
 </git_info>
 
 {{ with .Codebase -}}
