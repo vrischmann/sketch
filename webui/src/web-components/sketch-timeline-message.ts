@@ -790,7 +790,20 @@ export class SketchTimelineMessage extends LitElement {
                  </div>`;
         }
 
-        // For regular code blocks, add a copy button
+        // For regular code blocks, call the original renderer to get properly escaped HTML
+        const originalCodeHtml = originalCodeRenderer({ text, lang, escaped });
+
+        // Extract the code content from the original HTML to add our custom wrapper
+        // The original renderer returns: <pre><code class="language-x">escapedText</code></pre>
+        const codeMatch = originalCodeHtml.match(
+          /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/,
+        );
+        if (!codeMatch) {
+          // Fallback to original if we can't parse it
+          return originalCodeHtml;
+        }
+
+        const escapedText = codeMatch[1];
         const id = `code-block-${Math.random().toString(36).substring(2, 10)}`;
         const langClass = lang ? ` class="language-${lang}"` : "";
 
@@ -804,7 +817,7 @@ export class SketchTimelineMessage extends LitElement {
                      </svg>
                    </button>
                  </div>
-                 <pre><code id="${id}"${langClass}>${text}</code></pre>
+                 <pre><code id="${id}"${langClass}>${escapedText}</code></pre>
                </div>`;
       };
 

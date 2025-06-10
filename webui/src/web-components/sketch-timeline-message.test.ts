@@ -346,3 +346,130 @@ test("formats currency values correctly", async ({ mount }) => {
   );
   expect(result4).toBe("--");
 });
+
+test("properly escapes HTML in code blocks", async ({ mount }) => {
+  const maliciousContent = `Here's some HTML that should be escaped:
+
+\`\`\`html
+<script>alert('XSS!');</script>
+<div onclick="alert('Click attack')">Click me</div>
+<img src="x" onerror="alert('Image attack')">
+\`\`\`
+
+The HTML above should be escaped and not executable.`;
+
+  const message = createMockMessage({
+    content: maliciousContent,
+  });
+
+  const component = await mount(SketchTimelineMessage, {
+    props: {
+      message: message,
+    },
+  });
+
+  await expect(component.locator(".markdown-content")).toBeVisible();
+
+  // Check that the code block is rendered with proper HTML escaping
+  const codeElement = component.locator(".code-block-container code");
+  await expect(codeElement).toBeVisible();
+
+  // Get the text content (not innerHTML) to verify escaping
+  const codeText = await codeElement.textContent();
+  expect(codeText).toContain("<script>alert('XSS!');</script>");
+  expect(codeText).toContain("<div onclick=\"alert('Click attack')\">");
+  expect(codeText).toContain('<img src="x" onerror="alert(\'Image attack\')">');
+
+  // Verify that the HTML is actually escaped in the DOM
+  const codeHtml = await codeElement.innerHTML();
+  expect(codeHtml).toContain("&lt;script&gt;"); // < should be escaped
+  expect(codeHtml).toContain("&lt;div"); // < should be escaped
+  expect(codeHtml).toContain("&lt;img"); // < should be escaped
+  expect(codeHtml).not.toContain("<script>"); // Actual script tags should not exist
+  expect(codeHtml).not.toContain("<div onclick"); // Actual event handlers should not exist
+});
+
+test("properly escapes JavaScript in code blocks", async ({ mount }) => {
+  const maliciousContent = `Here's some JavaScript that should be escaped:
+
+\`\`\`javascript
+function malicious() {
+    document.body.innerHTML = '<h1>Hacked!</h1>';
+    window.location = 'http://evil.com';
+}
+malicious();
+\`\`\`
+
+The JavaScript above should be escaped and not executed.`;
+
+  const message = createMockMessage({
+    content: maliciousContent,
+  });
+
+  const component = await mount(SketchTimelineMessage, {
+    props: {
+      message: message,
+    },
+  });
+
+  await expect(component.locator(".markdown-content")).toBeVisible();
+
+  // Check that the code block is rendered with proper HTML escaping
+  const codeElement = component.locator(".code-block-container code");
+  await expect(codeElement).toBeVisible();
+
+  // Get the text content to verify the JavaScript is preserved as text
+  const codeText = await codeElement.textContent();
+  expect(codeText).toContain("function malicious()");
+  expect(codeText).toContain("document.body.innerHTML");
+  expect(codeText).toContain("window.location");
+
+  // Verify that any HTML-like content is escaped
+  const codeHtml = await codeElement.innerHTML();
+  expect(codeHtml).toContain("&lt;h1&gt;Hacked!&lt;/h1&gt;"); // HTML should be escaped
+});
+
+test("mermaid diagrams still render correctly", async ({ mount }) => {
+  const diagramContent = `Here's a mermaid diagram:
+
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Do Something]
+    B -->|No| D[Do Something Else]
+    C --> E[End]
+    D --> E
+\`\`\`
+
+The diagram above should render as a visual chart.`;
+
+  const message = createMockMessage({
+    content: diagramContent,
+  });
+
+  const component = await mount(SketchTimelineMessage, {
+    props: {
+      message: message,
+    },
+  });
+
+  await expect(component.locator(".markdown-content")).toBeVisible();
+
+  // Check that the mermaid container is present
+  const mermaidContainer = component.locator(".mermaid-container");
+  await expect(mermaidContainer).toBeVisible();
+
+  // Check that the mermaid div exists with the right content
+  const mermaidDiv = component.locator(".mermaid");
+  await expect(mermaidDiv).toBeVisible();
+
+  // Wait a bit for mermaid to potentially render
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  // The mermaid content should either be the original code or rendered SVG
+  const renderedContent = await mermaidDiv.innerHTML();
+  // It should contain either the graph definition or SVG
+  const hasMermaidCode = renderedContent.includes("graph TD");
+  const hasSvg = renderedContent.includes("<svg");
+  expect(hasMermaidCode || hasSvg).toBe(true);
+});
