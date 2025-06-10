@@ -283,6 +283,11 @@ export class MobileChat extends LitElement {
   }
 
   private shouldShowMessage(message: AgentMessage): boolean {
+    // Filter out hidden messages (subconversations) like the regular UI does
+    if (message.hide_output) {
+      return false;
+    }
+
     // Show user, agent, and error messages with content
     return (
       (message.type === "user" ||
