@@ -5,11 +5,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -29,6 +32,7 @@ import (
 	"sketch.dev/skabandclient"
 	"sketch.dev/skribe"
 	"sketch.dev/termui"
+	"sketch.dev/webui"
 
 	"golang.org/x/term"
 )
@@ -66,6 +70,10 @@ func run() error {
 			fmt.Printf("- %s%s\n", name, note)
 		}
 		return nil
+	}
+
+	if flagArgs.dumpDist != "" {
+		return dumpDistFilesystem(flagArgs.dumpDist)
 	}
 
 	// Claude and Gemini are supported in container mode
@@ -184,6 +192,7 @@ type CLIFlags struct {
 	verbose      bool
 	version      bool
 	workingDir   string
+	dumpDist     string
 	sshPort      int
 	forceRebuild bool
 
@@ -260,6 +269,9 @@ func parseCLIFlags() CLIFlags {
 	internalFlags.Var(&flags.experimentFlag, "x", "enable experimental features (comma-separated list or repeat flag; use 'list' to show all)")
 	// This is really only useful for someone running with "go run"
 	userFlags.StringVar(&flags.workingDir, "C", "", "when set, change to this directory before running")
+
+	// Internal flags for development/debugging
+	internalFlags.StringVar(&flags.dumpDist, "dump-dist", "", "(internal) dump embedded /dist/ filesystem to specified directory and exit")
 
 	// Custom usage function that shows only user-visible flags by default
 	userFlags.Usage = func() {
@@ -750,4 +762,60 @@ func selectLLMService(client *http.Client, modelName string, modelURL, apiKey st
 		Model:  *model,
 		APIKey: apiKey,
 	}, nil
+}
+
+// dumpDistFilesystem dumps the embedded /dist/ filesystem to the specified directory
+func dumpDistFilesystem(outputDir string) error {
+	// Build the embedded filesystem
+	distFS, err := webui.Build()
+	if err != nil {
+		return fmt.Errorf("failed to build embedded filesystem: %w", err)
+	}
+
+	// Create the output directory
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create output directory %q: %w", outputDir, err)
+	}
+
+	// Walk through the filesystem and copy all files
+	err = fs.WalkDir(distFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		outputPath := filepath.Join(outputDir, path)
+
+		if d.IsDir() {
+			// Create directory
+			if err := os.MkdirAll(outputPath, 0o755); err != nil {
+				return fmt.Errorf("failed to create directory %q: %w", outputPath, err)
+			}
+			return nil
+		}
+
+		// Copy file
+		src, err := distFS.Open(path)
+		if err != nil {
+			return fmt.Errorf("failed to open source file %q: %w", path, err)
+		}
+		defer src.Close()
+
+		dst, err := os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create destination file %q: %w", outputPath, err)
+		}
+		defer dst.Close()
+
+		if _, err := io.Copy(dst, src); err != nil {
+			return fmt.Errorf("failed to copy file %q: %w", path, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to dump filesystem: %w", err)
+	}
+
+	fmt.Printf("Successfully dumped embedded /dist/ filesystem to %q\n", outputDir)
+	return nil
 }
