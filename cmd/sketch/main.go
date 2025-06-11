@@ -195,6 +195,7 @@ type CLIFlags struct {
 	dumpDist     string
 	sshPort      int
 	forceRebuild bool
+	linkToGitHub bool
 
 	gitUsername       string
 	gitEmail          string
@@ -263,6 +264,7 @@ func parseCLIFlags() CLIFlags {
 	internalFlags.StringVar(&flags.upstream, "upstream", "", "(internal) upstream branch for git work")
 	internalFlags.StringVar(&flags.commit, "commit", "", "(internal) the git commit reference to check out from git remote url")
 	internalFlags.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
+	internalFlags.BoolVar(&flags.linkToGitHub, "link-to-github", false, "(internal) enable GitHub branch linking in UI")
 
 	// Developer flags
 	internalFlags.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
@@ -410,6 +412,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		TermUI:         flags.termUI,
 		MaxDollars:     flags.maxDollars,
 		BranchPrefix:   flags.branchPrefix,
+		LinkToGitHub:   flags.linkToGitHub,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -527,6 +530,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		OutsideHTTP:   flags.outsideHTTP,
 		Commit:        flags.commit,
 		BranchPrefix:  flags.branchPrefix,
+		LinkToGitHub:  flags.linkToGitHub,
 	}
 
 	// Create SkabandClient if skaband address is provided

@@ -44,7 +44,7 @@ test("render props", async ({ mount }) => {
   );
 
   // Show details to access the popup elements
-  component.locator(".info-toggle").click();
+  await component.locator(".info-toggle").click();
 
   await expect(component.locator("#initialCommit")).toContainText(
     mockCompleteState.initial_commit.substring(0, 8),
@@ -99,7 +99,7 @@ test("renders with partial state data", async ({ mount }) => {
   await expect(component.locator("#hostname")).toContainText("partial-host");
 
   // Show details to access the popup elements
-  component.locator(".info-toggle").click();
+  await component.locator(".info-toggle").click();
   await expect(component.locator("#messageCount")).toContainText("10");
 
   const expectedTotalInputTokens =
