@@ -76,7 +76,7 @@ var (
  🔄 {{.input.selector -}}
 {{else if eq .msg.ToolName "browser_resize" -}}
  🖼️  {{.input.width}}x{{.input.height -}}
-{{else if eq .msg.ToolName "browser_read_image" -}}
+{{else if eq .msg.ToolName "read_image" -}}
  🖼️  {{.input.path -}}
 {{else if eq .msg.ToolName "browser_recent_console_logs" -}}
  📜 Console logs

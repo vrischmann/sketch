@@ -2,8 +2,8 @@ import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
 
-@customElement("sketch-tool-card-browser-read-image")
-export class SketchToolCardBrowserReadImage extends LitElement {
+@customElement("sketch-tool-card-read-image")
+export class SketchToolCardReadImage extends LitElement {
   @property()
   toolCall: ToolCall;
 
@@ -60,6 +60,6 @@ export class SketchToolCardBrowserReadImage extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "sketch-tool-card-browser-read-image": SketchToolCardBrowserReadImage;
+    "sketch-tool-card-read-image": SketchToolCardReadImage;
   }
 }

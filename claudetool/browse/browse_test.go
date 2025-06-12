@@ -78,7 +78,8 @@ func TestGetTools(t *testing.T) {
 
 		// Check tool naming convention
 		for _, tool := range toolsWithScreenshots {
-			if !strings.HasPrefix(tool.Name, "browser_") {
+			// Most tools have browser_ prefix, except for read_image
+			if tool.Name != "read_image" && !strings.HasPrefix(tool.Name, "browser_") {
 				t.Errorf("tool name %q does not have prefix 'browser_'", tool.Name)
 			}
 		}

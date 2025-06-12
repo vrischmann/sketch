@@ -89,16 +89,19 @@ export class SketchToolCardTakeScreenshot extends LitElement {
       console.error("Error parsing screenshot input:", e);
     }
 
-    // Get the screenshot ID from the result
+    // Extract the screenshot ID from the result text
     let screenshotId = "";
     let hasResult = false;
     if (this.toolCall?.result_message?.tool_result) {
-      try {
-        const result = JSON.parse(this.toolCall.result_message.tool_result);
-        screenshotId = result.id;
+      // The tool result is now a text like "Screenshot taken (saved as /tmp/sketch-screenshots/{id}.png)"
+      // Extract the ID from this text
+      const resultText = this.toolCall.result_message.tool_result;
+      const pathMatch = resultText.match(
+        /\/tmp\/sketch-screenshots\/(.*?)\.png/,
+      );
+      if (pathMatch) {
+        screenshotId = pathMatch[1];
         hasResult = true;
-      } catch (e) {
-        console.error("Error parsing screenshot result:", e);
       }
     }
 
@@ -138,7 +141,7 @@ export class SketchToolCardTakeScreenshot extends LitElement {
                         />
                         ${this.imageLoaded
                           ? html`<div class="screenshot-info">
-                              Screenshot ID: ${screenshotId}
+                              Screenshot saved and displayed
                             </div>`
                           : ""}
                       `}

@@ -13,7 +13,7 @@ import "./sketch-tool-card-browser-get-text";
 import "./sketch-tool-card-browser-eval";
 import "./sketch-tool-card-browser-scroll-into-view";
 import "./sketch-tool-card-browser-resize";
-import "./sketch-tool-card-browser-read-image";
+import "./sketch-tool-card-read-image";
 import "./sketch-tool-card-browser-recent-console-logs";
 import "./sketch-tool-card-browser-clear-console-logs";
 
@@ -203,11 +203,11 @@ export class SketchToolCalls extends LitElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-browser-resize>`;
-      case "browser_read_image":
-        return html`<sketch-tool-card-browser-read-image
+      case "read_image":
+        return html`<sketch-tool-card-read-image
           .open=${open}
           .toolCall=${toolCall}
-        ></sketch-tool-card-browser-read-image>`;
+        ></sketch-tool-card-read-image>`;
       case "browser_recent_console_logs":
         return html`<sketch-tool-card-browser-recent-console-logs
           .open=${open}

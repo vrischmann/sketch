@@ -541,10 +541,6 @@ type screenshotInput struct {
 	Timeout  string `json:"timeout,omitempty"`
 }
 
-type screenshotOutput struct {
-	ID string `json:"id"`
-}
-
 // NewScreenshotTool creates a tool for taking screenshots
 func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 	return &llm.Tool{
@@ -606,7 +602,7 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 		return llm.TextContent(errorResponse(err)), nil
 	}
 
-	// Save the screenshot and get its ID
+	// Save the screenshot and get its ID for potential future reference
 	id := b.SaveScreenshot(buf)
 	if id == "" {
 		return llm.TextContent(errorResponse(fmt.Errorf("failed to save screenshot"))), nil
@@ -615,14 +611,21 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 	// Get the full path to the screenshot
 	screenshotPath := GetScreenshotPath(id)
 
-	// Return the ID and instructions on how to view the screenshot
-	result := fmt.Sprintf(`{
-  "id": "%s",
-  "path": "%s",
-  "message": "Screenshot saved. To view this screenshot in the conversation, use the read_image tool with the path provided."
-}`, id, screenshotPath)
+	// Encode the image as base64
+	base64Data := base64.StdEncoding.EncodeToString(buf)
 
-	return llm.TextContent(result), nil
+	// Return the screenshot directly to the LLM
+	return []llm.Content{
+		{
+			Type: llm.ContentTypeText,
+			Text: fmt.Sprintf("Screenshot taken (saved as %s)", screenshotPath),
+		},
+		{
+			Type:      llm.ContentTypeText, // Will be mapped to image in content array
+			MediaType: "image/png",
+			Data:      base64Data,
+		},
+	}, nil
 }
 
 // ScrollIntoViewTool definition
@@ -817,7 +820,7 @@ type readImageInput struct {
 // NewReadImageTool creates a tool for reading images and returning them as base64 encoded data
 func (b *BrowseTools) NewReadImageTool() *llm.Tool {
 	return &llm.Tool{
-		Name:        "browser_read_image",
+		Name:        "read_image",
 		Description: "Read an image file (such as a screenshot) and encode it for sending to the LLM",
 		InputSchema: json.RawMessage(`{
 			"type": "object",
