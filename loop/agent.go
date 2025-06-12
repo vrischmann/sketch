@@ -1114,7 +1114,7 @@ func (a *Agent) Init(ini AgentInit) error {
 				}
 
 				// Retry the checkout operation
-				cmd = exec.CommandContext(ctx, "git", "checkout", "-f", a.config.Commit)
+				cmd = exec.CommandContext(ctx, "git", "checkout", "-f", "-B", "sketch-wip", a.config.Commit)
 				cmd.Dir = a.workingDir
 				if retryOut, retryErr := cmd.CombinedOutput(); retryErr != nil {
 					return fmt.Errorf("git checkout %s failed even after removing hooks: %s: %w", a.config.Commit, retryOut, retryErr)
