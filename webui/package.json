@@ -7,6 +7,7 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
+    "./messages-viewer.js": "./dist/messages-viewer.js",
     "./sketch-app-shell.js": "./dist/sketch-app-shell.js",
     "./web-components/*": "./dist/web-components/*.js"
   },

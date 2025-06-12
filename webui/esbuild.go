@@ -207,6 +207,7 @@ func Build() (fs.FS, error) {
 		"src/web-components/sketch-app-shell.ts",
 		"src/web-components/mobile-app-shell.ts",
 		"src/web-components/sketch-monaco-view.ts",
+		"src/messages-viewer.ts",
 		"node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
 		"node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js",
 		"node_modules/monaco-editor/esm/vs/language/html/html.worker.js",
@@ -438,6 +439,7 @@ func GenerateBundleMetafile(outputDir string) (string, error) {
 		"src/web-components/sketch-app-shell.ts",
 		"src/web-components/mobile-app-shell.ts",
 		"src/web-components/sketch-monaco-view.ts",
+		"src/messages-viewer.ts",
 	}
 	metafiles := make([]string, len(bundleTs))
 
