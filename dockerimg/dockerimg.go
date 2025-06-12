@@ -561,6 +561,8 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		"-branch-prefix="+config.BranchPrefix,
 		"-link-to-github="+fmt.Sprintf("%t", config.LinkToGitHub),
 	)
+	// Set SSH connection string based on session ID for SSH Theater
+	cmdArgs = append(cmdArgs, "-ssh-connection-string=sketch-"+config.SessionID)
 	if config.Model != "" {
 		cmdArgs = append(cmdArgs, "-model="+config.Model)
 	}
