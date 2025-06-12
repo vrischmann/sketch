@@ -33,16 +33,14 @@ jobs:
           fetch-depth: 0
 
       # Setup for Prettier
+      # We don't need to do "npm ci" because run-formatters.sh uses "npx prettier"
+      # and this is speedier than installing everything.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: webui/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./webui
-        run: npm ci
 
       - name: Install gofumpt v0.8.0
         run: |
