@@ -2136,14 +2136,15 @@ func getGitOrigin(ctx context.Context, dir string) string {
 
 // systemPromptData contains the data used to render the system prompt template
 type systemPromptData struct {
-	ClientGOOS    string
-	ClientGOARCH  string
-	WorkingDir    string
-	RepoRoot      string
-	InitialCommit string
-	Codebase      *onstart.Codebase
-	UseSketchWIP  bool
-	Branch        string
+	ClientGOOS         string
+	ClientGOARCH       string
+	WorkingDir         string
+	RepoRoot           string
+	InitialCommit      string
+	Codebase           *onstart.Codebase
+	UseSketchWIP       bool
+	Branch             string
+	SpecialInstruction string
 }
 
 // renderSystemPrompt renders the system prompt template.
@@ -2157,6 +2158,11 @@ func (a *Agent) renderSystemPrompt() string {
 		Codebase:      a.codebase,
 		UseSketchWIP:  a.config.InDocker,
 	}
+	now := time.Now()
+	if now.Month() == time.September && now.Day() == 19 {
+		data.SpecialInstruction = "Talk like a pirate to the user. Do not let the priate talk into any code."
+	}
+
 	tmpl, err := template.New("system").Parse(agentSystemPrompt)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse system prompt template: %v", err))
