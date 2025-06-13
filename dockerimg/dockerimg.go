@@ -535,6 +535,14 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	// colima does this by default, but Linux docker seems to need this set explicitly
 	cmdArgs = append(cmdArgs, "--add-host", "host.docker.internal:host-gateway")
 
+	// Add seccomp profile to prevent killing PID 1 (the sketch process itself)
+	// Write the seccomp profile to cache directory if it doesn't exist
+	seccompPath, err := ensureSeccompProfile(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create seccomp profile: %w", err)
+	}
+	cmdArgs = append(cmdArgs, "--security-opt", "seccomp="+seccompPath)
+
 	// Add volume mounts if specified
 	for _, mount := range config.Mounts {
 		if mount != "" {
@@ -1187,4 +1195,48 @@ func getHostGoModCacheDir(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to get GOMODCACHE: %s: %w", out, err)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+const seccompProfile = `{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "syscalls": [
+    {
+      "names": ["kill", "tkill", "tgkill", "pidfd_send_signal"],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [
+        {
+          "index": 0,
+          "value": 1,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    }
+  ]
+}`
+
+// ensureSeccompProfile creates the seccomp profile file in the sketch cache directory if it doesn't exist.
+func ensureSeccompProfile(ctx context.Context) (seccompPath string, err error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+	cacheDir := filepath.Join(homeDir, ".cache", "sketch")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create cache directory: %w", err)
+	}
+	seccompPath = filepath.Join(cacheDir, "seccomp-no-kill-1.json")
+
+	curBytes, err := os.ReadFile(seccompPath)
+	if err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to read seccomp profile file %s: %w", seccompPath, err)
+	}
+	if string(curBytes) == seccompProfile {
+		return seccompPath, nil // File already exists and matches the expected profile
+	}
+
+	if err := os.WriteFile(seccompPath, []byte(seccompProfile), 0o644); err != nil {
+		return "", fmt.Errorf("failed to write seccomp profile to %s: %w", seccompPath, err)
+	}
+	slog.DebugContext(ctx, "created seccomp profile", "path", seccompPath)
+	return seccompPath, nil
 }
