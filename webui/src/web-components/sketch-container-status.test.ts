@@ -117,3 +117,57 @@ test("renders with partial state data", async ({ mount }) => {
   // totalCost element should not exist when cost is 0
   await expect(component.locator("#totalCost")).toHaveCount(0);
 });
+
+test("formatGitHubRepo handles repository names with dots correctly", async ({
+  mount,
+}) => {
+  // Test repository with dots in name
+  const component = await mount(SketchContainerStatus, {
+    props: {
+      state: {
+        ...mockCompleteState,
+        git_origin: "git@github.com:user/repo.with.dots.git",
+        link_to_github: true,
+      },
+    },
+  });
+
+  // Check that the GitHub link is displayed correctly with dots preserved
+  const githubLink = component.locator("a.github-link");
+  await expect(githubLink).toContainText("user/repo.with.dots");
+  await expect(githubLink).toHaveAttribute(
+    "href",
+    "https://github.com/user/repo.with.dots",
+  );
+  await expect(githubLink).toHaveAttribute(
+    "title",
+    "git@github.com:user/repo.with.dots.git",
+  );
+});
+
+test("formatGitHubRepo handles boldsoftware/sketch.git correctly", async ({
+  mount,
+}) => {
+  // Test the specific case mentioned in the issue
+  const component = await mount(SketchContainerStatus, {
+    props: {
+      state: {
+        ...mockCompleteState,
+        git_origin: "git@github.com:boldsoftware/sketch.git",
+        link_to_github: true,
+      },
+    },
+  });
+
+  // Check that the GitHub link is displayed correctly
+  const githubLink = component.locator("a.github-link");
+  await expect(githubLink).toContainText("boldsoftware/sketch");
+  await expect(githubLink).toHaveAttribute(
+    "href",
+    "https://github.com/boldsoftware/sketch",
+  );
+  await expect(githubLink).toHaveAttribute(
+    "title",
+    "git@github.com:boldsoftware/sketch.git",
+  );
+});

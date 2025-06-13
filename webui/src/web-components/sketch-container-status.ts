@@ -573,11 +573,11 @@ export class SketchContainerStatus extends LitElement {
     // Common GitHub URL patterns
     const patterns = [
       // HTTPS URLs
-      /https:\/\/github\.com\/([^/]+)\/([^/\s.]+)(?:\.git)?/,
+      /https:\/\/github\.com\/([^/]+)\/([^/\s]+?)(?:\.git)?$/,
       // SSH URLs
-      /git@github\.com:([^/]+)\/([^/\s.]+)(?:\.git)?/,
+      /git@github\.com:([^/]+)\/([^/\s]+?)(?:\.git)?$/,
       // Git protocol
-      /git:\/\/github\.com\/([^/]+)\/([^/\s.]+)(?:\.git)?/,
+      /git:\/\/github\.com\/([^/]+)\/([^/\s]+?)(?:\.git)?$/,
     ];
 
     for (const pattern of patterns) {
