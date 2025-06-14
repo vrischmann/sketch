@@ -170,6 +170,29 @@ export class SketchDiffRangePicker extends LitElement {
         setTimeout(() => this.loadCommits(), 0); // Give time for provider initialization
       });
     }
+    
+    // Listen for popstate events to handle browser back/forward navigation
+    window.addEventListener('popstate', this.handlePopState.bind(this));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('popstate', this.handlePopState.bind(this));
+  }
+
+  /**
+   * Handle browser back/forward navigation
+   */
+  private handlePopState() {
+    // Re-initialize from URL parameters when user navigates
+    if (this.commits.length > 0) {
+      const initializedFromUrl = this.initializeFromUrlParams();
+      if (initializedFromUrl) {
+        // Force re-render and dispatch event
+        this.requestUpdate();
+        this.dispatchRangeEvent();
+      }
+    }
   }
 
   render() {
@@ -329,8 +352,11 @@ export class SketchDiffRangePicker extends LitElement {
       // Load commit history
       this.commits = await this.gitService.getCommitHistory(baseCommitRef);
 
-      // Set default selections
-      if (this.commits.length > 0) {
+      // Check if we should initialize from URL parameters first
+      const initializedFromUrl = this.initializeFromUrlParams();
+      
+      // Set default selections only if not initialized from URL
+      if (this.commits.length > 0 && !initializedFromUrl) {
         // For range, default is base to HEAD
         // TODO: is sketch-base right in the unsafe context, where it's sketch-base-...
         // should this be startswith?
@@ -346,10 +372,10 @@ export class SketchDiffRangePicker extends LitElement {
 
         // For single, default to HEAD
         this.singleCommit = this.commits[0].hash;
-
-        // Dispatch initial range event
-        this.dispatchRangeEvent();
       }
+      
+      // Always dispatch range event to ensure diff view is updated
+      this.dispatchRangeEvent();
     } catch (error) {
       console.error("Error loading commits:", error);
       this.error = `Error loading commits: ${error.message}`;
@@ -363,6 +389,31 @@ export class SketchDiffRangePicker extends LitElement {
    */
   setRangeType(type: "range" | "single") {
     this.rangeType = type;
+    
+    // If switching to range mode and we don't have valid commits set,
+    // initialize with sensible defaults
+    if (type === 'range' && (!this.fromCommit || !this.toCommit === undefined)) {
+      if (this.commits.length > 0) {
+        const baseCommit = this.commits.find(
+          (c) => c.refs && c.refs.some((ref) => ref.includes("sketch-base")),
+        );
+        if (!this.fromCommit) {
+          this.fromCommit = baseCommit
+            ? baseCommit.hash
+            : this.commits[this.commits.length - 1].hash;
+        }
+        if (this.toCommit === undefined) {
+          this.toCommit = ''; // Default to uncommitted changes
+        }
+      }
+    }
+    
+    // If switching to single mode and we don't have a valid commit set,
+    // initialize with HEAD
+    if (type === 'single' && !this.singleCommit && this.commits.length > 0) {
+      this.singleCommit = this.commits[0].hash;
+    }
+    
     this.dispatchRangeEvent();
   }
 
@@ -401,13 +452,24 @@ export class SketchDiffRangePicker extends LitElement {
   }
 
   /**
-   * Dispatch range change event
+   * Validate that a commit hash exists in the loaded commits
+   */
+  private isValidCommitHash(hash: string): boolean {
+    if (!hash || hash.trim() === '') return true; // Empty is valid (uncommitted changes)
+    return this.commits.some(commit => commit.hash.startsWith(hash) || commit.hash === hash);
+  }
+
+  /**
+   * Dispatch range change event and update URL parameters
    */
   dispatchRangeEvent() {
     const range: DiffRange =
       this.rangeType === "range"
         ? { type: "range", from: this.fromCommit, to: this.toCommit }
         : { type: "single", commit: this.singleCommit };
+
+    // Update URL parameters
+    this.updateUrlParams(range);
 
     const event = new CustomEvent("range-change", {
       detail: { range },
@@ -416,6 +478,71 @@ export class SketchDiffRangePicker extends LitElement {
     });
 
     this.dispatchEvent(event);
+  }
+
+  /**
+   * Update URL parameters for from and to commits
+   */
+  private updateUrlParams(range: DiffRange) {
+    const url = new URL(window.location.href);
+    
+    // Remove existing range parameters
+    url.searchParams.delete('from');
+    url.searchParams.delete('to');
+    url.searchParams.delete('commit');
+    
+    if (range.type === 'range') {
+      // Add from parameter if not empty
+      if (range.from && range.from.trim() !== '') {
+        url.searchParams.set('from', range.from);
+      }
+      // Add to parameter if not empty (empty string means uncommitted changes)
+      if (range.to && range.to.trim() !== '') {
+        url.searchParams.set('to', range.to);
+      }
+    } else {
+      // Single commit mode
+      if (range.commit && range.commit.trim() !== '') {
+        url.searchParams.set('commit', range.commit);
+      }
+    }
+    
+    // Update the browser history without reloading the page
+    window.history.replaceState(window.history.state, '', url.toString());
+  }
+
+  /**
+   * Initialize from URL parameters if available
+   */
+  private initializeFromUrlParams() {
+    const url = new URL(window.location.href);
+    const fromParam = url.searchParams.get('from');
+    const toParam = url.searchParams.get('to');
+    const commitParam = url.searchParams.get('commit');
+    
+    // If commit parameter is present, switch to single commit mode
+    if (commitParam) {
+      this.rangeType = 'single';
+      this.singleCommit = commitParam;
+      return true; // Indicate that we initialized from URL
+    }
+    
+    // If from or to parameters are present, use range mode
+    if (fromParam || toParam) {
+      this.rangeType = 'range';
+      if (fromParam) {
+        this.fromCommit = fromParam;
+      }
+      if (toParam) {
+        this.toCommit = toParam;
+      } else {
+        // If no 'to' param, default to uncommitted changes (empty string)
+        this.toCommit = '';
+      }
+      return true; // Indicate that we initialized from URL
+    }
+    
+    return false; // No URL params found
   }
 }
 
