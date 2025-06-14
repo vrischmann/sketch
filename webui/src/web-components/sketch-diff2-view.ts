@@ -185,18 +185,13 @@ export class SketchDiff2View extends LitElement {
     .range-row {
       width: 100%;
       display: flex;
-    }
-
-    .file-row {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     sketch-diff-range-picker {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
     }
 
     sketch-diff-file-picker {
@@ -264,7 +259,7 @@ export class SketchDiff2View extends LitElement {
     .file-header {
       background-color: var(--background-light, #f8f8f8);
       border-bottom: 1px solid var(--border-color, #e0e0e0);
-      padding: 12px 16px;
+      padding: 8px 16px;
       font-family: var(--font-family, system-ui, sans-serif);
       font-weight: 500;
       font-size: 14px;
@@ -365,6 +360,8 @@ export class SketchDiff2View extends LitElement {
       background-color: var(--background-light, #f8f8f8);
       border-radius: 4px;
       border: 1px solid var(--border-color, #e0e0e0);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .loading,
@@ -482,12 +479,9 @@ export class SketchDiff2View extends LitElement {
               .gitService="${this.gitService}"
               @range-change="${this.handleRangeChange}"
             ></sketch-diff-range-picker>
-          </div>
-
-          <div class="file-row">
             <div class="file-count">
               ${this.files.length > 0
-                ? `${this.files.length} file${this.files.length === 1 ? "" : "s"} changed`
+                ? `${this.files.length} file${this.files.length === 1 ? "" : "s"}`
                 : "No files"}
             </div>
           </div>

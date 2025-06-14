@@ -324,10 +324,38 @@ export class SketchDiffRangePicker extends LitElement {
    */
   formatCommitOption(commit: GitLogEntry): string {
     const shortHash = commit.hash.substring(0, 7);
-    let label = `${shortHash} ${commit.subject}`;
 
+    // Truncate subject if it's too long
+    let subject = commit.subject;
+    if (subject.length > 50) {
+      subject = subject.substring(0, 47) + "...";
+    }
+
+    let label = `${shortHash} ${subject}`;
+
+    // Add refs but keep them concise
     if (commit.refs && commit.refs.length > 0) {
-      label += ` (${commit.refs.join(", ")})`;
+      const refs = commit.refs.map((ref) => {
+        // Shorten common prefixes
+        if (ref.startsWith("origin/")) {
+          return ref.substring(7);
+        }
+        if (ref.startsWith("refs/heads/")) {
+          return ref.substring(11);
+        }
+        if (ref.startsWith("refs/remotes/origin/")) {
+          return ref.substring(20);
+        }
+        return ref;
+      });
+
+      // Limit to first 2 refs to avoid overcrowding
+      const displayRefs = refs.slice(0, 2);
+      if (refs.length > 2) {
+        displayRefs.push(`+${refs.length - 2} more`);
+      }
+
+      label += ` (${displayRefs.join(", ")})`;
     }
 
     return label;
