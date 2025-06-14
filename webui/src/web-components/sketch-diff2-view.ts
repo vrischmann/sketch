@@ -2,7 +2,7 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "./sketch-monaco-view";
 import "./sketch-diff-range-picker";
-import "./sketch-diff-file-picker";
+// import "./sketch-diff-file-picker"; // No longer needed for multi-file view
 import "./sketch-diff-empty-view";
 import {
   GitDiffFile,
@@ -38,6 +38,53 @@ export class SketchDiff2View extends LitElement {
       this.dispatchEvent(commentEvent);
     } catch (error) {
       console.error("Error handling Monaco comment:", error);
+    }
+  }
+
+  /**
+   * Handle height change events from the Monaco editor
+   */
+  private handleMonacoHeightChange(event: CustomEvent) {
+    try {
+      // Get the monaco view that emitted the event
+      const monacoView = event.target as HTMLElement;
+      if (!monacoView) return;
+      
+      // Find the parent file-diff-editor container
+      const fileDiffEditor = monacoView.closest('.file-diff-editor') as HTMLElement;
+      if (!fileDiffEditor) return;
+      
+      // Get the new height from the event
+      const newHeight = event.detail.height;
+      
+      // Only update if the height actually changed to avoid unnecessary layout
+      const currentHeight = fileDiffEditor.style.height;
+      const newHeightStr = `${newHeight}px`;
+      
+      if (currentHeight !== newHeightStr) {
+        // Update the file-diff-editor height to match monaco's height
+        fileDiffEditor.style.height = newHeightStr;
+        
+        // Remove any previous min-height constraint that might interfere
+        fileDiffEditor.style.minHeight = 'auto';
+        
+        // IMPORTANT: Tell Monaco to relayout after its container size changed
+        // Monaco has automaticLayout: false, so it won't detect container changes
+        setTimeout(() => {
+          const monacoComponent = monacoView as any;
+          if (monacoComponent && monacoComponent.editor) {
+            // Force layout with explicit dimensions to ensure Monaco fills the space
+            const editorWidth = fileDiffEditor.offsetWidth;
+            monacoComponent.editor.layout({
+              width: editorWidth,
+              height: newHeight
+            });
+          }
+        }, 0);
+      }
+      
+    } catch (error) {
+      console.error('Error handling Monaco height change:', error);
     }
   }
 
@@ -96,13 +143,10 @@ export class SketchDiff2View extends LitElement {
   private currentRange: DiffRange = { type: "range", from: "", to: "HEAD" };
 
   @state()
-  private originalCode: string = "";
+  private fileContents: Map<string, { original: string; modified: string; editable: boolean }> = new Map();
 
   @state()
-  private modifiedCode: string = "";
-
-  @state()
-  private isRightEditable: boolean = false;
+  private fileExpandStates: Map<string, boolean> = new Map();
 
   @state()
   private loading: boolean = false;
@@ -177,21 +221,146 @@ export class SketchDiff2View extends LitElement {
 
     .diff-container {
       flex: 1;
-      overflow: hidden;
+      overflow: auto;
       display: flex;
       flex-direction: column;
-      min-height: 0; /* Critical for flex child to respect parent height */
-      position: relative; /* Establish positioning context */
-      height: 100%; /* Take full height */
+      min-height: 0;
+      position: relative;
+      height: 100%;
     }
 
     .diff-content {
       flex: 1;
-      overflow: hidden;
-      min-height: 0; /* Required for proper flex behavior */
-      display: flex; /* Required for child to take full height */
-      position: relative; /* Establish positioning context */
-      height: 100%; /* Take full height */
+      overflow: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: 100%;
+    }
+
+    .multi-file-diff-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-height: 100%;
+    }
+
+    .file-diff-section {
+      display: flex;
+      flex-direction: column;
+      border-bottom: 3px solid var(--border-color, #e0e0e0);
+      margin-bottom: 0;
+    }
+
+    .file-diff-section:last-child {
+      border-bottom: none;
+    }
+
+    .file-header {
+      background-color: var(--background-light, #f8f8f8);
+      border-bottom: 1px solid var(--border-color, #e0e0e0);
+      padding: 12px 16px;
+      font-family: var(--font-family, system-ui, sans-serif);
+      font-weight: 500;
+      font-size: 14px;
+      color: var(--text-primary-color, #333);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .file-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-header-right {
+      display: flex;
+      align-items: center;
+    }
+
+    .file-expand-button {
+      background-color: transparent;
+      border: 1px solid var(--border-color, #e0e0e0);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      min-height: 32px;
+    }
+
+    .file-expand-button:hover {
+      background-color: var(--background-hover, #e8e8e8);
+    }
+
+    .file-path {
+      font-family: monospace;
+      font-weight: normal;
+      color: var(--text-secondary-color, #666);
+    }
+
+    .file-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    .file-status.added {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .file-status.modified {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .file-status.deleted {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .file-status.renamed {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .file-changes {
+      margin-left: 8px;
+      font-size: 12px;
+      color: var(--text-secondary-color, #666);
+    }
+
+    .file-diff-editor {
+      display: flex;
+      flex-direction: column;
+      min-height: 200px;
+      /* Height will be set dynamically by monaco editor */
+      overflow: visible; /* Ensure content is not clipped */
+    }
+
+    .file-count {
+      font-size: 14px;
+      color: var(--text-secondary-color, #666);
+      font-weight: 500;
+      padding: 8px 12px;
+      background-color: var(--background-light, #f8f8f8);
+      border-radius: 4px;
+      border: 1px solid var(--border-color, #e0e0e0);
     }
 
     .loading,
@@ -218,15 +387,12 @@ export class SketchDiff2View extends LitElement {
     sketch-monaco-view {
       --editor-width: 100%;
       --editor-height: 100%;
-      flex: 1; /* Make Monaco view take full height */
-      display: flex; /* Required for child to take full height */
-      position: absolute; /* Absolute positioning to take full space */
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 100%; /* Take full height */
-      width: 100%; /* Take full width */
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-height: 200px;
+      /* Ensure Monaco view takes full container space */
+      flex: 1;
     }
   `;
 
@@ -285,21 +451,20 @@ export class SketchDiff2View extends LitElement {
     }
   }
 
-  // Toggle hideUnchangedRegions setting
-  @state()
-  private hideUnchangedRegionsEnabled: boolean = true;
-
-  // Toggle hideUnchangedRegions setting
-  private toggleHideUnchangedRegions() {
-    this.hideUnchangedRegionsEnabled = !this.hideUnchangedRegionsEnabled;
-
-    // Get the Monaco view component
-    const monacoView = this.shadowRoot?.querySelector("sketch-monaco-view");
+  // Toggle hideUnchangedRegions setting for a specific file
+  private toggleFileExpansion(filePath: string) {
+    const currentState = this.fileExpandStates.get(filePath) ?? false;
+    const newState = !currentState;
+    this.fileExpandStates.set(filePath, newState);
+    
+    // Apply to the specific Monaco view component for this file
+    const monacoView = this.shadowRoot?.querySelector(`sketch-monaco-view[data-file-path="${filePath}"]`);
     if (monacoView) {
-      (monacoView as any).toggleHideUnchangedRegions(
-        this.hideUnchangedRegionsEnabled,
-      );
+      (monacoView as any).toggleHideUnchangedRegions(!newState); // inverted because true means "hide unchanged"
     }
+    
+    // Force a re-render to update the button state
+    this.requestUpdate();
   }
 
   render() {
@@ -314,24 +479,8 @@ export class SketchDiff2View extends LitElement {
           </div>
 
           <div class="file-row">
-            <sketch-diff-file-picker
-              .files="${this.files}"
-              .selectedPath="${this.selectedFilePath}"
-              @file-selected="${this.handleFileSelected}"
-            ></sketch-diff-file-picker>
-
-            <div style="display: flex; gap: 8px;">
-              <button
-                class="view-toggle-button"
-                @click="${this.toggleHideUnchangedRegions}"
-                title="${this.hideUnchangedRegionsEnabled
-                  ? "Expand All: Show all lines including unchanged regions"
-                  : "Collapse Expanded Lines: Hide unchanged regions to focus on changes"}"
-              >
-                ${this.hideUnchangedRegionsEnabled
-                  ? this.renderExpandAllIcon()
-                  : this.renderCollapseIcon()}
-              </button>
+            <div class="file-count">
+              ${this.files.length > 0 ? `${this.files.length} file${this.files.length === 1 ? '' : 's'} changed` : 'No files'}
             </div>
           </div>
         </div>
@@ -356,21 +505,10 @@ export class SketchDiff2View extends LitElement {
       return html`<sketch-diff-empty-view></sketch-diff-empty-view>`;
     }
 
-    if (!this.selectedFilePath) {
-      return html`<div class="loading">Select a file to view diff</div>`;
-    }
-
     return html`
-      <sketch-monaco-view
-        .originalCode="${this.originalCode}"
-        .modifiedCode="${this.modifiedCode}"
-        .originalFilename="${this.selectedFilePath}"
-        .modifiedFilename="${this.selectedFilePath}"
-        ?readOnly="${!this.isRightEditable}"
-        ?editable-right="${this.isRightEditable}"
-        @monaco-comment="${this.handleMonacoComment}"
-        @monaco-save="${this.handleMonacoSave}"
-      ></sketch-monaco-view>
+      <div class="multi-file-diff-container">
+        ${this.files.map((file, index) => this.renderFileDiff(file, index))}
+      </div>
     `;
   }
 
@@ -404,19 +542,20 @@ export class SketchDiff2View extends LitElement {
         this.files = [];
       }
 
-      // If we have files, select the first one and load its content
+      // Load content for all files
       if (this.files.length > 0) {
-        const firstFile = this.files[0];
-        this.selectedFilePath = firstFile.path;
-
-        // Directly load the file content, especially important when there's only one file
-        // as sometimes the file-selected event might not fire in that case
-        this.loadFileContent(firstFile);
+        // Initialize expand states for new files (default to collapsed)
+        this.files.forEach(file => {
+          if (!this.fileExpandStates.has(file.path)) {
+            this.fileExpandStates.set(file.path, false); // false = collapsed (hide unchanged regions)
+          }
+        });
+        await this.loadAllFileContents();
       } else {
         // No files to display - reset the view to initial state
         this.selectedFilePath = "";
-        this.originalCode = "";
-        this.modifiedCode = "";
+        this.fileContents.clear();
+        this.fileExpandStates.clear();
       }
     } catch (error) {
       console.error("Error loading diff data:", error);
@@ -425,19 +564,20 @@ export class SketchDiff2View extends LitElement {
       this.files = [];
       // Reset the view to initial state
       this.selectedFilePath = "";
-      this.originalCode = "";
-      this.modifiedCode = "";
+      this.fileContents.clear();
+      this.fileExpandStates.clear();
     } finally {
       this.loading = false;
     }
   }
 
   /**
-   * Load the content of the selected file
+   * Load content for all files in the diff
    */
-  async loadFileContent(file: GitDiffFile) {
+  async loadAllFileContents() {
     this.loading = true;
     this.error = null;
+    this.fileContents.clear();
 
     try {
       let fromCommit: string;
@@ -455,65 +595,82 @@ export class SketchDiff2View extends LitElement {
         isUnstagedChanges = toCommit === "";
       }
 
-      // Set editability based on whether we're showing uncommitted changes
-      this.isRightEditable = isUnstagedChanges;
-
-      // Load the original code based on file status
-      if (file.status === "A") {
-        // Added file: empty original
-        this.originalCode = "";
-      } else {
-        // For modified, renamed, or deleted files: load original content
-        this.originalCode = await this.gitService.getFileContent(
-          file.old_hash || "",
-        );
-      }
-
-      // For modified code, always use working copy when editable
-      if (this.isRightEditable) {
+      // Load content for all files
+      const promises = this.files.map(async (file) => {
         try {
-          // Always use working copy when editable, regardless of diff status
-          // This ensures we have the latest content even if the diff hasn't been refreshed
-          this.modifiedCode = await this.gitService.getWorkingCopyContent(
-            file.path,
-          );
-        } catch (error) {
-          if (file.status === "D") {
-            // For deleted files, silently use empty content
-            console.warn(
-              `Could not get working copy for deleted file ${file.path}, using empty content`,
-            );
-            this.modifiedCode = "";
-          } else {
-            // For any other file status, propagate the error
-            console.error(
-              `Failed to get working copy for ${file.path}:`,
-              error,
-            );
-            throw error; // Rethrow to be caught by the outer try/catch
-          }
-        }
-      } else {
-        // For non-editable view, use git content based on file status
-        if (file.status === "D") {
-          // Deleted file: empty modified
-          this.modifiedCode = "";
-        } else {
-          // Added/modified/renamed: use the content from git
-          this.modifiedCode = await this.gitService.getFileContent(
-            file.new_hash || "",
-          );
-        }
-      }
+          let originalCode = "";
+          let modifiedCode = "";
+          let editable = isUnstagedChanges;
 
-      // Don't make deleted files editable
-      if (file.status === "D") {
-        this.isRightEditable = false;
-      }
+          // Load the original code based on file status
+          if (file.status !== "A") {
+            // For modified, renamed, or deleted files: load original content
+            originalCode = await this.gitService.getFileContent(
+              file.old_hash || "",
+            );
+          }
+
+          // For modified code, always use working copy when editable
+          if (editable) {
+            try {
+              // Always use working copy when editable, regardless of diff status
+              modifiedCode = await this.gitService.getWorkingCopyContent(
+                file.path,
+              );
+            } catch (error) {
+              if (file.status === "D") {
+                // For deleted files, silently use empty content
+                console.warn(
+                  `Could not get working copy for deleted file ${file.path}, using empty content`,
+                );
+                modifiedCode = "";
+              } else {
+                // For any other file status, propagate the error
+                console.error(
+                  `Failed to get working copy for ${file.path}:`,
+                  error,
+                );
+                throw error;
+              }
+            }
+          } else {
+            // For non-editable view, use git content based on file status
+            if (file.status === "D") {
+              // Deleted file: empty modified
+              modifiedCode = "";
+            } else {
+              // Added/modified/renamed: use the content from git
+              modifiedCode = await this.gitService.getFileContent(
+                file.new_hash || "",
+              );
+            }
+          }
+
+          // Don't make deleted files editable
+          if (file.status === "D") {
+            editable = false;
+          }
+
+          this.fileContents.set(file.path, {
+            original: originalCode,
+            modified: modifiedCode,
+            editable,
+          });
+        } catch (error) {
+          console.error(`Error loading content for file ${file.path}:`, error);
+          // Store empty content for failed files to prevent blocking
+          this.fileContents.set(file.path, {
+            original: "",
+            modified: "",
+            editable: false,
+          });
+        }
+      });
+
+      await Promise.all(promises);
     } catch (error) {
-      console.error("Error loading file content:", error);
-      this.error = `Error loading file content: ${error.message}`;
-      this.isRightEditable = false;
+      console.error("Error loading file contents:", error);
+      this.error = `Error loading file contents: ${error.message}`;
     } finally {
       this.loading = false;
     }
@@ -532,12 +689,150 @@ export class SketchDiff2View extends LitElement {
   }
 
   /**
-   * Handle file selection event from the file picker
+   * Render a single file diff section
    */
-  handleFileSelected(event: CustomEvent) {
-    const file = event.detail.file as GitDiffFile;
-    this.selectedFilePath = file.path;
-    this.loadFileContent(file);
+  renderFileDiff(file: GitDiffFile, index: number) {
+    const content = this.fileContents.get(file.path);
+    if (!content) {
+      return html`
+        <div class="file-diff-section">
+          <div class="file-header">
+            ${this.renderFileHeader(file)}
+          </div>
+          <div class="loading">Loading ${file.path}...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="file-diff-section">
+        <div class="file-header">
+          ${this.renderFileHeader(file)}
+        </div>
+        <div class="file-diff-editor">
+          <sketch-monaco-view
+            .originalCode="${content.original}"
+            .modifiedCode="${content.modified}"
+            .originalFilename="${file.path}"
+            .modifiedFilename="${file.path}"
+            ?readOnly="${!content.editable}"
+            ?editable-right="${content.editable}"
+            @monaco-comment="${this.handleMonacoComment}"
+            @monaco-save="${this.handleMonacoSave}"
+            @monaco-height-changed="${this.handleMonacoHeightChange}"
+            data-file-index="${index}"
+            data-file-path="${file.path}"
+          ></sketch-monaco-view>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render file header with status and path info
+   */
+  renderFileHeader(file: GitDiffFile) {
+    const statusClass = this.getFileStatusClass(file.status);
+    const statusText = this.getFileStatusText(file.status);
+    const changesInfo = this.getChangesInfo(file);
+    const pathInfo = this.getPathInfo(file);
+
+    const isExpanded = this.fileExpandStates.get(file.path) ?? false;
+    
+    return html`
+      <div class="file-header-left">
+        <span class="file-status ${statusClass}">${statusText}</span>
+        <span class="file-path">${pathInfo}</span>
+        ${changesInfo ? html`<span class="file-changes">${changesInfo}</span>` : ''}
+      </div>
+      <div class="file-header-right">
+        <button
+          class="file-expand-button"
+          @click="${() => this.toggleFileExpansion(file.path)}"
+          title="${isExpanded
+            ? "Collapse: Hide unchanged regions to focus on changes"
+            : "Expand: Show all lines including unchanged regions"}"
+        >
+          ${isExpanded
+            ? this.renderCollapseIcon()
+            : this.renderExpandAllIcon()}
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Get CSS class for file status
+   */
+  getFileStatusClass(status: string): string {
+    switch (status.toUpperCase()) {
+      case "A":
+        return "added";
+      case "M":
+        return "modified";
+      case "D":
+        return "deleted";
+      case "R":
+      default:
+        if (status.toUpperCase().startsWith("R")) {
+          return "renamed";
+        }
+        return "modified";
+    }
+  }
+
+  /**
+   * Get display text for file status
+   */
+  getFileStatusText(status: string): string {
+    switch (status.toUpperCase()) {
+      case "A":
+        return "Added";
+      case "M":
+        return "Modified";
+      case "D":
+        return "Deleted";
+      case "R":
+      default:
+        if (status.toUpperCase().startsWith("R")) {
+          return "Renamed";
+        }
+        return "Modified";
+    }
+  }
+
+  /**
+   * Get changes information (+/-) for display
+   */
+  getChangesInfo(file: GitDiffFile): string {
+    const additions = file.additions || 0;
+    const deletions = file.deletions || 0;
+
+    if (additions === 0 && deletions === 0) {
+      return "";
+    }
+
+    const parts = [];
+    if (additions > 0) {
+      parts.push(`+${additions}`);
+    }
+    if (deletions > 0) {
+      parts.push(`-${deletions}`);
+    }
+
+    return `(${parts.join(", ")})`;
+  }
+
+  /**
+   * Get path information for display, handling renames
+   */
+  getPathInfo(file: GitDiffFile): string {
+    if (file.old_path && file.old_path !== "") {
+      // For renames, show old_path → new_path
+      return `${file.old_path} → ${file.path}`;
+    }
+    // For regular files, just show the path
+    return file.path;
   }
 
   /**

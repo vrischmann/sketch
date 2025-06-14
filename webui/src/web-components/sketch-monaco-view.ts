@@ -231,23 +231,21 @@ export class CodeDiffEditor extends LitElement {
       --editor-width: 100%;
       --editor-height: 100%;
       display: flex;
-      flex: 1;
+      flex: none; /* Don't grow/shrink - size is determined by content */
       min-height: 0; /* Critical for flex layout */
       position: relative; /* Establish positioning context */
-      height: 100%; /* Take full height */
       width: 100%; /* Take full width */
+      /* Height will be set dynamically by setupAutoSizing */
     }
     main {
-      width: var(--editor-width);
-      height: var(--editor-height);
+      width: 100%;
+      height: 100%; /* Fill the host element completely */
       border: 1px solid #e0e0e0;
-      flex: 1;
-      min-height: 300px; /* Ensure a minimum height for the editor */
-      position: absolute; /* Absolute positioning to take full space */
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      flex: none; /* Size determined by parent */
+      min-height: 200px; /* Ensure a minimum height for the editor */
+      /* Remove absolute positioning - use normal block layout */
+      position: relative;
+      display: block;
     }
 
     /* Comment indicator and box styles */
@@ -582,6 +580,10 @@ export class CodeDiffEditor extends LitElement {
   setOptions(value: monaco.editor.IDiffEditorConstructionOptions) {
     if (this.editor) {
       this.editor.updateOptions(value);
+      // Re-fit content after options change
+      if (this.fitEditorToContent) {
+        setTimeout(() => this.fitEditorToContent!(), 50);
+      }
     }
   }
 
@@ -598,6 +600,10 @@ export class CodeDiffEditor extends LitElement {
           revealLineCount: 10,
         },
       });
+      // Re-fit content after toggling
+      if (this.fitEditorToContent) {
+        setTimeout(() => this.fitEditorToContent!(), 100);
+      }
     }
   }
 
@@ -619,15 +625,21 @@ export class CodeDiffEditor extends LitElement {
 
       // First time initialization
       if (!this.editor) {
-        // Create the diff editor only once
+        // Create the diff editor with auto-sizing configuration
         this.editor = monaco.editor.createDiffEditor(this.container.value!, {
-          automaticLayout: true,
-          // Make it read-only by default
-          // We'll adjust individual editor settings after creation
+          automaticLayout: false, // We'll resize manually
           readOnly: true,
           theme: "vs", // Always use light mode
           renderSideBySide: true,
           ignoreTrimWhitespace: false,
+          scrollbar: {
+            vertical: 'hidden',
+            horizontal: 'hidden',
+            handleMouseWheel: false, // Let outer scroller eat the wheel
+          },
+          minimap: { enabled: false },
+          overviewRulerLanes: 0,
+          scrollBeyondLastLine: false,
           // Focus on the differences by hiding unchanged regions
           hideUnchangedRegions: {
             enabled: true, // Enable the feature
@@ -650,6 +662,9 @@ export class CodeDiffEditor extends LitElement {
           this.editor.getModifiedEditor().updateOptions({ readOnly: false });
         }
 
+        // Set up auto-sizing
+        this.setupAutoSizing();
+
         // Add Monaco editor to debug global
         this.addToDebugGlobal();
       }
@@ -660,21 +675,19 @@ export class CodeDiffEditor extends LitElement {
       this.setupContentChangeListener();
 
       // Fix cursor positioning issues by ensuring fonts are loaded
-      // This addresses the common Monaco editor cursor offset problem
       document.fonts.ready.then(() => {
         if (this.editor) {
           monaco.editor.remeasureFonts();
-          this.editor.layout();
+          this.fitEditorToContent();
         }
       });
 
       // Force layout recalculation after a short delay
-      // This ensures the editor renders properly, especially with single files
       setTimeout(() => {
         if (this.editor) {
-          this.editor.layout();
+          this.fitEditorToContent();
         }
-      }, 50);
+      }, 100);
     } catch (error) {
       console.error("Error initializing Monaco editor:", error);
     }
@@ -1067,6 +1080,21 @@ export class CodeDiffEditor extends LitElement {
           original: this.originalModel,
           modified: this.modifiedModel,
         });
+        
+        // Set initial hideUnchangedRegions state (default to enabled/collapsed)
+        this.editor.updateOptions({
+          hideUnchangedRegions: {
+            enabled: true, // Default to collapsed state
+            contextLineCount: 3,
+            minimumLineCount: 3,
+            revealLineCount: 10,
+          },
+        });
+        
+        // Fit content after setting new models
+        if (this.fitEditorToContent) {
+          setTimeout(() => this.fitEditorToContent!(), 50);
+        }
       }
       this.setupContentChangeListener();
     } catch (error) {
@@ -1086,12 +1114,13 @@ export class CodeDiffEditor extends LitElement {
       if (this.editor) {
         this.updateModels();
 
-        // Force layout recalculation after model updates
+        // Force auto-sizing after model updates
+        // Use a slightly longer delay to ensure layout is stable
         setTimeout(() => {
-          if (this.editor) {
-            this.editor.layout();
+          if (this.fitEditorToContent) {
+            this.fitEditorToContent();
           }
-        }, 50);
+        }, 100);
       } else {
         // If the editor isn't initialized yet but we received content,
         // initialize it now
@@ -1100,27 +1129,72 @@ export class CodeDiffEditor extends LitElement {
     }
   }
 
+  // Set up auto-sizing for multi-file diff view
+  private setupAutoSizing() {
+    if (!this.editor) return;
+
+    const fitContent = () => {
+      try {
+        const originalEditor = this.editor!.getOriginalEditor();
+        const modifiedEditor = this.editor!.getModifiedEditor();
+        
+        const originalHeight = originalEditor.getContentHeight();
+        const modifiedHeight = modifiedEditor.getContentHeight();
+        
+        // Use the maximum height of both editors, plus some padding
+        const maxHeight = Math.max(originalHeight, modifiedHeight) + 18; // 1 blank line bottom padding
+        
+        // Set both container and host height to enable proper scrolling
+        if (this.container.value) {
+          // Set explicit heights on both container and host
+          this.container.value.style.height = `${maxHeight}px`;
+          this.style.height = `${maxHeight}px`; // Update host element height
+          
+          // Emit the height change event BEFORE calling layout
+          // This ensures parent containers resize first
+          this.dispatchEvent(new CustomEvent('monaco-height-changed', {
+            detail: { height: maxHeight },
+            bubbles: true,
+            composed: true
+          }));
+          
+          // Layout after both this component and parents have updated
+          setTimeout(() => {
+            if (this.editor && this.container.value) {
+              // Use explicit dimensions to ensure Monaco uses full available space
+              const width = this.container.value.offsetWidth;
+              this.editor.layout({
+                width: width,
+                height: maxHeight
+              });
+            }
+          }, 10);
+        }
+      } catch (error) {
+        console.error('Error in fitContent:', error);
+      }
+    };
+
+    // Store the fit function for external access
+    this.fitEditorToContent = fitContent;
+
+    // Set up listeners for content size changes
+    this.editor.getOriginalEditor().onDidContentSizeChange(fitContent);
+    this.editor.getModifiedEditor().onDidContentSizeChange(fitContent);
+
+    // Initial fit
+    fitContent();
+  }
+
+  private fitEditorToContent: (() => void) | null = null;
+
   // Add resize observer to ensure editor resizes when container changes
   firstUpdated() {
     // Initialize the editor
     this.initializeEditor();
 
-    // Create a ResizeObserver to monitor container size changes
-    if (window.ResizeObserver) {
-      const resizeObserver = new ResizeObserver(() => {
-        if (this.editor) {
-          this.editor.layout();
-        }
-      });
-
-      // Start observing the container
-      if (this.container.value) {
-        resizeObserver.observe(this.container.value);
-      }
-
-      // Store the observer for cleanup
-      this._resizeObserver = resizeObserver;
-    }
+    // For multi-file diff, we don't use ResizeObserver since we control the size
+    // Instead, we rely on auto-sizing based on content
 
     // If editable, set up edit mode and content change listener
     if (this.editableRight && this.editor) {
@@ -1209,11 +1283,14 @@ export class CodeDiffEditor extends LitElement {
         this.modifiedModel = undefined;
       }
 
-      // Clean up resize observer
+      // Clean up resize observer (if any)
       if (this._resizeObserver) {
         this._resizeObserver.disconnect();
         this._resizeObserver = null;
       }
+      
+      // Clear the fit function reference
+      this.fitEditorToContent = null;
 
       // Remove document click handler if set
       if (this._documentClickHandler) {
