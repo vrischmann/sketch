@@ -49,25 +49,27 @@ export class SketchDiff2View extends LitElement {
       // Get the monaco view that emitted the event
       const monacoView = event.target as HTMLElement;
       if (!monacoView) return;
-      
+
       // Find the parent file-diff-editor container
-      const fileDiffEditor = monacoView.closest('.file-diff-editor') as HTMLElement;
+      const fileDiffEditor = monacoView.closest(
+        ".file-diff-editor",
+      ) as HTMLElement;
       if (!fileDiffEditor) return;
-      
+
       // Get the new height from the event
       const newHeight = event.detail.height;
-      
+
       // Only update if the height actually changed to avoid unnecessary layout
       const currentHeight = fileDiffEditor.style.height;
       const newHeightStr = `${newHeight}px`;
-      
+
       if (currentHeight !== newHeightStr) {
         // Update the file-diff-editor height to match monaco's height
         fileDiffEditor.style.height = newHeightStr;
-        
+
         // Remove any previous min-height constraint that might interfere
-        fileDiffEditor.style.minHeight = 'auto';
-        
+        fileDiffEditor.style.minHeight = "auto";
+
         // IMPORTANT: Tell Monaco to relayout after its container size changed
         // Monaco has automaticLayout: false, so it won't detect container changes
         setTimeout(() => {
@@ -77,14 +79,13 @@ export class SketchDiff2View extends LitElement {
             const editorWidth = fileDiffEditor.offsetWidth;
             monacoComponent.editor.layout({
               width: editorWidth,
-              height: newHeight
+              height: newHeight,
             });
           }
         }, 0);
       }
-      
     } catch (error) {
-      console.error('Error handling Monaco height change:', error);
+      console.error("Error handling Monaco height change:", error);
     }
   }
 
@@ -143,7 +144,10 @@ export class SketchDiff2View extends LitElement {
   private currentRange: DiffRange = { type: "range", from: "", to: "HEAD" };
 
   @state()
-  private fileContents: Map<string, { original: string; modified: string; editable: boolean }> = new Map();
+  private fileContents: Map<
+    string,
+    { original: string; modified: string; editable: boolean }
+  > = new Map();
 
   @state()
   private fileExpandStates: Map<string, boolean> = new Map();
@@ -456,13 +460,15 @@ export class SketchDiff2View extends LitElement {
     const currentState = this.fileExpandStates.get(filePath) ?? false;
     const newState = !currentState;
     this.fileExpandStates.set(filePath, newState);
-    
+
     // Apply to the specific Monaco view component for this file
-    const monacoView = this.shadowRoot?.querySelector(`sketch-monaco-view[data-file-path="${filePath}"]`);
+    const monacoView = this.shadowRoot?.querySelector(
+      `sketch-monaco-view[data-file-path="${filePath}"]`,
+    );
     if (monacoView) {
       (monacoView as any).toggleHideUnchangedRegions(!newState); // inverted because true means "hide unchanged"
     }
-    
+
     // Force a re-render to update the button state
     this.requestUpdate();
   }
@@ -480,7 +486,9 @@ export class SketchDiff2View extends LitElement {
 
           <div class="file-row">
             <div class="file-count">
-              ${this.files.length > 0 ? `${this.files.length} file${this.files.length === 1 ? '' : 's'} changed` : 'No files'}
+              ${this.files.length > 0
+                ? `${this.files.length} file${this.files.length === 1 ? "" : "s"} changed`
+                : "No files"}
             </div>
           </div>
         </div>
@@ -545,7 +553,7 @@ export class SketchDiff2View extends LitElement {
       // Load content for all files
       if (this.files.length > 0) {
         // Initialize expand states for new files (default to collapsed)
-        this.files.forEach(file => {
+        this.files.forEach((file) => {
           if (!this.fileExpandStates.has(file.path)) {
             this.fileExpandStates.set(file.path, false); // false = collapsed (hide unchanged regions)
           }
@@ -696,9 +704,7 @@ export class SketchDiff2View extends LitElement {
     if (!content) {
       return html`
         <div class="file-diff-section">
-          <div class="file-header">
-            ${this.renderFileHeader(file)}
-          </div>
+          <div class="file-header">${this.renderFileHeader(file)}</div>
           <div class="loading">Loading ${file.path}...</div>
         </div>
       `;
@@ -706,9 +712,7 @@ export class SketchDiff2View extends LitElement {
 
     return html`
       <div class="file-diff-section">
-        <div class="file-header">
-          ${this.renderFileHeader(file)}
-        </div>
+        <div class="file-header">${this.renderFileHeader(file)}</div>
         <div class="file-diff-editor">
           <sketch-monaco-view
             .originalCode="${content.original}"
@@ -738,12 +742,14 @@ export class SketchDiff2View extends LitElement {
     const pathInfo = this.getPathInfo(file);
 
     const isExpanded = this.fileExpandStates.get(file.path) ?? false;
-    
+
     return html`
       <div class="file-header-left">
         <span class="file-status ${statusClass}">${statusText}</span>
         <span class="file-path">${pathInfo}</span>
-        ${changesInfo ? html`<span class="file-changes">${changesInfo}</span>` : ''}
+        ${changesInfo
+          ? html`<span class="file-changes">${changesInfo}</span>`
+          : ""}
       </div>
       <div class="file-header-right">
         <button
@@ -753,9 +759,7 @@ export class SketchDiff2View extends LitElement {
             ? "Collapse: Hide unchanged regions to focus on changes"
             : "Expand: Show all lines including unchanged regions"}"
         >
-          ${isExpanded
-            ? this.renderCollapseIcon()
-            : this.renderExpandAllIcon()}
+          ${isExpanded ? this.renderCollapseIcon() : this.renderExpandAllIcon()}
         </button>
       </div>
     `;

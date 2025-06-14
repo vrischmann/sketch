@@ -633,8 +633,8 @@ export class CodeDiffEditor extends LitElement {
           renderSideBySide: true,
           ignoreTrimWhitespace: false,
           scrollbar: {
-            vertical: 'hidden',
-            horizontal: 'hidden',
+            vertical: "hidden",
+            horizontal: "hidden",
             handleMouseWheel: false, // Let outer scroller eat the wheel
           },
           minimap: { enabled: false },
@@ -1080,7 +1080,7 @@ export class CodeDiffEditor extends LitElement {
           original: this.originalModel,
           modified: this.modifiedModel,
         });
-        
+
         // Set initial hideUnchangedRegions state (default to enabled/collapsed)
         this.editor.updateOptions({
           hideUnchangedRegions: {
@@ -1090,7 +1090,7 @@ export class CodeDiffEditor extends LitElement {
             revealLineCount: 10,
           },
         });
-        
+
         // Fit content after setting new models
         if (this.fitEditorToContent) {
           setTimeout(() => this.fitEditorToContent!(), 50);
@@ -1137,27 +1137,29 @@ export class CodeDiffEditor extends LitElement {
       try {
         const originalEditor = this.editor!.getOriginalEditor();
         const modifiedEditor = this.editor!.getModifiedEditor();
-        
+
         const originalHeight = originalEditor.getContentHeight();
         const modifiedHeight = modifiedEditor.getContentHeight();
-        
+
         // Use the maximum height of both editors, plus some padding
         const maxHeight = Math.max(originalHeight, modifiedHeight) + 18; // 1 blank line bottom padding
-        
+
         // Set both container and host height to enable proper scrolling
         if (this.container.value) {
           // Set explicit heights on both container and host
           this.container.value.style.height = `${maxHeight}px`;
           this.style.height = `${maxHeight}px`; // Update host element height
-          
+
           // Emit the height change event BEFORE calling layout
           // This ensures parent containers resize first
-          this.dispatchEvent(new CustomEvent('monaco-height-changed', {
-            detail: { height: maxHeight },
-            bubbles: true,
-            composed: true
-          }));
-          
+          this.dispatchEvent(
+            new CustomEvent("monaco-height-changed", {
+              detail: { height: maxHeight },
+              bubbles: true,
+              composed: true,
+            }),
+          );
+
           // Layout after both this component and parents have updated
           setTimeout(() => {
             if (this.editor && this.container.value) {
@@ -1165,13 +1167,13 @@ export class CodeDiffEditor extends LitElement {
               const width = this.container.value.offsetWidth;
               this.editor.layout({
                 width: width,
-                height: maxHeight
+                height: maxHeight,
               });
             }
           }, 10);
         }
       } catch (error) {
-        console.error('Error in fitContent:', error);
+        console.error("Error in fitContent:", error);
       }
     };
 
@@ -1288,7 +1290,7 @@ export class CodeDiffEditor extends LitElement {
         this._resizeObserver.disconnect();
         this._resizeObserver = null;
       }
-      
+
       // Clear the fit function reference
       this.fitEditorToContent = null;
 
