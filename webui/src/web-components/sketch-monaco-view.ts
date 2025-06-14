@@ -21,16 +21,16 @@ const monacoStyles = `
     height: 100%;
   }
   
-  /* Custom font stack - ensure we have good monospace fonts */
-  .monaco-editor .view-lines,
-  .monaco-editor .view-line,
-  .monaco-editor-pane,
-  .monaco-editor .inputarea {
-    font-family: "Menlo", "Monaco", "Consolas", "Courier New", monospace !important;
-    font-size: 13px !important;
-    font-feature-settings: "liga" 0, "calt" 0 !important;
-    line-height: 1.5 !important;
-  }
+  // /* Custom font stack - ensure we have good monospace fonts */
+  // .monaco-editor .view-lines,
+  // .monaco-editor .view-line,
+  // .monaco-editor-pane,
+  // .monaco-editor .inputarea {
+  //   font-family: "Menlo", "Monaco", "Consolas", "Courier New", monospace !important;
+  //   font-size: 13px !important;
+  //   font-feature-settings: "liga" 0, "calt" 0 !important;
+  //   line-height: 1.5 !important;
+  // }
   
   /* Ensure light theme colors */
   .monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
@@ -160,8 +160,6 @@ export class CodeDiffEditor extends LitElement {
         this.requestSave();
       },
     );
-
-    console.log("Keyboard shortcuts set up for Monaco editor");
   }
 
   // Setup content change listener for debounced save
@@ -609,13 +607,15 @@ export class CodeDiffEditor extends LitElement {
 
   private initializeEditor() {
     try {
-      // Disable semantic validation globally for TypeScript/JavaScript
-      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true,
-      });
-      monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: true,
-      });
+      // Disable semantic validation globally for TypeScript/JavaScript if available
+      if (monaco.languages && monaco.languages.typescript) {
+        monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+          noSemanticValidation: true,
+        });
+        monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+          noSemanticValidation: true,
+        });
+      }
 
       // First time initialization
       if (!this.editor) {
@@ -637,8 +637,6 @@ export class CodeDiffEditor extends LitElement {
           },
         });
 
-        console.log("Monaco diff editor created");
-
         // Set up selection change event listeners for both editors
         this.setupSelectionChangeListeners();
 
@@ -651,6 +649,9 @@ export class CodeDiffEditor extends LitElement {
           // Make sure the modified editor is editable
           this.editor.getModifiedEditor().updateOptions({ readOnly: false });
         }
+
+        // Add Monaco editor to debug global
+        this.addToDebugGlobal();
       }
 
       // Create or update models
@@ -658,16 +659,22 @@ export class CodeDiffEditor extends LitElement {
       // Set up content change listener
       this.setupContentChangeListener();
 
+      // Fix cursor positioning issues by ensuring fonts are loaded
+      // This addresses the common Monaco editor cursor offset problem
+      document.fonts.ready.then(() => {
+        if (this.editor) {
+          monaco.editor.remeasureFonts();
+          this.editor.layout();
+        }
+      });
+
       // Force layout recalculation after a short delay
       // This ensures the editor renders properly, especially with single files
       setTimeout(() => {
         if (this.editor) {
           this.editor.layout();
-          console.log("Monaco diff editor layout updated");
         }
       }, 50);
-
-      console.log("Monaco diff editor initialized");
     } catch (error) {
       console.error("Error initializing Monaco editor:", error);
     }
@@ -681,7 +688,6 @@ export class CodeDiffEditor extends LitElement {
   private setupSelectionChangeListeners() {
     try {
       if (!this.editor) {
-        console.log("Editor not available for setting up listeners");
         return;
       }
 
@@ -690,7 +696,6 @@ export class CodeDiffEditor extends LitElement {
       const modifiedEditor = this.editor.getModifiedEditor();
 
       if (!originalEditor || !modifiedEditor) {
-        console.log("Original or modified editor not available");
         return;
       }
 
@@ -760,8 +765,6 @@ export class CodeDiffEditor extends LitElement {
 
       // Add the document click listener
       document.addEventListener("click", this._documentClickHandler);
-
-      console.log("Selection change listeners set up successfully");
     } catch (error) {
       console.error("Error setting up selection listeners:", error);
     }
@@ -796,7 +799,6 @@ export class CodeDiffEditor extends LitElement {
       // Get selected text
       const model = editor.getModel();
       if (!model) {
-        console.log("No model available for selection");
         return;
       }
 
@@ -806,7 +808,6 @@ export class CodeDiffEditor extends LitElement {
         e.selection.startLineNumber > lineCount ||
         e.selection.endLineNumber > lineCount
       ) {
-        console.log("Selection out of bounds");
         return;
       }
 
@@ -852,7 +853,6 @@ export class CodeDiffEditor extends LitElement {
           // Use the editor's DOM node as positioning context
           const editorDomNode = editor.getDomNode();
           if (!editorDomNode) {
-            console.log("No editor DOM node available");
             return;
           }
 
@@ -951,7 +951,6 @@ export class CodeDiffEditor extends LitElement {
   private submitComment() {
     try {
       if (!this.selectedText || !this.commentText) {
-        console.log("Missing selected text or comment");
         return;
       }
 
@@ -1134,10 +1133,65 @@ export class CodeDiffEditor extends LitElement {
 
   private _resizeObserver: ResizeObserver | null = null;
 
+  /**
+   * Add this Monaco editor instance to the global debug object
+   * This allows inspection and debugging via browser console
+   */
+  private addToDebugGlobal() {
+    try {
+      // Initialize the debug global if it doesn't exist
+      if (!(window as any).sketchDebug) {
+        (window as any).sketchDebug = {
+          monaco: monaco,
+          editors: [],
+          remeasureFonts: () => {
+            monaco.editor.remeasureFonts();
+            (window as any).sketchDebug.editors.forEach(
+              (editor: any, index: number) => {
+                if (editor && editor.layout) {
+                  editor.layout();
+                }
+              },
+            );
+          },
+          layoutAll: () => {
+            (window as any).sketchDebug.editors.forEach(
+              (editor: any, index: number) => {
+                if (editor && editor.layout) {
+                  editor.layout();
+                }
+              },
+            );
+          },
+          getActiveEditors: () => {
+            return (window as any).sketchDebug.editors.filter(
+              (editor: any) => editor !== null,
+            );
+          },
+        };
+      }
+
+      // Add this editor to the debug collection
+      if (this.editor) {
+        (window as any).sketchDebug.editors.push(this.editor);
+      }
+    } catch (error) {
+      console.error("Error adding Monaco editor to debug global:", error);
+    }
+  }
+
   disconnectedCallback() {
     super.disconnectedCallback();
 
     try {
+      // Remove editor from debug global before disposal
+      if (this.editor && (window as any).sketchDebug?.editors) {
+        const index = (window as any).sketchDebug.editors.indexOf(this.editor);
+        if (index > -1) {
+          (window as any).sketchDebug.editors[index] = null;
+        }
+      }
+
       // Clean up resources when element is removed
       if (this.editor) {
         this.editor.dispose();
