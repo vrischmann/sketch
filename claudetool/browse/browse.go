@@ -71,6 +71,10 @@ func (b *BrowseTools) Initialize() error {
 	b.initOnce.Do(func() {
 		// ChromeDP.ExecPath has a list of common places to find Chrome...
 		opts := chromedp.DefaultExecAllocatorOptions[:]
+		// This is the default when running as root, but we generally need it
+		// when running in a container, even when we aren't root (which is largely
+		// the case for tests).
+		opts = append(opts, chromedp.NoSandbox)
 		allocCtx, _ := chromedp.NewExecAllocator(b.ctx, opts...)
 		browserCtx, browserCancel := chromedp.NewContext(
 			allocCtx,
