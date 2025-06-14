@@ -32,6 +32,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: webui/package-lock.json
 
+      - name: Optimize APT
+        run: ./.github/scripts/optimize-apt.sh
+
       - name: Install dependencies
         working-directory: ./webui
         run: npm ci
