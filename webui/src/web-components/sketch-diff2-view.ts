@@ -385,8 +385,6 @@ export class SketchDiff2View extends LitElement {
       overflow: visible; /* Ensure content is not clipped */
     }
 
-
-
     .loading,
     .empty-diff {
       display: flex;
@@ -578,7 +576,7 @@ export class SketchDiff2View extends LitElement {
 
   renderFileSelector() {
     const fileCount = this.files.length;
-    
+
     return html`
       <select
         class="file-selector"
@@ -990,10 +988,10 @@ export class SketchDiff2View extends LitElement {
   handleFileSelection(event: Event) {
     const selectElement = event.target as HTMLSelectElement;
     const selectedValue = selectElement.value;
-    
+
     this.selectedFile = selectedValue;
     this.viewMode = selectedValue ? "single" : "all";
-    
+
     // Force re-render
     this.requestUpdate();
   }
@@ -1011,7 +1009,9 @@ export class SketchDiff2View extends LitElement {
    * Render single file view with full-screen Monaco editor
    */
   renderSingleFileView() {
-    const selectedFileData = this.files.find(f => f.path === this.selectedFile);
+    const selectedFileData = this.files.find(
+      (f) => f.path === this.selectedFile,
+    );
     if (!selectedFileData) {
       return html`<div class="error">Selected file not found</div>`;
     }
@@ -1058,7 +1058,11 @@ export class SketchDiff2View extends LitElement {
 
     if (this.commit) {
       // Convert single commit to range (commit^ to commit)
-      this.currentRange = { type: "range", from: `${this.commit}^`, to: this.commit };
+      this.currentRange = {
+        type: "range",
+        from: `${this.commit}^`,
+        to: this.commit,
+      };
     }
 
     // Then reload diff data based on the current range

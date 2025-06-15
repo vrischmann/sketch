@@ -128,8 +128,6 @@ export class SketchDiffRangePicker extends LitElement {
       font-size: 14px;
     }
 
-
-
     @media (max-width: 768px) {
       .commit-selector {
         max-width: 100%;
@@ -190,19 +188,19 @@ export class SketchDiffRangePicker extends LitElement {
         <button
           class="commits-toggle"
           @click="${this.toggleCommitsExpansion}"
-          title="${this.commitsExpanded ? 'Hide' : 'Show'} commit range selection"
+          title="${this.commitsExpanded
+            ? "Hide"
+            : "Show"} commit range selection"
         >
-          ${this.commitsExpanded ? '▼' : '▶'} Commits
+          ${this.commitsExpanded ? "▼" : "▶"} Commits
         </button>
       </div>
-      
+
       ${this.commitsExpanded
         ? html`
-            <div class="commit-selectors">
-              ${this.renderRangeSelectors()}
-            </div>
+            <div class="commit-selectors">${this.renderRangeSelectors()}</div>
           `
-        : ''}
+        : ""}
     `;
   }
 
@@ -251,8 +249,6 @@ export class SketchDiffRangePicker extends LitElement {
       </div>
     `;
   }
-
-
 
   /**
    * Format a commit for display in the dropdown
@@ -344,8 +340,6 @@ export class SketchDiffRangePicker extends LitElement {
     }
   }
 
-
-
   /**
    * Handle From commit change
    */
@@ -376,18 +370,16 @@ export class SketchDiffRangePicker extends LitElement {
    */
   getCommitSummary(): string {
     if (!this.fromCommit && !this.toCommit) {
-      return 'No commits selected';
+      return "No commits selected";
     }
 
-    const fromShort = this.fromCommit ? this.fromCommit.substring(0, 7) : '';
-    const toShort = this.toCommit ? this.toCommit.substring(0, 7) : 'Uncommitted';
-    
+    const fromShort = this.fromCommit ? this.fromCommit.substring(0, 7) : "";
+    const toShort = this.toCommit
+      ? this.toCommit.substring(0, 7)
+      : "Uncommitted";
+
     return `${fromShort}..${toShort}`;
   }
-
-
-
-
 
   /**
    * Validate that a commit hash exists in the loaded commits
@@ -403,7 +395,11 @@ export class SketchDiffRangePicker extends LitElement {
    * Dispatch range change event and update URL parameters
    */
   dispatchRangeEvent() {
-    const range: DiffRange = { type: "range", from: this.fromCommit, to: this.toCommit };
+    const range: DiffRange = {
+      type: "range",
+      from: this.fromCommit,
+      to: this.toCommit,
+    };
 
     // Update URL parameters
     this.updateUrlParams(range);
