@@ -158,6 +158,12 @@ export class SketchDiff2View extends LitElement {
   @state()
   private error: string | null = null;
 
+  @state()
+  private selectedFile: string = ""; // Empty string means "All files"
+
+  @state()
+  private viewMode: "all" | "single" = "all";
+
   static styles = css`
     :host {
       display: flex;
@@ -187,6 +193,23 @@ export class SketchDiff2View extends LitElement {
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .file-selector {
+      min-width: 200px;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color, #ccc);
+      border-radius: 4px;
+      background-color: var(--background-color, #fff);
+      font-family: var(--font-family, system-ui, sans-serif);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .file-selector:focus {
+      outline: none;
+      border-color: var(--accent-color, #007acc);
+      box-shadow: 0 0 0 2px var(--accent-color-light, rgba(0, 122, 204, 0.2));
     }
 
     sketch-diff-range-picker {
@@ -385,6 +408,22 @@ export class SketchDiff2View extends LitElement {
       /* Ensure Monaco view takes full container space */
       flex: 1;
     }
+
+    /* Single file view styles */
+    .single-file-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .single-file-monaco {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
   `;
 
   @property({ attribute: false, type: Object })
@@ -515,6 +554,7 @@ export class SketchDiff2View extends LitElement {
               .gitService="${this.gitService}"
               @range-change="${this.handleRangeChange}"
             ></sketch-diff-range-picker>
+            ${this.renderFileSelector()}
           </div>
         </div>
       </div>
@@ -522,6 +562,29 @@ export class SketchDiff2View extends LitElement {
       <div class="diff-container">
         <div class="diff-content">${this.renderDiffContent()}</div>
       </div>
+    `;
+  }
+
+  renderFileSelector() {
+    if (this.files.length === 0) {
+      return html``;
+    }
+
+    return html`
+      <select
+        class="file-selector"
+        .value="${this.selectedFile}"
+        @change="${this.handleFileSelection}"
+      >
+        <option value="">All files (${this.files.length})</option>
+        ${this.files.map(
+          (file) => html`
+            <option value="${file.path}">
+              ${this.getFileDisplayName(file)}
+            </option>
+          `,
+        )}
+      </select>
     `;
   }
 
@@ -538,6 +601,12 @@ export class SketchDiff2View extends LitElement {
       return html`<sketch-diff-empty-view></sketch-diff-empty-view>`;
     }
 
+    // Render single file view if a specific file is selected
+    if (this.selectedFile && this.viewMode === "single") {
+      return this.renderSingleFileView();
+    }
+
+    // Render multi-file view
     return html`
       <div class="multi-file-diff-container">
         ${this.files.map((file, index) => this.renderFileDiff(file, index))}
@@ -581,6 +650,8 @@ export class SketchDiff2View extends LitElement {
       } else {
         // No files to display - reset the view to initial state
         this.selectedFilePath = "";
+        this.selectedFile = "";
+        this.viewMode = "all";
         this.fileContents.clear();
         this.fileExpandStates.clear();
       }
@@ -591,6 +662,8 @@ export class SketchDiff2View extends LitElement {
       this.files = [];
       // Reset the view to initial state
       this.selectedFilePath = "";
+      this.selectedFile = "";
+      this.viewMode = "all";
       this.fileContents.clear();
       this.fileExpandStates.clear();
     } finally {
@@ -898,6 +971,61 @@ export class SketchDiff2View extends LitElement {
         <!-- Large arrow pointing up towards line -->
         <path d="M8 10 L5 14 L11 14 Z" fill="currentColor" />
       </svg>
+    `;
+  }
+
+  /**
+   * Handle file selection change from the dropdown
+   */
+  handleFileSelection(event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    const selectedValue = selectElement.value;
+    
+    this.selectedFile = selectedValue;
+    this.viewMode = selectedValue ? "single" : "all";
+    
+    // Force re-render
+    this.requestUpdate();
+  }
+
+  /**
+   * Get display name for file in the selector
+   */
+  getFileDisplayName(file: GitDiffFile): string {
+    const status = this.getFileStatusText(file.status);
+    const pathInfo = this.getPathInfo(file);
+    return `${status}: ${pathInfo}`;
+  }
+
+  /**
+   * Render single file view with full-screen Monaco editor
+   */
+  renderSingleFileView() {
+    const selectedFileData = this.files.find(f => f.path === this.selectedFile);
+    if (!selectedFileData) {
+      return html`<div class="error">Selected file not found</div>`;
+    }
+
+    const content = this.fileContents.get(this.selectedFile);
+    if (!content) {
+      return html`<div class="loading">Loading ${this.selectedFile}...</div>`;
+    }
+
+    return html`
+      <div class="single-file-view">
+        <sketch-monaco-view
+          class="single-file-monaco"
+          .originalCode="${content.original}"
+          .modifiedCode="${content.modified}"
+          .originalFilename="${selectedFileData.path}"
+          .modifiedFilename="${selectedFileData.path}"
+          ?readOnly="${!content.editable}"
+          ?editable-right="${content.editable}"
+          @monaco-comment="${this.handleMonacoComment}"
+          @monaco-save="${this.handleMonacoSave}"
+          data-file-path="${selectedFileData.path}"
+        ></sketch-monaco-view>
+      </div>
     `;
   }
 
