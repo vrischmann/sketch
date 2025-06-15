@@ -652,6 +652,7 @@ export class CodeDiffEditor extends LitElement {
           theme: "vs", // Always use light mode
           renderSideBySide: true,
           ignoreTrimWhitespace: false,
+          renderOverviewRuler: false, // Disable the overview ruler
           scrollbar: {
             vertical: "hidden",
             horizontal: "hidden",
