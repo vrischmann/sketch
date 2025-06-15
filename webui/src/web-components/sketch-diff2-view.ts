@@ -212,6 +212,16 @@ export class SketchDiff2View extends LitElement {
       box-shadow: 0 0 0 2px var(--accent-color-light, rgba(0, 122, 204, 0.2));
     }
 
+    .file-selector:disabled {
+      background-color: var(--background-disabled, #f5f5f5);
+      color: var(--text-disabled, #999);
+      cursor: not-allowed;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+
     sketch-diff-range-picker {
       flex: 1;
       min-width: 400px; /* Ensure minimum width for range picker */
@@ -550,11 +560,12 @@ export class SketchDiff2View extends LitElement {
       <div class="controls">
         <div class="controls-container">
           <div class="range-row">
+            ${this.renderFileSelector()}
+            <div class="spacer"></div>
             <sketch-diff-range-picker
               .gitService="${this.gitService}"
               @range-change="${this.handleRangeChange}"
             ></sketch-diff-range-picker>
-            ${this.renderFileSelector()}
           </div>
         </div>
       </div>
@@ -566,17 +577,16 @@ export class SketchDiff2View extends LitElement {
   }
 
   renderFileSelector() {
-    if (this.files.length === 0) {
-      return html``;
-    }
-
+    const fileCount = this.files.length;
+    
     return html`
       <select
         class="file-selector"
         .value="${this.selectedFile}"
         @change="${this.handleFileSelection}"
+        ?disabled="${fileCount === 0}"
       >
-        <option value="">All files (${this.files.length})</option>
+        <option value="">All files (${fileCount})</option>
         ${this.files.map(
           (file) => html`
             <option value="${file.path}">

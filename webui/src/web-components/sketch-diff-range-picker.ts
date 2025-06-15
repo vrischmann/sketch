@@ -54,10 +54,6 @@ export class SketchDiffRangePicker extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 12px;
-      background-color: var(--background-light, #f8f8f8);
-      border-radius: 4px;
-      border: 1px solid var(--border-color, #e0e0e0);
       width: 100%;
       box-sizing: border-box;
     }
@@ -65,7 +61,6 @@ export class SketchDiffRangePicker extends LitElement {
     .commits-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       width: 100%;
     }
 
@@ -87,14 +82,6 @@ export class SketchDiffRangePicker extends LitElement {
     .commits-toggle:hover {
       background-color: var(--background-hover, #e8e8e8);
     }
-
-    .commits-summary {
-      font-size: 14px;
-      color: var(--text-secondary-color, #666);
-      font-family: monospace;
-    }
-
-
 
     .commit-selectors {
       display: flex;
@@ -207,9 +194,6 @@ export class SketchDiffRangePicker extends LitElement {
         >
           ${this.commitsExpanded ? '▼' : '▶'} Commits
         </button>
-        <div class="commits-summary">
-          ${this.getCommitSummary()}
-        </div>
       </div>
       
       ${this.commitsExpanded
