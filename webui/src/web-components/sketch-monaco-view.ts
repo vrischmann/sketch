@@ -266,6 +266,7 @@ export class CodeDiffEditor extends LitElement {
       /* Remove absolute positioning - use normal block layout */
       position: relative;
       display: block;
+      box-sizing: border-box; /* Include border in width calculation */
     }
 
     /* Comment indicator and box styles */
@@ -1190,7 +1191,8 @@ export class CodeDiffEditor extends LitElement {
           setTimeout(() => {
             if (this.editor && this.container.value) {
               // Use explicit dimensions to ensure Monaco uses full available space
-              const width = this.container.value.offsetWidth;
+              // Use clientWidth instead of offsetWidth to avoid border overflow
+              const width = this.container.value.clientWidth;
               this.editor.layout({
                 width: width,
                 height: maxHeight,
@@ -1237,8 +1239,9 @@ export class CodeDiffEditor extends LitElement {
             this.fitEditorToContent();
           } else {
             // Fallback: just trigger a layout with current container dimensions
-            const width = this.container.value.offsetWidth;
-            const height = this.container.value.offsetHeight;
+            // Use clientWidth/Height instead of offsetWidth/Height to avoid border overflow
+            const width = this.container.value.clientWidth;
+            const height = this.container.value.clientHeight;
             this.editor.layout({ width, height });
           }
         }
