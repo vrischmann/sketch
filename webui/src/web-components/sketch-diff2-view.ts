@@ -352,18 +352,7 @@ export class SketchDiff2View extends LitElement {
       overflow: visible; /* Ensure content is not clipped */
     }
 
-    .file-count {
-      font-size: 14px;
-      color: var(--text-secondary-color, #666);
-      font-weight: 500;
-      padding: 8px 12px;
-      background-color: var(--background-light, #f8f8f8);
-      border-radius: 4px;
-      border: 1px solid var(--border-color, #e0e0e0);
-      white-space: nowrap;
-      flex-shrink: 0;
-      min-width: 120px; /* Ensure minimum width for file count */
-    }
+
 
     .loading,
     .empty-diff {
@@ -526,11 +515,6 @@ export class SketchDiff2View extends LitElement {
               .gitService="${this.gitService}"
               @range-change="${this.handleRangeChange}"
             ></sketch-diff-range-picker>
-            <div class="file-count">
-              ${this.files.length > 0
-                ? `${this.files.length} file${this.files.length === 1 ? "" : "s"}`
-                : "No files"}
-            </div>
           </div>
         </div>
       </div>
@@ -574,17 +558,11 @@ export class SketchDiff2View extends LitElement {
         this.files = [];
       }
 
-      // Load diff data based on the current range type
-      if (this.currentRange.type === "single") {
-        this.files = await this.gitService.getCommitDiff(
-          this.currentRange.commit,
-        );
-      } else {
-        this.files = await this.gitService.getDiff(
-          this.currentRange.from,
-          this.currentRange.to,
-        );
-      }
+      // Load diff data for the range
+      this.files = await this.gitService.getDiff(
+        this.currentRange.from,
+        this.currentRange.to,
+      );
 
       // Ensure files is always an array, even when API returns null
       if (!this.files) {
@@ -634,15 +612,10 @@ export class SketchDiff2View extends LitElement {
       let isUnstagedChanges = false;
 
       // Determine the commits to compare based on the current range
-      if (this.currentRange.type === "single") {
-        fromCommit = `${this.currentRange.commit}^`;
-        toCommit = this.currentRange.commit;
-      } else {
-        fromCommit = this.currentRange.from;
-        toCommit = this.currentRange.to;
-        // Check if this is an unstaged changes view
-        isUnstagedChanges = toCommit === "";
-      }
+      fromCommit = this.currentRange.from;
+      toCommit = this.currentRange.to;
+      // Check if this is an unstaged changes view
+      isUnstagedChanges = toCommit === "";
 
       // Load content for all files
       const promises = this.files.map(async (file) => {
@@ -946,7 +919,8 @@ export class SketchDiff2View extends LitElement {
     }
 
     if (this.commit) {
-      this.currentRange = { type: "single", commit: this.commit };
+      // Convert single commit to range (commit^ to commit)
+      this.currentRange = { type: "range", from: `${this.commit}^`, to: this.commit };
     }
 
     // Then reload diff data based on the current range

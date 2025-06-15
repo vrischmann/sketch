@@ -9,9 +9,7 @@ import { GitLogEntry } from "../types";
 /**
  * Range type for diff views
  */
-export type DiffRange =
-  | { type: "range"; from: string; to: string }
-  | { type: "single"; commit: string };
+export type DiffRange = { type: "range"; from: string; to: string };
 
 /**
  * Component for selecting commit range for diffs
@@ -22,16 +20,13 @@ export class SketchDiffRangePicker extends LitElement {
   commits: GitLogEntry[] = [];
 
   @state()
-  private rangeType: "range" | "single" = "range";
-
-  @state()
   private fromCommit: string = "";
 
   @state()
   private toCommit: string = "";
 
   @state()
-  private singleCommit: string = "";
+  private commitsExpanded: boolean = false;
 
   @state()
   private loading: boolean = true;
@@ -57,31 +52,49 @@ export class SketchDiffRangePicker extends LitElement {
 
     .range-picker {
       display: flex;
-      flex-direction: row;
-      align-items: center;
+      flex-direction: column;
       gap: 12px;
       padding: 12px;
       background-color: var(--background-light, #f8f8f8);
       border-radius: 4px;
       border: 1px solid var(--border-color, #e0e0e0);
-      flex-wrap: wrap; /* Allow wrapping on small screens */
       width: 100%;
       box-sizing: border-box;
     }
 
-    .range-type-selector {
-      display: flex;
-      gap: 16px;
-      flex-shrink: 0;
-    }
-
-    .range-type-option {
+    .commits-header {
       display: flex;
       align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      white-space: nowrap;
+      justify-content: space-between;
+      width: 100%;
     }
+
+    .commits-toggle {
+      background-color: transparent;
+      border: 1px solid var(--border-color, #e0e0e0);
+      border-radius: 4px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-color, #333);
+    }
+
+    .commits-toggle:hover {
+      background-color: var(--background-hover, #e8e8e8);
+    }
+
+    .commits-summary {
+      font-size: 14px;
+      color: var(--text-secondary-color, #666);
+      font-family: monospace;
+    }
+
+
 
     .commit-selectors {
       display: flex;
@@ -128,30 +141,7 @@ export class SketchDiffRangePicker extends LitElement {
       font-size: 14px;
     }
 
-    .refresh-button {
-      padding: 6px 12px;
-      background-color: #f0f0f0;
-      color: var(--text-color, #333);
-      border: 1px solid var(--border-color, #e0e0e0);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.2s;
-      white-space: nowrap;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
 
-    .refresh-button:hover {
-      background-color: #e0e0e0;
-    }
-
-    .refresh-button:disabled {
-      background-color: #f8f8f8;
-      color: #999;
-      cursor: not-allowed;
-    }
 
     @media (max-width: 768px) {
       .commit-selector {
@@ -209,43 +199,26 @@ export class SketchDiffRangePicker extends LitElement {
 
   renderRangePicker() {
     return html`
-      <div class="range-type-selector">
-        <label class="range-type-option">
-          <input
-            type="radio"
-            name="rangeType"
-            value="range"
-            ?checked=${this.rangeType === "range"}
-            @change=${() => this.setRangeType("range")}
-          />
-          Commit Range
-        </label>
-        <label class="range-type-option">
-          <input
-            type="radio"
-            name="rangeType"
-            value="single"
-            ?checked=${this.rangeType === "single"}
-            @change=${() => this.setRangeType("single")}
-          />
-          Single Commit
-        </label>
+      <div class="commits-header">
+        <button
+          class="commits-toggle"
+          @click="${this.toggleCommitsExpansion}"
+          title="${this.commitsExpanded ? 'Hide' : 'Show'} commit range selection"
+        >
+          ${this.commitsExpanded ? '▼' : '▶'} Commits
+        </button>
+        <div class="commits-summary">
+          ${this.getCommitSummary()}
+        </div>
       </div>
-
-      <div class="commit-selectors">
-        ${this.rangeType === "range"
-          ? this.renderRangeSelectors()
-          : this.renderSingleSelector()}
-      </div>
-
-      <button
-        class="refresh-button"
-        @click="${this.handleRefresh}"
-        ?disabled="${this.loading}"
-        title="Refresh commit list"
-      >
-        🔄 Refresh
-      </button>
+      
+      ${this.commitsExpanded
+        ? html`
+            <div class="commit-selectors">
+              ${this.renderRangeSelectors()}
+            </div>
+          `
+        : ''}
     `;
   }
 
@@ -295,29 +268,7 @@ export class SketchDiffRangePicker extends LitElement {
     `;
   }
 
-  renderSingleSelector() {
-    return html`
-      <div class="commit-selector">
-        <label for="singleCommit">Commit:</label>
-        <select
-          id="singleCommit"
-          .value=${this.singleCommit}
-          @change=${this.handleSingleChange}
-        >
-          ${this.commits.map(
-            (commit) => html`
-              <option
-                value=${commit.hash}
-                ?selected=${commit.hash === this.singleCommit}
-              >
-                ${this.formatCommitOption(commit)}
-              </option>
-            `,
-          )}
-        </select>
-      </div>
-    `;
-  }
+
 
   /**
    * Format a commit for display in the dropdown
@@ -397,9 +348,6 @@ export class SketchDiffRangePicker extends LitElement {
           : this.commits[this.commits.length - 1].hash;
         // Default to Uncommitted Changes by setting toCommit to empty string
         this.toCommit = ""; // Empty string represents uncommitted changes
-
-        // For single, default to HEAD
-        this.singleCommit = this.commits[0].hash;
       }
 
       // Always dispatch range event to ensure diff view is updated
@@ -412,41 +360,7 @@ export class SketchDiffRangePicker extends LitElement {
     }
   }
 
-  /**
-   * Handle range type change
-   */
-  setRangeType(type: "range" | "single") {
-    this.rangeType = type;
 
-    // If switching to range mode and we don't have valid commits set,
-    // initialize with sensible defaults
-    if (
-      type === "range" &&
-      (!this.fromCommit || !this.toCommit === undefined)
-    ) {
-      if (this.commits.length > 0) {
-        const baseCommit = this.commits.find(
-          (c) => c.refs && c.refs.some((ref) => ref.includes("sketch-base")),
-        );
-        if (!this.fromCommit) {
-          this.fromCommit = baseCommit
-            ? baseCommit.hash
-            : this.commits[this.commits.length - 1].hash;
-        }
-        if (this.toCommit === undefined) {
-          this.toCommit = ""; // Default to uncommitted changes
-        }
-      }
-    }
-
-    // If switching to single mode and we don't have a valid commit set,
-    // initialize with HEAD
-    if (type === "single" && !this.singleCommit && this.commits.length > 0) {
-      this.singleCommit = this.commits[0].hash;
-    }
-
-    this.dispatchRangeEvent();
-  }
 
   /**
    * Handle From commit change
@@ -467,20 +381,29 @@ export class SketchDiffRangePicker extends LitElement {
   }
 
   /**
-   * Handle Single commit change
+   * Toggle the expansion of commit selectors
    */
-  handleSingleChange(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    this.singleCommit = select.value;
-    this.dispatchRangeEvent();
+  toggleCommitsExpansion() {
+    this.commitsExpanded = !this.commitsExpanded;
   }
 
   /**
-   * Handle refresh button click
+   * Get a summary of the current commit range for display
    */
-  handleRefresh() {
-    this.loadCommits();
+  getCommitSummary(): string {
+    if (!this.fromCommit && !this.toCommit) {
+      return 'No commits selected';
+    }
+
+    const fromShort = this.fromCommit ? this.fromCommit.substring(0, 7) : '';
+    const toShort = this.toCommit ? this.toCommit.substring(0, 7) : 'Uncommitted';
+    
+    return `${fromShort}..${toShort}`;
   }
+
+
+
+
 
   /**
    * Validate that a commit hash exists in the loaded commits
@@ -496,10 +419,7 @@ export class SketchDiffRangePicker extends LitElement {
    * Dispatch range change event and update URL parameters
    */
   dispatchRangeEvent() {
-    const range: DiffRange =
-      this.rangeType === "range"
-        ? { type: "range", from: this.fromCommit, to: this.toCommit }
-        : { type: "single", commit: this.singleCommit };
+    const range: DiffRange = { type: "range", from: this.fromCommit, to: this.toCommit };
 
     // Update URL parameters
     this.updateUrlParams(range);
@@ -524,20 +444,13 @@ export class SketchDiffRangePicker extends LitElement {
     url.searchParams.delete("to");
     url.searchParams.delete("commit");
 
-    if (range.type === "range") {
-      // Add from parameter if not empty
-      if (range.from && range.from.trim() !== "") {
-        url.searchParams.set("from", range.from);
-      }
-      // Add to parameter if not empty (empty string means uncommitted changes)
-      if (range.to && range.to.trim() !== "") {
-        url.searchParams.set("to", range.to);
-      }
-    } else {
-      // Single commit mode
-      if (range.commit && range.commit.trim() !== "") {
-        url.searchParams.set("commit", range.commit);
-      }
+    // Add from parameter if not empty
+    if (range.from && range.from.trim() !== "") {
+      url.searchParams.set("from", range.from);
+    }
+    // Add to parameter if not empty (empty string means uncommitted changes)
+    if (range.to && range.to.trim() !== "") {
+      url.searchParams.set("to", range.to);
     }
 
     // Update the browser history without reloading the page
@@ -551,18 +464,9 @@ export class SketchDiffRangePicker extends LitElement {
     const url = new URL(window.location.href);
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
-    const commitParam = url.searchParams.get("commit");
 
-    // If commit parameter is present, switch to single commit mode
-    if (commitParam) {
-      this.rangeType = "single";
-      this.singleCommit = commitParam;
-      return true; // Indicate that we initialized from URL
-    }
-
-    // If from or to parameters are present, use range mode
+    // If from or to parameters are present, use them
     if (fromParam || toParam) {
-      this.rangeType = "range";
       if (fromParam) {
         this.fromCommit = fromParam;
       }
