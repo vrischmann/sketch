@@ -191,7 +191,7 @@ export class SketchDiff2View extends LitElement {
 
     sketch-diff-range-picker {
       flex: 1;
-      min-width: 0;
+      min-width: 400px; /* Ensure minimum width for range picker */
     }
 
     sketch-diff-file-picker {
@@ -362,6 +362,7 @@ export class SketchDiff2View extends LitElement {
       border: 1px solid var(--border-color, #e0e0e0);
       white-space: nowrap;
       flex-shrink: 0;
+      min-width: 120px; /* Ensure minimum width for file count */
     }
 
     .loading,
@@ -406,8 +407,8 @@ export class SketchDiff2View extends LitElement {
     super();
     console.log("SketchDiff2View initialized");
 
-    // Fix for monaco-aria-container positioning
-    // Add a global style to ensure proper positioning of aria containers
+    // Fix for monaco-aria-container positioning and hide scrollbars globally
+    // Add a global style to ensure proper positioning of aria containers and hide scrollbars
     const styleElement = document.createElement("style");
     styleElement.textContent = `
       .monaco-aria-container {
@@ -423,6 +424,52 @@ export class SketchDiff2View extends LitElement {
         padding: 0 !important;
         border: 0 !important;
         z-index: -1 !important;
+      }
+      
+      /* Aggressively hide all Monaco scrollbar elements */
+      .monaco-editor .scrollbar,
+      .monaco-editor .scroll-decoration,
+      .monaco-editor .invisible.scrollbar,
+      .monaco-editor .slider,
+      .monaco-editor .vertical.scrollbar,
+      .monaco-editor .horizontal.scrollbar,
+      .monaco-diff-editor .scrollbar,
+      .monaco-diff-editor .scroll-decoration,
+      .monaco-diff-editor .invisible.scrollbar,
+      .monaco-diff-editor .slider,
+      .monaco-diff-editor .vertical.scrollbar,
+      .monaco-diff-editor .horizontal.scrollbar {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        opacity: 0 !important;
+      }
+      
+      /* Target the specific scrollbar classes that Monaco uses */
+      .monaco-scrollable-element > .scrollbar,
+      .monaco-scrollable-element > .scroll-decoration,
+      .monaco-scrollable-element .slider {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+      
+      /* Remove scrollbar space/padding from content area */
+      .monaco-editor .monaco-scrollable-element,
+      .monaco-diff-editor .monaco-scrollable-element {
+        padding-right: 0 !important;
+        padding-bottom: 0 !important;
+        margin-right: 0 !important;
+        margin-bottom: 0 !important;
+      }
+      
+      /* Ensure the diff content takes full width without scrollbar space */
+      .monaco-diff-editor .editor.modified,
+      .monaco-diff-editor .editor.original {
+        margin-right: 0 !important;
+        padding-right: 0 !important;
       }
     `;
     document.head.appendChild(styleElement);

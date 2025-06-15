@@ -40,6 +40,26 @@ const monacoStyles = `
   .monaco-editor .margin {
     background-color: var(--monaco-editor-margin, #f5f5f5) !important;
   }
+  
+  /* Hide all scrollbars completely */
+  .monaco-editor .scrollbar,
+  .monaco-editor .scroll-decoration,
+  .monaco-editor .invisible.scrollbar,
+  .monaco-editor .slider,
+  .monaco-editor .vertical.scrollbar,
+  .monaco-editor .horizontal.scrollbar {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  
+  /* Ensure content area takes full width/height without scrollbar space */
+  .monaco-editor .monaco-scrollable-element {
+    /* Remove any padding/margin that might be reserved for scrollbars */
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
+  }
 `;
 
 // Configure Monaco to use local workers with correct relative paths
@@ -636,6 +656,11 @@ export class CodeDiffEditor extends LitElement {
             vertical: "hidden",
             horizontal: "hidden",
             handleMouseWheel: false, // Let outer scroller eat the wheel
+            useShadows: false, // Disable scrollbar shadows
+            verticalHasArrows: false, // Remove scrollbar arrows
+            horizontalHasArrows: false, // Remove scrollbar arrows
+            verticalScrollbarSize: 0, // Set scrollbar track width to 0
+            horizontalScrollbarSize: 0, // Set scrollbar track height to 0
           },
           minimap: { enabled: false },
           overviewRulerLanes: 0,
@@ -1190,10 +1215,46 @@ export class CodeDiffEditor extends LitElement {
 
   private fitEditorToContent: (() => void) | null = null;
 
+  /**
+   * Set up window resize handler to ensure Monaco editor adapts to browser window changes
+   */
+  private setupWindowResizeHandler() {
+    // Create a debounced resize handler to avoid too many layout calls
+    let resizeTimeout: number | null = null;
+    
+    this._windowResizeHandler = () => {
+      // Clear any existing timeout
+      if (resizeTimeout) {
+        window.clearTimeout(resizeTimeout);
+      }
+      
+      // Debounce the resize to avoid excessive layout calls
+      resizeTimeout = window.setTimeout(() => {
+        if (this.editor && this.container.value) {
+          // Trigger layout recalculation
+          if (this.fitEditorToContent) {
+            this.fitEditorToContent();
+          } else {
+            // Fallback: just trigger a layout with current container dimensions
+            const width = this.container.value.offsetWidth;
+            const height = this.container.value.offsetHeight;
+            this.editor.layout({ width, height });
+          }
+        }
+      }, 100); // 100ms debounce
+    };
+    
+    // Add the event listener
+    window.addEventListener('resize', this._windowResizeHandler);
+  }
+
   // Add resize observer to ensure editor resizes when container changes
   firstUpdated() {
     // Initialize the editor
     this.initializeEditor();
+
+    // Set up window resize handler to ensure Monaco editor adapts to browser window changes
+    this.setupWindowResizeHandler();
 
     // For multi-file diff, we don't use ResizeObserver since we control the size
     // Instead, we rely on auto-sizing based on content
@@ -1208,6 +1269,7 @@ export class CodeDiffEditor extends LitElement {
   }
 
   private _resizeObserver: ResizeObserver | null = null;
+  private _windowResizeHandler: (() => void) | null = null;
 
   /**
    * Add this Monaco editor instance to the global debug object
@@ -1298,6 +1360,12 @@ export class CodeDiffEditor extends LitElement {
       if (this._documentClickHandler) {
         document.removeEventListener("click", this._documentClickHandler);
         this._documentClickHandler = null;
+      }
+      
+      // Remove window resize handler if set
+      if (this._windowResizeHandler) {
+        window.removeEventListener('resize', this._windowResizeHandler);
+        this._windowResizeHandler = null;
       }
     } catch (error) {
       console.error("Error in disconnectedCallback:", error);
