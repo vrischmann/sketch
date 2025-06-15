@@ -1222,13 +1222,13 @@ export class CodeDiffEditor extends LitElement {
   private setupWindowResizeHandler() {
     // Create a debounced resize handler to avoid too many layout calls
     let resizeTimeout: number | null = null;
-    
+
     this._windowResizeHandler = () => {
       // Clear any existing timeout
       if (resizeTimeout) {
         window.clearTimeout(resizeTimeout);
       }
-      
+
       // Debounce the resize to avoid excessive layout calls
       resizeTimeout = window.setTimeout(() => {
         if (this.editor && this.container.value) {
@@ -1244,9 +1244,9 @@ export class CodeDiffEditor extends LitElement {
         }
       }, 100); // 100ms debounce
     };
-    
+
     // Add the event listener
-    window.addEventListener('resize', this._windowResizeHandler);
+    window.addEventListener("resize", this._windowResizeHandler);
   }
 
   // Add resize observer to ensure editor resizes when container changes
@@ -1362,10 +1362,10 @@ export class CodeDiffEditor extends LitElement {
         document.removeEventListener("click", this._documentClickHandler);
         this._documentClickHandler = null;
       }
-      
+
       // Remove window resize handler if set
       if (this._windowResizeHandler) {
-        window.removeEventListener('resize', this._windowResizeHandler);
+        window.removeEventListener("resize", this._windowResizeHandler);
         this._windowResizeHandler = null;
       }
     } catch (error) {
