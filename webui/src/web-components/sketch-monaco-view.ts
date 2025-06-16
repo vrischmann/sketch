@@ -31,22 +31,22 @@ function loadMonaco(): Promise<typeof monaco> {
   monacoLoadPromise = new Promise((resolve, reject) => {
     // Get the Monaco hash from build-time constant
     const monacoHash = __MONACO_HASH__;
-    
+
     // Try to load the external Monaco bundle
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.onload = () => {
       // The Monaco bundle should set window.monaco
       if (window.monaco) {
         resolve(window.monaco);
       } else {
-        reject(new Error('Monaco not loaded from external bundle'));
+        reject(new Error("Monaco not loaded from external bundle"));
       }
     };
     script.onerror = (error) => {
-      console.warn('Failed to load external Monaco bundle:', error);
-      reject(new Error('Monaco external bundle failed to load'));
+      console.warn("Failed to load external Monaco bundle:", error);
+      reject(new Error("Monaco external bundle failed to load"));
     };
-    
+
     // Don't set type="module" since we're using IIFE format
     script.src = `./static/monaco-standalone-${monacoHash}.js`;
     document.head.appendChild(script);
@@ -223,7 +223,7 @@ export class CodeDiffEditor extends LitElement {
 
     const monaco = window.monaco;
     if (!monaco) return;
-    
+
     modifiedEditor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => {
@@ -686,7 +686,7 @@ export class CodeDiffEditor extends LitElement {
     try {
       // Load Monaco dynamically
       const monaco = await loadMonaco();
-      
+
       // Disable semantic validation globally for TypeScript/JavaScript if available
       if (monaco.languages && monaco.languages.typescript) {
         monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
