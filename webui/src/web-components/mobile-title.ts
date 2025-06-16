@@ -13,6 +13,12 @@ export class MobileTitle extends LitElement {
   @property({ type: String })
   skabandAddr?: string;
 
+  @property({ type: String })
+  currentView: "chat" | "diff" = "chat";
+
+  @property({ type: String })
+  slug: string = "";
+
   static styles = css`
     :host {
       display: block;
@@ -23,8 +29,43 @@ export class MobileTitle extends LitElement {
 
     .title-container {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
+    }
+
+    .title-section {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .right-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .view-selector {
+      background: none;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #495057;
+      min-width: 60px;
+    }
+
+    .view-selector:hover {
+      background-color: #f8f9fa;
+      border-color: #dee2e6;
+    }
+
+    .view-selector:focus {
+      outline: none;
+      border-color: #007acc;
+      box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
     }
 
     .title {
@@ -33,6 +74,8 @@ export class MobileTitle extends LitElement {
       color: #212529;
       margin: 0;
     }
+
+
 
     .title a {
       color: inherit;
@@ -147,23 +190,47 @@ export class MobileTitle extends LitElement {
     }
   }
 
+  private handleViewChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const view = select.value as "chat" | "diff";
+    if (view !== this.currentView) {
+      const changeEvent = new CustomEvent("view-change", {
+        detail: { view },
+        bubbles: true,
+        composed: true,
+      });
+      this.dispatchEvent(changeEvent);
+    }
+  }
+
   render() {
     return html`
       <div class="title-container">
-        <h1 class="title">
-          ${this.skabandAddr
-            ? html`<a
-                href="${this.skabandAddr}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img src="${this.skabandAddr}/sketch.dev.png" alt="sketch" />
-                Sketch
-              </a>`
-            : html`Sketch`}
-        </h1>
+        <div class="title-section">
+          <h1 class="title">
+            ${this.skabandAddr
+              ? html`<a
+                  href="${this.skabandAddr}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img src="${this.skabandAddr}/sketch.dev.png" alt="sketch" />
+                  ${this.slug || "Sketch"}
+                </a>`
+              : html`${this.slug || "Sketch"}`}
+          </h1>
+        </div>
 
-        <div class="status-indicator">
+        <div class="right-section">
+          <select
+            class="view-selector"
+            .value=${this.currentView}
+            @change=${this.handleViewChange}
+          >
+            <option value="chat">Chat</option>
+            <option value="diff">Diff</option>
+          </select>
+
           ${this.isThinking
             ? html`
                 <div class="thinking-indicator">
@@ -177,7 +244,6 @@ export class MobileTitle extends LitElement {
               `
             : html`
                 <span class="status-dot ${this.connectionStatus}"></span>
-                <span>${this.getStatusText()}</span>
               `}
         </div>
       </div>

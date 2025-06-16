@@ -7,6 +7,7 @@ import { aggregateAgentMessages } from "./aggregateAgentMessages";
 import "./mobile-title";
 import "./mobile-chat";
 import "./mobile-chat-input";
+import "./mobile-diff";
 
 @customElement("mobile-shell")
 export class MobileShell extends LitElement {
@@ -20,6 +21,9 @@ export class MobileShell extends LitElement {
 
   @state()
   connectionStatus: ConnectionStatus = "disconnected";
+
+  @state()
+  currentView: "chat" | "diff" = "chat";
 
   static styles = css`
     :host {
@@ -54,10 +58,19 @@ export class MobileShell extends LitElement {
     mobile-chat {
       flex: 1;
       overflow: hidden;
+      min-height: 0;
+    }
+
+    mobile-diff {
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
     }
 
     mobile-chat-input {
       flex-shrink: 0;
+      /* Ensure proper height calculation */
+      min-height: 64px;
     }
   `;
 
@@ -141,6 +154,10 @@ export class MobileShell extends LitElement {
     }
   };
 
+  private handleViewChange = (event: CustomEvent<{ view: "chat" | "diff" }>) => {
+    this.currentView = event.detail.view;
+  };
+
   render() {
     const isThinking =
       this.state?.outstanding_llm_calls > 0 ||
@@ -152,12 +169,21 @@ export class MobileShell extends LitElement {
           .connectionStatus=${this.connectionStatus}
           .isThinking=${isThinking}
           .skabandAddr=${this.state?.skaband_addr}
+          .currentView=${this.currentView}
+          .slug=${this.state?.slug || ""}
+          @view-change=${this.handleViewChange}
         ></mobile-title>
 
-        <mobile-chat
-          .messages=${this.messages}
-          .isThinking=${isThinking}
-        ></mobile-chat>
+        ${this.currentView === "chat"
+          ? html`
+              <mobile-chat
+                .messages=${this.messages}
+                .isThinking=${isThinking}
+              ></mobile-chat>
+            `
+          : html`
+              <mobile-diff></mobile-diff>
+            `}
 
         <mobile-chat-input
           .disabled=${this.connectionStatus !== "connected"}
