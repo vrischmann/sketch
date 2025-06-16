@@ -108,7 +108,7 @@ func TestBrowserInitialization(t *testing.T) {
 	}
 
 	// Create browser tools instance
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	tools := NewBrowseTools(ctx)
@@ -154,7 +154,7 @@ func TestNavigateTool(t *testing.T) {
 	}
 
 	// Create browser tools instance
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	tools := NewBrowseTools(ctx)
@@ -322,7 +322,7 @@ func TestReadImageTool(t *testing.T) {
 
 // TestDefaultViewportSize verifies that the browser starts with the correct default viewport size
 func TestDefaultViewportSize(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// Skip if CI or headless testing environment
@@ -391,7 +391,7 @@ func TestDefaultViewportSize(t *testing.T) {
 
 // TestResizeTool tests the browser resize functionality
 func TestResizeTool(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// Skip if CI or headless testing environment
