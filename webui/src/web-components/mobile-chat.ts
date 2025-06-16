@@ -241,6 +241,53 @@ export class MobileChat extends LitElement {
     .markdown-content i {
       font-style: italic;
     }
+
+    /* Tool calls styling for mobile */
+    .tool-calls {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tool-call-item {
+      background-color: rgba(0, 0, 0, 0.04);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-family: monospace;
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tool-status-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .tool-name {
+      font-weight: bold;
+      color: #333;
+      flex-shrink: 0;
+      margin-right: 2px;
+    }
+
+    .tool-summary {
+      color: #555;
+      flex-grow: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tool-duration {
+      font-size: 10px;
+      color: #888;
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
   `;
 
   updated(changedProperties: Map<string, any>) {
@@ -359,6 +406,116 @@ export class MobileChat extends LitElement {
     }
   }
 
+  private renderToolCalls(message: AgentMessage) {
+    if (!message.tool_calls || message.tool_calls.length === 0) {
+      return "";
+    }
+
+    return html`
+      <div class="tool-calls">
+        ${message.tool_calls.map((toolCall) => {
+          const statusIcon = this.getToolStatusIcon(toolCall);
+          const summary = this.getToolSummary(toolCall);
+          const duration = this.getToolDuration(toolCall);
+
+          return html`
+            <div class="tool-call-item ${toolCall.name}">
+              <span class="tool-name">${toolCall.name}</span>
+              <span class="tool-summary">${summary}</span>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
+  private getToolStatusIcon(toolCall: any): string {
+    // Don't show status icons for mobile
+    return "";
+  }
+
+  private getToolSummary(toolCall: any): string {
+    try {
+      const input = JSON.parse(toolCall.input || "{}");
+
+      switch (toolCall.name) {
+        case "bash":
+          const command = input.command || "";
+          const isBackground = input.background === true;
+          const bgPrefix = isBackground ? "[bg] " : "";
+          return (
+            bgPrefix +
+            (command.length > 40 ? command.substring(0, 40) + "..." : command)
+          );
+
+        case "patch":
+          const path = input.path || "unknown";
+          const patchCount = (input.patches || []).length;
+          return `${path}: ${patchCount} edit${patchCount > 1 ? "s" : ""}`;
+
+        case "think":
+          const thoughts = input.thoughts || "";
+          const firstLine = thoughts.split("\n")[0] || "";
+          return firstLine.length > 50
+            ? firstLine.substring(0, 50) + "..."
+            : firstLine;
+
+        case "keyword_search":
+          const query = input.query || "";
+          return query.length > 50 ? query.substring(0, 50) + "..." : query;
+
+        case "browser_navigate":
+          return input.url || "";
+
+        case "browser_take_screenshot":
+          return "Taking screenshot";
+
+        case "browser_click":
+          return `Click: ${input.selector || ""}`;
+
+        case "browser_type":
+          const text = input.text || "";
+          return `Type: ${text.length > 30 ? text.substring(0, 30) + "..." : text}`;
+
+        case "todo_write":
+          const tasks = input.tasks || [];
+          return `${tasks.length} task${tasks.length > 1 ? "s" : ""}`;
+
+        case "todo_read":
+          return "Read todo list";
+
+        case "set-slug":
+          return `Slug: "${input.slug || ""}"`;
+
+        case "multiplechoice":
+          const question = input.question || "Multiple choice question";
+          const options = input.responseOptions || [];
+          if (options.length > 0) {
+            const optionsList = options.map((opt) => opt.caption).join(", ");
+            return `${question} [${optionsList}]`;
+          }
+          return question;
+
+        case "done":
+          return "Task completion checklist";
+
+        default:
+          // For unknown tools, show first part of input
+          const inputStr = JSON.stringify(input);
+          return inputStr.length > 50
+            ? inputStr.substring(0, 50) + "..."
+            : inputStr;
+      }
+    } catch (e) {
+      return "Tool call";
+    }
+  }
+
+  private getToolDuration(toolCall: any): string {
+    // Don't show duration for mobile
+    return "";
+  }
+
   render() {
     const displayMessages = this.messages.filter((msg) =>
       this.shouldShowMessage(msg),
@@ -383,6 +540,7 @@ export class MobileChat extends LitElement {
                           ${unsafeHTML(this.renderMarkdown(text))}
                         </div>`
                       : text}
+                    ${this.renderToolCalls(message)}
                   </div>
                 </div>
               `;
