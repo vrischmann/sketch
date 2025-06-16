@@ -195,6 +195,12 @@ export class SketchDiff2View extends LitElement {
       gap: 12px;
     }
 
+    .file-selector-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .file-selector {
       min-width: 200px;
       padding: 8px 12px;
@@ -231,24 +237,26 @@ export class SketchDiff2View extends LitElement {
       flex: 1;
     }
 
-    .view-toggle-button {
-      background-color: #f0f0f0;
-      border: 1px solid #ccc;
+    .view-toggle-button,
+    .header-expand-button {
+      background-color: transparent;
+      border: 1px solid var(--border-color, #e0e0e0);
       border-radius: 4px;
-      padding: 8px;
-      font-size: 16px;
+      padding: 6px 8px;
+      font-size: 14px;
       cursor: pointer;
       white-space: nowrap;
       transition: background-color 0.2s;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 36px;
-      min-height: 36px;
+      min-width: 32px;
+      min-height: 32px;
     }
 
-    .view-toggle-button:hover {
-      background-color: #e0e0e0;
+    .view-toggle-button:hover,
+    .header-expand-button:hover {
+      background-color: var(--background-hover, #e8e8e8);
     }
 
     .diff-container {
@@ -558,12 +566,12 @@ export class SketchDiff2View extends LitElement {
       <div class="controls">
         <div class="controls-container">
           <div class="range-row">
-            ${this.renderFileSelector()}
-            <div class="spacer"></div>
             <sketch-diff-range-picker
               .gitService="${this.gitService}"
               @range-change="${this.handleRangeChange}"
             ></sketch-diff-range-picker>
+            <div class="spacer"></div>
+            ${this.renderFileSelector()}
           </div>
         </div>
       </div>
@@ -578,21 +586,24 @@ export class SketchDiff2View extends LitElement {
     const fileCount = this.files.length;
 
     return html`
-      <select
-        class="file-selector"
-        .value="${this.selectedFile}"
-        @change="${this.handleFileSelection}"
-        ?disabled="${fileCount === 0}"
-      >
-        <option value="">All files (${fileCount})</option>
-        ${this.files.map(
-          (file) => html`
-            <option value="${file.path}">
-              ${this.getFileDisplayName(file)}
-            </option>
-          `,
-        )}
-      </select>
+      <div class="file-selector-container">
+        <select
+          class="file-selector"
+          .value="${this.selectedFile}"
+          @change="${this.handleFileSelection}"
+          ?disabled="${fileCount === 0}"
+        >
+          <option value="">All files (${fileCount})</option>
+          ${this.files.map(
+            (file) => html`
+              <option value="${file.path}">
+                ${this.getFileDisplayName(file)}
+              </option>
+            `,
+          )}
+        </select>
+        ${this.selectedFile ? this.renderSingleFileExpandButton() : ""}
+      </div>
     `;
   }
 
@@ -1003,6 +1014,27 @@ export class SketchDiff2View extends LitElement {
     const status = this.getFileStatusText(file.status);
     const pathInfo = this.getPathInfo(file);
     return `${status}: ${pathInfo}`;
+  }
+
+  /**
+   * Render expand/collapse button for single file view in header
+   */
+  renderSingleFileExpandButton() {
+    if (!this.selectedFile) return "";
+
+    const isExpanded = this.fileExpandStates.get(this.selectedFile) ?? false;
+
+    return html`
+      <button
+        class="header-expand-button"
+        @click="${() => this.toggleFileExpansion(this.selectedFile)}"
+        title="${isExpanded
+          ? "Collapse: Hide unchanged regions to focus on changes"
+          : "Expand: Show all lines including unchanged regions"}"
+      >
+        ${isExpanded ? this.renderCollapseIcon() : this.renderExpandAllIcon()}
+      </button>
+    `;
   }
 
   /**

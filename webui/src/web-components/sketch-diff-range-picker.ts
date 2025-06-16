@@ -25,8 +25,7 @@ export class SketchDiffRangePicker extends LitElement {
   @state()
   private toCommit: string = "";
 
-  @state()
-  private commitsExpanded: boolean = false;
+  // Removed commitsExpanded state - always expanded now
 
   @state()
   private loading: boolean = true;
@@ -58,30 +57,7 @@ export class SketchDiffRangePicker extends LitElement {
       box-sizing: border-box;
     }
 
-    .commits-header {
-      display: flex;
-      align-items: center;
-      width: 100%;
-    }
-
-    .commits-toggle {
-      background-color: transparent;
-      border: 1px solid var(--border-color, #e0e0e0);
-      border-radius: 4px;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: background-color 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-color, #333);
-    }
-
-    .commits-toggle:hover {
-      background-color: var(--background-hover, #e8e8e8);
-    }
+    /* Removed commits-header and commits-label styles - no longer needed */
 
     .commit-selectors {
       display: flex;
@@ -184,23 +160,7 @@ export class SketchDiffRangePicker extends LitElement {
 
   renderRangePicker() {
     return html`
-      <div class="commits-header">
-        <button
-          class="commits-toggle"
-          @click="${this.toggleCommitsExpansion}"
-          title="${this.commitsExpanded
-            ? "Hide"
-            : "Show"} commit range selection"
-        >
-          ${this.commitsExpanded ? "▼" : "▶"} Commits
-        </button>
-      </div>
-
-      ${this.commitsExpanded
-        ? html`
-            <div class="commit-selectors">${this.renderRangeSelectors()}</div>
-          `
-        : ""}
+      <div class="commit-selectors">${this.renderRangeSelectors()}</div>
     `;
   }
 
@@ -358,12 +318,7 @@ export class SketchDiffRangePicker extends LitElement {
     this.dispatchRangeEvent();
   }
 
-  /**
-   * Toggle the expansion of commit selectors
-   */
-  toggleCommitsExpansion() {
-    this.commitsExpanded = !this.commitsExpanded;
-  }
+  // Removed toggleCommitsExpansion method - always expanded now
 
   /**
    * Get a summary of the current commit range for display
