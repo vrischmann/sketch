@@ -13,7 +13,7 @@ docker ps --format "{{.Names}}|{{.Ports}}" | \
     name=$(docker ps --filter "publish=$port" --format "{{.Names}}")
     
     # Get sketch title from its state endpoint
-    title=$(curl -s "http://localhost:$port/state" | jq -r '.title // "N/A"')
+    title=$(curl -s "http://localhost:$port/state" | jq -r '.slug // "N/A"')
     
     # Format and print the result
     printf "%-30s http://localhost:%d/   %s\n" "$name" "$port" "$title"
