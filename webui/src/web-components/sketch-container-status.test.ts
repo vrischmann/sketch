@@ -27,6 +27,8 @@ const mockCompleteState: State = {
   ssh_available: false,
   in_container: true,
   first_message_index: 0,
+  diff_lines_added: 15,
+  diff_lines_removed: 3,
 };
 
 test("render props", async ({ mount }) => {

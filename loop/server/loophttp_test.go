@@ -262,6 +262,7 @@ func (m *mockAgent) IncrementRetryNumber() {
 func (m *mockAgent) GetPortMonitor() *loop.PortMonitor { return loop.NewPortMonitor() }
 func (m *mockAgent) SkabandAddr() string               { return m.skabandAddr }
 func (m *mockAgent) LinkToGitHub() bool                { return false }
+func (m *mockAgent) DiffStats() (int, int)             { return 0, 0 }
 
 // TestSSEStream tests the SSE stream endpoint
 func TestSSEStream(t *testing.T) {

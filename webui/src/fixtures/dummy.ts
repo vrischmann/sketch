@@ -376,4 +376,6 @@ export const initialState: State = {
   in_container: true,
   first_message_index: 0,
   agent_state: "WaitingForUserInput",
+  diff_lines_added: 42,
+  diff_lines_removed: 7,
 };

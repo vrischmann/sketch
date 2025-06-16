@@ -91,6 +91,8 @@ export interface State {
 	skaband_addr?: string;
 	link_to_github?: boolean;
 	ssh_connection_string?: string;
+	diff_lines_added: number;
+	diff_lines_removed: number;
 }
 
 export interface TodoItem {

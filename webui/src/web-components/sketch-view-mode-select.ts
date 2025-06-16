@@ -7,6 +7,14 @@ export class SketchViewModeSelect extends LitElement {
   // Current active mode
   @property()
   activeMode: "chat" | "diff2" | "terminal" = "chat";
+
+  // Diff stats
+  @property({ type: Number })
+  diffLinesAdded: number = 0;
+
+  @property({ type: Number })
+  diffLinesRemoved: number = 0;
+
   // Header bar: view mode buttons
 
   static styles = css`
@@ -36,13 +44,32 @@ export class SketchViewModeSelect extends LitElement {
     }
 
     @media (max-width: 1400px) {
-      .tab-btn span:not(.tab-icon) {
+      .tab-btn span:not(.tab-icon):not(.diff-stats) {
         display: none;
       }
 
       .tab-btn {
         padding: 8px 10px;
       }
+
+      /* Always show diff stats */
+      .diff-stats {
+        display: inline !important;
+        font-size: 11px;
+        margin-left: 2px;
+      }
+    }
+
+    /* Style for diff stats */
+    .diff-stats {
+      font-size: 11px;
+      margin-left: 4px;
+      color: inherit;
+      opacity: 0.8;
+    }
+
+    .tab-btn.active .diff-stats {
+      opacity: 1;
     }
 
     .tab-btn:not(:last-child) {
@@ -133,11 +160,19 @@ export class SketchViewModeSelect extends LitElement {
         <button
           id="showDiff2Button"
           class="tab-btn ${this.activeMode === "diff2" ? "active" : ""}"
-          title="Diff View"
+          title="Diff View - ${this.diffLinesAdded > 0 ||
+          this.diffLinesRemoved > 0
+            ? `+${this.diffLinesAdded} -${this.diffLinesRemoved}`
+            : "No changes"}"
           @click=${() => this._handleViewModeClick("diff2")}
         >
           <span class="tab-icon">±</span>
-          <span>Diff</span>
+          <span class="diff-text">Diff</span>
+          ${this.diffLinesAdded > 0 || this.diffLinesRemoved > 0
+            ? html`<span class="diff-stats"
+                >+${this.diffLinesAdded} -${this.diffLinesRemoved}</span
+              >`
+            : ""}
         </button>
 
         <button

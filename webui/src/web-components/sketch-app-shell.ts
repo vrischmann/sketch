@@ -531,6 +531,8 @@ export class SketchAppShell extends LitElement {
     ssh_error: "",
     in_container: false,
     first_message_index: 0,
+    diff_lines_added: 0,
+    diff_lines_removed: 0,
   };
 
   // Mutation observer to detect when new messages are added
@@ -1238,7 +1240,10 @@ export class SketchAppShell extends LitElement {
         <!-- Last Commit section moved to sketch-container-status -->
 
         <!-- Views section with tabs -->
-        <sketch-view-mode-select></sketch-view-mode-select>
+        <sketch-view-mode-select
+          .diffLinesAdded=${this.containerState?.diff_lines_added || 0}
+          .diffLinesRemoved=${this.containerState?.diff_lines_removed || 0}
+        ></sketch-view-mode-select>
 
         <div class="refresh-control">
           <button

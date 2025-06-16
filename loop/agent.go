@@ -130,6 +130,9 @@ type CodingAgent interface {
 	OutsideHostname() string
 	OutsideWorkingDir() string
 	GitOrigin() string
+
+	// DiffStats returns the number of lines added and removed from sketch-base to HEAD
+	DiffStats() (int, int)
 	// OpenBrowser is a best-effort attempt to open a browser at url in outside sketch.
 	OpenBrowser(url string)
 
@@ -334,6 +337,8 @@ type AgentGitState struct {
 	seenCommits   map[string]bool // Track git commits we've already seen (by hash)
 	slug          string          // Human-readable session identifier
 	retryNumber   int             // Number to append when branch conflicts occur
+	linesAdded    int             // Lines added from sketch-base to HEAD
+	linesRemoved  int             // Lines removed from sketch-base to HEAD
 }
 
 func (ags *AgentGitState) SetSlug(slug string) {
@@ -355,6 +360,12 @@ func (ags *AgentGitState) IncrementRetryNumber() {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
 	ags.retryNumber++
+}
+
+func (ags *AgentGitState) DiffStats() (int, int) {
+	ags.mu.Lock()
+	defer ags.mu.Unlock()
+	return ags.linesAdded, ags.linesRemoved
 }
 
 // HasSeenCommits returns true if any commits have been processed
@@ -704,6 +715,11 @@ func (a *Agent) OutsideWorkingDir() string {
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
 func (a *Agent) GitOrigin() string {
 	return a.gitOrigin
+}
+
+// DiffStats returns the number of lines added and removed from sketch-base to HEAD
+func (a *Agent) DiffStats() (int, int) {
+	return a.gitState.DiffStats()
 }
 
 func (a *Agent) OpenBrowser(url string) {
@@ -1903,6 +1919,16 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 		ags.lastSketch = sketch
 	}()
 
+	// Compute diff stats from baseRef to HEAD when HEAD changes
+	if added, removed, err := computeDiffStats(ctx, repoRoot, baseRef); err != nil {
+		// Log error but don't fail the entire operation
+		slog.WarnContext(ctx, "Failed to compute diff stats", "error", err)
+	} else {
+		// Set diff stats directly since we already hold the mutex
+		ags.linesAdded = added
+		ags.linesRemoved = removed
+	}
+
 	// Get new commits. Because it's possible that the agent does rebases, fixups, and
 	// so forth, we use, as our fixed point, the "initialCommit", and we limit ourselves
 	// to the last 100 commits.
@@ -2119,6 +2145,37 @@ func isValidGitSHA(sha string) bool {
 	}
 
 	return true
+}
+
+// computeDiffStats computes the number of lines added and removed from baseRef to HEAD
+func computeDiffStats(ctx context.Context, repoRoot, baseRef string) (int, int, error) {
+	cmd := exec.CommandContext(ctx, "git", "diff", "--numstat", baseRef, "HEAD")
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, fmt.Errorf("git diff --numstat failed: %w", err)
+	}
+
+	var totalAdded, totalRemoved int
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+		// Format: <added>\t<removed>\t<filename>
+		if added, err := strconv.Atoi(parts[0]); err == nil {
+			totalAdded += added
+		}
+		if removed, err := strconv.Atoi(parts[1]); err == nil {
+			totalRemoved += removed
+		}
+	}
+
+	return totalAdded, totalRemoved, nil
 }
 
 // getGitOrigin returns the URL of the git remote 'origin' if it exists

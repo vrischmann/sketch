@@ -99,6 +99,8 @@ type State struct {
 	SkabandAddr          string                        `json:"skaband_addr,omitempty"`          // URL of the skaband server
 	LinkToGitHub         bool                          `json:"link_to_github,omitempty"`        // Enable GitHub branch linking in UI
 	SSHConnectionString  string                        `json:"ssh_connection_string,omitempty"` // SSH connection string for container
+	DiffLinesAdded       int                           `json:"diff_lines_added"`                // Lines added from sketch-base to HEAD
+	DiffLinesRemoved     int                           `json:"diff_lines_removed"`              // Lines removed from sketch-base to HEAD
 }
 
 type InitRequest struct {
@@ -1279,6 +1281,9 @@ func (s *Server) getState() State {
 	serverMessageCount := s.agent.MessageCount()
 	totalUsage := s.agent.TotalUsage()
 
+	// Get diff stats
+	diffAdded, diffRemoved := s.agent.DiffStats()
+
 	return State{
 		StateVersion: 2,
 		MessageCount: serverMessageCount,
@@ -1310,6 +1315,8 @@ func (s *Server) getState() State {
 		SkabandAddr:          s.agent.SkabandAddr(),
 		LinkToGitHub:         s.agent.LinkToGitHub(),
 		SSHConnectionString:  s.agent.SSHConnectionString(),
+		DiffLinesAdded:       diffAdded,
+		DiffLinesRemoved:     diffRemoved,
 	}
 }
 
