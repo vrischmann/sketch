@@ -1988,7 +1988,7 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string
 		originalBranchName := ags.branchNameLocked(branchPrefix)
 		for retries := range 10 {
 			if retries > 0 {
-				ags.IncrementRetryNumber()
+				ags.retryNumber++
 			}
 
 			branch := ags.branchNameLocked(branchPrefix)
