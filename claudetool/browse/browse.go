@@ -79,11 +79,11 @@ func (b *BrowseTools) Initialize() error {
 		// in GitHub runner contexts. It's a mystery why the failure isn't clear when this fails.
 		opts = append(opts, chromedp.Flag("--disable-dbus", true))
 		// This can be pretty slow in tests
-		opts = append(opts, chromedp.WSURLReadTimeout(30*time.Second))
+		opts = append(opts, chromedp.WSURLReadTimeout(60*time.Second))
 		allocCtx, _ := chromedp.NewExecAllocator(b.ctx, opts...)
 		browserCtx, browserCancel := chromedp.NewContext(
 			allocCtx,
-			chromedp.WithLogf(log.Printf), chromedp.WithErrorf(log.Printf), chromedp.WithBrowserOption(chromedp.WithDialTimeout(30*time.Second)),
+			chromedp.WithLogf(log.Printf), chromedp.WithErrorf(log.Printf), chromedp.WithBrowserOption(chromedp.WithDialTimeout(60*time.Second)),
 		)
 
 		b.browserCtx = browserCtx
