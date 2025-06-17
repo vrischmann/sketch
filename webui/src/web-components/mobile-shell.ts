@@ -154,7 +154,9 @@ export class MobileShell extends LitElement {
     }
   };
 
-  private handleViewChange = (event: CustomEvent<{ view: "chat" | "diff" }>) => {
+  private handleViewChange = (
+    event: CustomEvent<{ view: "chat" | "diff" }>,
+  ) => {
     this.currentView = event.detail.view;
   };
 
@@ -181,9 +183,7 @@ export class MobileShell extends LitElement {
                 .isThinking=${isThinking}
               ></mobile-chat>
             `
-          : html`
-              <mobile-diff></mobile-diff>
-            `}
+          : html` <mobile-diff></mobile-diff> `}
 
         <mobile-chat-input
           .disabled=${this.connectionStatus !== "connected"}

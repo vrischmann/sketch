@@ -75,8 +75,6 @@ export class MobileTitle extends LitElement {
       margin: 0;
     }
 
-
-
     .title a {
       color: inherit;
       text-decoration: none;
@@ -242,9 +240,7 @@ export class MobileTitle extends LitElement {
                   </div>
                 </div>
               `
-            : html`
-                <span class="status-dot ${this.connectionStatus}"></span>
-              `}
+            : html` <span class="status-dot ${this.connectionStatus}"></span> `}
         </div>
       </div>
     `;

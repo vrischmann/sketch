@@ -1,6 +1,10 @@
 import { css, html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { GitDiffFile, GitDataService, DefaultGitDataService } from "./git-data-service";
+import {
+  GitDiffFile,
+  GitDataService,
+  DefaultGitDataService,
+} from "./git-data-service";
 import "./sketch-monaco-view";
 
 @customElement("mobile-diff")
@@ -11,7 +15,8 @@ export class MobileDiff extends LitElement {
   private files: GitDiffFile[] = [];
 
   @state()
-  private fileContents: Map<string, { original: string; modified: string }> = new Map();
+  private fileContents: Map<string, { original: string; modified: string }> =
+    new Map();
 
   @state()
   private loading: boolean = false;
@@ -34,8 +39,6 @@ export class MobileDiff extends LitElement {
       overflow: hidden;
       background-color: #ffffff;
     }
-
-
 
     .diff-container {
       flex: 1;
@@ -149,7 +152,7 @@ export class MobileDiff extends LitElement {
     try {
       // Get base commit reference
       this.baseCommit = await this.gitService.getBaseCommitRef();
-      
+
       // Get diff from base commit to untracked changes (empty string for working directory)
       this.files = await this.gitService.getDiff(this.baseCommit, "");
 
@@ -181,7 +184,9 @@ export class MobileDiff extends LitElement {
           // Load original content (from the base commit)
           if (file.status !== "A") {
             // For modified, renamed, or deleted files: load original content
-            originalCode = await this.gitService.getFileContent(file.old_hash || "");
+            originalCode = await this.gitService.getFileContent(
+              file.old_hash || "",
+            );
           }
 
           // Load modified content (from working directory)
@@ -191,9 +196,14 @@ export class MobileDiff extends LitElement {
           } else {
             // Added/modified/renamed: use working copy content
             try {
-              modifiedCode = await this.gitService.getWorkingCopyContent(file.path);
+              modifiedCode = await this.gitService.getWorkingCopyContent(
+                file.path,
+              );
             } catch (error) {
-              console.warn(`Could not get working copy for ${file.path}:`, error);
+              console.warn(
+                `Could not get working copy for ${file.path}:`,
+                error,
+              );
               modifiedCode = "";
             }
           }
@@ -343,7 +353,7 @@ export class MobileDiff extends LitElement {
   private renderFileDiff(file: GitDiffFile) {
     const content = this.fileContents.get(file.path);
     const isExpanded = this.fileExpandStates.get(file.path) ?? false;
-    
+
     if (!content) {
       return html`
         <div class="file-diff">
@@ -353,7 +363,11 @@ export class MobileDiff extends LitElement {
                 ${this.getFileStatusText(file.status)}
               </span>
               ${this.getPathInfo(file)}
-              ${this.getChangesInfo(file) ? html`<span class="file-changes">${this.getChangesInfo(file)}</span>` : ""}
+              ${this.getChangesInfo(file)
+                ? html`<span class="file-changes"
+                    >${this.getChangesInfo(file)}</span
+                  >`
+                : ""}
             </div>
             <button class="file-expand-button" disabled>
               ${this.renderExpandAllIcon()}
@@ -374,7 +388,11 @@ export class MobileDiff extends LitElement {
               ${this.getFileStatusText(file.status)}
             </span>
             ${this.getPathInfo(file)}
-            ${this.getChangesInfo(file) ? html`<span class="file-changes">${this.getChangesInfo(file)}</span>` : ""}
+            ${this.getChangesInfo(file)
+              ? html`<span class="file-changes"
+                  >${this.getChangesInfo(file)}</span
+                >`
+              : ""}
           </div>
           <button
             class="file-expand-button"
@@ -383,7 +401,9 @@ export class MobileDiff extends LitElement {
               ? "Collapse: Hide unchanged regions to focus on changes"
               : "Expand: Show all lines including unchanged regions"}"
           >
-            ${isExpanded ? this.renderCollapseIcon() : this.renderExpandAllIcon()}
+            ${isExpanded
+              ? this.renderCollapseIcon()
+              : this.renderExpandAllIcon()}
           </button>
         </div>
         <div class="monaco-container">
@@ -406,11 +426,11 @@ export class MobileDiff extends LitElement {
       <div class="diff-container">
         ${this.loading
           ? html`<div class="loading">Loading diff...</div>`
-          : this.error 
-          ? html`<div class="error">${this.error}</div>`
-          : !this.files || this.files.length === 0
-          ? html`<div class="empty">No changes to show</div>`
-          : this.files.map(file => this.renderFileDiff(file))}
+          : this.error
+            ? html`<div class="error">${this.error}</div>`
+            : !this.files || this.files.length === 0
+              ? html`<div class="empty">No changes to show</div>`
+              : this.files.map((file) => this.renderFileDiff(file))}
       </div>
     `;
   }
