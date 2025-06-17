@@ -25,7 +25,7 @@ Add vet error
 
 Gopls check issues detected:
 
-1. /PATH/TO/REPO/p.go:8:2-38: fmt.Printf format %s has arg 10 of wrong type int
+1. /PATH/TO/REPO/p.go:8:28-30: fmt.Printf format %s has arg 10 of wrong type int
 
 IMPORTANT: Only fix new gopls check issues in parts of the code that you have already edited. Do not change existing code that was not part of your current edits.
 
