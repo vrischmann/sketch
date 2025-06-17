@@ -446,3 +446,79 @@ func TestFindRepoDockerfiles(t *testing.T) {
 		t.Errorf("expected Dockerfile.sketch to be prioritized, but got %s", prioritized)
 	}
 }
+
+// TestDockerfileSketchImageReuse tests that Docker images built from Dockerfile.sketch
+// are properly reused when the Dockerfile content hasn't changed.
+func TestDockerfileSketchImageReuse(t *testing.T) {
+	// Create a temporary directory for the test repo
+	tmpDir := t.TempDir()
+
+	// Create a simple Dockerfile.sketch
+	dockerfileContent := `FROM ubuntu:24.04
+LABEL test=true
+CMD ["echo", "hello"]
+`
+	dockerfilePath := filepath.Join(tmpDir, "Dockerfile.sketch")
+	err := os.WriteFile(dockerfilePath, []byte(dockerfileContent), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to write Dockerfile.sketch: %v", err)
+	}
+
+	// Test that hashInitFiles produces consistent results
+	initFiles := map[string]string{
+		dockerfilePath: dockerfileContent,
+	}
+	hash1 := hashInitFiles(initFiles)
+	hash2 := hashInitFiles(initFiles)
+
+	if hash1 != hash2 {
+		t.Errorf("hashInitFiles should be deterministic, got %s and %s", hash1, hash2)
+	}
+
+	// Test that hash changes when content changes
+	modifiedFiles := map[string]string{
+		dockerfilePath: dockerfileContent + "RUN echo modified\n",
+	}
+	hash3 := hashInitFiles(modifiedFiles)
+
+	if hash1 == hash3 {
+		t.Errorf("hashInitFiles should produce different hashes for different content, got %s for both", hash1)
+	}
+
+	t.Logf("Original hash: %s", hash1)
+	t.Logf("Modified hash: %s", hash3)
+}
+
+// TestPrioritizeDockerfiles tests the Dockerfile prioritization logic
+func TestDockerfileSketchPriority(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []string
+		expected   string
+	}{
+		{
+			name:       "dockerfile.sketch_wins_over_dockerfile",
+			candidates: []string{"/path/Dockerfile", "/path/Dockerfile.sketch"},
+			expected:   "/path/Dockerfile.sketch",
+		},
+		{
+			name:       "dockerfile.sketch_case_insensitive",
+			candidates: []string{"/path/dockerfile", "/path/dockerfile.sketch"},
+			expected:   "/path/dockerfile.sketch",
+		},
+		{
+			name:       "dockerfile_wins_over_variations",
+			candidates: []string{"/path/Dockerfile.dev", "/path/Dockerfile"},
+			expected:   "/path/Dockerfile",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := prioritizeDockerfiles(tt.candidates)
+			if result != tt.expected {
+				t.Errorf("prioritizeDockerfiles(%v) = %s, want %s", tt.candidates, result, tt.expected)
+			}
+		})
+	}
+}

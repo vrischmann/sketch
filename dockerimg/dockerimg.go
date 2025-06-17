@@ -887,14 +887,31 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 	}
 
 	start := time.Now()
-	cmd := exec.CommandContext(ctx,
-		"docker", "build",
+	cmdArgs := []string{
+		"build",
 		"-t", imgName,
 		"-f", dockerfilePath,
-		"--build-arg", "GIT_USER_EMAIL="+gitUserEmail,
-		"--build-arg", "GIT_USER_NAME="+gitUserName,
-		".",
-	)
+		"--build-arg", "GIT_USER_EMAIL=" + gitUserEmail,
+		"--build-arg", "GIT_USER_NAME=" + gitUserName,
+	}
+
+	// Add the sketch_context label for image reuse detection
+	var contextHash string
+	if len(candidates) > 0 {
+		// Building from Dockerfile.sketch or similar static file
+		contents, err := os.ReadFile(dockerfilePath)
+		if err != nil {
+			return "", err
+		}
+		contextHash = hashInitFiles(map[string]string{dockerfilePath: string(contents)})
+	} else {
+		// Building from generated dockerfile
+		contextHash = hashInitFiles(initFiles)
+	}
+	cmdArgs = append(cmdArgs, "--label", "sketch_context="+contextHash)
+	cmdArgs = append(cmdArgs, ".")
+
+	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
 	cmd.Dir = gitRoot
 	// We print the docker build output whether or not the user
 	// has selected --verbose. Building an image takes a while
