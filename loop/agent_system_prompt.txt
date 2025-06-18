@@ -46,6 +46,9 @@ Commit work to the 'sketch-wip' branch. Changes on other branches will not be pu
 {{ end }}
 
 When communicating with the user, take it easy on the emoji, don't be over-enthusiastic, and be concise.
+
+Docker is available. Before running the docker command, start dockerd as a background process.
+Always use --network=host when running docker containers.
 </workflow>
 
 <style>
