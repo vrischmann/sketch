@@ -68,17 +68,6 @@ const monacoStyles = `
     height: 100%;
   }
   
-  // /* Custom font stack - ensure we have good monospace fonts */
-  // .monaco-editor .view-lines,
-  // .monaco-editor .view-line,
-  // .monaco-editor-pane,
-  // .monaco-editor .inputarea {
-  //   font-family: "Menlo", "Monaco", "Consolas", "Courier New", monospace !important;
-  //   font-size: 13px !important;
-  //   font-feature-settings: "liga" 0, "calt" 0 !important;
-  //   line-height: 1.5 !important;
-  // }
-  
   /* Ensure light theme colors */
   .monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
     background-color: var(--monaco-editor-bg, #ffffff) !important;
@@ -86,26 +75,6 @@ const monacoStyles = `
   
   .monaco-editor .margin {
     background-color: var(--monaco-editor-margin, #f5f5f5) !important;
-  }
-  
-  /* Hide all scrollbars completely */
-  .monaco-editor .scrollbar,
-  .monaco-editor .scroll-decoration,
-  .monaco-editor .invisible.scrollbar,
-  .monaco-editor .slider,
-  .monaco-editor .vertical.scrollbar,
-  .monaco-editor .horizontal.scrollbar {
-    display: none !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-  }
-  
-  /* Ensure content area takes full width/height without scrollbar space */
-  .monaco-editor .monaco-scrollable-element {
-    /* Remove any padding/margin that might be reserved for scrollbars */
-    padding-right: 0 !important;
-    padding-bottom: 0 !important;
   }
 `;
 
@@ -710,24 +679,19 @@ export class CodeDiffEditor extends LitElement {
           theme: "vs", // Always use light mode
           renderSideBySide: !this.inline,
           ignoreTrimWhitespace: false,
-          renderOverviewRuler: false, // Disable the overview ruler
           scrollbar: {
-            vertical: "hidden",
-            horizontal: "hidden",
-            handleMouseWheel: false, // Let outer scroller eat the wheel
-            useShadows: false, // Disable scrollbar shadows
-            verticalHasArrows: false, // Remove scrollbar arrows
-            horizontalHasArrows: false, // Remove scrollbar arrows
-            verticalScrollbarSize: 0, // Set scrollbar track width to 0
-            horizontalScrollbarSize: 0, // Set scrollbar track height to 0
+            // Ideally we'd handle the mouse wheel for the horizontal scrollbar,
+            // but there doesn't seem to be that option. Setting
+            // alwaysConsumeMousewheel false and handleMouseWheel true didn't
+            // work for me.
+            handleMouseWheel: false,
           },
-          minimap: { enabled: false },
-          overviewRulerLanes: 0,
+          renderOverviewRuler: false, // Disable overview ruler
           scrollBeyondLastLine: false,
           // Focus on the differences by hiding unchanged regions
           hideUnchangedRegions: {
             enabled: true, // Enable the feature
-            contextLineCount: 3, // Show 3 lines of context around each difference
+            contextLineCount: 5, // Show 3 lines of context around each difference
             minimumLineCount: 3, // Hide regions only when they're at least 3 lines
             revealLineCount: 10, // Show 10 lines when expanding a hidden region
           },
