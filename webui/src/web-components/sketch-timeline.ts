@@ -28,11 +28,47 @@ export class SketchTimeline extends LitElement {
   @property({ attribute: false })
   scrollContainer: Ref<HTMLElement>;
 
+  // Keep track of current scroll container for cleanup
+  private currentScrollContainer: HTMLElement | null = null;
+
+  // Event-driven scroll handling without setTimeout
+  private scrollDebounceFrame: number | null = null;
+
+  // Loading operation management with proper cancellation
+  private loadingAbortController: AbortController | null = null;
+  private pendingScrollRestoration: (() => void) | null = null;
+
+  // Track current loading operation for cancellation
+  private currentLoadingOperation: Promise<void> | null = null;
+
+  // Observers for event-driven DOM updates
+  private resizeObserver: ResizeObserver | null = null;
+  private mutationObserver: MutationObserver | null = null;
+
   @property({ attribute: false })
   firstMessageIndex: number = 0;
 
   @property({ attribute: false })
   state: State | null = null;
+
+  // Viewport rendering properties
+  @property({ attribute: false })
+  initialMessageCount: number = 30;
+
+  @property({ attribute: false })
+  loadChunkSize: number = 20;
+
+  @state()
+  private visibleMessageStartIndex: number = 0;
+
+  @state()
+  private isLoadingOlderMessages: boolean = false;
+
+  // Threshold for triggering load more (pixels from top)
+  private loadMoreThreshold: number = 100;
+
+  // Timeout ID for loading operations
+  private loadingTimeoutId: number | null = null;
 
   static styles = css`
     /* Hide views initially to prevent flash of content */
@@ -77,6 +113,7 @@ export class SketchTimeline extends LitElement {
       padding-left: 1em;
       max-width: 100%;
       width: 100%;
+      height: 100%;
     }
     #jump-to-latest {
       display: none;
@@ -185,6 +222,35 @@ export class SketchTimeline extends LitElement {
         transform: scale(1.2);
       }
     }
+
+    /* Loading indicator styles */
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #666;
+      font-size: 14px;
+      gap: 10px;
+    }
+
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e0e0e0;
+      border-top: 2px solid #666;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
   `;
 
   constructor() {
@@ -193,6 +259,351 @@ export class SketchTimeline extends LitElement {
     // Binding methods
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handleScroll = this._handleScroll.bind(this);
+  }
+
+  /**
+   * Safely add scroll event listener with proper cleanup tracking
+   */
+  private addScrollListener(container: HTMLElement): void {
+    // Remove any existing listener first
+    this.removeScrollListener();
+
+    // Add new listener and track the container
+    container.addEventListener("scroll", this._handleScroll);
+    this.currentScrollContainer = container;
+  }
+
+  /**
+   * Safely remove scroll event listener
+   */
+  private removeScrollListener(): void {
+    if (this.currentScrollContainer) {
+      this.currentScrollContainer.removeEventListener(
+        "scroll",
+        this._handleScroll,
+      );
+      this.currentScrollContainer = null;
+    }
+
+    // Clear any pending timeouts and operations
+    this.clearAllPendingOperations();
+  }
+
+  /**
+   * Clear all pending operations and observers to prevent race conditions
+   */
+  private clearAllPendingOperations(): void {
+    // Clear scroll debounce frame
+    if (this.scrollDebounceFrame) {
+      cancelAnimationFrame(this.scrollDebounceFrame);
+      this.scrollDebounceFrame = null;
+    }
+
+    // Abort loading operations
+    if (this.loadingAbortController) {
+      this.loadingAbortController.abort();
+      this.loadingAbortController = null;
+    }
+
+    // Cancel pending scroll restoration
+    if (this.pendingScrollRestoration) {
+      this.pendingScrollRestoration = null;
+    }
+
+    // Clean up observers
+    this.disconnectObservers();
+  }
+
+  /**
+   * Disconnect all observers
+   */
+  private disconnectObservers(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
+  }
+
+  /**
+   * Force a viewport reset to show the most recent messages
+   * Useful when loading a new session or when messages change significantly
+   */
+  public resetViewport(): void {
+    // Cancel any pending loading operations to prevent race conditions
+    this.cancelCurrentLoadingOperation();
+
+    // Reset viewport state
+    this.visibleMessageStartIndex = 0;
+    this.isLoadingOlderMessages = false;
+
+    // Clear all pending operations
+    this.clearAllPendingOperations();
+
+    this.requestUpdate();
+  }
+
+  /**
+   * Cancel current loading operation if in progress
+   */
+  private cancelCurrentLoadingOperation(): void {
+    if (this.isLoadingOlderMessages) {
+      this.isLoadingOlderMessages = false;
+
+      // Abort the loading operation
+      if (this.loadingAbortController) {
+        this.loadingAbortController.abort();
+        this.loadingAbortController = null;
+      }
+
+      // Cancel pending scroll restoration
+      this.pendingScrollRestoration = null;
+    }
+  }
+
+  /**
+   * Get the filtered messages (excluding hidden ones)
+   */
+  private get filteredMessages(): AgentMessage[] {
+    return this.messages.filter((msg) => !msg.hide_output);
+  }
+
+  /**
+   * Get the currently visible messages based on viewport rendering
+   * Race-condition safe implementation
+   */
+  private get visibleMessages(): AgentMessage[] {
+    const filtered = this.filteredMessages;
+    if (filtered.length === 0) return [];
+
+    // Always show the most recent messages first
+    // visibleMessageStartIndex represents how many additional older messages to show
+    const totalVisible =
+      this.initialMessageCount + this.visibleMessageStartIndex;
+    const startIndex = Math.max(0, filtered.length - totalVisible);
+
+    // Ensure we don't return an invalid slice during loading operations
+    const endIndex = filtered.length;
+    if (startIndex >= endIndex) {
+      return [];
+    }
+
+    return filtered.slice(startIndex, endIndex);
+  }
+
+  /**
+   * Check if the component is in a stable state for loading operations
+   */
+  private isStableForLoading(): boolean {
+    return (
+      this.scrollContainer.value !== null &&
+      this.scrollContainer.value === this.currentScrollContainer &&
+      this.scrollContainer.value.isConnected &&
+      !this.isLoadingOlderMessages &&
+      !this.currentLoadingOperation
+    );
+  }
+
+  /**
+   * Load more older messages by expanding the visible window
+   * Race-condition safe implementation
+   */
+  private async loadOlderMessages(): Promise<void> {
+    // Prevent concurrent loading operations
+    if (this.isLoadingOlderMessages || this.currentLoadingOperation) {
+      return;
+    }
+
+    const filtered = this.filteredMessages;
+    const currentVisibleCount = this.visibleMessages.length;
+    const totalAvailable = filtered.length;
+
+    // Check if there are more messages to load
+    if (currentVisibleCount >= totalAvailable) {
+      return;
+    }
+
+    // Start loading operation with proper state management
+    this.isLoadingOlderMessages = true;
+
+    // Store current scroll position for restoration
+    const container = this.scrollContainer.value;
+    const previousScrollHeight = container?.scrollHeight || 0;
+    const previousScrollTop = container?.scrollTop || 0;
+
+    // Validate scroll container hasn't changed during setup
+    if (!container || container !== this.currentScrollContainer) {
+      this.isLoadingOlderMessages = false;
+      return;
+    }
+
+    // Expand the visible window with bounds checking
+    const additionalMessages = Math.min(
+      this.loadChunkSize,
+      totalAvailable - currentVisibleCount,
+    );
+    const newStartIndex = this.visibleMessageStartIndex + additionalMessages;
+
+    // Ensure we don't exceed available messages
+    const boundedStartIndex = Math.min(
+      newStartIndex,
+      totalAvailable - this.initialMessageCount,
+    );
+    this.visibleMessageStartIndex = Math.max(0, boundedStartIndex);
+
+    // Create the loading operation with proper error handling and cleanup
+    const loadingOperation = this.executeScrollPositionRestoration(
+      container,
+      previousScrollHeight,
+      previousScrollTop,
+    );
+
+    this.currentLoadingOperation = loadingOperation;
+
+    try {
+      await loadingOperation;
+    } catch (error) {
+      console.warn("Loading operation failed:", error);
+    } finally {
+      // Ensure loading state is always cleared
+      this.isLoadingOlderMessages = false;
+      this.currentLoadingOperation = null;
+
+      // Clear the loading timeout if it exists
+      if (this.loadingTimeoutId) {
+        clearTimeout(this.loadingTimeoutId);
+        this.loadingTimeoutId = null;
+      }
+    }
+  }
+
+  /**
+   * Execute scroll position restoration with event-driven approach
+   */
+  private async executeScrollPositionRestoration(
+    container: HTMLElement,
+    previousScrollHeight: number,
+    previousScrollTop: number,
+  ): Promise<void> {
+    // Set up AbortController for proper cancellation
+    this.loadingAbortController = new AbortController();
+    const { signal } = this.loadingAbortController;
+
+    // Create scroll restoration function
+    const restoreScrollPosition = () => {
+      // Check if operation was aborted
+      if (signal.aborted) {
+        return;
+      }
+
+      // Double-check container is still valid and connected
+      if (
+        !container ||
+        !container.isConnected ||
+        container !== this.currentScrollContainer
+      ) {
+        return;
+      }
+
+      try {
+        const newScrollHeight = container.scrollHeight;
+        const scrollDifference = newScrollHeight - previousScrollHeight;
+        const newScrollTop = previousScrollTop + scrollDifference;
+
+        // Validate all scroll calculations before applying
+        const isValidRestoration =
+          scrollDifference > 0 && // Content was added
+          newScrollTop >= 0 && // New position is valid
+          newScrollTop <= newScrollHeight && // Don't exceed max scroll
+          previousScrollHeight > 0 && // Had valid previous height
+          newScrollHeight > previousScrollHeight; // Height actually increased
+
+        if (isValidRestoration) {
+          container.scrollTop = newScrollTop;
+        } else {
+          // Log invalid restoration attempts for debugging
+          console.debug("Skipped scroll restoration:", {
+            scrollDifference,
+            newScrollTop,
+            newScrollHeight,
+            previousScrollHeight,
+            previousScrollTop,
+          });
+        }
+      } catch (error) {
+        console.warn("Scroll position restoration failed:", error);
+      }
+    };
+
+    // Store the restoration function for potential cancellation
+    this.pendingScrollRestoration = restoreScrollPosition;
+
+    // Wait for DOM update and then restore scroll position
+    await this.updateComplete;
+
+    // Check if operation was cancelled during await
+    if (
+      !signal.aborted &&
+      this.pendingScrollRestoration === restoreScrollPosition
+    ) {
+      // Use ResizeObserver to detect when content is actually ready
+      await this.waitForContentReady(container, signal);
+
+      if (!signal.aborted) {
+        restoreScrollPosition();
+        this.pendingScrollRestoration = null;
+      }
+    }
+  }
+
+  /**
+   * Wait for content to be ready using ResizeObserver instead of setTimeout
+   */
+  private async waitForContentReady(
+    container: HTMLElement,
+    signal: AbortSignal,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (signal.aborted) {
+        reject(new Error("Operation aborted"));
+        return;
+      }
+
+      // Resolve immediately if container already has content
+      if (container.scrollHeight > 0) {
+        resolve();
+        return;
+      }
+
+      // Set up ResizeObserver to detect content changes
+      const observer = new ResizeObserver((entries) => {
+        if (signal.aborted) {
+          observer.disconnect();
+          reject(new Error("Operation aborted"));
+          return;
+        }
+
+        // Content is ready when height increases
+        const entry = entries[0];
+        if (entry && entry.contentRect.height > 0) {
+          observer.disconnect();
+          resolve();
+        }
+      });
+
+      // Start observing
+      observer.observe(container);
+
+      // Clean up on abort
+      signal.addEventListener("abort", () => {
+        observer.disconnect();
+        reject(new Error("Operation aborted"));
+      });
+    });
   }
 
   /**
@@ -209,58 +620,120 @@ export class SketchTimeline extends LitElement {
   }
 
   /**
-   * Scroll to bottom with retry logic to handle dynamic content
+   * Scroll to bottom with event-driven approach using MutationObserver
    */
-  private scrollToBottomWithRetry(): void {
+  private async scrollToBottomWithRetry(): Promise<void> {
     if (!this.scrollContainer.value) return;
 
-    let attempts = 0;
-    const maxAttempts = 5;
-    const retryInterval = 50;
+    const container = this.scrollContainer.value;
 
-    const tryScroll = () => {
-      if (!this.scrollContainer.value) return;
+    // Try immediate scroll first
+    this.scrollToBottom();
 
-      const container = this.scrollContainer.value;
+    // Check if we're at the bottom
+    const isAtBottom = () => {
       const targetScrollTop = container.scrollHeight - container.clientHeight;
-
-      // Scroll to the calculated position
-      container.scrollTo({
-        top: targetScrollTop,
-        behavior: "instant",
-      });
-
-      attempts++;
-
-      // Check if we're actually at the bottom
       const actualScrollTop = container.scrollTop;
-      const isAtBottom = Math.abs(targetScrollTop - actualScrollTop) <= 1;
-
-      if (!isAtBottom && attempts < maxAttempts) {
-        // Still not at bottom and we have attempts left, try again
-        setTimeout(tryScroll, retryInterval);
-      }
+      return Math.abs(targetScrollTop - actualScrollTop) <= 1;
     };
 
-    tryScroll();
+    // If already at bottom, we're done
+    if (isAtBottom()) {
+      return;
+    }
+
+    // Use MutationObserver to detect content changes and retry
+    return new Promise((resolve) => {
+      let scrollAttempted = false;
+
+      const observer = new MutationObserver(() => {
+        if (!scrollAttempted) {
+          scrollAttempted = true;
+
+          // Use requestAnimationFrame to ensure DOM is painted
+          requestAnimationFrame(() => {
+            this.scrollToBottom();
+
+            // Check if successful
+            if (isAtBottom()) {
+              observer.disconnect();
+              resolve();
+            } else {
+              // Try one more time after another frame
+              requestAnimationFrame(() => {
+                this.scrollToBottom();
+                observer.disconnect();
+                resolve();
+              });
+            }
+          });
+        }
+      });
+
+      // Observe changes to the timeline container
+      observer.observe(container, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+      });
+
+      // Clean up after a reasonable time if no changes detected
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!scrollAttempted) {
+            observer.disconnect();
+            resolve();
+          }
+        });
+      });
+    });
   }
 
   /**
    * Called after the component's properties have been updated
    */
   updated(changedProperties: PropertyValues): void {
-    // If messages have changed, scroll to bottom if needed
-    if (changedProperties.has("messages") && this.messages.length > 0) {
-      if (this.scrollingState == "pinToLatest") {
-        // Use longer timeout and retry logic to handle dynamic content
-        setTimeout(() => this.scrollToBottomWithRetry(), 100);
+    // Handle scroll container changes first to prevent race conditions
+    if (changedProperties.has("scrollContainer")) {
+      // Cancel any ongoing loading operations since container is changing
+      this.cancelCurrentLoadingOperation();
+
+      if (this.scrollContainer.value) {
+        this.addScrollListener(this.scrollContainer.value);
+      } else {
+        this.removeScrollListener();
       }
     }
-    if (changedProperties.has("scrollContainer")) {
-      this.scrollContainer.value?.addEventListener(
-        "scroll",
-        this._handleScroll,
-      );
+
+    // If messages have changed, handle viewport updates
+    if (changedProperties.has("messages")) {
+      const oldMessages =
+        (changedProperties.get("messages") as AgentMessage[]) || [];
+      const newMessages = this.messages || [];
+
+      // Cancel loading operations if messages changed significantly
+      const significantChange =
+        oldMessages.length === 0 ||
+        newMessages.length < oldMessages.length ||
+        Math.abs(newMessages.length - oldMessages.length) > 20;
+
+      if (significantChange) {
+        // Cancel any ongoing operations and reset viewport
+        this.cancelCurrentLoadingOperation();
+        this.visibleMessageStartIndex = 0;
+      }
+
+      // Scroll to bottom if needed (only if not loading to prevent race conditions)
+      if (
+        this.messages.length > 0 &&
+        this.scrollingState === "pinToLatest" &&
+        !this.isLoadingOlderMessages
+      ) {
+        // Use async scroll without setTimeout
+        this.scrollToBottomWithRetry().catch((error) => {
+          console.warn("Scroll to bottom failed:", error);
+        });
+      }
     }
   }
 
@@ -284,17 +757,40 @@ export class SketchTimeline extends LitElement {
     if (!this.scrollContainer.value) return;
 
     const container = this.scrollContainer.value;
+
+    // Verify this is still our tracked container to prevent race conditions
+    if (container !== this.currentScrollContainer) {
+      return;
+    }
+
     const isAtBottom =
       Math.abs(
         container.scrollHeight - container.clientHeight - container.scrollTop,
       ) <= 3; // Increased tolerance to 3px for better detection
 
+    const isNearTop = container.scrollTop <= this.loadMoreThreshold;
+
+    // Update scroll state immediately for responsive UI
     if (isAtBottom) {
       this.scrollingState = "pinToLatest";
     } else {
-      // TODO: does scroll direction matter here?
       this.scrollingState = "floating";
     }
+
+    // Use requestAnimationFrame for smooth debouncing instead of setTimeout
+    if (this.scrollDebounceFrame) {
+      cancelAnimationFrame(this.scrollDebounceFrame);
+    }
+
+    this.scrollDebounceFrame = requestAnimationFrame(() => {
+      // Use stability check to ensure safe loading conditions
+      if (isNearTop && this.isStableForLoading()) {
+        this.loadOlderMessages().catch((error) => {
+          console.warn("Async loadOlderMessages failed:", error);
+        });
+      }
+      this.scrollDebounceFrame = null;
+    });
   }
 
   // See https://lit.dev/docs/components/lifecycle/
@@ -307,23 +803,39 @@ export class SketchTimeline extends LitElement {
       this._handleShowCommitDiff as EventListener,
     );
 
-    this.scrollContainer.value?.addEventListener("scroll", this._handleScroll);
+    // Set up scroll listener if container is available
+    if (this.scrollContainer.value) {
+      this.addScrollListener(this.scrollContainer.value);
+    }
+
+    // Initialize observers for event-driven behavior
+    this.setupObservers();
   }
 
-  // See https://lit.dev/docs/components/lifecycle/
+  /**
+   * Set up observers for event-driven DOM monitoring
+   */
+  private setupObservers(): void {
+    // ResizeObserver will be created on-demand in loading operations
+    // MutationObserver will be created on-demand in scroll operations
+    // This avoids creating observers that may not be needed
+  }
+
+  // See https://lit.dev/docs/component/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
 
-    // Remove event listeners
+    // Cancel any ongoing loading operations before cleanup
+    this.cancelCurrentLoadingOperation();
+
+    // Remove event listeners with guaranteed cleanup
     document.removeEventListener(
       "showCommitDiff",
       this._handleShowCommitDiff as EventListener,
     );
 
-    this.scrollContainer.value?.removeEventListener(
-      "scroll",
-      this._handleScroll,
-    );
+    // Use our safe cleanup method
+    this.removeScrollListener();
   }
 
   // messageKey uniquely identifes a AgentMessage based on its ID and tool_calls, so
@@ -380,25 +892,27 @@ export class SketchTimeline extends LitElement {
       <div style="position: relative; height: 100%;">
         <div id="scroll-container">
           <div class="timeline-container">
+            ${this.isLoadingOlderMessages
+              ? html`
+                  <div class="loading-indicator">
+                    <div class="loading-spinner"></div>
+                    <span>Loading older messages...</span>
+                  </div>
+                `
+              : ""}
             ${repeat(
-              this.messages.filter((msg) => !msg.hide_output),
+              this.visibleMessages,
               this.messageKey,
               (message, index) => {
-                let previousMessageIndex =
-                  this.messages.findIndex((m) => m === message) - 1;
+                // Find the previous message in the full filtered messages array
+                const filteredMessages = this.filteredMessages;
+                const messageIndex = filteredMessages.findIndex(
+                  (m) => m === message,
+                );
                 let previousMessage =
-                  previousMessageIndex >= 0
-                    ? this.messages[previousMessageIndex]
+                  messageIndex > 0
+                    ? filteredMessages[messageIndex - 1]
                     : undefined;
-
-                // Skip hidden messages when determining previous message
-                while (previousMessage && previousMessage.hide_output) {
-                  previousMessageIndex--;
-                  previousMessage =
-                    previousMessageIndex >= 0
-                      ? this.messages[previousMessageIndex]
-                      : undefined;
-                }
 
                 return html`<sketch-timeline-message
                   .message=${message}
