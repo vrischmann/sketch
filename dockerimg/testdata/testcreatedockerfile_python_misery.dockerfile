@@ -1,4 +1,4 @@
-FROM ghcr.io/boldsoftware/sketch:8a0fa60d74a8342c828aaec2c6d25bf3
+FROM ghcr.io/boldsoftware/sketch:741e5a2d5a35c7fb3282a265bdd0cf24
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -7,7 +7,7 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME" && \
     git config --global http.postBuffer 524288000
 
-LABEL sketch_context="9e2e88b559df3656b9b50664cd435a00d410a76c08f0c4ec9a6d01a767435d51"
+LABEL sketch_context="8811aa2b5e5632d5cbab838f2f9f963276d5689f5b4b3f33953594c68553f79a"
 COPY . /app
 RUN rm -f /app/tmp-sketch-dockerfile
 
@@ -17,9 +17,10 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3.11-venv python3-pip || true && apt-get clean && rm -rf /var/lib/apt/lists/*
-RUN python3.11 -m pip install --upgrade pip || true
-RUN python3.11 -m pip install dvc || true
+RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3.11-pip python3.11-venv || true && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* || true
+
+RUN python3.11 -m pip install --upgrade pip dvc || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
