@@ -2,6 +2,51 @@ import { test, expect } from "@sand4rt/experimental-ct-web";
 import { SketchTimeline } from "./sketch-timeline";
 import { AgentMessage } from "../types";
 
+// Mock DataManager class that mimics the real DataManager interface
+class MockDataManager {
+  private eventListeners: Map<string, Array<(...args: any[]) => void>> =
+    new Map();
+  private isInitialLoadComplete: boolean = false;
+
+  constructor() {
+    this.eventListeners.set("initialLoadComplete", []);
+  }
+
+  addEventListener(event: string, callback: (...args: any[]) => void): void {
+    const listeners = this.eventListeners.get(event) || [];
+    listeners.push(callback);
+    this.eventListeners.set(event, listeners);
+  }
+
+  removeEventListener(event: string, callback: (...args: any[]) => void): void {
+    const listeners = this.eventListeners.get(event) || [];
+    const index = listeners.indexOf(callback);
+    if (index > -1) {
+      listeners.splice(index, 1);
+    }
+  }
+
+  getIsInitialLoadComplete(): boolean {
+    return this.isInitialLoadComplete;
+  }
+
+  triggerInitialLoadComplete(
+    messageCount: number = 0,
+    expectedCount: number = 0,
+  ): void {
+    this.isInitialLoadComplete = true;
+    const listeners = this.eventListeners.get("initialLoadComplete") || [];
+    // Call each listener with the event data object as expected by the component
+    listeners.forEach((listener) => {
+      try {
+        listener({ messageCount, expectedCount });
+      } catch (e) {
+        console.error("Error in event listener:", e);
+      }
+    });
+  }
+}
+
 // Helper function to create mock timeline messages
 function createMockMessage(props: Partial<AgentMessage> = {}): AgentMessage {
   return {
@@ -42,9 +87,12 @@ function createMockMessages(count: number): AgentMessage[] {
 }
 
 test("renders empty state when no messages", async ({ mount }) => {
+  const mockDataManager = new MockDataManager();
+
   const timeline = await mount(SketchTimeline, {
     props: {
       messages: [],
+      dataManager: mockDataManager,
     },
   });
 
@@ -56,11 +104,20 @@ test("renders empty state when no messages", async ({ mount }) => {
 
 test("renders messages when provided", async ({ mount }) => {
   const messages = createMockMessages(5);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   await expect(timeline.locator(".timeline-container")).toBeVisible();
@@ -69,13 +126,22 @@ test("renders messages when provided", async ({ mount }) => {
 
 test("shows thinking indicator when agent is active", async ({ mount }) => {
   const messages = createMockMessages(3);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
       llmCalls: 1,
       toolCalls: ["thinking"],
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   await expect(timeline.locator(".thinking-indicator")).toBeVisible();
@@ -89,11 +155,20 @@ test("filters out messages with hide_output flag", async ({ mount }) => {
     createMockMessage({ idx: 1, content: "Hidden message", hide_output: true }),
     createMockMessage({ idx: 2, content: "Visible message 2" }),
   ];
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Should only show 2 visible messages
@@ -117,12 +192,21 @@ test("limits initial message count based on initialMessageCount property", async
   mount,
 }) => {
   const messages = createMockMessages(50);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
       initialMessageCount: 10,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Should only render the most recent 10 messages initially
@@ -139,13 +223,22 @@ test("limits initial message count based on initialMessageCount property", async
 
 test("handles viewport expansion correctly", async ({ mount }) => {
   const messages = createMockMessages(50);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
       initialMessageCount: 10,
       loadChunkSize: 5,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Initially shows 10 messages
@@ -174,12 +267,21 @@ test("resetViewport method resets to most recent messages", async ({
   mount,
 }) => {
   const messages = createMockMessages(50);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
       initialMessageCount: 10,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Expand viewport
@@ -210,11 +312,20 @@ test("shows jump-to-latest button when not pinned to latest", async ({
   mount,
 }) => {
   const messages = createMockMessages(10);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Initially should be pinned to latest (button hidden)
@@ -233,11 +344,20 @@ test("shows jump-to-latest button when not pinned to latest", async ({
 
 test("jump-to-latest button calls scroll method", async ({ mount }) => {
   const messages = createMockMessages(10);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Initialize the scroll tracking flag and set to floating state to show button
@@ -277,15 +397,18 @@ test("shows loading indicator when loading older messages", async ({
   mount,
 }) => {
   const messages = createMockMessages(10);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
   });
 
-  // Simulate loading state
+  // Set initial load complete first, then simulate loading older messages
   await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
     (element as any).isLoadingOlderMessages = true;
     element.requestUpdate();
     return element.updateComplete;
@@ -300,11 +423,20 @@ test("shows loading indicator when loading older messages", async ({
 
 test("hides loading indicator when not loading", async ({ mount }) => {
   const messages = createMockMessages(10);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Set initial load complete so no loading indicator is shown
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Should not show loading indicator by default
@@ -385,23 +517,28 @@ test("handles scroll container changes properly", async ({ mount }) => {
 
 test("cancels loading operations on viewport reset", async ({ mount }) => {
   const messages = createMockMessages(50);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
   });
 
-  // Set loading state
+  // Set initial load complete and then loading older messages state
   await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
     (element as any).isLoadingOlderMessages = true;
     (element as any).loadingAbortController = new AbortController();
     element.requestUpdate();
     return element.updateComplete;
   });
 
-  // Verify loading state
-  await expect(timeline.locator(".loading-indicator")).toBeVisible();
+  // Verify loading state - should show only the "loading older messages" indicator
+  await expect(timeline.locator(".loading-indicator")).toContainText(
+    "Loading older messages...",
+  );
 
   // Reset viewport (should cancel loading)
   await timeline.evaluate((element: SketchTimeline) => {
@@ -440,11 +577,20 @@ test("displays messages in correct order (most recent at bottom)", async ({
       timestamp: "2023-01-01T12:00:00Z",
     }),
   ];
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   const messageElements = timeline.locator("sketch-timeline-message");
@@ -463,11 +609,20 @@ test("handles previousMessage prop correctly for message context", async ({
     createMockMessage({ idx: 1, content: "Second message", type: "agent" }),
     createMockMessage({ idx: 2, content: "Third message", type: "user" }),
   ];
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Check that messages have the expected structure
@@ -544,11 +699,20 @@ test("handles empty filteredMessages gracefully", async ({ mount }) => {
     createMockMessage({ idx: 0, content: "Hidden 1", hide_output: true }),
     createMockMessage({ idx: 1, content: "Hidden 2", hide_output: true }),
   ];
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   // Should render the timeline structure but with no visible messages
@@ -566,11 +730,20 @@ test("handles empty filteredMessages gracefully", async ({ mount }) => {
 
 test("handles message array updates correctly", async ({ mount }) => {
   const initialMessages = createMockMessages(5);
+  const mockDataManager = new MockDataManager();
 
   const timeline = await mount(SketchTimeline, {
     props: {
       messages: initialMessages,
+      dataManager: mockDataManager,
     },
+  });
+
+  // Directly set the isInitialLoadComplete state to bypass the event system for testing
+  await timeline.evaluate((element: SketchTimeline) => {
+    (element as any).isInitialLoadComplete = true;
+    element.requestUpdate();
+    return element.updateComplete;
   });
 
   await expect(timeline.locator("sketch-timeline-message")).toHaveCount(5);

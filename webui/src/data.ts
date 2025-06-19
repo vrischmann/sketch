@@ -4,7 +4,10 @@ import { formatNumber } from "./utils";
 /**
  * Event types for data manager
  */
-export type DataManagerEventType = "dataChanged" | "connectionStatusChanged";
+export type DataManagerEventType =
+  | "dataChanged"
+  | "connectionStatusChanged"
+  | "initialLoadComplete";
 
 /**
  * Connection status types
@@ -31,6 +34,10 @@ export class DataManager {
   private maxReconnectDelayMs: number = 60000; // Max delay of 60 seconds
   private baseReconnectDelayMs: number = 1000; // Start with 1 second
 
+  // Initial load completion tracking
+  private expectedMessageCount: number | null = null;
+  private isInitialLoadComplete: boolean = false;
+
   // Event listeners
   private eventListeners: Map<
     DataManagerEventType,
@@ -41,6 +48,7 @@ export class DataManager {
     // Initialize empty arrays for each event type
     this.eventListeners.set("dataChanged", []);
     this.eventListeners.set("connectionStatusChanged", []);
+    this.eventListeners.set("initialLoadComplete", []);
 
     // Check connection status periodically
     setInterval(() => this.checkConnectionStatus(), 5000);
@@ -69,6 +77,10 @@ export class DataManager {
 
     // Close any existing connection
     this.closeEventSource();
+
+    // Reset initial load state for new connection
+    this.expectedMessageCount = null;
+    this.isInitialLoadComplete = false;
 
     // Update connection status to connecting
     this.updateConnectionStatus("connecting", "Connecting...");
@@ -107,6 +119,26 @@ export class DataManager {
     this.eventSource.addEventListener("state", (event) => {
       const state = JSON.parse(event.data) as State;
       this.timelineState = state;
+
+      // Store expected message count for initial load detection
+      if (this.expectedMessageCount === null) {
+        this.expectedMessageCount = state.message_count;
+        console.log(
+          `Initial load expects ${this.expectedMessageCount} messages`,
+        );
+
+        // Handle empty conversation case - immediately mark as complete
+        if (this.expectedMessageCount === 0) {
+          this.isInitialLoadComplete = true;
+          console.log(`Initial load complete: Empty conversation (0 messages)`);
+          this.emitEvent("initialLoadComplete", {
+            messageCount: 0,
+            expectedCount: 0,
+          });
+        }
+      }
+
+      this.checkInitialLoadComplete();
       this.emitEvent("dataChanged", { state, newMessages: [] });
     });
 
@@ -183,6 +215,28 @@ export class DataManager {
   }
 
   /**
+   * Check if initial load is complete based on expected message count
+   */
+  private checkInitialLoadComplete(): void {
+    if (
+      this.expectedMessageCount !== null &&
+      this.expectedMessageCount > 0 &&
+      this.messages.length >= this.expectedMessageCount &&
+      !this.isInitialLoadComplete
+    ) {
+      this.isInitialLoadComplete = true;
+      console.log(
+        `Initial load complete: ${this.messages.length}/${this.expectedMessageCount} messages loaded`,
+      );
+
+      this.emitEvent("initialLoadComplete", {
+        messageCount: this.messages.length,
+        expectedCount: this.expectedMessageCount,
+      });
+    }
+  }
+
+  /**
    * Process a new message from the SSE stream
    */
   private processNewMessage(message: AgentMessage): void {
@@ -208,11 +262,14 @@ export class DataManager {
       this.isFirstLoad = false;
     }
 
+    // Check if initial load is now complete
+    this.checkInitialLoadComplete();
+
     // Emit an event that data has changed
     this.emitEvent("dataChanged", {
       state: this.timelineState,
       newMessages: [message],
-      isFirstFetch: false,
+      isFirstFetch: this.isInitialLoadComplete,
     });
   }
 
@@ -242,6 +299,20 @@ export class DataManager {
    */
   public getIsFirstLoad(): boolean {
     return this.isFirstLoad;
+  }
+
+  /**
+   * Get the initial load completion status
+   */
+  public getIsInitialLoadComplete(): boolean {
+    return this.isInitialLoadComplete;
+  }
+
+  /**
+   * Get the expected message count for initial load
+   */
+  public getExpectedMessageCount(): number | null {
+    return this.expectedMessageCount;
   }
 
   /**
