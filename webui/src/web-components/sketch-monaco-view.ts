@@ -672,8 +672,15 @@ export class CodeDiffEditor extends LitElement {
 
       // First time initialization
       if (!this.editor) {
+        // Ensure the container ref is available
+        if (!this.container.value) {
+          throw new Error(
+            "Container element not available - component may not be fully rendered",
+          );
+        }
+
         // Create the diff editor with auto-sizing configuration
-        this.editor = monaco.editor.createDiffEditor(this.container.value!, {
+        this.editor = monaco.editor.createDiffEditor(this.container.value, {
           automaticLayout: false, // We'll resize manually
           readOnly: true,
           theme: "vs", // Always use light mode
@@ -1171,7 +1178,8 @@ export class CodeDiffEditor extends LitElement {
         }, 100);
       } else {
         // If the editor isn't initialized yet but we received content,
-        // initialize it now
+        // ensure we're connected before initializing
+        await this.ensureConnectedToDocument();
         await this.initializeEditor();
       }
     }
@@ -1275,6 +1283,9 @@ export class CodeDiffEditor extends LitElement {
 
   // Add resize observer to ensure editor resizes when container changes
   async firstUpdated() {
+    // Ensure we're connected to the document before Monaco initialization
+    await this.ensureConnectedToDocument();
+
     // Initialize the editor
     await this.initializeEditor();
 
@@ -1290,6 +1301,30 @@ export class CodeDiffEditor extends LitElement {
       this.editor.getOriginalEditor().updateOptions({ readOnly: true });
       // Ensure the modified editor is editable
       this.editor.getModifiedEditor().updateOptions({ readOnly: false });
+    }
+  }
+
+  /**
+   * Ensure this component and its container are properly connected to the document.
+   * Monaco editor requires the container to be in the document for proper initialization.
+   */
+  private async ensureConnectedToDocument(): Promise<void> {
+    // Wait for our own render to complete
+    await this.updateComplete;
+
+    // Verify the container ref is available
+    if (!this.container.value) {
+      throw new Error("Container element not available after updateComplete");
+    }
+
+    // Check if we're connected to the document
+    if (!this.isConnected) {
+      throw new Error("Component is not connected to the document");
+    }
+
+    // Verify the container is also in the document
+    if (!this.container.value.isConnected) {
+      throw new Error("Container element is not connected to the document");
     }
   }
 
