@@ -6,6 +6,11 @@ import { defineConfig } from "vite";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Define build-time constants for compatibility with production build
+  define: {
+    __MONACO_HASH__: JSON.stringify("dev"), // Use 'dev' as hash in development
+    __MERMAID_HASH__: JSON.stringify("dev"), // Use 'dev' as hash in development
+  },
   plugins: [
     hmrPlugin({
       include: ["./src/**/*.ts"],

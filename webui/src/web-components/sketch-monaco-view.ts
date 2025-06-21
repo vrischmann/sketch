@@ -28,28 +28,42 @@ function loadMonaco(): Promise<typeof monaco> {
     return Promise.resolve(window.monaco);
   }
 
-  monacoLoadPromise = new Promise((resolve, reject) => {
-    // Get the Monaco hash from build-time constant
-    const monacoHash = __MONACO_HASH__;
+  monacoLoadPromise = new Promise(async (resolve, reject) => {
+    try {
+      // Check if we're in development mode
+      const isDev = __MONACO_HASH__ === "dev";
 
-    // Try to load the external Monaco bundle
-    const script = document.createElement("script");
-    script.onload = () => {
-      // The Monaco bundle should set window.monaco
-      if (window.monaco) {
-        resolve(window.monaco);
+      if (isDev) {
+        // In development mode, import Monaco directly
+        const monaco = await import("monaco-editor");
+        window.monaco = monaco;
+        resolve(monaco);
       } else {
-        reject(new Error("Monaco not loaded from external bundle"));
-      }
-    };
-    script.onerror = (error) => {
-      console.warn("Failed to load external Monaco bundle:", error);
-      reject(new Error("Monaco external bundle failed to load"));
-    };
+        // In production mode, load from external bundle
+        const monacoHash = __MONACO_HASH__;
 
-    // Don't set type="module" since we're using IIFE format
-    script.src = `./static/monaco-standalone-${monacoHash}.js`;
-    document.head.appendChild(script);
+        // Try to load the external Monaco bundle
+        const script = document.createElement("script");
+        script.onload = () => {
+          // The Monaco bundle should set window.monaco
+          if (window.monaco) {
+            resolve(window.monaco);
+          } else {
+            reject(new Error("Monaco not loaded from external bundle"));
+          }
+        };
+        script.onerror = (error) => {
+          console.warn("Failed to load external Monaco bundle:", error);
+          reject(new Error("Monaco external bundle failed to load"));
+        };
+
+        // Don't set type="module" since we're using IIFE format
+        script.src = `./static/monaco-standalone-${monacoHash}.js`;
+        document.head.appendChild(script);
+      }
+    } catch (error) {
+      reject(error);
+    }
   });
 
   return monacoLoadPromise;
@@ -75,6 +89,29 @@ const monacoStyles = `
   
   .monaco-editor .margin {
     background-color: var(--monaco-editor-margin, #f5f5f5) !important;
+  }
+  
+  /* Glyph decoration styles - only show on hover */
+  .comment-glyph-decoration {
+    width: 16px !important;
+    height: 18px !important;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .comment-glyph-decoration:before {
+    content: '💬';
+    font-size: 12px;
+    line-height: 18px;
+    width: 16px;
+    height: 18px;
+    display: block;
+    text-align: center;
+  }
+  
+  .comment-glyph-decoration.hover-visible {
+    opacity: 1;
   }
 `;
 
@@ -120,35 +157,25 @@ export class CodeDiffEditor extends LitElement {
   @property() originalFilename?: string = "original.js";
   @property() modifiedFilename?: string = "modified.js";
 
-  /* Selected text and indicators */
-  @state()
-  private selectedText: string | null = null;
-
-  @state()
-  private selectionRange: {
-    startLineNumber: number;
-    startColumn: number;
-    endLineNumber: number;
-    endColumn: number;
+  // Comment system state
+  @state() private showCommentBox: boolean = false;
+  @state() private commentText: string = "";
+  @state() private selectedLines: {
+    startLine: number;
+    endLine: number;
+    editorType: "original" | "modified";
+    text: string;
   } | null = null;
-
-  @state()
-  private showCommentIndicator: boolean = false;
-
-  @state()
-  private indicatorPosition: { top: number; left: number } = {
+  @state() private commentBoxPosition: { top: number; left: number } = {
     top: 0,
     left: 0,
   };
+  @state() private isDragging: boolean = false;
+  @state() private dragStartLine: number | null = null;
+  @state() private dragStartEditor: "original" | "modified" | null = null;
 
-  @state()
-  private showCommentBox: boolean = false;
-
-  @state()
-  private commentText: string = "";
-
-  @state()
-  private activeEditor: "original" | "modified" = "modified"; // Track which editor is active
+  // Track visible glyphs to ensure proper cleanup
+  private visibleGlyphs: Set<string> = new Set();
 
   // Custom event to request save action from external components
   private requestSave() {
@@ -233,6 +260,17 @@ export class CodeDiffEditor extends LitElement {
           this.debounceSaveTimeout = null;
         }, 1000); // 1 second debounce
       }
+
+      // Update glyph decorations when content changes
+      setTimeout(() => {
+        if (this.editor && this.modifiedModel) {
+          this.addGlyphDecorationsToEditor(
+            this.editor.getModifiedEditor(),
+            this.modifiedModel,
+            "modified",
+          );
+        }
+      }, 50);
     });
   }
 
@@ -292,32 +330,7 @@ export class CodeDiffEditor extends LitElement {
       box-sizing: border-box; /* Include border in width calculation */
     }
 
-    /* Comment indicator and box styles */
-    .comment-indicator {
-      position: fixed;
-      background-color: rgba(66, 133, 244, 0.9);
-      color: white;
-      border-radius: 3px;
-      padding: 3px 8px;
-      font-size: 12px;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-      z-index: 10000;
-      animation: fadeIn 0.2s ease-in-out;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      pointer-events: all;
-    }
-
-    .comment-indicator:hover {
-      background-color: rgba(66, 133, 244, 1);
-    }
-
-    .comment-indicator span {
-      line-height: 1;
-    }
-
+    /* Comment box styles */
     .comment-box {
       position: fixed;
       background-color: white;
@@ -366,7 +379,7 @@ export class CodeDiffEditor extends LitElement {
       margin-bottom: 10px;
       font-family: monospace;
       font-size: 12px;
-      max-height: 80px;
+      max-height: 100px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
@@ -450,39 +463,13 @@ export class CodeDiffEditor extends LitElement {
           `
         : ""}
 
-      <!-- Comment indicator - shown when text is selected -->
-      ${this.showCommentIndicator
-        ? html`
-            <div
-              class="comment-indicator"
-              style="top: ${this.indicatorPosition.top}px; left: ${this
-                .indicatorPosition.left}px;"
-              @click="${this.handleIndicatorClick}"
-              @mouseenter="${() => {
-                this._isHovering = true;
-              }}"
-              @mouseleave="${() => {
-                this._isHovering = false;
-              }}"
-            >
-              <span>💬</span>
-              <span>Add comment</span>
-            </div>
-          `
-        : ""}
-
-      <!-- Comment box - shown when indicator is clicked -->
+      <!-- Comment box - shown when glyph is clicked -->
       ${this.showCommentBox
         ? html`
             <div
               class="comment-box"
-              style="${this.calculateCommentBoxPosition()}"
-              @mouseenter="${() => {
-                this._isHovering = true;
-              }}"
-              @mouseleave="${() => {
-                this._isHovering = false;
-              }}"
+              style="top: ${this.commentBoxPosition.top}px; left: ${this
+                .commentBoxPosition.left}px;"
             >
               <div class="comment-box-header">
                 <h3>Add comment</h3>
@@ -490,7 +477,13 @@ export class CodeDiffEditor extends LitElement {
                   ×
                 </button>
               </div>
-              <div class="selected-text-preview">${this.selectedText}</div>
+              ${this.selectedLines
+                ? html`
+                    <div class="selected-text-preview">
+                      ${this.selectedLines.text}
+                    </div>
+                  `
+                : ""}
               <textarea
                 class="comment-textarea"
                 placeholder="Type your comment here..."
@@ -512,44 +505,161 @@ export class CodeDiffEditor extends LitElement {
   }
 
   /**
+   * Handle changes to the comment text
+   */
+  private handleCommentInput(e: Event) {
+    const target = e.target as HTMLTextAreaElement;
+    this.commentText = target.value;
+  }
+
+  /**
+   * Close the comment box
+   */
+  private closeCommentBox() {
+    this.showCommentBox = false;
+    this.commentText = "";
+    this.selectedLines = null;
+  }
+
+  /**
+   * Submit the comment
+   */
+  private submitComment() {
+    try {
+      if (!this.selectedLines || !this.commentText.trim()) {
+        return;
+      }
+
+      // Store references before closing the comment box
+      const selectedLines = this.selectedLines;
+      const commentText = this.commentText;
+
+      // Get the correct filename based on active editor
+      const fileContext =
+        selectedLines.editorType === "original"
+          ? this.originalFilename || "Original file"
+          : this.modifiedFilename || "Modified file";
+
+      // Include editor info to make it clear which version was commented on
+      const editorLabel =
+        selectedLines.editorType === "original" ? "[Original]" : "[Modified]";
+
+      // Add line number information
+      let lineInfo = "";
+      if (selectedLines.startLine === selectedLines.endLine) {
+        lineInfo = ` (line ${selectedLines.startLine})`;
+      } else {
+        lineInfo = ` (lines ${selectedLines.startLine}-${selectedLines.endLine})`;
+      }
+
+      // Format the comment in a readable way
+      const formattedComment = `\`\`\`\n${fileContext} ${editorLabel}${lineInfo}:\n${selectedLines.text}\n\`\`\`\n\n${commentText}`;
+
+      // Close UI before dispatching to prevent interaction conflicts
+      this.closeCommentBox();
+
+      // Use setTimeout to ensure the UI has updated before sending the event
+      setTimeout(() => {
+        try {
+          // Dispatch a custom event with the comment details
+          const event = new CustomEvent("monaco-comment", {
+            detail: {
+              fileContext,
+              selectedText: selectedLines.text,
+              commentText: commentText,
+              formattedComment,
+              selectionRange: {
+                startLineNumber: selectedLines.startLine,
+                startColumn: 1,
+                endLineNumber: selectedLines.endLine,
+                endColumn: 1,
+              },
+              activeEditor: selectedLines.editorType,
+            },
+            bubbles: true,
+            composed: true,
+          });
+
+          this.dispatchEvent(event);
+        } catch (error) {
+          console.error("Error dispatching comment event:", error);
+        }
+      }, 0);
+    } catch (error) {
+      console.error("Error submitting comment:", error);
+      this.closeCommentBox();
+    }
+  }
+
+  /**
    * Calculate the optimal position for the comment box to keep it in view
    */
-  private calculateCommentBoxPosition(): string {
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Default position (below indicator)
-    let top = this.indicatorPosition.top + 30;
-    let left = this.indicatorPosition.left;
-
-    // Estimated box dimensions
-    const boxWidth = 350;
-    const boxHeight = 300;
-
-    // Check if box would go off the right edge
-    if (left + boxWidth > viewportWidth) {
-      left = viewportWidth - boxWidth - 20; // Keep 20px margin
-    }
-
-    // Check if box would go off the bottom
-    const bottomSpace = viewportHeight - top;
-    if (bottomSpace < boxHeight) {
-      // Not enough space below, try to position above if possible
-      if (this.indicatorPosition.top > boxHeight) {
-        // Position above the indicator
-        top = this.indicatorPosition.top - boxHeight - 10;
-      } else {
-        // Not enough space above either, position at top of viewport with margin
-        top = 10;
+  private calculateCommentBoxPosition(
+    lineNumber: number,
+    editorType: "original" | "modified",
+  ): { top: number; left: number } {
+    try {
+      if (!this.editor) {
+        return { top: 100, left: 100 };
       }
+
+      const targetEditor =
+        editorType === "original"
+          ? this.editor.getOriginalEditor()
+          : this.editor.getModifiedEditor();
+      if (!targetEditor) {
+        return { top: 100, left: 100 };
+      }
+
+      // Get position from editor
+      const position = {
+        lineNumber: lineNumber,
+        column: 1,
+      };
+
+      // Use editor's built-in method for coordinate conversion
+      const coords = targetEditor.getScrolledVisiblePosition(position);
+
+      if (coords) {
+        // Get accurate DOM position
+        const editorDomNode = targetEditor.getDomNode();
+        if (editorDomNode) {
+          const editorRect = editorDomNode.getBoundingClientRect();
+
+          // Calculate the actual screen position
+          let screenLeft = editorRect.left + coords.left + 20; // Offset to the right
+          let screenTop = editorRect.top + coords.top;
+
+          // Get viewport dimensions
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+
+          // Estimated box dimensions
+          const boxWidth = 350;
+          const boxHeight = 300;
+
+          // Check if box would go off the right edge
+          if (screenLeft + boxWidth > viewportWidth) {
+            screenLeft = viewportWidth - boxWidth - 20; // Keep 20px margin
+          }
+
+          // Check if box would go off the bottom
+          if (screenTop + boxHeight > viewportHeight) {
+            screenTop = Math.max(10, viewportHeight - boxHeight - 10);
+          }
+
+          // Ensure box is never positioned off-screen
+          screenTop = Math.max(10, screenTop);
+          screenLeft = Math.max(10, screenLeft);
+
+          return { top: screenTop, left: screenLeft };
+        }
+      }
+    } catch (error) {
+      console.error("Error calculating comment box position:", error);
     }
 
-    // Ensure box is never positioned off-screen
-    top = Math.max(10, top);
-    left = Math.max(10, left);
-
-    return `top: ${top}px; left: ${left}px;`;
+    return { top: 100, left: 100 };
   }
 
   setOriginalCode(code: string, filename?: string) {
@@ -619,6 +729,417 @@ export class CodeDiffEditor extends LitElement {
   }
 
   /**
+   * Setup glyph decorations for both editors
+   */
+  private setupGlyphDecorations() {
+    if (!this.editor || !window.monaco) {
+      return;
+    }
+
+    const originalEditor = this.editor.getOriginalEditor();
+    const modifiedEditor = this.editor.getModifiedEditor();
+
+    if (originalEditor && this.originalModel) {
+      this.addGlyphDecorationsToEditor(
+        originalEditor,
+        this.originalModel,
+        "original",
+      );
+      this.setupHoverBehavior(originalEditor);
+    }
+
+    if (modifiedEditor && this.modifiedModel) {
+      this.addGlyphDecorationsToEditor(
+        modifiedEditor,
+        this.modifiedModel,
+        "modified",
+      );
+      this.setupHoverBehavior(modifiedEditor);
+    }
+  }
+
+  /**
+   * Add glyph decorations to a specific editor
+   */
+  private addGlyphDecorationsToEditor(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    model: monaco.editor.ITextModel,
+    editorType: "original" | "modified",
+  ) {
+    if (!window.monaco) {
+      return;
+    }
+
+    // Clear existing decorations
+    if (editorType === "original" && this.originalDecorations) {
+      this.originalDecorations.clear();
+    } else if (editorType === "modified" && this.modifiedDecorations) {
+      this.modifiedDecorations.clear();
+    }
+
+    // Create decorations for every line
+    const lineCount = model.getLineCount();
+    const decorations: monaco.editor.IModelDeltaDecoration[] = [];
+
+    for (let lineNumber = 1; lineNumber <= lineCount; lineNumber++) {
+      decorations.push({
+        range: new window.monaco.Range(lineNumber, 1, lineNumber, 1),
+        options: {
+          isWholeLine: false,
+          glyphMarginClassName: `comment-glyph-decoration comment-glyph-${editorType}-${lineNumber}`,
+          glyphMarginHoverMessage: { value: "Comment line" },
+          stickiness:
+            window.monaco.editor.TrackedRangeStickiness
+              .NeverGrowsWhenTypingAtEdges,
+        },
+      });
+    }
+
+    // Create or update decorations collection
+    if (editorType === "original") {
+      this.originalDecorations =
+        editor.createDecorationsCollection(decorations);
+    } else {
+      this.modifiedDecorations =
+        editor.createDecorationsCollection(decorations);
+    }
+  }
+
+  /**
+   * Setup hover and click behavior for glyph decorations
+   */
+  private setupHoverBehavior(editor: monaco.editor.IStandaloneCodeEditor) {
+    if (!editor) {
+      return;
+    }
+
+    let currentHoveredLine: number | null = null;
+    const editorType =
+      this.editor?.getOriginalEditor() === editor ? "original" : "modified";
+
+    // Listen for mouse move events in the editor
+    editor.onMouseMove((e) => {
+      if (e.target.position) {
+        const lineNumber = e.target.position.lineNumber;
+
+        // Handle real-time drag preview updates
+        if (
+          this.isDragging &&
+          this.dragStartLine !== null &&
+          this.dragStartEditor === editorType &&
+          this.showCommentBox
+        ) {
+          const startLine = Math.min(this.dragStartLine, lineNumber);
+          const endLine = Math.max(this.dragStartLine, lineNumber);
+          this.updateSelectedLinesPreview(startLine, endLine, editorType);
+        }
+
+        // Handle hover glyph visibility (only when not dragging)
+        if (!this.isDragging) {
+          // If we're hovering over a different line, update visibility
+          if (currentHoveredLine !== lineNumber) {
+            // Hide previous line's glyph
+            if (currentHoveredLine !== null) {
+              this.toggleGlyphVisibility(currentHoveredLine, false);
+            }
+
+            // Show current line's glyph
+            this.toggleGlyphVisibility(lineNumber, true);
+            currentHoveredLine = lineNumber;
+          }
+        }
+      }
+    });
+
+    // Listen for mouse down events for click-to-comment and drag selection
+    editor.onMouseDown((e) => {
+      if (
+        e.target.type ===
+        window.monaco?.editor.MouseTargetType.GUTTER_GLYPH_MARGIN
+      ) {
+        if (e.target.position) {
+          const lineNumber = e.target.position.lineNumber;
+
+          // Prevent default Monaco behavior
+          e.event.preventDefault();
+          e.event.stopPropagation();
+
+          // Check if there's an existing selection in this editor
+          const selection = editor.getSelection();
+          if (selection && !selection.isEmpty()) {
+            // Use the existing selection
+            const startLine = selection.startLineNumber;
+            const endLine = selection.endLineNumber;
+            this.showCommentForSelection(
+              startLine,
+              endLine,
+              editorType,
+              selection,
+            );
+          } else {
+            // Start drag selection or show comment for clicked line
+            this.isDragging = true;
+            this.dragStartLine = lineNumber;
+            this.dragStartEditor = editorType;
+
+            // If it's just a click (not drag), show comment box immediately
+            this.showCommentForLines(lineNumber, lineNumber, editorType);
+          }
+        }
+      }
+    });
+
+    // Listen for mouse up events to end drag selection
+    editor.onMouseUp((e) => {
+      if (this.isDragging) {
+        if (
+          e.target.position &&
+          this.dragStartLine !== null &&
+          this.dragStartEditor === editorType
+        ) {
+          const endLine = e.target.position.lineNumber;
+          const startLine = Math.min(this.dragStartLine, endLine);
+          const finalEndLine = Math.max(this.dragStartLine, endLine);
+
+          // Update the final selection (if comment box is not already shown)
+          if (!this.showCommentBox) {
+            this.showCommentForLines(startLine, finalEndLine, editorType);
+          } else {
+            // Just update the final selection since preview was already being updated
+            this.updateSelectedLinesPreview(
+              startLine,
+              finalEndLine,
+              editorType,
+            );
+          }
+        }
+
+        // Reset drag state
+        this.isDragging = false;
+        this.dragStartLine = null;
+        this.dragStartEditor = null;
+      }
+    });
+
+    // // Listen for mouse leave events
+    // editor.onMouseLeave(() => {
+    //   if (currentHoveredLine !== null) {
+    //     this.toggleGlyphVisibility(currentHoveredLine, false);
+    //     currentHoveredLine = null;
+    //   }
+    // });
+  }
+
+  /**
+   * Update the selected lines preview during drag operations
+   */
+  private updateSelectedLinesPreview(
+    startLine: number,
+    endLine: number,
+    editorType: "original" | "modified",
+  ) {
+    try {
+      if (!this.editor) {
+        return;
+      }
+
+      const targetModel =
+        editorType === "original" ? this.originalModel : this.modifiedModel;
+
+      if (!targetModel) {
+        return;
+      }
+
+      // Get the text for the selected lines
+      const lines: string[] = [];
+      for (let i = startLine; i <= endLine; i++) {
+        if (i <= targetModel.getLineCount()) {
+          lines.push(targetModel.getLineContent(i));
+        }
+      }
+
+      const selectedText = lines.join("\n");
+
+      // Update the selected lines state
+      this.selectedLines = {
+        startLine,
+        endLine,
+        editorType,
+        text: selectedText,
+      };
+
+      // Request update to refresh the preview
+      this.requestUpdate();
+    } catch (error) {
+      console.error("Error updating selected lines preview:", error);
+    }
+  }
+
+  /**
+   * Show comment box for a Monaco editor selection
+   */
+  private showCommentForSelection(
+    startLine: number,
+    endLine: number,
+    editorType: "original" | "modified",
+    selection: monaco.Selection,
+  ) {
+    try {
+      if (!this.editor) {
+        return;
+      }
+
+      const targetModel =
+        editorType === "original" ? this.originalModel : this.modifiedModel;
+
+      if (!targetModel) {
+        return;
+      }
+
+      // Get the exact selected text from the Monaco selection
+      const selectedText = targetModel.getValueInRange(selection);
+
+      // Set the selected lines state
+      this.selectedLines = {
+        startLine,
+        endLine,
+        editorType,
+        text: selectedText,
+      };
+
+      // Calculate and set comment box position
+      this.commentBoxPosition = this.calculateCommentBoxPosition(
+        startLine,
+        editorType,
+      );
+
+      // Reset comment text and show the box
+      this.commentText = "";
+      this.showCommentBox = true;
+
+      // Clear any visible glyphs since we're showing the comment box
+      this.clearAllVisibleGlyphs();
+
+      // Request update to render the comment box
+      this.requestUpdate();
+    } catch (error) {
+      console.error("Error showing comment for selection:", error);
+    }
+  }
+
+  /**
+   * Show comment box for a range of lines
+   */
+  private showCommentForLines(
+    startLine: number,
+    endLine: number,
+    editorType: "original" | "modified",
+  ) {
+    try {
+      if (!this.editor) {
+        return;
+      }
+
+      const targetEditor =
+        editorType === "original"
+          ? this.editor.getOriginalEditor()
+          : this.editor.getModifiedEditor();
+      const targetModel =
+        editorType === "original" ? this.originalModel : this.modifiedModel;
+
+      if (!targetEditor || !targetModel) {
+        return;
+      }
+
+      // Get the text for the selected lines
+      const lines: string[] = [];
+      for (let i = startLine; i <= endLine; i++) {
+        if (i <= targetModel.getLineCount()) {
+          lines.push(targetModel.getLineContent(i));
+        }
+      }
+
+      const selectedText = lines.join("\n");
+
+      // Set the selected lines state
+      this.selectedLines = {
+        startLine,
+        endLine,
+        editorType,
+        text: selectedText,
+      };
+
+      // Calculate and set comment box position
+      this.commentBoxPosition = this.calculateCommentBoxPosition(
+        startLine,
+        editorType,
+      );
+
+      // Reset comment text and show the box
+      this.commentText = "";
+      this.showCommentBox = true;
+
+      // Clear any visible glyphs since we're showing the comment box
+      this.clearAllVisibleGlyphs();
+
+      // Request update to render the comment box
+      this.requestUpdate();
+    } catch (error) {
+      console.error("Error showing comment for lines:", error);
+    }
+  }
+
+  /**
+   * Clear all currently visible glyphs
+   */
+  private clearAllVisibleGlyphs() {
+    try {
+      this.visibleGlyphs.forEach((glyphId) => {
+        const element = this.container.value?.querySelector(`.${glyphId}`);
+        if (element) {
+          element.classList.remove("hover-visible");
+        }
+      });
+      this.visibleGlyphs.clear();
+    } catch (error) {
+      console.error("Error clearing visible glyphs:", error);
+    }
+  }
+
+  /**
+   * Toggle the visibility of a glyph decoration for a specific line
+   */
+  private toggleGlyphVisibility(lineNumber: number, visible: boolean) {
+    try {
+      // If making visible, clear all existing visible glyphs first
+      if (visible) {
+        this.clearAllVisibleGlyphs();
+      }
+
+      // Find all glyph decorations for this line in both editors
+      const selectors = [
+        `comment-glyph-original-${lineNumber}`,
+        `comment-glyph-modified-${lineNumber}`,
+      ];
+
+      selectors.forEach((glyphId) => {
+        const element = this.container.value?.querySelector(`.${glyphId}`);
+        if (element) {
+          if (visible) {
+            element.classList.add("hover-visible");
+            this.visibleGlyphs.add(glyphId);
+          } else {
+            element.classList.remove("hover-visible");
+            this.visibleGlyphs.delete(glyphId);
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error toggling glyph visibility:", error);
+    }
+  }
+
+  /**
    * Update editor options
    */
   setOptions(value: monaco.editor.IDiffEditorConstructionOptions) {
@@ -655,6 +1176,10 @@ export class CodeDiffEditor extends LitElement {
   private originalModel?: monaco.editor.ITextModel;
   private modifiedModel?: monaco.editor.ITextModel;
 
+  // Decoration collections for glyph decorations
+  private originalDecorations?: monaco.editor.IEditorDecorationsCollection;
+  private modifiedDecorations?: monaco.editor.IEditorDecorationsCollection;
+
   private async initializeEditor() {
     try {
       // Load Monaco dynamically
@@ -686,6 +1211,8 @@ export class CodeDiffEditor extends LitElement {
           theme: "vs", // Always use light mode
           renderSideBySide: !this.inline,
           ignoreTrimWhitespace: false,
+          // Enable glyph margin for both editors to show decorations
+          glyphMargin: true,
           scrollbar: {
             // Ideally we'd handle the mouse wheel for the horizontal scrollbar,
             // but there doesn't seem to be that option. Setting
@@ -704,17 +1231,22 @@ export class CodeDiffEditor extends LitElement {
           },
         });
 
-        // Set up selection change event listeners for both editors
-        this.setupSelectionChangeListeners();
-
         this.setupKeyboardShortcuts();
 
         // If this is an editable view, set the correct read-only state for each editor
         if (this.editableRight) {
           // Make sure the original editor is always read-only
-          this.editor.getOriginalEditor().updateOptions({ readOnly: true });
+          this.editor
+            .getOriginalEditor()
+            .updateOptions({ readOnly: true, glyphMargin: true });
           // Make sure the modified editor is editable
-          this.editor.getModifiedEditor().updateOptions({ readOnly: false });
+          this.editor
+            .getModifiedEditor()
+            .updateOptions({ readOnly: false, glyphMargin: true });
+        } else {
+          // Ensure glyph margin is enabled on both editors even in read-only mode
+          this.editor.getOriginalEditor().updateOptions({ glyphMargin: true });
+          this.editor.getModifiedEditor().updateOptions({ glyphMargin: true });
         }
 
         // Set up auto-sizing
@@ -726,6 +1258,8 @@ export class CodeDiffEditor extends LitElement {
 
       // Create or update models
       this.updateModels();
+      // Add glyph decorations after models are set
+      this.setupGlyphDecorations();
       // Set up content change listener
       this.setupContentChangeListener();
 
@@ -745,336 +1279,6 @@ export class CodeDiffEditor extends LitElement {
       }, 100);
     } catch (error) {
       console.error("Error initializing Monaco editor:", error);
-    }
-  }
-
-  /**
-   * Sets up event listeners for text selection in both editors.
-   * This enables showing the comment UI when users select text and
-   * manages the visibility of UI components based on user interactions.
-   */
-  private setupSelectionChangeListeners() {
-    try {
-      if (!this.editor) {
-        return;
-      }
-
-      // Get both original and modified editors
-      const originalEditor = this.editor.getOriginalEditor();
-      const modifiedEditor = this.editor.getModifiedEditor();
-
-      if (!originalEditor || !modifiedEditor) {
-        return;
-      }
-
-      // Add selection change listener to original editor
-      originalEditor.onDidChangeCursorSelection((e) => {
-        this.handleSelectionChange(e, originalEditor, "original");
-      });
-
-      // Add selection change listener to modified editor
-      modifiedEditor.onDidChangeCursorSelection((e) => {
-        this.handleSelectionChange(e, modifiedEditor, "modified");
-      });
-
-      // Create a debounced function for mouse move handling
-      let mouseMoveTimeout: number | null = null;
-      const handleMouseMove = () => {
-        // Clear any existing timeout
-        if (mouseMoveTimeout) {
-          window.clearTimeout(mouseMoveTimeout);
-        }
-
-        // If there's text selected and we're not showing the comment box, keep indicator visible
-        if (this.selectedText && !this.showCommentBox) {
-          this.showCommentIndicator = true;
-          this.requestUpdate();
-        }
-
-        // Set a new timeout to hide the indicator after a delay
-        mouseMoveTimeout = window.setTimeout(() => {
-          // Only hide if we're not showing the comment box and not actively hovering
-          if (!this.showCommentBox && !this._isHovering) {
-            this.showCommentIndicator = false;
-            this.requestUpdate();
-          }
-        }, 2000); // Hide after 2 seconds of inactivity
-      };
-
-      // Add mouse move listeners with debouncing
-      originalEditor.onMouseMove(() => handleMouseMove());
-      modifiedEditor.onMouseMove(() => handleMouseMove());
-
-      // Track hover state over the indicator and comment box
-      this._isHovering = false;
-
-      // Use the global document click handler to detect clicks outside
-      this._documentClickHandler = (e: MouseEvent) => {
-        try {
-          const target = e.target as HTMLElement;
-          const isIndicator =
-            target.matches(".comment-indicator") ||
-            !!target.closest(".comment-indicator");
-          const isCommentBox =
-            target.matches(".comment-box") || !!target.closest(".comment-box");
-
-          // If click is outside our UI elements
-          if (!isIndicator && !isCommentBox) {
-            // If we're not showing the comment box, hide the indicator
-            if (!this.showCommentBox) {
-              this.showCommentIndicator = false;
-              this.requestUpdate();
-            }
-          }
-        } catch (error) {
-          console.error("Error in document click handler:", error);
-        }
-      };
-
-      // Add the document click listener
-      document.addEventListener("click", this._documentClickHandler);
-    } catch (error) {
-      console.error("Error setting up selection listeners:", error);
-    }
-  }
-
-  // Track mouse hover state
-  private _isHovering = false;
-
-  // Store document click handler for cleanup
-  private _documentClickHandler: ((e: MouseEvent) => void) | null = null;
-
-  /**
-   * Handle selection change events from either editor
-   */
-  private handleSelectionChange(
-    e: monaco.editor.ICursorSelectionChangedEvent,
-    editor: monaco.editor.IStandaloneCodeEditor,
-    editorType: "original" | "modified",
-  ) {
-    try {
-      // If we're not making a selection (just moving cursor), do nothing
-      if (e.selection.isEmpty()) {
-        // Don't hide indicator or box if already shown
-        if (!this.showCommentBox) {
-          this.selectedText = null;
-          this.selectionRange = null;
-          this.showCommentIndicator = false;
-        }
-        return;
-      }
-
-      // Get selected text
-      const model = editor.getModel();
-      if (!model) {
-        return;
-      }
-
-      // Make sure selection is within valid range
-      const lineCount = model.getLineCount();
-      if (
-        e.selection.startLineNumber > lineCount ||
-        e.selection.endLineNumber > lineCount
-      ) {
-        return;
-      }
-
-      // Store which editor is active
-      this.activeEditor = editorType;
-
-      // Store selection range
-      this.selectionRange = {
-        startLineNumber: e.selection.startLineNumber,
-        startColumn: e.selection.startColumn,
-        endLineNumber: e.selection.endLineNumber,
-        endColumn: e.selection.endColumn,
-      };
-
-      try {
-        // Expand selection to full lines for better context
-        const expandedSelection = {
-          startLineNumber: e.selection.startLineNumber,
-          startColumn: 1, // Start at beginning of line
-          endLineNumber: e.selection.endLineNumber,
-          endColumn: model.getLineMaxColumn(e.selection.endLineNumber), // End at end of line
-        };
-
-        // Get the selected text using the expanded selection
-        this.selectedText = model.getValueInRange(expandedSelection);
-
-        // Update the selection range to reflect the full lines
-        this.selectionRange = {
-          startLineNumber: expandedSelection.startLineNumber,
-          startColumn: expandedSelection.startColumn,
-          endLineNumber: expandedSelection.endLineNumber,
-          endColumn: expandedSelection.endColumn,
-        };
-      } catch (error) {
-        console.error("Error getting selected text:", error);
-        return;
-      }
-
-      // If there's selected text, show the indicator
-      if (this.selectedText && this.selectedText.trim() !== "") {
-        // Calculate indicator position safely
-        try {
-          // Use the editor's DOM node as positioning context
-          const editorDomNode = editor.getDomNode();
-          if (!editorDomNode) {
-            return;
-          }
-
-          // Get position from editor
-          const position = {
-            lineNumber: e.selection.endLineNumber,
-            column: e.selection.endColumn,
-          };
-
-          // Use editor's built-in method for coordinate conversion
-          const selectionCoords = editor.getScrolledVisiblePosition(position);
-
-          if (selectionCoords) {
-            // Get accurate DOM position for the selection end
-            const editorRect = editorDomNode.getBoundingClientRect();
-
-            // Calculate the actual screen position
-            const screenLeft = editorRect.left + selectionCoords.left;
-            const screenTop = editorRect.top + selectionCoords.top;
-
-            // Store absolute screen coordinates
-            this.indicatorPosition = {
-              top: screenTop,
-              left: screenLeft + 10, // Slight offset
-            };
-
-            // Check window boundaries to ensure the indicator stays visible
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-
-            // Keep indicator within viewport bounds
-            if (this.indicatorPosition.left + 150 > viewportWidth) {
-              this.indicatorPosition.left = viewportWidth - 160;
-            }
-
-            if (this.indicatorPosition.top + 40 > viewportHeight) {
-              this.indicatorPosition.top = viewportHeight - 50;
-            }
-
-            // Show the indicator
-            this.showCommentIndicator = true;
-
-            // Request an update to ensure UI reflects changes
-            this.requestUpdate();
-          }
-        } catch (error) {
-          console.error("Error positioning comment indicator:", error);
-        }
-      }
-    } catch (error) {
-      console.error("Error handling selection change:", error);
-    }
-  }
-
-  /**
-   * Handle click on the comment indicator
-   */
-  private handleIndicatorClick(e: Event) {
-    try {
-      e.stopPropagation();
-      e.preventDefault();
-
-      this.showCommentBox = true;
-      this.commentText = ""; // Reset comment text
-
-      // Don't hide the indicator while comment box is shown
-      this.showCommentIndicator = true;
-
-      // Ensure UI updates
-      this.requestUpdate();
-    } catch (error) {
-      console.error("Error handling indicator click:", error);
-    }
-  }
-
-  /**
-   * Handle changes to the comment text
-   */
-  private handleCommentInput(e: Event) {
-    const target = e.target as HTMLTextAreaElement;
-    this.commentText = target.value;
-  }
-
-  /**
-   * Close the comment box
-   */
-  private closeCommentBox() {
-    this.showCommentBox = false;
-    // Also hide the indicator
-    this.showCommentIndicator = false;
-  }
-
-  /**
-   * Submit the comment
-   */
-  private submitComment() {
-    try {
-      if (!this.selectedText || !this.commentText) {
-        return;
-      }
-
-      // Get the correct filename based on active editor
-      const fileContext =
-        this.activeEditor === "original"
-          ? this.originalFilename || "Original file"
-          : this.modifiedFilename || "Modified file";
-
-      // Include editor info to make it clear which version was commented on
-      const editorLabel =
-        this.activeEditor === "original" ? "[Original]" : "[Modified]";
-
-      // Add line number information if available
-      let lineInfo = "";
-      if (this.selectionRange) {
-        const startLine = this.selectionRange.startLineNumber;
-        const endLine = this.selectionRange.endLineNumber;
-        if (startLine === endLine) {
-          lineInfo = ` (line ${startLine})`;
-        } else {
-          lineInfo = ` (lines ${startLine}-${endLine})`;
-        }
-      }
-
-      // Format the comment in a readable way
-      const formattedComment = `\`\`\`\n${fileContext} ${editorLabel}${lineInfo}:\n${this.selectedText}\n\`\`\`\n\n${this.commentText}`;
-
-      // Close UI before dispatching to prevent interaction conflicts
-      this.closeCommentBox();
-
-      // Use setTimeout to ensure the UI has updated before sending the event
-      setTimeout(() => {
-        try {
-          // Dispatch a custom event with the comment details
-          const event = new CustomEvent("monaco-comment", {
-            detail: {
-              fileContext,
-              selectedText: this.selectedText,
-              commentText: this.commentText,
-              formattedComment,
-              selectionRange: this.selectionRange,
-              activeEditor: this.activeEditor,
-            },
-            bubbles: true,
-            composed: true,
-          });
-
-          this.dispatchEvent(event);
-        } catch (error) {
-          console.error("Error dispatching comment event:", error);
-        }
-      }, 0);
-    } catch (error) {
-      console.error("Error submitting comment:", error);
-      this.closeCommentBox();
     }
   }
 
@@ -1150,6 +1354,9 @@ export class CodeDiffEditor extends LitElement {
         if (this.fitEditorToContent) {
           setTimeout(() => this.fitEditorToContent!(), 50);
         }
+
+        // Add glyph decorations after setting new models
+        setTimeout(() => this.setupGlyphDecorations(), 100);
       }
       this.setupContentChangeListener();
     } catch (error) {
@@ -1390,6 +1597,17 @@ export class CodeDiffEditor extends LitElement {
         }
       }
 
+      // Clean up decorations
+      if (this.originalDecorations) {
+        this.originalDecorations.clear();
+        this.originalDecorations = undefined;
+      }
+
+      if (this.modifiedDecorations) {
+        this.modifiedDecorations.clear();
+        this.modifiedDecorations = undefined;
+      }
+
       // Clean up resources when element is removed
       if (this.editor) {
         this.editor.dispose();
@@ -1416,17 +1634,14 @@ export class CodeDiffEditor extends LitElement {
       // Clear the fit function reference
       this.fitEditorToContent = null;
 
-      // Remove document click handler if set
-      if (this._documentClickHandler) {
-        document.removeEventListener("click", this._documentClickHandler);
-        this._documentClickHandler = null;
-      }
-
       // Remove window resize handler if set
       if (this._windowResizeHandler) {
         window.removeEventListener("resize", this._windowResizeHandler);
         this._windowResizeHandler = null;
       }
+
+      // Clear visible glyphs tracking
+      this.visibleGlyphs.clear();
     } catch (error) {
       console.error("Error in disconnectedCallback:", error);
     }
