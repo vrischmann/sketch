@@ -16,10 +16,9 @@ func TestTunnelManagerMaxLimit(t *testing.T) {
 		t.Errorf("Expected maxActiveTunnels to be 2, got %d", tm.maxActiveTunnels)
 	}
 
-	// Test that GetActiveTunnels returns empty initially
-	activeTunnels := tm.GetActiveTunnels()
-	if len(activeTunnels) != 0 {
-		t.Errorf("Expected 0 active tunnels initially, got %d", len(activeTunnels))
+	// Test that active tunnels map is empty initially
+	if len(tm.activeTunnels) != 0 {
+		t.Errorf("Expected 0 active tunnels initially, got %d", len(tm.activeTunnels))
 	}
 
 	// Simulate adding tunnels beyond the limit by directly manipulating the internal map
@@ -29,9 +28,8 @@ func TestTunnelManagerMaxLimit(t *testing.T) {
 	tm.activeTunnels["9090"] = &sshTunnel{containerPort: "9090", hostPort: "9090"}
 
 	// Verify we have 2 active tunnels
-	activeTunnels = tm.GetActiveTunnels()
-	if len(activeTunnels) != 2 {
-		t.Errorf("Expected 2 active tunnels, got %d", len(activeTunnels))
+	if len(tm.activeTunnels) != 2 {
+		t.Errorf("Expected 2 active tunnels, got %d", len(tm.activeTunnels))
 	}
 
 	// Now test that the limit check works - attempt to add a third tunnel
@@ -49,9 +47,8 @@ func TestTunnelManagerMaxLimit(t *testing.T) {
 	}
 
 	// Verify we still have only 2 active tunnels (didn't exceed limit)
-	activeTunnels = tm.GetActiveTunnels()
-	if len(activeTunnels) != 2 {
-		t.Errorf("Expected exactly 2 active tunnels after limit enforcement, got %d", len(activeTunnels))
+	if len(tm.activeTunnels) != 2 {
+		t.Errorf("Expected exactly 2 active tunnels after limit enforcement, got %d", len(tm.activeTunnels))
 	}
 }
 
@@ -136,8 +133,8 @@ func TestTunnelManagerLimitEnforcement(t *testing.T) {
 	tm.activeTunnels["9090"] = &sshTunnel{containerPort: "9090", hostPort: "9090"}
 
 	// Verify we're now at the limit
-	if len(tm.GetActiveTunnels()) != 2 {
-		t.Fatalf("Setup failed: expected 2 active tunnels, got %d", len(tm.GetActiveTunnels()))
+	if len(tm.activeTunnels) != 2 {
+		t.Fatalf("Setup failed: expected 2 active tunnels, got %d", len(tm.activeTunnels))
 	}
 
 	// Now test that createTunnel respects the limit by calling it directly
@@ -146,13 +143,13 @@ func TestTunnelManagerLimitEnforcement(t *testing.T) {
 	tm.createTunnel(ctx, "4000")
 
 	// Verify no additional tunnels were added (limit enforcement worked)
-	if len(tm.GetActiveTunnels()) != 2 {
-		t.Errorf("createTunnel should have been blocked by limit, but tunnel count changed from 2 to %d", len(tm.GetActiveTunnels()))
+	if len(tm.activeTunnels) != 2 {
+		t.Errorf("createTunnel should have been blocked by limit, but tunnel count changed from 2 to %d", len(tm.activeTunnels))
 	}
 
 	// Verify we're at the limit
-	if len(tm.GetActiveTunnels()) != 2 {
-		t.Fatalf("Expected 2 active tunnels, got %d", len(tm.GetActiveTunnels()))
+	if len(tm.activeTunnels) != 2 {
+		t.Fatalf("Expected 2 active tunnels, got %d", len(tm.activeTunnels))
 	}
 
 	// Now try to process more port events that would create additional tunnels
@@ -173,24 +170,23 @@ func TestTunnelManagerLimitEnforcement(t *testing.T) {
 	tm.processPortEvent(ctx, portEvent2)
 
 	// Verify that no additional tunnels were created
-	activeTunnels := tm.GetActiveTunnels()
-	if len(activeTunnels) != 2 {
-		t.Errorf("Expected exactly 2 active tunnels after limit enforcement, got %d", len(activeTunnels))
+	if len(tm.activeTunnels) != 2 {
+		t.Errorf("Expected exactly 2 active tunnels after limit enforcement, got %d", len(tm.activeTunnels))
 	}
 
 	// Verify the original tunnels are still there
-	if _, exists := activeTunnels["8080"]; !exists {
+	if _, exists := tm.activeTunnels["8080"]; !exists {
 		t.Error("Expected original tunnel for port 8080 to still exist")
 	}
-	if _, exists := activeTunnels["9090"]; !exists {
+	if _, exists := tm.activeTunnels["9090"]; !exists {
 		t.Error("Expected original tunnel for port 9090 to still exist")
 	}
 
 	// Verify the new tunnels were NOT created
-	if _, exists := activeTunnels["3000"]; exists {
+	if _, exists := tm.activeTunnels["3000"]; exists {
 		t.Error("Expected tunnel for port 3000 to NOT be created due to limit")
 	}
-	if _, exists := activeTunnels["4000"]; exists {
+	if _, exists := tm.activeTunnels["4000"]; exists {
 		t.Error("Expected tunnel for port 4000 to NOT be created due to limit")
 	}
 }

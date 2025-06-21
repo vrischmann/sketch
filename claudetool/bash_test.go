@@ -11,20 +11,19 @@ import (
 	"time"
 )
 
-func TestBashRun(t *testing.T) {
+func TestBashTool(t *testing.T) {
 	// Test basic functionality
 	t.Run("Basic Command", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo 'Hello, world!'"}`)
 
-		result, err := BashRun(context.Background(), input)
+		result, err := Bash.Run(context.Background(), input)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		expected := "Hello, world!\n"
-		resultStr := ContentToString(result)
-		if resultStr != expected {
-			t.Errorf("Expected %q, got %q", expected, resultStr)
+		if len(result) == 0 || result[0].Text != expected {
+			t.Errorf("Expected %q, got %q", expected, result[0].Text)
 		}
 	})
 
@@ -32,15 +31,14 @@ func TestBashRun(t *testing.T) {
 	t.Run("Command With Arguments", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo -n foo && echo -n bar"}`)
 
-		result, err := BashRun(context.Background(), input)
+		result, err := Bash.Run(context.Background(), input)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		expected := "foobar"
-		resultStr := ContentToString(result)
-		if resultStr != expected {
-			t.Errorf("Expected %q, got %q", expected, resultStr)
+		if len(result) == 0 || result[0].Text != expected {
+			t.Errorf("Expected %q, got %q", expected, result[0].Text)
 		}
 	})
 
@@ -58,15 +56,14 @@ func TestBashRun(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := BashRun(context.Background(), inputJSON)
+		result, err := Bash.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		expected := "Completed\n"
-		resultStr := ContentToString(result)
-		if resultStr != expected {
-			t.Errorf("Expected %q, got %q", expected, resultStr)
+		if len(result) == 0 || result[0].Text != expected {
+			t.Errorf("Expected %q, got %q", expected, result[0].Text)
 		}
 	})
 
@@ -84,7 +81,7 @@ func TestBashRun(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		_, err = BashRun(context.Background(), inputJSON)
+		_, err = Bash.Run(context.Background(), inputJSON)
 		if err == nil {
 			t.Errorf("Expected timeout error, got none")
 		} else if !strings.Contains(err.Error(), "timed out") {
@@ -96,7 +93,7 @@ func TestBashRun(t *testing.T) {
 	t.Run("Failed Command", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"exit 1"}`)
 
-		_, err := BashRun(context.Background(), input)
+		_, err := Bash.Run(context.Background(), input)
 		if err == nil {
 			t.Errorf("Expected error for failed command, got none")
 		}
@@ -106,7 +103,7 @@ func TestBashRun(t *testing.T) {
 	t.Run("Invalid JSON Input", func(t *testing.T) {
 		input := json.RawMessage(`{"command":123}`) // Invalid JSON (command must be string)
 
-		_, err := BashRun(context.Background(), input)
+		_, err := Bash.Run(context.Background(), input)
 		if err == nil {
 			t.Errorf("Expected error for invalid input, got none")
 		}
@@ -224,14 +221,14 @@ func TestBackgroundBash(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := BashRun(context.Background(), inputJSON)
+		result, err := Bash.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
-		resultStr := ContentToString(result)
+		resultStr := result[0].Text
 		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
 			t.Fatalf("Failed to unmarshal background result: %v", err)
 		}
@@ -282,14 +279,14 @@ func TestBackgroundBash(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := BashRun(context.Background(), inputJSON)
+		result, err := Bash.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
-		resultStr := ContentToString(result)
+		resultStr := result[0].Text
 		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
 			t.Fatalf("Failed to unmarshal background result: %v", err)
 		}
@@ -340,14 +337,14 @@ func TestBackgroundBash(t *testing.T) {
 		}
 
 		// Start the command in the background
-		result, err := BashRun(context.Background(), inputJSON)
+		result, err := Bash.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
-		resultStr := ContentToString(result)
+		resultStr := result[0].Text
 		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
 			t.Fatalf("Failed to unmarshal background result: %v", err)
 		}

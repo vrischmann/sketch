@@ -324,12 +324,6 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 	}, nil
 }
 
-// BashRun is the legacy function for testing compatibility
-func BashRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
-	// Use the default Bash tool which has no permission callback
-	return Bash.Run(ctx, m)
-}
-
 // checkAndInstallMissingTools analyzes a bash command and attempts to automatically install any missing tools.
 func (b *BashTool) checkAndInstallMissingTools(ctx context.Context, command string) error {
 	commands, err := bashkit.ExtractCommands(command)

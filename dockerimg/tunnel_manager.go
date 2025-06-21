@@ -246,15 +246,3 @@ func (tm *TunnelManager) cleanupAllTunnels() {
 		delete(tm.activeTunnels, port)
 	}
 }
-
-// GetActiveTunnels returns a list of currently active tunnels
-func (tm *TunnelManager) GetActiveTunnels() map[string]string {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	result := make(map[string]string)
-	for containerPort, tunnel := range tm.activeTunnels {
-		result[containerPort] = tunnel.hostPort
-	}
-	return result
-}

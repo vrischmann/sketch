@@ -141,11 +141,6 @@ func (b *BrowseTools) GetBrowserContext() (context.Context, error) {
 	return b.browserCtx, nil
 }
 
-// All tools return this as a response when successful
-type baseResponse struct {
-	Status string `json:"status,omitempty"`
-}
-
 func successResponse() string {
 	return `{"status":"success"}`
 }
