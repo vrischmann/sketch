@@ -125,21 +125,32 @@ export class SketchTimeline extends LitElement {
     }
     #jump-to-latest {
       display: none;
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      background: rgb(33, 150, 243);
+      position: fixed;
+      bottom: 80px; /* Position right on the boundary */
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
       color: white;
-      border-radius: 8px;
-      padding: 0.5em;
-      margin: 0.5em;
-      font-size: x-large;
-      opacity: 0.5;
+      border: none;
+      border-radius: 12px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 400;
       cursor: pointer;
-      z-index: 50;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      opacity: 0.8;
     }
     #jump-to-latest:hover {
+      background-color: rgba(0, 0, 0, 0.8);
+      transform: translateX(-50%) translateY(-1px);
       opacity: 1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+    #jump-to-latest:active {
+      transform: translateX(-50%) translateY(0);
     }
     #jump-to-latest.floating {
       display: block;
@@ -1060,7 +1071,7 @@ export class SketchTimeline extends LitElement {
           class="${this.scrollingState}"
           @click=${this.scrollToBottomWithRetry}
         >
-          ⇩
+          ↓ Jump to bottom
         </div>
       </div>
     `;

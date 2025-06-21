@@ -16,6 +16,9 @@ export class MobileChat extends LitElement {
 
   private scrollContainer = createRef<HTMLDivElement>();
 
+  @state()
+  private showJumpToBottom = false;
+
   static styles = css`
     :host {
       display: block;
@@ -288,6 +291,45 @@ export class MobileChat extends LitElement {
       flex-shrink: 0;
       margin-left: 4px;
     }
+
+    .jump-to-bottom {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 400;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      z-index: 1100;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.8;
+    }
+
+    .jump-to-bottom:hover {
+      background-color: rgba(0, 0, 0, 0.8);
+      transform: translateX(-50%) translateY(-1px);
+      opacity: 1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .jump-to-bottom:active {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .jump-to-bottom.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(10px);
+    }
   `;
 
   updated(changedProperties: Map<string, any>) {
@@ -297,6 +339,14 @@ export class MobileChat extends LitElement {
       changedProperties.has("isThinking")
     ) {
       this.scrollToBottom();
+    }
+
+    // Set up scroll listener if not already done
+    if (this.scrollContainer.value && !this.scrollContainer.value.onscroll) {
+      this.scrollContainer.value.addEventListener(
+        "scroll",
+        this.handleScroll.bind(this),
+      );
     }
   }
 
@@ -308,6 +358,21 @@ export class MobileChat extends LitElement {
           this.scrollContainer.value.scrollHeight;
       }
     });
+  }
+
+  private handleScroll() {
+    if (!this.scrollContainer.value) return;
+
+    const container = this.scrollContainer.value;
+    const isAtBottom =
+      container.scrollTop + container.clientHeight >=
+      container.scrollHeight - 50; // 50px tolerance
+
+    this.showJumpToBottom = !isAtBottom;
+  }
+
+  private jumpToBottom() {
+    this.scrollToBottom();
   }
 
   private formatTime(timestamp: string): string {
@@ -516,6 +581,16 @@ export class MobileChat extends LitElement {
     return "";
   }
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this.scrollContainer.value) {
+      this.scrollContainer.value.removeEventListener(
+        "scroll",
+        this.handleScroll.bind(this),
+      );
+    }
+  }
+
   render() {
     const displayMessages = this.messages.filter((msg) =>
       this.shouldShowMessage(msg),
@@ -560,6 +635,18 @@ export class MobileChat extends LitElement {
             `
           : ""}
       </div>
+
+      ${this.showJumpToBottom
+        ? html`
+            <button
+              class="jump-to-bottom"
+              @click=${this.jumpToBottom}
+              aria-label="Jump to bottom"
+            >
+              ↓ Jump to bottom
+            </button>
+          `
+        : ""}
     `;
   }
 }
