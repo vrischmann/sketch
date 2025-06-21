@@ -17,17 +17,21 @@ export class MockGitDataService implements GitDataService {
     {
       hash: "abc123456789",
       subject: "Implement new file picker UI",
-      refs: ["HEAD", "main"],
+      refs: ["HEAD", "origin/main", "refs/heads/feature/file-picker"],
     },
     {
       hash: "def987654321",
-      subject: "Add range picker component",
-      refs: [],
+      subject: "Add range picker component and improve styling",
+      refs: [
+        "origin/feature/range-picker",
+        "refs/heads/feature/ui-improvements",
+        "refs/remotes/origin/dev",
+      ],
     },
     {
       hash: "ghi456789123",
-      subject: "Fix styling issues in navigation",
-      refs: [],
+      subject: "Fix styling issues in navigation and add responsive design",
+      refs: ["refs/heads/hotfix/styling", "refs/tags/v1.2.0"],
     },
     {
       hash: "jkl789123456",

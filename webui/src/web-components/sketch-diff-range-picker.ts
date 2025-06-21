@@ -25,6 +25,9 @@ export class SketchDiffRangePicker extends LitElement {
   @state()
   private toCommit: string = "";
 
+  @state()
+  private dropdownOpen: boolean = false;
+
   // Removed commitsExpanded state - always expanded now
 
   @state()
@@ -65,7 +68,6 @@ export class SketchDiffRangePicker extends LitElement {
       align-items: center;
       gap: 12px;
       flex: 1;
-      flex-wrap: wrap; /* Allow wrapping on small screens */
     }
 
     .commit-selector {
@@ -73,20 +75,161 @@ export class SketchDiffRangePicker extends LitElement {
       align-items: center;
       gap: 8px;
       flex: 1;
-      min-width: 200px;
-      max-width: calc(50% - 12px); /* Half width minus half the gap */
-      overflow: hidden;
+      position: relative;
     }
 
-    select {
-      padding: 6px 8px;
-      border-radius: 4px;
+    /* Custom dropdown styles */
+    .custom-select {
+      position: relative;
+      width: 100%;
+      min-width: 300px;
+    }
+
+    .select-button {
+      width: 100%;
+      padding: 8px 32px 8px 12px;
       border: 1px solid var(--border-color, #e0e0e0);
+      border-radius: 4px;
       background-color: var(--background, #fff);
-      max-width: 100%;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      font-family: inherit;
+      font-size: 14px;
+      position: relative;
+    }
+
+    .select-button:hover {
+      border-color: var(--border-hover, #ccc);
+    }
+
+    .select-button:focus {
+      outline: none;
+      border-color: var(--accent-color, #007acc);
+      box-shadow: 0 0 0 2px var(--accent-color-light, rgba(0, 122, 204, 0.2));
+    }
+
+    .select-button.default-commit {
+      border-color: var(--accent-color, #007acc);
+      background-color: var(--accent-color-light, rgba(0, 122, 204, 0.05));
+    }
+
+    .dropdown-arrow {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      transition: transform 0.2s;
+    }
+
+    .dropdown-arrow.open {
+      transform: translateY(-50%) rotate(180deg);
+    }
+
+    .dropdown-content {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background-color: var(--background, #fff);
+      border: 1px solid var(--border-color, #e0e0e0);
+      border-radius: 4px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 2px;
+    }
+
+    .dropdown-option {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-light, #f0f0f0);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1.4;
+      min-height: auto;
+    }
+
+    .dropdown-option:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-option:hover {
+      background-color: var(--background-hover, #f5f5f5);
+    }
+
+    .dropdown-option.selected {
+      background-color: var(--accent-color-light, rgba(0, 122, 204, 0.1));
+    }
+
+    .dropdown-option.default-commit {
+      background-color: var(--accent-color-light, rgba(0, 122, 204, 0.05));
+      border-left: 3px solid var(--accent-color, #007acc);
+      padding-left: 9px;
+    }
+
+    .commit-hash {
+      font-family: monospace;
+      color: var(--text-secondary, #666);
+      font-size: 13px;
+    }
+
+    .commit-subject {
+      color: var(--text-primary, #333);
+      flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      min-width: 200px; /* Ensure commit message gets priority */
+    }
+
+    .commit-refs {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .commit-refs-container {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .commit-ref {
+      background-color: var(--tag-bg, #e1f5fe);
+      color: var(--tag-text, #0277bd);
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .commit-ref.branch {
+      background-color: var(--branch-bg, #e8f5e8);
+      color: var(--branch-text, #2e7d32);
+    }
+
+    .commit-ref.tag {
+      background-color: var(--tag-bg, #fff3e0);
+      color: var(--tag-text, #f57c00);
+    }
+
+    .commit-ref.sketch-base {
+      background-color: var(--accent-color, #007acc);
+      color: white;
+      font-weight: 600;
+    }
+
+    .truncated-refs {
+      position: relative;
+      cursor: help;
     }
 
     label {
@@ -165,53 +308,61 @@ export class SketchDiffRangePicker extends LitElement {
   }
 
   renderRangeSelectors() {
+    // Always diff against uncommitted changes
+    this.toCommit = "";
+
+    const selectedCommit = this.commits.find((c) => c.hash === this.fromCommit);
+    const isDefaultCommit =
+      selectedCommit && this.isSketchBaseCommit(selectedCommit);
+
     return html`
       <div class="commit-selector">
-        <label for="fromCommit">From:</label>
-        <select
-          id="fromCommit"
-          .value=${this.fromCommit}
-          @change=${this.handleFromChange}
-        >
-          ${this.commits.map(
-            (commit) => html`
-              <option
-                value=${commit.hash}
-                ?selected=${commit.hash === this.fromCommit}
-              >
-                ${this.formatCommitOption(commit)}
-              </option>
-            `,
-          )}
-        </select>
-      </div>
-      <div class="commit-selector">
-        <label for="toCommit">To:</label>
-        <select
-          id="toCommit"
-          .value=${this.toCommit}
-          @change=${this.handleToChange}
-        >
-          <option value="" ?selected=${this.toCommit === ""}>
-            Uncommitted Changes
-          </option>
-          ${this.commits.map(
-            (commit) => html`
-              <option
-                value=${commit.hash}
-                ?selected=${commit.hash === this.toCommit}
-              >
-                ${this.formatCommitOption(commit)}
-              </option>
-            `,
-          )}
-        </select>
+        <label for="fromCommit">Diff from:</label>
+        <div class="custom-select" @click=${this.toggleDropdown}>
+          <button
+            class="select-button ${isDefaultCommit ? "default-commit" : ""}"
+            @click=${this.toggleDropdown}
+            @blur=${this.handleBlur}
+          >
+            ${selectedCommit
+              ? this.renderCommitButton(selectedCommit)
+              : "Select commit..."}
+            <svg
+              class="dropdown-arrow ${this.dropdownOpen ? "open" : ""}"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+            >
+              <path d="M6 8l-4-4h8z" fill="currentColor" />
+            </svg>
+          </button>
+          ${this.dropdownOpen
+            ? html`
+                <div class="dropdown-content">
+                  ${this.commits.map(
+                    (commit) => html`
+                      <div
+                        class="dropdown-option ${commit.hash === this.fromCommit
+                          ? "selected"
+                          : ""} ${this.isSketchBaseCommit(commit)
+                          ? "default-commit"
+                          : ""}"
+                        @click=${() => this.selectCommit(commit.hash)}
+                      >
+                        ${this.renderCommitOption(commit)}
+                      </div>
+                    `,
+                  )}
+                </div>
+              `
+            : ""}
+        </div>
       </div>
     `;
   }
 
   /**
-   * Format a commit for display in the dropdown
+   * Format a commit for display in the dropdown (legacy method, kept for compatibility)
    */
   formatCommitOption(commit: GitLogEntry): string {
     const shortHash = commit.hash.substring(0, 7);
@@ -318,7 +469,129 @@ export class SketchDiffRangePicker extends LitElement {
     this.dispatchRangeEvent();
   }
 
-  // Removed toggleCommitsExpansion method - always expanded now
+  /**
+   * Toggle dropdown open/closed
+   */
+  toggleDropdown(event: Event) {
+    event.stopPropagation();
+    this.dropdownOpen = !this.dropdownOpen;
+
+    if (this.dropdownOpen) {
+      // Close dropdown when clicking outside
+      setTimeout(() => {
+        document.addEventListener("click", this.closeDropdown, { once: true });
+      }, 0);
+    }
+  }
+
+  /**
+   * Close dropdown
+   */
+  closeDropdown = () => {
+    this.dropdownOpen = false;
+  };
+
+  /**
+   * Handle blur event on select button
+   */
+  handleBlur(event: FocusEvent) {
+    // Small delay to allow click events to process
+    setTimeout(() => {
+      if (!this.shadowRoot?.activeElement?.closest(".custom-select")) {
+        this.dropdownOpen = false;
+      }
+    }, 150);
+  }
+
+  /**
+   * Select a commit from dropdown
+   */
+  selectCommit(hash: string) {
+    this.fromCommit = hash;
+    this.dropdownOpen = false;
+    this.dispatchRangeEvent();
+  }
+
+  /**
+   * Check if a commit is a sketch-base commit
+   */
+  isSketchBaseCommit(commit: GitLogEntry): boolean {
+    return commit.refs?.some((ref) => ref.includes("sketch-base")) || false;
+  }
+
+  /**
+   * Render commit for the dropdown button
+   */
+  renderCommitButton(commit: GitLogEntry) {
+    const shortHash = commit.hash.substring(0, 7);
+    let subject = commit.subject;
+    if (subject.length > 40) {
+      subject = subject.substring(0, 37) + "...";
+    }
+
+    return html`
+      <span class="commit-hash">${shortHash}</span>
+      <span class="commit-subject">${subject}</span>
+      ${this.isSketchBaseCommit(commit)
+        ? html` <span class="commit-ref sketch-base">base</span> `
+        : ""}
+    `;
+  }
+
+  /**
+   * Render commit option in dropdown
+   */
+  renderCommitOption(commit: GitLogEntry) {
+    const shortHash = commit.hash.substring(0, 7);
+    let subject = commit.subject;
+    if (subject.length > 50) {
+      subject = subject.substring(0, 47) + "...";
+    }
+
+    return html`
+      <span class="commit-hash">${shortHash}</span>
+      <span class="commit-subject">${subject}</span>
+      ${commit.refs && commit.refs.length > 0
+        ? html` <div class="commit-refs">${this.renderRefs(commit.refs)}</div> `
+        : ""}
+    `;
+  }
+
+  /**
+   * Render all refs naturally without truncation
+   */
+  renderRefs(refs: string[]) {
+    return html`
+      <div class="commit-refs-container">
+        ${refs.map((ref) => {
+          const shortRef = this.getShortRefName(ref);
+          const isSketchBase = ref.includes("sketch-base");
+          const refClass = isSketchBase
+            ? "sketch-base"
+            : ref.includes("tag")
+              ? "tag"
+              : "branch";
+          return html`<span class="commit-ref ${refClass}">${shortRef}</span>`;
+        })}
+      </div>
+    `;
+  }
+
+  /**
+   * Get shortened reference name for compact display
+   */
+  getShortRefName(ref: string): string {
+    if (ref.startsWith("refs/heads/")) {
+      return ref.substring(11);
+    }
+    if (ref.startsWith("refs/remotes/origin/")) {
+      return ref.substring(20);
+    }
+    if (ref.startsWith("refs/tags/")) {
+      return ref.substring(10);
+    }
+    return ref;
+  }
 
   /**
    * Get a summary of the current commit range for display
