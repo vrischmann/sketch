@@ -16,7 +16,7 @@ export function renderMessagesViewer(viewData: any, container: HTMLDivElement) {
   const messages = aggregateAgentMessages(visibleMessages, []);
   timelineEl.messages = messages;
   timelineEl.toolCalls = viewData.ToolResults;
-  //timelineEl.scrollContainer = window.document;
+  timelineEl.scrollContainer = { value: window.document.body };
   container.replaceWith(timelineEl);
 }
 
