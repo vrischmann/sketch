@@ -998,6 +998,19 @@ export class SketchAppShell extends LitElement {
     this._windowFocused = false;
   }
 
+  // Get the last user or agent message (ignore system messages like commit, error, etc.)
+  // For example, when Sketch notices a new commit, it'll send a message,
+  // but it's still idle!
+  private getLastUserOrAgentMessage(): AgentMessage | null {
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      const message = this.messages[i];
+      if (message.type === "user" || message.type === "agent") {
+        return message;
+      }
+    }
+    return null;
+  }
+
   // Show notification for message with EndOfTurn=true
   private async showEndOfTurnNotification(
     message: AgentMessage,
@@ -1447,10 +1460,13 @@ export class SketchAppShell extends LitElement {
             .agentState=${this.containerState?.agent_state}
             .llmCalls=${this.containerState?.outstanding_llm_calls || 0}
             .toolCalls=${this.containerState?.outstanding_tool_calls || []}
-            .isIdle=${this.messages.length > 0
-              ? this.messages[this.messages.length - 1]?.end_of_turn &&
-                !this.messages[this.messages.length - 1]?.parent_conversation_id
-              : true}
+            .isIdle=${(() => {
+              const lastUserOrAgentMessage = this.getLastUserOrAgentMessage();
+              return lastUserOrAgentMessage
+                ? lastUserOrAgentMessage.end_of_turn &&
+                  !lastUserOrAgentMessage.parent_conversation_id
+                : true;
+            })()}
             .isDisconnected=${this.connectionStatus === "disconnected"}
           ></sketch-call-status>
 

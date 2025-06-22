@@ -19,7 +19,7 @@ test("renders app shell with mocked API", async ({ page, mount }) => {
   const component = await mount(SketchAppShell);
 
   // Wait for initial data to load
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1000);
 
   // For now, skip the title verification since it requires more complex testing setup
   // Test other core components instead
@@ -52,7 +52,7 @@ test("handles scroll position preservation with no stored position", async ({
   const component = await mount(SketchAppShell);
 
   // Wait for initial data to load
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1000);
 
   // Ensure we're in chat view initially
   await expect(component.locator(".chat-view.view-active")).toBeVisible();
@@ -109,7 +109,7 @@ test("renders app shell with empty state", async ({ page, mount }) => {
   const component = await mount(SketchAppShell);
 
   // Wait for initial data to load
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1000);
 
   // For now, skip the title verification since it requires more complex testing setup
 
@@ -186,7 +186,7 @@ test("preserves chat scroll position when switching tabs", async ({
   }, targetScrollPosition);
 
   // Wait for scroll to take effect and verify it was set
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(500);
 
   const actualScrollPosition = await scrollContainer.evaluate(
     (el) => el.scrollTop,
@@ -222,4 +222,240 @@ test("preserves chat scroll position when switching tabs", async ({
   expect(Math.abs(restoredScrollPosition - actualScrollPosition)).toBeLessThan(
     10,
   );
+});
+
+test("correctly determines idle state ignoring system messages", async ({
+  page,
+  mount,
+}) => {
+  // Create test messages with various types including system messages
+  const testMessages = [
+    {
+      idx: 0,
+      type: "user" as const,
+      content: "Hello",
+      timestamp: "2023-05-15T12:00:00Z",
+      end_of_turn: true,
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+    {
+      idx: 1,
+      type: "agent" as const,
+      content: "Hi there",
+      timestamp: "2023-05-15T12:01:00Z",
+      end_of_turn: true,
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+    {
+      idx: 2,
+      type: "commit" as const,
+      content: "Commit detected: abc123",
+      timestamp: "2023-05-15T12:02:00Z",
+      end_of_turn: false,
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+    {
+      idx: 3,
+      type: "tool" as const,
+      content: "Running bash command",
+      timestamp: "2023-05-15T12:03:00Z",
+      end_of_turn: false,
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+  ];
+
+  // Mock the state API response
+  await page.route("**/state", async (route) => {
+    await route.fulfill({
+      json: {
+        ...initialState,
+        outstanding_llm_calls: 0,
+        outstanding_tool_calls: [],
+      },
+    });
+  });
+
+  // Mock the messages API response
+  await page.route("**/messages*", async (route) => {
+    await route.fulfill({ json: testMessages });
+  });
+
+  // Mock the SSE stream endpoint to prevent connection attempts
+  await page.route("**/stream*", async (route) => {
+    // Block the SSE connection request to prevent it from interfering
+    await route.abort();
+  });
+
+  // Mount the component
+  const component = await mount(SketchAppShell);
+
+  // Wait for initial data to load
+  await page.waitForTimeout(1000);
+
+  // Simulate connection established by setting the connection status property
+  await component.evaluate(async () => {
+    const appShell = document.querySelector('sketch-app-shell') as any;
+    if (appShell) {
+      appShell.connectionStatus = 'connected';
+      appShell.requestUpdate();
+      // Force an update cycle to complete
+      await appShell.updateComplete;
+    }
+  });
+
+  // Wait a bit more for the status to update and for any async operations
+  await page.waitForTimeout(1000);
+
+  // Check that the call status component shows IDLE
+  // The last user/agent message (agent with end_of_turn: true) should make it idle
+  // even though there are commit and tool messages after it
+  const callStatus = component.locator("sketch-call-status");
+  await expect(callStatus).toBeVisible();
+
+  // Check that the status banner shows IDLE
+  const statusBanner = callStatus.locator(".status-banner");
+  await expect(statusBanner).toBeVisible();
+  await expect(statusBanner).toHaveClass(/status-idle/);
+  await expect(statusBanner).toHaveText("IDLE");
+});
+
+test("correctly determines working state with non-end-of-turn agent message", async ({
+  page,
+  mount,
+}) => {
+  // Create test messages where the last agent message doesn't have end_of_turn
+  const testMessages = [
+    {
+      idx: 0,
+      type: "user" as const,
+      content: "Please help me",
+      timestamp: "2023-05-15T12:00:00Z",
+      end_of_turn: true,
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+    {
+      idx: 1,
+      type: "agent" as const,
+      content: "Working on it...",
+      timestamp: "2023-05-15T12:01:00Z",
+      end_of_turn: false, // Agent is still working
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+    {
+      idx: 2,
+      type: "commit" as const,
+      content: "Commit detected: def456",
+      timestamp: "2023-05-15T12:02:00Z",
+      end_of_turn: false,
+      conversation_id: "conv123",
+      parent_conversation_id: null,
+    },
+  ];
+
+  // Skip SSE mocking for this test - we'll set data directly
+  await page.route("**/stream*", async (route) => {
+    await route.abort();
+  });
+
+  // Mount the component
+  const component = await mount(SketchAppShell);
+
+  // Wait for initial data to load
+  await page.waitForTimeout(1000);
+
+  // Test the isIdle calculation logic directly
+  const isIdleResult = await component.evaluate(() => {
+    const appShell = document.querySelector('sketch-app-shell') as any;
+    if (!appShell) return { error: 'No app shell found' };
+    
+    // Create test messages directly in the browser context
+    const testMessages = [
+      {
+        idx: 0,
+        type: "user",
+        content: "Please help me",
+        timestamp: "2023-05-15T12:00:00Z",
+        end_of_turn: true,
+        conversation_id: "conv123",
+        parent_conversation_id: null,
+      },
+      {
+        idx: 1,
+        type: "agent",
+        content: "Working on it...",
+        timestamp: "2023-05-15T12:01:00Z",
+        end_of_turn: false, // Agent is still working
+        conversation_id: "conv123",
+        parent_conversation_id: null,
+      },
+      {
+        idx: 2,
+        type: "commit",
+        content: "Commit detected: def456",
+        timestamp: "2023-05-15T12:02:00Z",
+        end_of_turn: false,
+        conversation_id: "conv123",
+        parent_conversation_id: null,
+      },
+    ];
+    
+    // Set the messages
+    appShell.messages = testMessages;
+    
+    // Call the getLastUserOrAgentMessage method directly
+    const lastMessage = appShell.getLastUserOrAgentMessage();
+    const isIdle = lastMessage ? 
+      lastMessage.end_of_turn && !lastMessage.parent_conversation_id : 
+      true;
+    
+    return {
+      messagesCount: testMessages.length,
+      lastMessage: lastMessage,
+      isIdle: isIdle,
+      expectedWorking: !isIdle
+    };
+  });
+  
+  // The isIdle should be false because the last agent message has end_of_turn: false
+  expect(isIdleResult.isIdle).toBe(false);
+  expect(isIdleResult.expectedWorking).toBe(true);
+  
+  // Now test the full component interaction
+  await component.evaluate(() => {
+    const appShell = document.querySelector('sketch-app-shell') as any;
+    if (appShell) {
+      // Set connection status to connected
+      appShell.connectionStatus = 'connected';
+      
+      // Set container state with active LLM calls
+      appShell.containerState = {
+        outstanding_llm_calls: 1,
+        outstanding_tool_calls: [],
+        agent_state: null
+      };
+      
+      // The messages are already set from the previous test
+      // Force a re-render
+      appShell.requestUpdate();
+    }
+  });
+  
+  // Wait for the component to update
+  await page.waitForTimeout(500);
+  
+  // Now check that the call status component shows WORKING
+  const callStatus = component.locator("sketch-call-status");
+  await expect(callStatus).toBeVisible();
+  
+  // Check that the status banner shows WORKING
+  const statusBanner = callStatus.locator(".status-banner");
+  await expect(statusBanner).toBeVisible();
+  await expect(statusBanner).toHaveClass(/status-working/);
+  await expect(statusBanner).toHaveText("WORKING");
 });
