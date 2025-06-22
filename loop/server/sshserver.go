@@ -85,7 +85,6 @@ func (s *Server) ServeSSH(ctx context.Context, hostKey, authorizedKeys []byte, c
 
 	server := ssh.Server{
 		LocalPortForwardingCallback: ssh.LocalPortForwardingCallback(func(ctx ssh.Context, dhost string, dport uint32) bool {
-			slog.DebugContext(ctx, "Accepted forward", slog.Any("dhost", dhost), slog.Any("dport", dport))
 			return true
 		}),
 		ReversePortForwardingCallback: ssh.ReversePortForwardingCallback(func(ctx ssh.Context, bindHost string, bindPort uint32) bool {
