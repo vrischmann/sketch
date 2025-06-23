@@ -298,9 +298,9 @@ test("correctly determines idle state ignoring system messages", async ({
 
   // Simulate connection established by setting the connection status property
   await component.evaluate(async () => {
-    const appShell = document.querySelector('sketch-app-shell') as any;
+    const appShell = document.querySelector("sketch-app-shell") as any;
     if (appShell) {
-      appShell.connectionStatus = 'connected';
+      appShell.connectionStatus = "connected";
       appShell.requestUpdate();
       // Force an update cycle to complete
       await appShell.updateComplete;
@@ -371,9 +371,9 @@ test("correctly determines working state with non-end-of-turn agent message", as
 
   // Test the isIdle calculation logic directly
   const isIdleResult = await component.evaluate(() => {
-    const appShell = document.querySelector('sketch-app-shell') as any;
-    if (!appShell) return { error: 'No app shell found' };
-    
+    const appShell = document.querySelector("sketch-app-shell") as any;
+    if (!appShell) return { error: "No app shell found" };
+
     // Create test messages directly in the browser context
     const testMessages = [
       {
@@ -404,55 +404,55 @@ test("correctly determines working state with non-end-of-turn agent message", as
         parent_conversation_id: null,
       },
     ];
-    
+
     // Set the messages
     appShell.messages = testMessages;
-    
+
     // Call the getLastUserOrAgentMessage method directly
     const lastMessage = appShell.getLastUserOrAgentMessage();
-    const isIdle = lastMessage ? 
-      lastMessage.end_of_turn && !lastMessage.parent_conversation_id : 
-      true;
-    
+    const isIdle = lastMessage
+      ? lastMessage.end_of_turn && !lastMessage.parent_conversation_id
+      : true;
+
     return {
       messagesCount: testMessages.length,
       lastMessage: lastMessage,
       isIdle: isIdle,
-      expectedWorking: !isIdle
+      expectedWorking: !isIdle,
     };
   });
-  
+
   // The isIdle should be false because the last agent message has end_of_turn: false
   expect(isIdleResult.isIdle).toBe(false);
   expect(isIdleResult.expectedWorking).toBe(true);
-  
+
   // Now test the full component interaction
   await component.evaluate(() => {
-    const appShell = document.querySelector('sketch-app-shell') as any;
+    const appShell = document.querySelector("sketch-app-shell") as any;
     if (appShell) {
       // Set connection status to connected
-      appShell.connectionStatus = 'connected';
-      
+      appShell.connectionStatus = "connected";
+
       // Set container state with active LLM calls
       appShell.containerState = {
         outstanding_llm_calls: 1,
         outstanding_tool_calls: [],
-        agent_state: null
+        agent_state: null,
       };
-      
+
       // The messages are already set from the previous test
       // Force a re-render
       appShell.requestUpdate();
     }
   });
-  
+
   // Wait for the component to update
   await page.waitForTimeout(500);
-  
+
   // Now check that the call status component shows WORKING
   const callStatus = component.locator("sketch-call-status");
   await expect(callStatus).toBeVisible();
-  
+
   // Check that the status banner shows WORKING
   const statusBanner = callStatus.locator(".status-banner");
   await expect(statusBanner).toBeVisible();

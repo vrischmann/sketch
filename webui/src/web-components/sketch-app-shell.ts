@@ -1464,7 +1464,7 @@ export class SketchAppShell extends LitElement {
               const lastUserOrAgentMessage = this.getLastUserOrAgentMessage();
               return lastUserOrAgentMessage
                 ? lastUserOrAgentMessage.end_of_turn &&
-                  !lastUserOrAgentMessage.parent_conversation_id
+                    !lastUserOrAgentMessage.parent_conversation_id
                 : true;
             })()}
             .isDisconnected=${this.connectionStatus === "disconnected"}
