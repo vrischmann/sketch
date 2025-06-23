@@ -340,7 +340,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 
 	var sshServerIdentity, sshUserIdentity, containerCAPublicKey, hostCertificate []byte
 
-	cst, err := NewSSHTheater(cntrName, sshHost, sshPort)
+	cst, err := NewLocalSSHimmer(cntrName, sshHost, sshPort)
 	if err != nil {
 		return appendInternalErr(fmt.Errorf("NewContainerSSHTheather: %w", err))
 	}

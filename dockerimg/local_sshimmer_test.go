@@ -118,7 +118,7 @@ func (m *MockFileSystem) OpenFile(name string, flag int, perm fs.FileMode) (*os.
 	}
 
 	// For OpenFile, we'll just use WriteFile to simulate file operations
-	// The actual file handle isn't used for much in the sshtheater code
+	// The actual file handle isn't used for much in the localsshimmer code
 	// but we still need to return a valid file handle
 	tmpFile, err := os.CreateTemp("", "mockfile-*")
 	if err != nil {
@@ -259,8 +259,8 @@ func setupMocks(t *testing.T) (*MockFileSystem, *MockKeyGenerator, ed25519.Priva
 	return mockFS, mockKG, privateKey
 }
 
-// Helper function to setup a basic SSHTheater for testing
-func setupTestSSHTheater(t *testing.T) (*SSHTheater, *MockFileSystem, *MockKeyGenerator) {
+// Helper function to setup a basic LocalSSHimmer for testing
+func setupTestLocalSSHimmer(t *testing.T) (*LocalSSHimmer, *MockFileSystem, *MockKeyGenerator) {
 	mockFS, mockKG, _ := setupMocks(t)
 
 	// Setup home dir in mock filesystem
@@ -279,16 +279,16 @@ func setupTestSSHTheater(t *testing.T) (*SSHTheater, *MockFileSystem, *MockKeyGe
 	os.Setenv("HOME", homePath)
 	t.Cleanup(func() { os.Setenv("HOME", oldHome) })
 
-	// Create SSH Theater with mocks
-	ssh, err := newSSHTheatherWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
+	// Create LocalSSHimmer with mocks
+	ssh, err := newLocalSSHimmerWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
 	if err != nil {
-		t.Fatalf("Failed to create SSHTheater: %v", err)
+		t.Fatalf("Failed to create LocalSSHimmer: %v", err)
 	}
 
 	return ssh, mockFS, mockKG
 }
 
-func TestNewSSHTheatherCreatesRequiredDirectories(t *testing.T) {
+func TestNewLocalSSHimmerCreatesRequiredDirectories(t *testing.T) {
 	mockFS, mockKG, _ := setupMocks(t)
 
 	// Set HOME environment variable for the test
@@ -303,10 +303,10 @@ func TestNewSSHTheatherCreatesRequiredDirectories(t *testing.T) {
 	knownHostsPath := filepath.Join(sketchDir, "known_hosts")
 	mockFS.Files[knownHostsPath] = []byte("")
 
-	// Create theater
-	_, err := newSSHTheatherWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
+	// Create sshimmer
+	_, err := newLocalSSHimmerWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
 	if err != nil {
-		t.Fatalf("Failed to create SSHTheater: %v", err)
+		t.Fatalf("Failed to create LocalSSHimmer: %v", err)
 	}
 
 	// Check if the .config/sketch directory was created
@@ -317,7 +317,7 @@ func TestNewSSHTheatherCreatesRequiredDirectories(t *testing.T) {
 }
 
 func TestCreateKeyPairIfMissing(t *testing.T) {
-	ssh, mockFS, _ := setupTestSSHTheater(t)
+	ssh, mockFS, _ := setupTestLocalSSHimmer(t)
 
 	// Test key pair creation
 	keyPath := "/home/testuser/.config/sketch/test_key"
@@ -348,7 +348,7 @@ func TestCreateKeyPairIfMissing(t *testing.T) {
 // This test uses a direct approach since the OpenFile mocking is complex
 func TestAddContainerToSSHConfig(t *testing.T) {
 	// Create a temporary directory for test files
-	tempDir, err := os.MkdirTemp("", "sshtheater-test-*")
+	tempDir, err := os.MkdirTemp("", "localsshimmer-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -365,8 +365,8 @@ Host existing-host
 		t.Fatalf("Failed to write initial config: %v", err)
 	}
 
-	// Create a theater with the real filesystem but custom paths
-	ssh := &SSHTheater{
+	// Create a sshimmer with the real filesystem but custom paths
+	ssh := &LocalSSHimmer{
 		cntrName:         "test-container",
 		sshHost:          "localhost",
 		sshPort:          "2222",
@@ -415,14 +415,14 @@ Host existing-host
 
 func TestAddContainerToKnownHosts(t *testing.T) {
 	// Skip this test as it requires more complex setup
-	// The TestSSHTheaterCleanup test covers the addContainerToKnownHosts
+	// The TestLocalSSHimmerCleanup test covers the addContainerToKnownHosts
 	// functionality in a more integrated way
-	t.Skip("This test requires more complex setup, integrated test coverage exists in TestSSHTheaterCleanup")
+	t.Skip("This test requires more complex setup, integrated test coverage exists in TestLocalSSHimmerCleanup")
 }
 
 func TestRemoveContainerFromSSHConfig(t *testing.T) {
 	// Create a temporary directory for test files
-	tempDir, err := os.MkdirTemp("", "sshtheater-test-*")
+	tempDir, err := os.MkdirTemp("", "localsshimmer-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -457,8 +457,8 @@ Host %s
 		t.Fatalf("Failed to write initial SSH config: %v", err)
 	}
 
-	// Create a theater with the real filesystem but custom paths
-	ssh := &SSHTheater{
+	// Create a sshimmer with the real filesystem but custom paths
+	ssh := &LocalSSHimmer{
 		cntrName:         cntrName,
 		sshHost:          sshHost,
 		sshPort:          sshPort,
@@ -493,7 +493,7 @@ Host %s
 }
 
 func TestRemoveContainerFromKnownHosts(t *testing.T) {
-	ssh, mockFS, _ := setupTestSSHTheater(t)
+	ssh, mockFS, _ := setupTestLocalSSHimmer(t)
 
 	// Setup server public key
 	_, publicKey, _ := ssh.kg.GenerateKeyPair()
@@ -535,9 +535,9 @@ func TestRemoveContainerFromKnownHosts(t *testing.T) {
 	}
 }
 
-func TestSSHTheaterCleanup(t *testing.T) {
+func TestLocalSSHimmerCleanup(t *testing.T) {
 	// Create a temporary directory for test files
-	tempDir, err := os.MkdirTemp("", "sshtheater-test-*")
+	tempDir, err := os.MkdirTemp("", "localsshimmer-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -563,12 +563,12 @@ func TestSSHTheaterCleanup(t *testing.T) {
 	os.WriteFile(sshConfigPath, []byte("initial ssh_config content"), 0o644)
 	os.WriteFile(knownHostsPath, []byte("initial known_hosts content"), 0o644)
 
-	// Create a theater with the real filesystem but custom paths
+	// Create a sshimmer with the real filesystem but custom paths
 	cntrName := "test-container"
 	sshHost := "localhost"
 	sshPort := "2222"
 
-	ssh := &SSHTheater{
+	ssh := &LocalSSHimmer{
 		cntrName:           cntrName,
 		sshHost:            sshHost,
 		sshPort:            sshPort,
@@ -691,7 +691,7 @@ func TestCheckForInclude_userDeclines(t *testing.T) {
 	}
 }
 
-func TestSSHTheaterWithErrors(t *testing.T) {
+func TestLocalSSHimmerWithErrors(t *testing.T) {
 	// Test directory creation failure
 	mockFS := NewMockFileSystem()
 	mockFS.FailOn["MkdirAll"] = fmt.Errorf("mock mkdir error")
@@ -702,8 +702,8 @@ func TestSSHTheaterWithErrors(t *testing.T) {
 	os.Setenv("HOME", "/home/testuser")
 	defer func() { os.Setenv("HOME", oldHome) }()
 
-	// Try to create theater with failing FS
-	_, err := newSSHTheatherWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
+	// Try to create sshimmer with failing FS
+	_, err := newLocalSSHimmerWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
 	if err == nil || !strings.Contains(err.Error(), "mock mkdir error") {
 		t.Errorf("Should have failed with mkdir error, got: %v", err)
 	}
@@ -713,7 +713,7 @@ func TestSSHTheaterWithErrors(t *testing.T) {
 	mockKG = NewMockKeyGenerator(nil, nil, nil, nil)
 	mockKG.FailOn["GenerateKeyPair"] = fmt.Errorf("mock key generation error")
 
-	_, err = newSSHTheatherWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
+	_, err = newLocalSSHimmerWithDeps("test-container", "localhost", "2222", mockFS, mockKG)
 	if err == nil || !strings.Contains(err.Error(), "key generation error") {
 		t.Errorf("Should have failed with key generation error, got: %v", err)
 	}

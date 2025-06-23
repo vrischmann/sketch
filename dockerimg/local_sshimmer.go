@@ -21,11 +21,11 @@ import (
 
 // Ed25519 has a fixed key size, no bit size constant needed
 
-// SSHTheater does the necessary key pair generation, known_hosts updates, ssh_config file updates etc steps
+// LocalSSHimmer does the necessary key pair generation, known_hosts updates, ssh_config file updates etc steps
 // so that ssh can connect to a locally running sketch container to other local processes like vscode without
 // the user having to run the usual ssh obstacle course.
 //
-// SSHTheater does not modify your default .ssh/config, or known_hosts files.  However, in order for you
+// LocalSSHimmer does not modify your default .ssh/config, or known_hosts files.  However, in order for you
 // to be able to use it properly you will have to make a one-time edit to your ~/.ssh/config file.
 //
 // In your ~/.ssh/config file, add the following line:
@@ -34,8 +34,8 @@ import (
 //
 // where $HOME is your home directory.
 //
-// SSHTheater uses Ed25519 keys for improved security and performance.
-type SSHTheater struct {
+// LocalSSHimmer uses Ed25519 keys for improved security and performance.
+type LocalSSHimmer struct {
 	cntrName string
 	sshHost  string
 	sshPort  string
@@ -58,7 +58,7 @@ type SSHTheater struct {
 	kg KeyGenerator
 }
 
-// NewSSHTheater will set up everything so that you can use ssh on localhost to connect to
+// NewLocalSSHimmer will set up everything so that you can use ssh on localhost to connect to
 // the sketch container.  Call #Clean when you are done with the container to remove the
 // various entries it created in its known_hosts and ssh_config files. Also note that
 // this will generate key pairs for both the ssh server identity and the user identity, if
@@ -70,12 +70,12 @@ type SSHTheater struct {
 // If this doesn't return an error, you should be able to run "ssh <cntrName>"
 // in a terminal on your host machine to open a shell into the container without having
 // to manually accept changes to your known_hosts file etc.
-func NewSSHTheater(cntrName, sshHost, sshPort string) (*SSHTheater, error) {
-	return newSSHTheatherWithDeps(cntrName, sshHost, sshPort, &RealFileSystem{}, &RealKeyGenerator{})
+func NewLocalSSHimmer(cntrName, sshHost, sshPort string) (*LocalSSHimmer, error) {
+	return newLocalSSHimmerWithDeps(cntrName, sshHost, sshPort, &RealFileSystem{}, &RealKeyGenerator{})
 }
 
-// newSSHTheatherWithDeps creates a new SSHTheater with the specified dependencies
-func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg KeyGenerator) (*SSHTheater, error) {
+// newLocalSSHimmerWithDeps creates a new LocalSSHimmer with the specified dependencies
+func newLocalSSHimmerWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg KeyGenerator) (*LocalSSHimmer, error) {
 	base := filepath.Join(os.Getenv("HOME"), ".config", "sketch")
 	if _, err := fs.Stat(base); err != nil {
 		if err := fs.MkdirAll(base, 0o777); err != nil {
@@ -83,7 +83,7 @@ func newSSHTheatherWithDeps(cntrName, sshHost, sshPort string, fs FileSystem, kg
 		}
 	}
 
-	cst := &SSHTheater{
+	cst := &LocalSSHimmer{
 		cntrName:           cntrName,
 		sshHost:            sshHost,
 		sshPort:            sshPort,
@@ -266,12 +266,12 @@ func encodePrivateKeyToPEM(privateKey ed25519.PrivateKey) []byte {
 	return pem.EncodeToMemory(pkBytes)
 }
 
-func (c *SSHTheater) writeKeyToFile(keyBytes []byte, filename string) error {
+func (c *LocalSSHimmer) writeKeyToFile(keyBytes []byte, filename string) error {
 	err := c.fs.WriteFile(filename, keyBytes, 0o600)
 	return err
 }
 
-func (c *SSHTheater) createKeyPairIfMissing(idPath string) (ssh.PublicKey, error) {
+func (c *LocalSSHimmer) createKeyPairIfMissing(idPath string) (ssh.PublicKey, error) {
 	if _, err := c.fs.Stat(idPath); err == nil {
 		return nil, nil
 	}
@@ -301,7 +301,7 @@ func (c *SSHTheater) createKeyPairIfMissing(idPath string) (ssh.PublicKey, error
 	return sshPublicKey, nil
 }
 
-func (c *SSHTheater) addSketchHostMatchIfMissing(cfg *ssh_config.Config) error {
+func (c *LocalSSHimmer) addSketchHostMatchIfMissing(cfg *ssh_config.Config) error {
 	found := false
 	for _, host := range cfg.Hosts {
 		if strings.Contains(host.String(), "host=\"sketch-*\"") {
@@ -326,7 +326,7 @@ func (c *SSHTheater) addSketchHostMatchIfMissing(cfg *ssh_config.Config) error {
 	return nil
 }
 
-func (c *SSHTheater) addContainerToSSHConfig() error {
+func (c *LocalSSHimmer) addContainerToSSHConfig() error {
 	// Read the existing file contents or start with an empty config if file doesn't exist
 	var configData []byte
 	var cfg *ssh_config.Config
@@ -384,7 +384,7 @@ func (c *SSHTheater) addContainerToSSHConfig() error {
 	return nil
 }
 
-func (c *SSHTheater) addContainerToKnownHosts() error {
+func (c *LocalSSHimmer) addContainerToKnownHosts() error {
 	// Instead of adding individual host entries, we'll use a CA-based approach
 	// by adding a single "@cert-authority" entry
 
@@ -441,7 +441,7 @@ func (c *SSHTheater) addContainerToKnownHosts() error {
 	return nil
 }
 
-func (c *SSHTheater) removeContainerFromKnownHosts() error {
+func (c *LocalSSHimmer) removeContainerFromKnownHosts() error {
 	// Read the existing known_hosts file
 	existingContent, err := c.fs.ReadFile(c.knownHostsPath)
 	if err != nil {
@@ -485,7 +485,7 @@ func (c *SSHTheater) removeContainerFromKnownHosts() error {
 
 // Cleanup removes the container-specific entries from the SSH configuration and known_hosts files.
 // It preserves the certificate authority entries that might be used by other containers.
-func (c *SSHTheater) Cleanup() error {
+func (c *LocalSSHimmer) Cleanup() error {
 	if err := c.removeContainerFromSSHConfig(); err != nil {
 		return fmt.Errorf("couldn't remove container from ssh_config: %v\n", err)
 	}
@@ -496,7 +496,7 @@ func (c *SSHTheater) Cleanup() error {
 	return nil
 }
 
-func (c *SSHTheater) removeContainerFromSSHConfig() error {
+func (c *LocalSSHimmer) removeContainerFromSSHConfig() error {
 	// Read the existing file contents
 	configData, err := c.fs.ReadFile(c.sshConfigPath)
 	if err != nil {
@@ -660,7 +660,7 @@ func CheckSSHReachability(cntrName string) error {
 // to simplify the certificate and CA creation process and avoid key format issues.
 
 // createHostCertificate creates a certificate for the host to authenticate to the container
-func (c *SSHTheater) createHostCertificate(identityPath string) error {
+func (c *LocalSSHimmer) createHostCertificate(identityPath string) error {
 	// For testing purposes, create a minimal empty certificate
 	// This check will only be true in tests
 	if _, ok := c.kg.(interface{ IsMock() bool }); ok {
