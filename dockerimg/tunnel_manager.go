@@ -166,7 +166,6 @@ func (tm *TunnelManager) createTunnel(ctx context.Context, containerPort string)
 	// Check if tunnel already exists
 	if _, exists := tm.activeTunnels[containerPort]; exists {
 		tm.mu.Unlock()
-		slog.DebugContext(ctx, "Tunnel already exists for port", "port", containerPort)
 		return
 	}
 
