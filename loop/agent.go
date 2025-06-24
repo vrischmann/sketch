@@ -28,6 +28,7 @@ import (
 	"sketch.dev/llm"
 	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
+	"sketch.dev/mcp"
 	"sketch.dev/skabandclient"
 )
 
@@ -425,6 +426,8 @@ type Agent struct {
 	outsideWorkingDir string
 	// URL of the git remote 'origin' if it exists
 	gitOrigin string
+	// MCP manager for handling MCP server connections
+	mcpManager *mcp.MCPManager
 
 	// Time when the current turn started (reset at the beginning of InnerLoop)
 	startOfTurn time.Time
@@ -1028,6 +1031,8 @@ type AgentConfig struct {
 	SSHConnectionString string
 	// Skaband client for session history (optional)
 	SkabandClient *skabandclient.SkabandClient
+	// MCP server configurations
+	MCPServers []string
 }
 
 // NewAgent creates a new Agent.
@@ -1059,6 +1064,7 @@ func NewAgent(config AgentConfig) *Agent {
 		workingDir:           config.WorkingDir,
 		outsideHTTP:          config.OutsideHTTP,
 		portMonitor:          NewPortMonitor(),
+		mcpManager:           mcp.NewMCPManager(),
 	}
 	return agent
 }
@@ -1273,6 +1279,37 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 		convo.Tools = append(convo.Tools, sessionHistoryTools...)
 	}
 
+	// Add MCP tools if configured
+	if len(a.config.MCPServers) > 0 {
+		slog.InfoContext(ctx, "Initializing MCP connections", "servers", len(a.config.MCPServers))
+		mcpConnections, mcpErrors := a.mcpManager.ConnectToServers(ctx, a.config.MCPServers, 10*time.Second)
+
+		if len(mcpErrors) > 0 {
+			for _, err := range mcpErrors {
+				slog.ErrorContext(ctx, "MCP connection error", "error", err)
+				// Send agent message about MCP connection failures
+				a.pushToOutbox(ctx, AgentMessage{
+					Type:    ErrorMessageType,
+					Content: fmt.Sprintf("MCP server connection failed: %v", err),
+				})
+			}
+		}
+
+		if len(mcpConnections) > 0 {
+			// Add tools from all successful connections
+			totalTools := 0
+			for _, connection := range mcpConnections {
+				convo.Tools = append(convo.Tools, connection.Tools...)
+				totalTools += len(connection.Tools)
+				// Log tools per server using structured data
+				slog.InfoContext(ctx, "Added MCP tools from server", "server", connection.ServerName, "count", len(connection.Tools), "tools", connection.ToolNames)
+			}
+			slog.InfoContext(ctx, "Total MCP tools added", "count", totalTools)
+		} else {
+			slog.InfoContext(ctx, "No MCP tools available after connection attempts")
+		}
+	}
+
 	convo.Listener = a
 	return convo
 }
@@ -1447,6 +1484,13 @@ func (a *Agent) Loop(ctxOuter context.Context) {
 	if a.IsInContainer() {
 		a.portMonitor.Start(ctxOuter)
 	}
+
+	// Set up cleanup when context is done
+	defer func() {
+		if a.mcpManager != nil {
+			a.mcpManager.Close()
+		}
+	}()
 
 	for {
 		select {
