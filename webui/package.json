@@ -21,6 +21,7 @@
     "gentypes": "go run ../cmd/go2ts -o src/types.ts",
     "build": "go run ../cmd/go2ts -o src/types.ts && tsc",
     "watch": "tsc --watch",
+    "tailwind": "tailwindcss -i ./src/global.css -o ./src/tailwind.css",
     "test": "tsc && npm run test:playwright",
     "test:playwright": "playwright test -c playwright-ct.config.ts"
   },
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@sand4rt/experimental-ct-web": "^1.51.1",
+    "@tailwindcss/cli": "^4.1.10",
     "@types/marked": "^5.0.2",
     "@types/mocha": "^10.0.7",
     "@types/node": "^22.13.14",
@@ -46,6 +48,7 @@
     "esbuild": "^0.25.1",
     "msw": "^2.7.5",
     "prettier": "3.5.3",
+    "tailwindcss": "^4.1.10",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
     "vite-plugin-web-components-hmr": "^0.1.3"
