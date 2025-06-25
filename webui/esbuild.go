@@ -121,6 +121,17 @@ func zipPath() (cacheDir, hashZip string, err error) {
 	return cacheDir, filepath.Join(cacheDir, "skui-"+hash+".zip"), nil
 }
 
+// generateTailwindCSS generates tailwind.css from global.css and outputs it to the specified directory
+func generateTailwindCSS(buildDir, outDir string) error {
+	// Run tailwindcss CLI to generate the CSS
+	cmd := exec.Command("npx", "tailwindcss", "-i", "./src/global.css", "-o", filepath.Join(outDir, "tailwind.css"))
+	cmd.Dir = buildDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("tailwindcss generation failed: %s: %v", out, err)
+	}
+	return nil
+}
+
 // copyMonacoAssets copies Monaco editor assets to the output directory
 func copyMonacoAssets(buildDir, outDir string) error {
 	// Create Monaco directories
@@ -202,6 +213,11 @@ func Build() (fs.FS, error) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("npm ci: %s: %v", out, err)
 	}
+
+	// Generate Tailwind CSS
+	if err := generateTailwindCSS(buildDir, tmpHashDir); err != nil {
+		return nil, fmt.Errorf("generate tailwind css: %w", err)
+	}
 	// Create all bundles
 	bundleTs := []string{
 		"src/web-components/sketch-app-shell.ts",
@@ -255,6 +271,10 @@ func Build() (fs.FS, error) {
 			return nil
 		}
 		if strings.HasSuffix(path, "mockServiceWorker.js") {
+			return nil
+		}
+		// Skip src/tailwind.css as it will be generated
+		if path == "src/tailwind.css" {
 			return nil
 		}
 		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js") {
