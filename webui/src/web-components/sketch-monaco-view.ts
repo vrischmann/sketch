@@ -1145,9 +1145,23 @@ export class CodeDiffEditor extends LitElement {
   setOptions(value: monaco.editor.IDiffEditorConstructionOptions) {
     if (this.editor) {
       this.editor.updateOptions(value);
-      // Re-fit content after options change
+      // Re-fit content after options change with scroll preservation
       if (this.fitEditorToContent) {
-        setTimeout(() => this.fitEditorToContent!(), 50);
+        setTimeout(() => {
+          // Preserve scroll positions during options change
+          const originalScrollTop =
+            this.editor!.getOriginalEditor().getScrollTop();
+          const modifiedScrollTop =
+            this.editor!.getModifiedEditor().getScrollTop();
+
+          this.fitEditorToContent!();
+
+          // Restore scroll positions
+          requestAnimationFrame(() => {
+            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+          });
+        }, 50);
       }
     }
   }
@@ -1165,9 +1179,23 @@ export class CodeDiffEditor extends LitElement {
           revealLineCount: 10,
         },
       });
-      // Re-fit content after toggling
+      // Re-fit content after toggling with scroll preservation
       if (this.fitEditorToContent) {
-        setTimeout(() => this.fitEditorToContent!(), 100);
+        setTimeout(() => {
+          // Preserve scroll positions during toggle
+          const originalScrollTop =
+            this.editor!.getOriginalEditor().getScrollTop();
+          const modifiedScrollTop =
+            this.editor!.getModifiedEditor().getScrollTop();
+
+          this.fitEditorToContent!();
+
+          // Restore scroll positions
+          requestAnimationFrame(() => {
+            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+          });
+        }, 100);
       }
     }
   }
@@ -1266,15 +1294,46 @@ export class CodeDiffEditor extends LitElement {
       // Fix cursor positioning issues by ensuring fonts are loaded
       document.fonts.ready.then(() => {
         if (this.editor) {
+          // Preserve scroll positions during font remeasuring
+          const originalScrollTop = this.editor
+            .getOriginalEditor()
+            .getScrollTop();
+          const modifiedScrollTop = this.editor
+            .getModifiedEditor()
+            .getScrollTop();
+
           monaco.editor.remeasureFonts();
-          this.fitEditorToContent();
+
+          if (this.fitEditorToContent) {
+            this.fitEditorToContent();
+          }
+
+          // Restore scroll positions after font remeasuring
+          requestAnimationFrame(() => {
+            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+          });
         }
       });
 
-      // Force layout recalculation after a short delay
+      // Force layout recalculation after a short delay with scroll preservation
       setTimeout(() => {
-        if (this.editor) {
+        if (this.editor && this.fitEditorToContent) {
+          // Preserve scroll positions
+          const originalScrollTop = this.editor
+            .getOriginalEditor()
+            .getScrollTop();
+          const modifiedScrollTop = this.editor
+            .getModifiedEditor()
+            .getScrollTop();
+
           this.fitEditorToContent();
+
+          // Restore scroll positions
+          requestAnimationFrame(() => {
+            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+          });
         }
       }, 100);
     } catch (error) {
@@ -1350,9 +1409,23 @@ export class CodeDiffEditor extends LitElement {
           },
         });
 
-        // Fit content after setting new models
+        // Fit content after setting new models with scroll preservation
         if (this.fitEditorToContent) {
-          setTimeout(() => this.fitEditorToContent!(), 50);
+          setTimeout(() => {
+            // Preserve scroll positions when fitting content after model changes
+            const originalScrollTop =
+              this.editor!.getOriginalEditor().getScrollTop();
+            const modifiedScrollTop =
+              this.editor!.getModifiedEditor().getScrollTop();
+
+            this.fitEditorToContent!();
+
+            // Restore scroll positions
+            requestAnimationFrame(() => {
+              this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+              this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+            });
+          }, 50);
         }
 
         // Add glyph decorations after setting new models
@@ -1377,10 +1450,24 @@ export class CodeDiffEditor extends LitElement {
         this.updateModels();
 
         // Force auto-sizing after model updates
-        // Use a slightly longer delay to ensure layout is stable
+        // Use a slightly longer delay to ensure layout is stable with scroll preservation
         setTimeout(() => {
-          if (this.fitEditorToContent) {
+          if (this.fitEditorToContent && this.editor) {
+            // Preserve scroll positions during model update layout
+            const originalScrollTop = this.editor
+              .getOriginalEditor()
+              .getScrollTop();
+            const modifiedScrollTop = this.editor
+              .getModifiedEditor()
+              .getScrollTop();
+
             this.fitEditorToContent();
+
+            // Restore scroll positions
+            requestAnimationFrame(() => {
+              this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+              this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+            });
           }
         }, 100);
       } else {
@@ -1470,9 +1557,23 @@ export class CodeDiffEditor extends LitElement {
       // Debounce the resize to avoid excessive layout calls
       resizeTimeout = window.setTimeout(() => {
         if (this.editor && this.container.value) {
-          // Trigger layout recalculation
+          // Trigger layout recalculation with scroll preservation
           if (this.fitEditorToContent) {
+            // Preserve scroll positions during window resize
+            const originalScrollTop = this.editor
+              .getOriginalEditor()
+              .getScrollTop();
+            const modifiedScrollTop = this.editor
+              .getModifiedEditor()
+              .getScrollTop();
+
             this.fitEditorToContent();
+
+            // Restore scroll positions
+            requestAnimationFrame(() => {
+              this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
+              this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
+            });
           } else {
             // Fallback: just trigger a layout with current container dimensions
             // Use clientWidth/Height instead of offsetWidth/Height to avoid border overflow
