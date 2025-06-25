@@ -903,7 +903,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
         >
           <button
             id="stopButton"
-            class="bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed disabled:opacity-70 text-white border-none px-2.5 py-1 xl:px-1.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
+            class="bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed disabled:opacity-70 text-white border-none px-1.5 py-1 xl:px-2.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
             ?disabled=${(this.containerState?.outstanding_llm_calls || 0) ===
               0 &&
             (this.containerState?.outstanding_tool_calls || []).length === 0}
@@ -920,11 +920,11 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
             >
               <rect x="6" y="6" width="12" height="12" />
             </svg>
-            <span class="xl:hidden">Stop</span>
+            <span class="max-sm:hidden sm:max-xl:hidden">Stop</span>
           </button>
           <button
             id="endButton"
-            class="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70 text-white border-none px-2.5 py-1 xl:px-1.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
+            class="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70 text-white border-none px-1.5 py-1 xl:px-2.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
             @click=${this._handleEndClick}
           >
             <svg
@@ -940,7 +940,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
               <path d="M18 6L6 18" />
               <path d="M6 6l12 12" />
             </svg>
-            <span class="xl:hidden">End</span>
+            <span class="max-sm:hidden sm:max-xl:hidden">End</span>
           </button>
 
           <div
