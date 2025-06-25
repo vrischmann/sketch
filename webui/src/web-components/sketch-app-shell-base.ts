@@ -177,8 +177,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
 
     // Get reference to the container status element
     setTimeout(() => {
-      this.containerStatusElement =
-        this.shadowRoot?.getElementById("container-status");
+      this.containerStatusElement = this.querySelector("#container-status");
     }, 0);
 
     // Initialize client-side nav history.
@@ -283,7 +282,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     // Only add view parameter if not in default chat view
     if (mode !== "chat") {
       url.searchParams.set("view", mode);
-      const diff2View = this.shadowRoot?.querySelector(
+      const diff2View = this.querySelector(
         "sketch-diff2-view",
       ) as SketchDiff2View;
 
@@ -343,7 +342,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     this.toggleViewMode("diff2", true);
 
     this.updateComplete.then(() => {
-      const diff2View = this.shadowRoot?.querySelector("sketch-diff2-view");
+      const diff2View = this.querySelector("sketch-diff2-view");
       if (diff2View) {
         (diff2View as SketchDiff2View).refreshDiffView();
       }
@@ -578,9 +577,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
 
     // Update todo panel content if visible
     if (hasTodos) {
-      const todoPanel = this.shadowRoot?.querySelector(
-        "sketch-todo-panel",
-      ) as any;
+      const todoPanel = this.querySelector("sketch-todo-panel") as any;
       if (todoPanel && todoPanel.updateTodoContent) {
         todoPanel.updateTodoContent(latestTodoContent);
       }
@@ -752,7 +749,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
   }
 
   async _handleMutlipleChoiceSelected(e: CustomEvent) {
-    const chatInput = this.shadowRoot?.querySelector(
+    const chatInput = this.querySelector(
       "sketch-chat-input",
     ) as SketchChatInput;
     if (chatInput) {
@@ -814,7 +811,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
   private setupChatInputObserver(): void {
     // Wait for DOM to be ready
     this.updateComplete.then(() => {
-      const chatInputElement = this.shadowRoot?.querySelector("#chat-input");
+      const chatInputElement = this.querySelector("#chat-input");
       if (chatInputElement && !this.chatInputResizeObserver) {
         this.chatInputResizeObserver = new ResizeObserver((entries) => {
           for (const entry of entries) {
