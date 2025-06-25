@@ -1007,7 +1007,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       >
         <div
           class="${this._todoPanelVisible && this.viewMode === "chat"
-            ? "mr-[400px] xl:mr-[350px] lg:mr-[300px] md:mr-0 w-[calc(100%-400px)] xl:w-[calc(100%-350px)] lg:w-[calc(100%-300px)] md:w-full"
+            ? "mr-[400px] xl:mr-[350px] lg:mr-[300px] w-[calc(100%-400px)] xl:w-[calc(100%-350px)] lg:w-[calc(100%-300px)]"
             : "mr-0"} flex-1 flex flex-col w-full h-full transition-[margin-right] duration-200 ease-in-out"
         >
           <sketch-timeline
@@ -1027,7 +1027,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       <div
         class="${this._todoPanelVisible && this.viewMode === "chat"
           ? "block"
-          : "hidden"} fixed top-12 right-4 w-[400px] xl:w-[350px] lg:w-[300px] md:hidden z-[100] transition-[bottom] duration-200 ease-in-out"
+          : "hidden"} fixed top-12 right-4 max-lg:hidden xl:w-[350px] lg:w-[300px] z-[100] transition-[bottom] duration-200 ease-in-out"
         style="bottom: var(--chat-input-height, 90px); background: linear-gradient(to bottom, #fafafa 0%, #fafafa 90%, rgba(250, 250, 250, 0.5) 95%, rgba(250, 250, 250, 0.2) 100%); border-left: 1px solid #e0e0e0;"
       >
         <sketch-todo-panel
