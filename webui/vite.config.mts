@@ -1,7 +1,11 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
 import { hmrPlugin, presets } from "vite-plugin-web-components-hmr";
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
+import * as fs from "node:fs";
+import tailwindcss from "@tailwindcss/vite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -12,6 +16,7 @@ export default defineConfig({
     __MERMAID_HASH__: JSON.stringify("dev"), // Use 'dev' as hash in development
   },
   plugins: [
+    tailwindcss(),
     hmrPlugin({
       include: ["./src/**/*.ts"],
       presets: [presets.lit],

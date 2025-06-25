@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sketch Web Components Demo Runner</title>
+    <link rel="stylesheet" href="demo.css" />
+    <link rel="stylesheet" href="/dist/tailwind.css" />
+    <style>
+      :root {
+        --demo-primary: #0969da;
+        --demo-secondary: #656d76;
+        --demo-background: #f6f8fa;
+        --demo-border: #d1d9e0;
+      }
+
+      .demo-runner {
+        display: flex;
+        height: 100vh;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+
+      .demo-sidebar {
+        width: 280px;
+        background: var(--demo-background);
+        border-right: 1px solid var(--demo-border);
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .demo-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .demo-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .demo-nav li {
+        margin-bottom: 4px;
+      }
+
+      .demo-nav button {
+        width: 100%;
+        text-align: left;
+        padding: 8px 12px;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--demo-secondary);
+        transition: all 0.2s;
+      }
+
+      .demo-nav button:hover {
+        background: #ffffff;
+        border-color: var(--demo-border);
+        color: var(--demo-primary);
+      }
+
+      .demo-nav button.active {
+        background: var(--demo-primary);
+        color: white;
+      }
+
+      .demo-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--demo-border);
+      }
+
+      .demo-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+        color: #24292f;
+      }
+
+      .demo-description {
+        color: var(--demo-secondary);
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .demo-container {
+        background: white;
+        border: 1px solid var(--demo-border);
+        border-radius: 8px;
+        min-height: 400px;
+        padding: 20px;
+      }
+
+      .demo-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 200px;
+        color: var(--demo-secondary);
+      }
+
+      .demo-welcome {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--demo-secondary);
+      }
+
+      .demo-welcome h2 {
+        margin-bottom: 10px;
+        color: #24292f;
+      }
+
+      .search-box {
+        width: 100%;
+        padding: 8px 12px;
+        margin-bottom: 16px;
+        border: 1px solid var(--demo-border);
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      .search-box:focus {
+        outline: none;
+        border-color: var(--demo-primary);
+      }
+
+      .demo-error {
+        padding: 20px;
+        background: #ffeaea;
+        border: 1px solid #ffcccc;
+        border-radius: 6px;
+        color: #d73a49;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-runner">
+      <nav class="demo-sidebar">
+        <h1 style="font-size: 18px; margin: 0 0 20px 0; color: #24292f">
+          Component Demos
+        </h1>
+
+        <input
+          type="text"
+          class="search-box"
+          placeholder="Search components..."
+          id="demo-search"
+        />
+
+        <ul class="demo-nav" id="demo-nav">
+          <!-- Component list will be populated dynamically -->
+        </ul>
+      </nav>
+
+      <main class="demo-content">
+        <div class="demo-header" id="demo-header" style="display: none">
+          <h1 class="demo-title" id="demo-title"></h1>
+          <p class="demo-description" id="demo-description"></p>
+        </div>
+
+        <div class="demo-container" id="demo-container">
+          <div class="demo-welcome">
+            <h2>Welcome to Sketch Component Demos</h2>
+            <p>Select a component from the sidebar to view its demo.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { DemoRunner } from "./demo-framework/demo-runner.ts";
+
+      class DemoRunnerApp {
+        constructor() {
+          this.demoRunner = new DemoRunner({
+            container: document.getElementById("demo-container"),
+            onDemoChange: this.onDemoChange.bind(this),
+          });
+
+          this.searchBox = document.getElementById("demo-search");
+          this.navList = document.getElementById("demo-nav");
+          this.demoHeader = document.getElementById("demo-header");
+          this.demoTitle = document.getElementById("demo-title");
+          this.demoDescription = document.getElementById("demo-description");
+
+          this.currentComponent = null;
+          this.availableComponents = [];
+
+          this.init();
+        }
+
+        async init() {
+          try {
+            // Load available components
+            this.availableComponents =
+              await this.demoRunner.getAvailableComponents();
+            this.renderNavigation();
+
+            // Set up search
+            this.searchBox.addEventListener(
+              "input",
+              this.handleSearch.bind(this),
+            );
+
+            // Handle URL hash for direct linking
+            this.handleHashChange();
+            window.addEventListener(
+              "hashchange",
+              this.handleHashChange.bind(this),
+            );
+          } catch (error) {
+            console.error("Failed to initialize demo runner:", error);
+            this.showError("Failed to load demo components");
+          }
+        }
+
+        renderNavigation(filter = "") {
+          const filteredComponents = this.availableComponents.filter(
+            (component) =>
+              component.toLowerCase().includes(filter.toLowerCase()),
+          );
+
+          this.navList.innerHTML = "";
+
+          filteredComponents.forEach((component) => {
+            const li = document.createElement("li");
+            const button = document.createElement("button");
+            button.textContent = this.formatComponentName(component);
+            button.addEventListener("click", () =>
+              this.loadComponent(component),
+            );
+
+            if (component === this.currentComponent) {
+              button.classList.add("active");
+            }
+
+            li.appendChild(button);
+            this.navList.appendChild(li);
+          });
+        }
+
+        formatComponentName(component) {
+          return component
+            .replace(/^sketch-/, "")
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+        }
+
+        async loadComponent(componentName) {
+          if (this.currentComponent === componentName) {
+            return;
+          }
+
+          try {
+            this.showLoading();
+            await this.demoRunner.loadDemo(componentName);
+            this.currentComponent = componentName;
+
+            // Update URL hash
+            window.location.hash = componentName;
+
+            // Update navigation
+            this.renderNavigation(this.searchBox.value);
+          } catch (error) {
+            console.error(`Failed to load demo for ${componentName}:`, error);
+            this.showError(`Failed to load demo for ${componentName}`);
+          }
+        }
+
+        onDemoChange(componentName, demo) {
+          // Update header
+          this.demoTitle.textContent = demo.title;
+          this.demoDescription.textContent = demo.description || "";
+
+          if (demo.description) {
+            this.demoDescription.style.display = "block";
+          } else {
+            this.demoDescription.style.display = "none";
+          }
+
+          this.demoHeader.style.display = "block";
+        }
+
+        handleSearch(event) {
+          this.renderNavigation(event.target.value);
+        }
+
+        handleHashChange() {
+          const hash = window.location.hash.slice(1);
+          if (hash && this.availableComponents.includes(hash)) {
+            this.loadComponent(hash);
+          }
+        }
+
+        showLoading() {
+          document.getElementById("demo-container").innerHTML = `
+            <div class="demo-loading">
+              Loading demo...
+            </div>
+          `;
+        }
+
+        showError(message) {
+          document.getElementById("demo-container").innerHTML = `
+            <div class="demo-error">
+              <strong>Error:</strong> ${message}
+            </div>
+          `;
+        }
+      }
+
+      // Initialize the demo runner when DOM is ready
+      if (document.readyState === "loading") {
+        document.addEventListener(
+          "DOMContentLoaded",
+          () => new DemoRunnerApp(),
+        );
+      } else {
+        new DemoRunnerApp();
+      }
+    </script>
+  </body>
+</html>
