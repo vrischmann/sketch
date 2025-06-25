@@ -2,6 +2,8 @@ package loop
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -202,4 +204,185 @@ func TestPortEventFiltering(t *testing.T) {
 	if len(recentEvents) != 0 {
 		t.Errorf("Expected 0 recent events since now, got %d", len(recentEvents))
 	}
+}
+
+// TestParseAddress tests the hex address parsing for /proc/net files
+func TestParseAddress(t *testing.T) {
+	pm := NewPortMonitor()
+
+	tests := []struct {
+		name       string
+		addrPort   string
+		isIPv6     bool
+		expectIP   string
+		expectPort int
+		expectErr  bool
+	}{
+		{
+			name:       "IPv4 localhost:80",
+			addrPort:   "0100007F:0050", // 127.0.0.1:80 in little-endian hex
+			isIPv6:     false,
+			expectIP:   "127.0.0.1",
+			expectPort: 80,
+			expectErr:  false,
+		},
+		{
+			name:       "IPv4 any:22",
+			addrPort:   "00000000:0016", // 0.0.0.0:22
+			isIPv6:     false,
+			expectIP:   "*",
+			expectPort: 22,
+			expectErr:  false,
+		},
+		{
+			name:       "IPv4 high port",
+			addrPort:   "0100007F:1F90", // 127.0.0.1:8080
+			isIPv6:     false,
+			expectIP:   "127.0.0.1",
+			expectPort: 8080,
+			expectErr:  false,
+		},
+		{
+			name:       "IPv6 any port 22",
+			addrPort:   "00000000000000000000000000000000:0016", // [::]:22
+			isIPv6:     true,
+			expectIP:   "*",
+			expectPort: 22,
+			expectErr:  false,
+		},
+		{
+			name:      "Invalid format - no colon",
+			addrPort:  "0100007F0050",
+			isIPv6:    false,
+			expectErr: true,
+		},
+		{
+			name:      "Invalid port hex",
+			addrPort:  "0100007F:ZZZZ",
+			isIPv6:    false,
+			expectErr: true,
+		},
+		{
+			name:      "Invalid IPv4 hex length",
+			addrPort:  "0100:0050",
+			isIPv6:    false,
+			expectErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ip, port, err := pm.parseAddress(test.addrPort, test.isIPv6)
+			if test.expectErr {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if ip != test.expectIP {
+				t.Errorf("Expected IP %s, got %s", test.expectIP, ip)
+			}
+
+			if port != test.expectPort {
+				t.Errorf("Expected port %d, got %d", test.expectPort, port)
+			}
+		})
+	}
+}
+
+// TestParseProcData tests parsing of mock /proc/net data
+func TestParseProcData(t *testing.T) {
+	pm := NewPortMonitor()
+
+	// Test TCP data with listening sockets
+	tcpData := `  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
+   0: 0100007F:0050 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0        1
+   1: 00000000:0016 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0        2
+   2: 0100007F:1F90 0200007F:C350 01 00000000:00000000 00:00000000 00000000     0        0        3`
+
+	var result strings.Builder
+	result.WriteString("Netid State  Recv-Q Send-Q Local Address:Port Peer Address:Port\n")
+
+	// Create temp file with test data
+	tmpFile := "/tmp/test_tcp"
+	err := os.WriteFile(tmpFile, []byte(tcpData), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile)
+
+	err = pm.parseProc(tmpFile, "tcp", &result)
+	if err != nil {
+		t.Fatalf("parseProc failed: %v", err)
+	}
+
+	output := result.String()
+	t.Logf("Generated output:\n%s", output)
+
+	// Should contain listening ports (state 0A = LISTEN)
+	if !strings.Contains(output, "127.0.0.1:80") {
+		t.Error("Expected to find 127.0.0.1:80 in output")
+	}
+	if !strings.Contains(output, "*:22") {
+		t.Error("Expected to find *:22 in output")
+	}
+	// Should not contain established connection (state 01)
+	if strings.Contains(output, "127.0.0.1:8080") {
+		t.Error("Should not find established connection 127.0.0.1:8080 in output")
+	}
+}
+
+// TestGetListeningPortsFromProcFallback tests the complete /proc fallback
+func TestGetListeningPortsFromProcFallback(t *testing.T) {
+	pm := NewPortMonitor()
+
+	// This test verifies the method runs without error
+	// The actual files may or may not exist, but it should handle both cases gracefully
+	output, err := pm.getListeningPortsFromProc()
+	if err != nil {
+		t.Logf("getListeningPortsFromProc failed (may be expected if /proc/net files don't exist): %v", err)
+		// Don't fail the test - this might be expected in some environments
+		return
+	}
+
+	t.Logf("Generated /proc fallback output:\n%s", output)
+
+	// Should at least have a header
+	if !strings.Contains(output, "Netid State") {
+		t.Error("Expected header in /proc fallback output")
+	}
+}
+
+// TestUpdatePortStateWithFallback tests updatePortState with both ss and /proc fallback
+func TestUpdatePortStateWithFallback(t *testing.T) {
+	pm := NewPortMonitor()
+	ctx := context.Background()
+
+	// Call updatePortState - should try ss first, then fall back to /proc if ss fails
+	pm.updatePortState(ctx)
+
+	// The method should complete without panicking
+	// We can't easily test the exact behavior without mocking, but we can ensure it runs
+	// Check if any port state was captured
+	pm.mu.Lock()
+	lastPorts := pm.lastPorts
+	pm.mu.Unlock()
+
+	t.Logf("Captured port state (length %d):", len(lastPorts))
+	if len(lastPorts) > 0 {
+		t.Logf("First 200 chars: %s", lastPorts[:min(200, len(lastPorts))])
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
