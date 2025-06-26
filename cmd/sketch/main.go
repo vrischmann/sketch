@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"syscall"
 
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
@@ -49,6 +51,11 @@ func main() {
 // execution path based on whether we're running in a container or not.
 func run() error {
 	flagArgs := parseCLIFlags()
+
+	// Set up signal handling if -ignoresig flag is set
+	if flagArgs.ignoreSig {
+		setupSignalIgnoring()
+	}
 
 	if flagArgs.version {
 		bi, ok := debug.ReadBuildInfo()
@@ -196,6 +203,7 @@ type CLIFlags struct {
 	sshPort      int
 	forceRebuild bool
 	linkToGitHub bool
+	ignoreSig    bool
 
 	gitUsername         string
 	gitEmail            string
@@ -251,6 +259,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
 	userFlags.BoolVar(&flags.termUI, "termui", true, "enable terminal UI")
 	userFlags.StringVar(&flags.branchPrefix, "branch-prefix", "sketch/", "prefix for git branches created by sketch")
+	userFlags.BoolVar(&flags.ignoreSig, "ignoresig", false, "ignore typical termination signals (SIGINT, SIGTERM)")
 	userFlags.Var(&flags.mcpServers, "mcp", "MCP server configuration as JSON (can be repeated). Schema: {\"name\": \"server-name\", \"type\": \"stdio|http|sse\", \"url\": \"...\", \"command\": \"...\", \"args\": [...], \"env\": {...}, \"headers\": {...}}")
 
 	// Internal flags (for sketch developers or internal use)
@@ -833,4 +842,26 @@ func dumpDistFilesystem(outputDir string) error {
 
 	fmt.Printf("Successfully dumped embedded /dist/ filesystem to %q\n", outputDir)
 	return nil
+}
+
+// setupSignalIgnoring sets up signal handling to ignore SIGINT and SIGTERM
+// when the -ignoresig flag is used. This prevents the typical Ctrl+C or
+// termination signals from killing the process.
+func setupSignalIgnoring() {
+	// Create a channel to receive signals
+	sigChan := make(chan os.Signal, 1)
+
+	// Register the channel to receive specific signals
+	// We ignore SIGINT (Ctrl+C) and SIGTERM (termination request)
+	// but allow SIGQUIT to still work for debugging/stack dumps
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start a goroutine to handle the signals
+	go func() {
+		for sig := range sigChan {
+			// Simply ignore the signal by doing nothing
+			// This prevents the default behavior of terminating the process
+			_ = sig // Suppress unused variable warning
+		}
+	}()
 }
