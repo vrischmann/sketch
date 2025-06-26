@@ -864,7 +864,10 @@ func (r *CodeReviewer) compareTestResults(beforeResults, afterResults []testJSON
 				slog.WarnContext(context.Background(), "unknown test status", "package", pkg, "test", test)
 				continue
 			}
-			beforeStatus := beforeResult.TestStatus[test]
+			beforeStatus := testStatusUnknown
+			if beforeResult != nil {
+				beforeStatus = beforeResult.TestStatus[test]
+			}
 			if isRegression(beforeStatus, afterStatus) {
 				testLevelRegressions = append(testLevelRegressions, testRegression{
 					Package:      pkg,
