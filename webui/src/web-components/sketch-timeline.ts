@@ -51,6 +51,9 @@ export class SketchTimeline extends LitElement {
   @property({ attribute: false })
   state: State | null = null;
 
+  @property({ attribute: false })
+  compactPadding: boolean = false;
+
   // Track initial load completion for better rendering control
   @state()
   private isInitialLoadComplete: boolean = false;
@@ -122,6 +125,10 @@ export class SketchTimeline extends LitElement {
       max-width: 100%;
       width: 100%;
       height: 100%;
+    }
+
+    :host([compactpadding]) #scroll-container {
+      padding-left: 0;
     }
     #jump-to-latest {
       display: none;
@@ -1047,6 +1054,7 @@ export class SketchTimeline extends LitElement {
                       .open=${false}
                       .firstMessageIndex=${this.firstMessageIndex}
                       .state=${this.state}
+                      .compactPadding=${this.compactPadding}
                     ></sketch-timeline-message>`;
                   },
                 )

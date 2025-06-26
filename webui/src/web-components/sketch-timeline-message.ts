@@ -72,6 +72,9 @@ export class SketchTimelineMessage extends LitElement {
   @property()
   firstMessageIndex: number = 0;
 
+  @property({ type: Boolean, reflect: true, attribute: "compactpadding" })
+  compactPadding: boolean = false;
+
   @state()
   showInfo: boolean = false;
 
@@ -118,6 +121,15 @@ export class SketchTimelineMessage extends LitElement {
       max-width: calc(100% - 160px);
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    :host([compactpadding]) .message-bubble-container {
+      max-width: 100%;
+    }
+
+    :host([compactpadding]) .message-metadata-left,
+    :host([compactpadding]) .message-metadata-right {
+      display: none;
     }
 
     .user .message-bubble-container {
