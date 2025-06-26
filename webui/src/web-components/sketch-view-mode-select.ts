@@ -1,9 +1,10 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import "./sketch-container-status";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 @customElement("sketch-view-mode-select")
-export class SketchViewModeSelect extends LitElement {
+export class SketchViewModeSelect extends SketchTailwindElement {
   // Current active mode
   @property()
   activeMode: "chat" | "diff2" | "terminal" = "chat";
@@ -16,81 +17,6 @@ export class SketchViewModeSelect extends LitElement {
   diffLinesRemoved: number = 0;
 
   // Header bar: view mode buttons
-
-  static styles = css`
-    /* Tab-style View Mode Styles */
-    .tab-nav {
-      display: flex;
-      margin-right: 10px;
-      background-color: #f8f8f8;
-      border-radius: 4px;
-      overflow: hidden;
-      border: 1px solid #ddd;
-    }
-
-    .tab-btn {
-      padding: 8px 12px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      color: #666;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-    }
-
-    @media (max-width: 1400px) {
-      .tab-btn span:not(.tab-icon):not(.diff-stats) {
-        display: none;
-      }
-
-      .tab-btn {
-        padding: 8px 10px;
-      }
-
-      /* Always show diff stats */
-      .diff-stats {
-        display: inline !important;
-        font-size: 11px;
-        margin-left: 2px;
-      }
-    }
-
-    /* Style for diff stats */
-    .diff-stats {
-      font-size: 11px;
-      margin-left: 4px;
-      color: inherit;
-      opacity: 0.8;
-    }
-
-    .tab-btn.active .diff-stats {
-      opacity: 1;
-    }
-
-    .tab-btn:not(:last-child) {
-      border-right: 1px solid #eee;
-    }
-
-    .tab-btn:hover {
-      background-color: #f0f0f0;
-    }
-
-    .tab-btn.active {
-      border-bottom: 2px solid #4a90e2;
-      color: #4a90e2;
-      font-weight: 500;
-      background-color: #e6f7ff;
-    }
-
-    .tab-icon {
-      font-size: 16px;
-    }
-  `;
 
   constructor() {
     super();
@@ -147,29 +73,41 @@ export class SketchViewModeSelect extends LitElement {
 
   render() {
     return html`
-      <div class="tab-nav">
+      <div
+        class="flex mr-2.5 bg-gray-100 rounded border border-gray-300 overflow-hidden"
+      >
         <button
           id="showConversationButton"
-          class="tab-btn ${this.activeMode === "chat" ? "active" : ""}"
+          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 border-transparent transition-all whitespace-nowrap ${this
+            .activeMode === "chat"
+            ? "!border-b-blue-600 text-blue-600 font-medium bg-blue-50"
+            : "hover:bg-gray-200"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 last-of-type:border-r-0"
           title="Conversation View"
           @click=${() => this._handleViewModeClick("chat")}
         >
-          <span class="tab-icon">💬</span>
-          <span>Chat</span>
+          <span class="tab-icon text-base">💬</span>
+          <span class="max-sm:hidden sm:max-xl:hidden">Chat</span>
         </button>
         <button
           id="showDiff2Button"
-          class="tab-btn ${this.activeMode === "diff2" ? "active" : ""}"
+          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 border-transparent transition-all whitespace-nowrap ${this
+            .activeMode === "diff2"
+            ? "!border-b-blue-600 text-blue-600 font-medium bg-blue-50"
+            : "hover:bg-gray-200"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 last-of-type:border-r-0"
           title="Diff View - ${this.diffLinesAdded > 0 ||
           this.diffLinesRemoved > 0
             ? `+${this.diffLinesAdded} -${this.diffLinesRemoved}`
             : "No changes"}"
           @click=${() => this._handleViewModeClick("diff2")}
         >
-          <span class="tab-icon">±</span>
-          <span class="diff-text">Diff</span>
+          <span class="tab-icon text-base">±</span>
+          <span class="diff-tex max-sm:hidden sm:max-xl:hidden">Diff</span>
           ${this.diffLinesAdded > 0 || this.diffLinesRemoved > 0
-            ? html`<span class="diff-stats"
+            ? html`<span
+                class="diff-stats text-xs ml-1 opacity-80 ${this.activeMode ===
+                "diff2"
+                  ? "opacity-100"
+                  : ""}"
                 >+${this.diffLinesAdded} -${this.diffLinesRemoved}</span
               >`
             : ""}
@@ -177,12 +115,15 @@ export class SketchViewModeSelect extends LitElement {
 
         <button
           id="showTerminalButton"
-          class="tab-btn ${this.activeMode === "terminal" ? "active" : ""}"
+          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 border-transparent transition-all whitespace-nowrap ${this
+            .activeMode === "terminal"
+            ? "!border-b-blue-600 text-blue-600 font-medium bg-blue-50"
+            : "hover:bg-gray-200"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 last-of-type:border-r-0"
           title="Terminal View"
           @click=${() => this._handleViewModeClick("terminal")}
         >
-          <span class="tab-icon">💻</span>
-          <span>Terminal</span>
+          <span class="tab-icon text-base">💻</span>
+          <span class="max-sm:hidden sm:max-xl:hidden">Terminal</span>
         </button>
       </div>
     `;

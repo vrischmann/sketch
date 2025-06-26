@@ -97,6 +97,7 @@ export class DemoRunner {
       "sketch-chat-input",
       "sketch-container-status",
       "sketch-tool-calls",
+      "sketch-view-mode-select",
     ];
 
     // Filter to only components that actually have demo files

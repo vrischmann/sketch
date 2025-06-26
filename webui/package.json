@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.10",
+    "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/vite": "^4.1.10",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",

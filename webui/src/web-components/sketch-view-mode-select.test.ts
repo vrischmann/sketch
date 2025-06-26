@@ -10,10 +10,10 @@ test("initializes with 'chat' as the default mode", async ({ mount }) => {
   );
   expect(activeMode).toBe("chat");
 
-  // Check that the chat button has the active class
-  await expect(
-    component.locator("#showConversationButton.active"),
-  ).toBeVisible();
+  // Check that the chat button has the active styling (dark blue border indicates active)
+  await expect(component.locator("#showConversationButton")).toHaveClass(
+    /border-b-blue-600/,
+  );
 });
 
 test("dispatches view-mode-select event when clicking a mode button", async ({
@@ -68,8 +68,10 @@ test("updates the active mode when receiving update-active-mode event", async ({
   );
   expect(activeMode).toBe("diff2");
 
-  // Check that the diff button is now active
-  await expect(component.locator("#showDiff2Button.active")).toBeVisible();
+  // Check that the diff button is now active (has dark blue border)
+  await expect(component.locator("#showDiff2Button")).toHaveClass(
+    /border-b-blue-600/,
+  );
 });
 
 test("correctly marks the active button based on mode", async ({ mount }) => {
@@ -79,13 +81,16 @@ test("correctly marks the active button based on mode", async ({ mount }) => {
     },
   });
 
-  // Terminal button should be active
-  await expect(component.locator("#showTerminalButton.active")).toBeVisible();
+  // Terminal button should be active (has dark blue border)
+  await expect(component.locator("#showTerminalButton")).toHaveClass(
+    /border-b-blue-600/,
+  );
 
-  // Other buttons should not be active
-  await expect(
-    component.locator("#showConversationButton.active"),
-  ).not.toBeVisible();
-  await expect(component.locator("#showDiff2Button.active")).not.toBeVisible();
-  await expect(component.locator("#showChartsButton.active")).not.toBeVisible();
+  // Other buttons should not be active (should not have dark blue border)
+  await expect(component.locator("#showConversationButton")).not.toHaveClass(
+    /border-b-blue-600/,
+  );
+  await expect(component.locator("#showDiff2Button")).not.toHaveClass(
+    /border-b-blue-600/,
+  );
 });

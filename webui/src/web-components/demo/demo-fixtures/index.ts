@@ -24,6 +24,14 @@ export {
   heavyUsageState,
 } from "./container-status";
 
+// View mode select
+export {
+  sampleViewModeConfigs,
+  viewModeScenarios,
+  applyViewModeConfig,
+  createViewModeTestButtons,
+} from "./view-mode-select";
+
 // Common demo utilities
 export const demoStyles = {
   container: `
