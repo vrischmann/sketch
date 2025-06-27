@@ -1,8 +1,9 @@
-import { css, html, LitElement, PropertyValues } from "lit";
+import { html } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 
 @customElement("sketch-chat-input")
-export class SketchChatInput extends LitElement {
+export class SketchChatInput extends SketchTailwindElement {
   @state()
   content: string = "";
 
@@ -14,114 +15,6 @@ export class SketchChatInput extends LitElement {
 
   @state()
   showUploadInProgressMessage: boolean = false;
-
-  // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
-  // Note that these styles only apply to the scope of this web component's
-  // shadow DOM node, so they won't leak out or collide with CSS declared in
-  // other components or the containing web page (...unless you want it to do that).
-  static styles = css`
-    /* Chat styles - exactly matching timeline.css */
-    .chat-container {
-      width: 100%;
-      background: #f0f0f0;
-      padding: 15px;
-      min-height: 40px; /* Ensure minimum height */
-      position: relative;
-    }
-
-    .chat-input-wrapper {
-      display: flex;
-      max-width: 1200px;
-      margin: 0 auto;
-      gap: 10px;
-    }
-
-    #chatInput {
-      flex: 1;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      resize: vertical;
-      font-family: monospace;
-      font-size: 12px;
-      min-height: 40px;
-      max-height: 300px;
-      background: #f7f7f7;
-      overflow-y: auto;
-      box-sizing: border-box; /* Ensure padding is included in height calculation */
-      line-height: 1.4; /* Consistent line height for better height calculation */
-    }
-
-    #sendChatButton {
-      background-color: #2196f3;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 0 20px;
-      cursor: pointer;
-      font-weight: 600;
-      align-self: center;
-      height: 40px;
-    }
-
-    #sendChatButton:hover {
-      background-color: #0d8bf2;
-    }
-
-    #sendChatButton:disabled {
-      background-color: #b0b0b0;
-      cursor: not-allowed;
-    }
-
-    /* Drop zone styling */
-    .drop-zone-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(33, 150, 243, 0.1);
-      border: 2px dashed #2196f3;
-      border-radius: 4px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-      pointer-events: none;
-    }
-
-    .drop-zone-message,
-    .upload-progress-message {
-      background-color: #ffffff;
-      padding: 15px 20px;
-      border-radius: 4px;
-      font-weight: 600;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .upload-progress-message {
-      position: absolute;
-      bottom: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #fff9c4;
-      border: 1px solid #fbc02d;
-      z-index: 20;
-      font-size: 14px;
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-    }
-  `;
 
   constructor() {
     super();
@@ -227,7 +120,7 @@ export class SketchChatInput extends LitElement {
     event.preventDefault();
     event.stopPropagation();
     // Only set to false if we're leaving the container (not entering a child element)
-    if (event.target === this.renderRoot.querySelector(".chat-container")) {
+    if (event.target === this.querySelector(".chat-container")) {
       this.isDraggingOver = false;
     }
   }
@@ -291,7 +184,7 @@ export class SketchChatInput extends LitElement {
     window.removeEventListener("todo-comment", this._handleTodoComment);
 
     // Clean up drag and drop event listeners
-    const container = this.renderRoot.querySelector(".chat-container");
+    const container = this.querySelector(".chat-container");
     if (container) {
       container.removeEventListener("dragover", this._handleDragOver);
       container.removeEventListener("dragenter", this._handleDragEnter);
@@ -384,7 +277,7 @@ export class SketchChatInput extends LitElement {
       this.chatInput.addEventListener("paste", this._handlePaste);
 
       // Add drag and drop event listeners
-      const container = this.renderRoot.querySelector(".chat-container");
+      const container = this.querySelector(".chat-container");
       if (container) {
         container.addEventListener("dragover", this._handleDragOver);
         container.addEventListener("dragenter", this._handleDragEnter);
@@ -407,8 +300,8 @@ export class SketchChatInput extends LitElement {
 
   render() {
     return html`
-      <div class="chat-container">
-        <div class="chat-input-wrapper">
+      <div class="chat-container w-full bg-gray-100 p-4 min-h-[40px] relative">
+        <div class="chat-input-wrapper flex max-w-6xl mx-auto gap-2.5">
           <textarea
             id="chatInput"
             placeholder="Type your message here and press Enter to send..."
@@ -416,25 +309,35 @@ export class SketchChatInput extends LitElement {
             @keydown="${this._chatInputKeyDown}"
             @input="${this._chatInputChanged}"
             .value=${this.content || ""}
+            class="flex-1 p-3 border border-gray-300 rounded resize-y font-mono text-xs min-h-[40px] max-h-[300px] bg-gray-50 overflow-y-auto box-border leading-relaxed"
           ></textarea>
           <button
             @click="${this._sendChatClicked}"
             id="sendChatButton"
             ?disabled=${this.uploadsInProgress > 0}
+            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white border-none rounded px-5 cursor-pointer font-semibold self-center h-10"
           >
             ${this.uploadsInProgress > 0 ? "Uploading..." : "Send"}
           </button>
         </div>
         ${this.isDraggingOver
           ? html`
-              <div class="drop-zone-overlay">
-                <div class="drop-zone-message">Drop files here</div>
+              <div
+                class="drop-zone-overlay absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded flex justify-center items-center z-10 pointer-events-none"
+              >
+                <div
+                  class="drop-zone-message bg-white p-4 rounded font-semibold shadow-lg"
+                >
+                  Drop files here
+                </div>
               </div>
             `
           : ""}
         ${this.showUploadInProgressMessage
           ? html`
-              <div class="upload-progress-message">
+              <div
+                class="upload-progress-message absolute bottom-[70px] left-1/2 transform -translate-x-1/2 bg-yellow-50 border border-yellow-400 z-20 text-sm px-5 py-4 rounded font-semibold shadow-lg animate-fade-in"
+              >
                 Please wait for file upload to complete before sending
               </div>
             `

@@ -167,7 +167,7 @@ test("shows drop overlay when file is dragged over", async ({ mount }) => {
 
   // Simulate dragenter event
   await component.evaluate((el: SketchChatInput) => {
-    const container = el.renderRoot.querySelector(".chat-container");
+    const container = el.querySelector(".chat-container");
     if (container) {
       const event = new DragEvent("dragenter", { bubbles: true });
       container.dispatchEvent(event);
@@ -182,8 +182,7 @@ test("shows drop overlay when file is dragged over", async ({ mount }) => {
 
   // Check that the drop zone overlay is visible
   const overlay = await component.evaluate(
-    (el: SketchChatInput) =>
-      el.renderRoot.querySelector(".drop-zone-overlay") !== null,
+    (el: SketchChatInput) => el.querySelector(".drop-zone-overlay") !== null,
   );
   expect(overlay).toBe(true);
 });
@@ -198,7 +197,7 @@ test("hides drop overlay when drag leaves", async ({ mount }) => {
 
   // Simulate dragleave event
   await component.evaluate((el: SketchChatInput) => {
-    const container = el.renderRoot.querySelector(".chat-container");
+    const container = el.querySelector(".chat-container");
     if (container) {
       const event = new DragEvent("dragleave", { bubbles: true });
       Object.defineProperty(event, "target", { value: container });
