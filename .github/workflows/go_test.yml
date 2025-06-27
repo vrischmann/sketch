@@ -19,7 +19,7 @@ on:
   pull_request:
 jobs:
   test:
-    runs-on: "linux-x64-ubuntu-latest-64-core"
+    runs-on: "linux-x64-ubuntu-latest-8-core"
     steps:
       - uses: actions/checkout@v4
         with:
