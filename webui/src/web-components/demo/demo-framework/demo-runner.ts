@@ -94,6 +94,7 @@ export class DemoRunner {
     // For now, we'll maintain a registry of known demo components
     // This could be improved with build-time generation
     const knownComponents = [
+      "sketch-call-status",
       "sketch-chat-input",
       "sketch-container-status",
       "sketch-tool-calls",

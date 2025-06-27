@@ -1,9 +1,10 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 
 @customElement("sketch-call-status")
-export class SketchCallStatus extends LitElement {
+export class SketchCallStatus extends SketchTailwindElement {
   @property()
   llmCalls: number = 0;
 
@@ -18,109 +19,6 @@ export class SketchCallStatus extends LitElement {
 
   @property()
   isDisconnected: boolean = false;
-
-  static styles = css`
-    @keyframes gentle-pulse {
-      0% {
-        transform: scale(1);
-        opacity: 1;
-      }
-      50% {
-        transform: scale(1.15);
-        opacity: 0.8;
-      }
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-    }
-
-    .call-status-container {
-      display: flex;
-      position: relative;
-      align-items: center;
-      padding: 0 10px;
-    }
-
-    .indicators-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      position: relative;
-    }
-
-    .indicator {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 4px;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-
-    /* LLM indicator (lightbulb) */
-    .llm-indicator {
-      background-color: transparent;
-      color: #9ca3af; /* Gray when inactive */
-    }
-
-    .llm-indicator.active {
-      background-color: #fef3c7; /* Light yellow */
-      color: #f59e0b; /* Yellow/amber when active */
-      animation: gentle-pulse 1.5s infinite ease-in-out;
-    }
-
-    /* Tool indicator (wrench) */
-    .tool-indicator {
-      background-color: transparent;
-      color: #9ca3af; /* Gray when inactive */
-    }
-
-    .tool-indicator.active {
-      background-color: #dbeafe; /* Light blue */
-      color: #3b82f6; /* Blue when active */
-      animation: gentle-pulse 1.5s infinite ease-in-out;
-    }
-
-    svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .status-banner {
-      position: absolute;
-      padding: 2px 5px;
-      border-radius: 3px;
-      font-size: 10px;
-      font-weight: bold;
-      text-align: center;
-      letter-spacing: 0.5px;
-      width: 104px; /* Wider to accommodate DISCONNECTED text */
-      left: 50%;
-      transform: translateX(-50%);
-      top: 60%; /* Position a little below center */
-      z-index: 10; /* Ensure it appears above the icons */
-      opacity: 0.9;
-    }
-
-    .status-working {
-      background-color: #ffeecc;
-      color: #e65100;
-    }
-
-    .status-idle {
-      background-color: #e6f4ea;
-      color: #0d652d;
-    }
-
-    .status-disconnected {
-      background-color: #ffebee; /* Light red */
-      color: #d32f2f; /* Red */
-      font-weight: bold;
-    }
-  `;
 
   render() {
     const lightbulbSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -148,28 +46,60 @@ export class SketchCallStatus extends LitElement {
     }
 
     return html`
-      <div class="call-status-container">
-        <div class="indicators-container">
+      <style>
+        @keyframes gentle-pulse {
+          0% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.15);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .animate-gentle-pulse {
+          animation: gentle-pulse 1.5s infinite ease-in-out;
+        }
+      </style>
+      <div class="flex relative items-center px-2.5">
+        <div class="flex items-center gap-2.5 relative">
           <div
-            class="indicator llm-indicator ${this.llmCalls > 0 ? "active" : ""}"
+            class="llm-indicator flex justify-center items-center w-8 h-8 rounded transition-all duration-200 relative ${this
+              .llmCalls > 0
+              ? "bg-yellow-100 text-amber-500 animate-gentle-pulse active"
+              : "bg-transparent text-gray-400"}"
             title="${this.llmCalls > 0
               ? `${this.llmCalls} LLM ${this.llmCalls === 1 ? "call" : "calls"} in progress`
               : "No LLM calls in progress"}${agentState}"
           >
-            ${unsafeHTML(lightbulbSVG)}
+            <div class="w-5 h-5">${unsafeHTML(lightbulbSVG)}</div>
           </div>
           <div
-            class="indicator tool-indicator ${this.toolCalls.length > 0
-              ? "active"
-              : ""}"
+            class="tool-indicator flex justify-center items-center w-8 h-8 rounded transition-all duration-200 relative ${this
+              .toolCalls.length > 0
+              ? "bg-blue-100 text-blue-500 animate-gentle-pulse active"
+              : "bg-transparent text-gray-400"}"
             title="${this.toolCalls.length > 0
               ? `${this.toolCalls.length} tool ${this.toolCalls.length === 1 ? "call" : "calls"} in progress: ${this.toolCalls.join(", ")}`
               : "No tool calls in progress"}${agentState}"
           >
-            ${unsafeHTML(wrenchSVG)}
+            <div class="w-5 h-5">${unsafeHTML(wrenchSVG)}</div>
           </div>
         </div>
-        <div class="status-banner ${statusClass}">${statusText}</div>
+        <div
+          class="status-banner absolute py-0.5 px-1.5 rounded text-xs font-bold text-center tracking-wider w-26 left-1/2 transform -translate-x-1/2 top-3/5 z-10 opacity-90 ${statusClass} ${this
+            .isDisconnected
+            ? "bg-red-50 text-red-600"
+            : !this.isIdle
+              ? "bg-orange-50 text-orange-600"
+              : "bg-green-50 text-green-700"}"
+        >
+          ${statusText}
+        </div>
       </div>
     `;
   }
