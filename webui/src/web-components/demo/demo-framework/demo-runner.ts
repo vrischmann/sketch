@@ -95,6 +95,7 @@ export class DemoRunner {
     // This could be improved with build-time generation
     const knownComponents = [
       "chat-input",
+      "sketch-app-shell",
       "sketch-call-status",
       "sketch-chat-input",
       "sketch-container-status",
