@@ -69,6 +69,7 @@ Regarding how CSS rules defined in sketch-tool-card affect elements that contain
      word-break: break-word;
    }
    ```
+
    - This allows parent components to influence the layout of slotted components while preserving Shadow DOM encapsulation
 
 5. **Host Element Styling**:
@@ -82,6 +83,7 @@ Regarding how CSS rules defined in sketch-tool-card affect elements that contain
      overflow: hidden;
    }
    ```
+
    - This affects how the component is displayed in its parent context
 
 In summary, the architecture uses composition rather than inheritance, with specialized tool cards wrapping the base sketch-tool-card component and filling its slots with custom content. The CSS styling is carefully managed through Shadow DOM, with some targeted styling using ::slotted selectors to ensure proper layout and appearance throughout the component hierarchy.
