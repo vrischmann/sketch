@@ -81,6 +81,7 @@ type State struct {
 	WorkingDir           string                        `json:"working_dir"` // deprecated
 	OS                   string                        `json:"os"`          // deprecated
 	GitOrigin            string                        `json:"git_origin,omitempty"`
+	GitUsername          string                        `json:"git_username,omitempty"`
 	OutstandingLLMCalls  int                           `json:"outstanding_llm_calls"`
 	OutstandingToolCalls []string                      `json:"outstanding_tool_calls"`
 	SessionID            string                        `json:"session_id"`
@@ -1270,6 +1271,7 @@ func (s *Server) getState() State {
 		OutsideWorkingDir:    s.agent.OutsideWorkingDir(),
 		InsideWorkingDir:     getWorkingDir(),
 		GitOrigin:            s.agent.GitOrigin(),
+		GitUsername:          s.agent.GitUsername(),
 		OutstandingLLMCalls:  s.agent.OutstandingLLMCallCount(),
 		OutstandingToolCalls: s.agent.OutstandingToolCalls(),
 		SessionID:            s.agent.SessionID(),

@@ -73,6 +73,7 @@ export interface State {
 	working_dir: string;
 	os: string;
 	git_origin?: string;
+	git_username?: string;
 	outstanding_llm_calls: number;
 	outstanding_tool_calls: string[] | null;
 	session_id: string;

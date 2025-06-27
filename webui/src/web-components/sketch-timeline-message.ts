@@ -671,6 +671,25 @@ export class SketchTimelineMessage extends LitElement {
       border-left: 2px solid rgba(0, 0, 0, 0.1);
     }
 
+    /* User name styling - positioned outside and below the message bubble */
+    .user-name-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 4px;
+      padding-right: 80px; /* Account for right metadata area */
+    }
+
+    :host([compactpadding]) .user-name-container {
+      padding-right: 0; /* No right padding in compact mode */
+    }
+
+    .user-name {
+      font-size: 11px;
+      color: #666;
+      font-style: italic;
+      text-align: right;
+    }
+
     .user .message-info-panel {
       background-color: rgba(255, 255, 255, 0.15);
       border-left: 2px solid rgba(255, 255, 255, 0.2);
@@ -1573,6 +1592,15 @@ export class SketchTimelineMessage extends LitElement {
           <!-- Right side (empty for consistency) -->
           <div class="message-metadata-right"></div>
         </div>
+
+        <!-- User name for user messages - positioned outside and below the bubble -->
+        ${this.message?.type === "user" && this.state?.git_username
+          ? html`
+              <div class="user-name-container">
+                <div class="user-name">${this.state.git_username}</div>
+              </div>
+            `
+          : ""}
       </div>
     `;
   }

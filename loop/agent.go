@@ -132,6 +132,9 @@ type CodingAgent interface {
 	OutsideWorkingDir() string
 	GitOrigin() string
 
+	// GitUsername returns the git user name from the agent config.
+	GitUsername() string
+
 	// DiffStats returns the number of lines added and removed from sketch-base to HEAD
 	DiffStats() (int, int)
 	// OpenBrowser is a best-effort attempt to open a browser at url in outside sketch.
@@ -721,6 +724,11 @@ func (a *Agent) OutsideWorkingDir() string {
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
 func (a *Agent) GitOrigin() string {
 	return a.gitOrigin
+}
+
+// GitUsername returns the git user name from the agent config.
+func (a *Agent) GitUsername() string {
+	return a.config.GitUsername
 }
 
 // DiffStats returns the number of lines added and removed from sketch-base to HEAD

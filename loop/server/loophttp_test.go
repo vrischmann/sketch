@@ -25,6 +25,7 @@ type mockAgent struct {
 	currentState             string
 	subscribers              []chan *loop.AgentMessage
 	stateTransitionListeners []chan loop.StateTransition
+	gitUsername              string
 	initialCommit            string
 	branchName               string
 	branchPrefix             string
@@ -238,6 +239,7 @@ func (m *mockAgent) OutsideOS() string                           { return "linux
 func (m *mockAgent) OutsideHostname() string                     { return "test-host" }
 func (m *mockAgent) OutsideWorkingDir() string                   { return "/app" }
 func (m *mockAgent) GitOrigin() string                           { return "" }
+func (m *mockAgent) GitUsername() string                         { return m.gitUsername }
 func (m *mockAgent) OpenBrowser(url string)                      {}
 func (m *mockAgent) CompactConversation(ctx context.Context) error {
 	// Mock implementation - just return nil
