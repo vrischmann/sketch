@@ -45,20 +45,24 @@ render() {
 Regarding how CSS rules defined in sketch-tool-card affect elements that contain it:
 
 1. **Shadow DOM Encapsulation**:
+
    - Each Web Component has its own Shadow DOM, which encapsulates its styles
    - Styles defined in `sketch-tool-card` apply only within its shadow DOM, not to parent components
 
 2. **Slot Content Styling**:
+
    - The base `sketch-tool-card` defines three slots: "summary", "input", and "result"
    - Specialized tool cards provide content for these slots
    - The base component can style the slot containers, but cannot directly style the slotted content
 
 3. **Style Inheritance and Sharing**:
+
    - The code uses a `commonStyles` constant that is shared across some components
    - These common styles ensure consistent styling for elements like pre, code blocks
    - Each specialized component adds its own unique styles as needed
 
 4. **Parent CSS Targeting**:
+
    - In `sketch-timeline-message.ts`, there are styles that target the tool components using the `::slotted()` pseudo-element:
 
    ```css
@@ -73,6 +77,7 @@ Regarding how CSS rules defined in sketch-tool-card affect elements that contain
    - This allows parent components to influence the layout of slotted components while preserving Shadow DOM encapsulation
 
 5. **Host Element Styling**:
+
    - The `:host` selector is used in sketch-tool-card for styling the component itself:
 
    ```css

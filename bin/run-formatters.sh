@@ -38,13 +38,13 @@ if [ -d "./webui" ]; then
   cd webui
   if [ "$CHECK_MODE" = true ]; then
     echo "Checking webui formatting with Prettier"
-    if ! npx prettier --check .; then
+    if ! npx prettier@3.5.3 --check .; then
       echo "Webui files need formatting"
       exit 1
     fi
   else
     echo "Fixing webui formatting with Prettier"
-    npx prettier --write .
+    npx prettier@3.5.3 --write .
     echo "Webui formatting complete"
   fi
 else
