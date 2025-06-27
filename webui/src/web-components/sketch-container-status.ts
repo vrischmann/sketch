@@ -351,7 +351,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
       <div class="flex items-center relative">
         <!-- Main visible info in two columns - github/hostname/dir and last commit -->
         <div class="flex flex-wrap gap-2 px-2.5 py-1 flex-1">
-          <div class="grid grid-cols-2 gap-2.5 w-full">
+          <div class="flex gap-2.5 w-full">
             <!-- First column: GitHub repo (or hostname) and working dir -->
             <div class="flex flex-col gap-0.5">
               <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">

@@ -52,7 +52,10 @@ const demo: DemoModule = {
     ) as any;
     heavyStatus.id = "heavy-status";
     heavyStatus.state = heavyUsageState;
-
+    heavyStatus.lastCommit = {
+      hash: "deadbeef",
+      pushedBranch: "user/sketch/really-long-branch-name-that-stains-layout",
+    };
     const heavyLabel = document.createElement("h4");
     heavyLabel.textContent = "Heavy Usage";
     heavyLabel.style.cssText = "margin: 20px 0 10px 0; color: #24292f;";
