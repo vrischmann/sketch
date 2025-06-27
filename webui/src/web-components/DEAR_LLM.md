@@ -74,6 +74,7 @@ Regarding how CSS rules defined in sketch-tool-card affect elements that contain
 
 5. **Host Element Styling**:
    - The `:host` selector is used in sketch-tool-card for styling the component itself:
+
    ```css
    :host {
      display: block;
