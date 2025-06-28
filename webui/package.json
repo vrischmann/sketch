@@ -23,7 +23,7 @@
     "build": "go run ../cmd/go2ts -o src/types.ts && tsc",
     "watch": "tsc --watch",
     "tailwind": "tailwindcss -i ./src/global.css -o ./dist/tailwind.css",
-    "test": "tsc && npm run test:playwright",
+    "test": "tsc && tailwindcss -i ./src/global.css -o ./dist/tailwind.css && npm run test:playwright",
     "test:playwright": "playwright test -c playwright-ct.config.ts"
   },
   "dependencies": {

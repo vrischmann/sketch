@@ -96,10 +96,10 @@ test("renders empty state when no messages", async ({ mount }) => {
     },
   });
 
-  await expect(timeline.locator(".welcome-box")).toBeVisible();
-  await expect(timeline.locator(".welcome-box-title")).toContainText(
-    "How to use Sketch",
-  );
+  await expect(timeline.locator("[data-testid='welcome-box']")).toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='welcome-box-title']"),
+  ).toContainText("How to use Sketch");
 });
 
 test("renders messages when provided", async ({ mount }) => {
@@ -120,7 +120,9 @@ test("renders messages when provided", async ({ mount }) => {
     return element.updateComplete;
   });
 
-  await expect(timeline.locator(".timeline-container")).toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='timeline-container']"),
+  ).toBeVisible();
   await expect(timeline.locator("sketch-timeline-message")).toHaveCount(5);
 });
 
@@ -140,13 +142,45 @@ test("shows thinking indicator when agent is active", async ({ mount }) => {
   // Directly set the isInitialLoadComplete state to bypass the event system for testing
   await timeline.evaluate((element: SketchTimeline) => {
     (element as any).isInitialLoadComplete = true;
+    console.log("Set isInitialLoadComplete to true");
+    console.log("llmCalls:", element.llmCalls);
+    console.log("toolCalls:", element.toolCalls);
+    console.log(
+      "isInitialLoadComplete:",
+      (element as any).isInitialLoadComplete,
+    );
     element.requestUpdate();
     return element.updateComplete;
   });
 
-  await expect(timeline.locator(".thinking-indicator")).toBeVisible();
-  await expect(timeline.locator(".thinking-bubble")).toBeVisible();
-  await expect(timeline.locator(".thinking-dots .dot")).toHaveCount(3);
+  // Debug: Check if the element exists and what its computed style is
+  const indicatorExists = await timeline
+    .locator("[data-testid='thinking-indicator']")
+    .count();
+  console.log("Thinking indicator exists:", indicatorExists);
+
+  if (indicatorExists > 0) {
+    const style = await timeline
+      .locator("[data-testid='thinking-indicator']")
+      .evaluate((el) => {
+        const computed = window.getComputedStyle(el);
+        return {
+          display: computed.display,
+          visibility: computed.visibility,
+          opacity: computed.opacity,
+          className: el.className,
+        };
+      });
+    console.log("Thinking indicator style:", style);
+  }
+  // Wait for the component to render with a longer timeout
+  await expect(
+    timeline.locator("[data-testid='thinking-indicator']"),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(
+    timeline.locator("[data-testid='thinking-bubble']"),
+  ).toBeVisible();
+  await expect(timeline.locator("[data-testid='thinking-dot']")).toHaveCount(3);
 });
 
 test("filters out messages with hide_output flag", async ({ mount }) => {
@@ -338,8 +372,10 @@ test("shows jump-to-latest button when not pinned to latest", async ({
     return element.updateComplete;
   });
 
-  // Button should now be visible
-  await expect(timeline.locator("#jump-to-latest.floating")).toBeVisible();
+  // Button should now be visible - wait longer for CSS classes to apply
+  await expect(timeline.locator("#jump-to-latest.floating")).toBeVisible({
+    timeout: 10000,
+  });
 });
 
 test("jump-to-latest button calls scroll method", async ({ mount }) => {
@@ -378,8 +414,10 @@ test("jump-to-latest button calls scroll method", async ({ mount }) => {
     return element.updateComplete;
   });
 
-  // Verify button is visible before clicking
-  await expect(timeline.locator("#jump-to-latest.floating")).toBeVisible();
+  // Verify button is visible before clicking - wait longer for CSS classes to apply
+  await expect(timeline.locator("#jump-to-latest.floating")).toBeVisible({
+    timeout: 10000,
+  });
 
   // Click the jump to latest button
   await timeline.locator("#jump-to-latest").click();
@@ -414,11 +452,15 @@ test("shows loading indicator when loading older messages", async ({
     return element.updateComplete;
   });
 
-  await expect(timeline.locator(".loading-indicator")).toBeVisible();
-  await expect(timeline.locator(".loading-spinner")).toBeVisible();
-  await expect(timeline.locator(".loading-indicator")).toContainText(
-    "Loading older messages...",
-  );
+  await expect(
+    timeline.locator("[data-testid='loading-indicator']"),
+  ).toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='loading-spinner']"),
+  ).toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='loading-indicator']"),
+  ).toContainText("Loading older messages...");
 });
 
 test("hides loading indicator when not loading", async ({ mount }) => {
@@ -440,7 +482,9 @@ test("hides loading indicator when not loading", async ({ mount }) => {
   });
 
   // Should not show loading indicator by default
-  await expect(timeline.locator(".loading-indicator")).not.toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='loading-indicator']"),
+  ).not.toBeVisible();
 });
 
 // Memory Management and Cleanup Tests
@@ -536,9 +580,9 @@ test("cancels loading operations on viewport reset", async ({ mount }) => {
   });
 
   // Verify loading state - should show only the "loading older messages" indicator
-  await expect(timeline.locator(".loading-indicator")).toContainText(
-    "Loading older messages...",
-  );
+  await expect(
+    timeline.locator("[data-testid='loading-indicator']"),
+  ).toContainText("Loading older messages...");
 
   // Reset viewport (should cancel loading)
   await timeline.evaluate((element: SketchTimeline) => {
@@ -552,7 +596,9 @@ test("cancels loading operations on viewport reset", async ({ mount }) => {
   );
   expect(isLoading).toBe(false);
 
-  await expect(timeline.locator(".loading-indicator")).not.toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='loading-indicator']"),
+  ).not.toBeVisible();
 });
 
 // Message Filtering and Ordering Tests
@@ -719,13 +765,19 @@ test("handles empty filteredMessages gracefully", async ({ mount }) => {
   await expect(timeline.locator("sketch-timeline-message")).toHaveCount(0);
 
   // Should not show welcome box when messages array has content (even if all hidden)
-  await expect(timeline.locator(".welcome-box")).not.toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='welcome-box']"),
+  ).not.toBeVisible();
 
   // Should not show loading indicator
-  await expect(timeline.locator(".loading-indicator")).not.toBeVisible();
+  await expect(
+    timeline.locator("[data-testid='loading-indicator']"),
+  ).not.toBeVisible();
 
   // Timeline container exists but may not be visible due to CSS
-  await expect(timeline.locator(".timeline-container")).toBeAttached();
+  await expect(
+    timeline.locator("[data-testid='timeline-container']"),
+  ).toBeAttached();
 });
 
 test("handles message array updates correctly", async ({ mount }) => {

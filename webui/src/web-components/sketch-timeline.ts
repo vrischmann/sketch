@@ -1,13 +1,14 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { PropertyValues } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { AgentMessage, State } from "../types";
 import "./sketch-timeline-message";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 import { Ref } from "lit/directives/ref";
 
 @customElement("sketch-timeline")
-export class SketchTimeline extends LitElement {
+export class SketchTimeline extends SketchTailwindElement {
   @property({ attribute: false })
   messages: AgentMessage[] = [];
 
@@ -80,254 +81,81 @@ export class SketchTimeline extends LitElement {
   // Timeout ID for loading operations
   private loadingTimeoutId: number | null = null;
 
-  static styles = css`
-    /* Hide message content initially to prevent flash of incomplete content */
-    .timeline-container:not(.view-initialized) sketch-timeline-message {
-      opacity: 0;
-      transition: opacity 0.2s ease-in;
-    }
-
-    /* Show content once initial load is complete */
-    .timeline-container.view-initialized sketch-timeline-message {
-      opacity: 1;
-    }
-
-    /* Always show loading indicators */
-    .timeline-container .loading-indicator {
-      opacity: 1;
-    }
-
-    .timeline-container {
-      width: 100%;
-      position: relative;
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 0 15px;
-      box-sizing: border-box;
-      overflow-x: hidden;
-      flex: 1;
-      min-height: 100px; /* Ensure container has height for loading indicator */
-    }
-
-    /* Chat-like timeline styles */
-    .timeline {
-      position: relative;
-      margin: 10px 0;
-      scroll-behavior: smooth;
-    }
-
-    /* Remove the vertical timeline line */
-
-    #scroll-container {
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-left: 1em;
-      max-width: 100%;
-      width: 100%;
-      height: 100%;
-    }
-
-    :host([compactpadding]) #scroll-container {
-      padding-left: 0;
-    }
-    #jump-to-latest {
-      display: none;
-      position: fixed;
-      bottom: 80px; /* Position right on the boundary */
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.6);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 400;
-      cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-      opacity: 0.8;
-    }
-    #jump-to-latest:hover {
-      background-color: rgba(0, 0, 0, 0.8);
-      transform: translateX(-50%) translateY(-1px);
-      opacity: 1;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    }
-    #jump-to-latest:active {
-      transform: translateX(-50%) translateY(0);
-    }
-    #jump-to-latest.floating {
-      display: block;
-    }
-
-    /* Welcome box styles for the empty chat state */
-    .welcome-box {
-      margin: 2rem auto;
-      max-width: 90%;
-      width: 90%;
-      padding: 2rem;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-      background-color: #ffffff;
-      text-align: center;
-    }
-
-    .welcome-box-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 1.5rem;
-      text-align: center;
-      color: #333;
-    }
-
-    .welcome-box-content {
-      color: #666; /* Slightly grey font color */
-      line-height: 1.6;
-      font-size: 1rem;
-      text-align: left;
-    }
-
-    /* Thinking indicator styles */
-    .thinking-indicator {
-      padding-left: 85px;
-      margin-top: 5px;
-      margin-bottom: 15px;
-      display: flex;
-    }
-
-    .thinking-bubble {
-      background-color: #f1f1f1;
-      border-radius: 15px;
-      padding: 10px 15px;
-      max-width: 80px;
-      color: black;
-      position: relative;
-      border-bottom-left-radius: 5px;
-    }
-
-    .thinking-dots {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      height: 14px;
-    }
-
-    .dot {
-      width: 6px;
-      height: 6px;
-      background-color: #888;
-      border-radius: 50%;
-      opacity: 0.6;
-    }
-
-    .dot:nth-child(1) {
-      animation: pulse 1.5s infinite ease-in-out;
-    }
-
-    .dot:nth-child(2) {
-      animation: pulse 1.5s infinite ease-in-out 0.3s;
-    }
-
-    .dot:nth-child(3) {
-      animation: pulse 1.5s infinite ease-in-out 0.6s;
-    }
-
-    @keyframes pulse {
-      0%,
-      100% {
-        opacity: 0.4;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 1;
-        transform: scale(1.2);
-      }
-    }
-
-    /* Loading indicator styles */
-    .loading-indicator {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      color: #666;
-      font-size: 14px;
-      gap: 10px;
-    }
-
-    .loading-spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid #e0e0e0;
-      border-top: 2px solid #666;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    /* Print styles for full timeline printing */
-    @media print {
-      .timeline-container {
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        page-break-inside: avoid;
-      }
-
-      .timeline {
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-      }
-
-      #scroll-container {
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        overflow-y: visible !important;
-        overflow-x: visible !important;
-      }
-
-      /* Hide the jump to latest button during printing */
-      #jump-to-latest {
-        display: none !important;
-      }
-
-      /* Hide the thinking indicator during printing */
-      .thinking-indicator {
-        display: none !important;
-      }
-
-      /* Hide the loading indicator during printing */
-      .loading-indicator {
-        display: none !important;
-      }
-
-      /* Ensure welcome box prints properly if visible */
-      .welcome-box {
-        page-break-inside: avoid;
-      }
-    }
-  `;
   constructor() {
     super();
 
     // Binding methods
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handleScroll = this._handleScroll.bind(this);
+
+    // Add custom animations and styles that can't be easily done with Tailwind
+    this.addCustomStyles();
+  }
+
+  private addCustomStyles() {
+    const styleId = "sketch-timeline-custom-styles";
+    if (document.getElementById(styleId)) {
+      return; // Already added
+    }
+
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      /* Hide message content initially to prevent flash of incomplete content */
+      .timeline-not-initialized sketch-timeline-message {
+        opacity: 0;
+        transition: opacity 0.2s ease-in;
+      }
+
+      /* Show content once initial load is complete */
+      .timeline-initialized sketch-timeline-message {
+        opacity: 1;
+      }
+
+      /* Custom animations for thinking dots */
+      @keyframes thinking-pulse {
+        0%, 100% {
+          opacity: 0.4;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.2);
+        }
+      }
+
+      .thinking-dot-1 {
+        animation: thinking-pulse 1.5s infinite ease-in-out;
+      }
+
+      .thinking-dot-2 {
+        animation: thinking-pulse 1.5s infinite ease-in-out 0.3s;
+      }
+
+      .thinking-dot-3 {
+        animation: thinking-pulse 1.5s infinite ease-in-out 0.6s;
+      }
+
+      /* Custom spinner animation */
+      @keyframes loading-spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-spinner {
+        animation: loading-spin 1s linear infinite;
+      }
+
+      /* Custom compact padding styling */
+      .compact-padding .scroll-container {
+        padding-left: 0;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**
@@ -973,27 +801,39 @@ export class SketchTimeline extends LitElement {
   render() {
     // Check if messages array is empty and render welcome box if it is
     if (this.messages.length === 0) {
+      const compactClass = this.compactPadding ? "compact-padding" : "";
       return html`
-        <div style="position: relative; height: 100%;">
-          <div id="scroll-container">
-            <div class="welcome-box">
-              <h2 class="welcome-box-title">How to use Sketch</h2>
-              <p class="welcome-box-content">
+        <div class="relative h-full">
+          <div
+            id="scroll-container"
+            class="overflow-y-auto overflow-x-hidden pl-4 max-w-full w-full h-full ${compactClass} scroll-container print:h-auto print:max-h-none print:overflow-visible"
+          >
+            <div
+              class="my-8 mx-auto max-w-[90%] w-[90%] p-8 border-2 border-gray-300 rounded-lg shadow-sm bg-white text-center print:break-inside-avoid"
+              data-testid="welcome-box"
+            >
+              <h2
+                class="text-2xl font-semibold mb-6 text-center text-gray-800"
+                data-testid="welcome-box-title"
+              >
+                How to use Sketch
+              </h2>
+              <p class="text-gray-600 leading-relaxed text-base text-left">
                 Sketch is an agentic coding assistant.
               </p>
 
-              <p class="welcome-box-content">
+              <p class="text-gray-600 leading-relaxed text-base text-left">
                 Sketch has created a container with your repo.
               </p>
 
-              <p class="welcome-box-content">
+              <p class="text-gray-600 leading-relaxed text-base text-left">
                 Ask it to implement a task or answer a question in the chat box
                 below. It can edit and run your code, all in the container.
                 Sketch will create commits in a newly created git branch, which
                 you can look at and comment on in the Diff tab. Once you're
                 done, you'll find that branch available in your (original) repo.
               </p>
-              <p class="welcome-box-content">
+              <p class="text-gray-600 leading-relaxed text-base text-left">
                 Because Sketch operates a container per session, you can run
                 Sketch in parallel to work on multiple ideas or even the same
                 idea with different approaches.
@@ -1009,26 +849,47 @@ export class SketchTimeline extends LitElement {
       this.llmCalls > 0 || (this.toolCalls && this.toolCalls.length > 0);
 
     // Apply view-initialized class when initial load is complete
-    const containerClass = this.isInitialLoadComplete
-      ? "timeline-container view-initialized"
-      : "timeline-container";
+    const timelineStateClass = this.isInitialLoadComplete
+      ? "timeline-initialized"
+      : "timeline-not-initialized";
+
+    // Compact padding class
+    const compactClass = this.compactPadding ? "compact-padding" : "";
 
     return html`
-      <div style="position: relative; height: 100%;">
-        <div id="scroll-container">
-          <div class="${containerClass}">
+      <div class="relative h-full">
+        <div
+          id="scroll-container"
+          class="overflow-y-auto overflow-x-hidden pl-4 max-w-full w-full h-full ${compactClass} scroll-container print:h-auto print:max-h-none print:overflow-visible"
+        >
+          <div
+            class="w-full relative max-w-full mx-auto px-[15px] box-border overflow-x-hidden flex-1 min-h-[100px] ${timelineStateClass} print:h-auto print:max-h-none print:overflow-visible print:break-inside-avoid"
+            data-testid="timeline-container"
+          >
             ${!this.isInitialLoadComplete
               ? html`
-                  <div class="loading-indicator">
-                    <div class="loading-spinner"></div>
+                  <div
+                    class="flex items-center justify-center p-5 text-gray-600 text-sm gap-2.5 opacity-100 print:hidden"
+                    data-testid="loading-indicator"
+                  >
+                    <div
+                      class="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full loading-spinner"
+                      data-testid="loading-spinner"
+                    ></div>
                     <span>Loading conversation...</span>
                   </div>
                 `
               : ""}
             ${this.isLoadingOlderMessages
               ? html`
-                  <div class="loading-indicator">
-                    <div class="loading-spinner"></div>
+                  <div
+                    class="flex items-center justify-center p-5 text-gray-600 text-sm gap-2.5 opacity-100 print:hidden"
+                    data-testid="loading-indicator"
+                  >
+                    <div
+                      class="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full loading-spinner"
+                      data-testid="loading-spinner"
+                    ></div>
                     <span>Loading older messages...</span>
                   </div>
                 `
@@ -1061,12 +922,31 @@ export class SketchTimeline extends LitElement {
               : ""}
             ${isThinking && this.isInitialLoadComplete
               ? html`
-                  <div class="thinking-indicator">
-                    <div class="thinking-bubble">
-                      <div class="thinking-dots">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
+                  <div
+                    class="pl-[85px] mt-1.5 mb-4 flex"
+                    data-testid="thinking-indicator"
+                    style="display: flex; padding-left: 85px; margin-top: 6px; margin-bottom: 16px;"
+                  >
+                    <div
+                      class="bg-gray-100 rounded-2xl px-4 py-2.5 max-w-20 text-black relative rounded-bl-[5px]"
+                      data-testid="thinking-bubble"
+                    >
+                      <div
+                        class="flex items-center justify-center gap-1 h-3.5"
+                        data-testid="thinking-dots"
+                      >
+                        <div
+                          class="w-1.5 h-1.5 bg-gray-500 rounded-full opacity-60 thinking-dot-1"
+                          data-testid="thinking-dot"
+                        ></div>
+                        <div
+                          class="w-1.5 h-1.5 bg-gray-500 rounded-full opacity-60 thinking-dot-2"
+                          data-testid="thinking-dot"
+                        ></div>
+                        <div
+                          class="w-1.5 h-1.5 bg-gray-500 rounded-full opacity-60 thinking-dot-3"
+                          data-testid="thinking-dot"
+                        ></div>
                       </div>
                     </div>
                   </div>
@@ -1076,7 +956,9 @@ export class SketchTimeline extends LitElement {
         </div>
         <div
           id="jump-to-latest"
-          class="${this.scrollingState}"
+          class="${this.scrollingState === "floating"
+            ? "block floating"
+            : "hidden"} fixed bottom-20 left-1/2 -translate-x-1/2 bg-black/60 text-white border-none rounded-xl px-2 py-1 text-xs font-normal cursor-pointer shadow-md z-[1000] transition-all duration-150 ease-out whitespace-nowrap opacity-80 hover:bg-black/80 hover:-translate-y-0.5 hover:opacity-100 hover:shadow-lg active:translate-y-0 print:hidden"
           @click=${this.scrollToBottomWithRetry}
         >
           ↓ Jump to bottom

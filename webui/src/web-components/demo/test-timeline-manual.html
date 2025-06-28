@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sketch Timeline Manual Test</title>
+    <link rel="stylesheet" href="/dist/tailwind.css" />
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      .test-container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .test-section {
+        margin: 40px 0;
+        padding: 20px;
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
+      }
+      .test-section h3 {
+        margin: 0 0 15px 0;
+        color: #24292f;
+      }
+      .timeline-wrapper {
+        height: 400px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        margin: 15px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="test-container">
+      <h1>Sketch Timeline Component Test</h1>
+      <p>
+        This page tests the converted SketchTimeline component using Tailwind
+        CSS.
+      </p>
+
+      <div class="test-section">
+        <h3>Empty Timeline (Welcome State)</h3>
+        <div class="timeline-wrapper">
+          <sketch-timeline id="empty-timeline"></sketch-timeline>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>Timeline with Messages</h3>
+        <div class="timeline-wrapper">
+          <sketch-timeline id="messages-timeline"></sketch-timeline>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>Timeline with Thinking State</h3>
+        <div class="timeline-wrapper">
+          <sketch-timeline id="thinking-timeline"></sketch-timeline>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>Controls</h3>
+        <button id="add-message">Add Message</button>
+        <button id="toggle-thinking">Toggle Thinking</button>
+        <button id="clear-messages">Clear Messages</button>
+      </div>
+    </div>
+
+    <script type="module">
+      // Import the timeline component
+      import "../sketch-timeline.js";
+
+      // Mock messages
+      function createMockMessage(props = {}) {
+        return {
+          idx: props.idx || 0,
+          type: props.type || "agent",
+          content: props.content || "Hello world",
+          timestamp: props.timestamp || "2023-05-15T12:00:00Z",
+          elapsed: props.elapsed || 1500000000,
+          end_of_turn: props.end_of_turn || false,
+          conversation_id: props.conversation_id || "conv123",
+          tool_calls: props.tool_calls || [],
+          commits: props.commits || [],
+          usage: props.usage,
+          hide_output: props.hide_output || false,
+          ...props,
+        };
+      }
+
+      // Get timeline elements
+      const emptyTimeline = document.getElementById("empty-timeline");
+      const messagesTimeline = document.getElementById("messages-timeline");
+      const thinkingTimeline = document.getElementById("thinking-timeline");
+
+      // Set up messages timeline
+      const messages = [
+        createMockMessage({
+          idx: 0,
+          content: "Hello! I'm a user message.",
+          type: "user",
+          timestamp: "2023-05-15T12:00:00Z",
+        }),
+        createMockMessage({
+          idx: 1,
+          content: "And I'm an agent response with some details.",
+          type: "agent",
+          timestamp: "2023-05-15T12:01:00Z",
+          usage: {
+            input_tokens: 15,
+            output_tokens: 42,
+            cost_usd: 0.001234,
+          },
+        }),
+        createMockMessage({
+          idx: 2,
+          content: "Here's a message with tool calls.",
+          type: "agent",
+          timestamp: "2023-05-15T12:02:00Z",
+          tool_calls: [
+            {
+              name: "bash",
+              input: "echo 'Hello World'",
+              tool_call_id: "call_123",
+              args: '{"command": "echo \'Hello World\'"}',
+              result: "Hello World",
+            },
+          ],
+        }),
+      ];
+
+      messagesTimeline.messages = messages;
+      thinkingTimeline.messages = messages.slice(0, 2);
+
+      // Set initial load complete
+      setTimeout(() => {
+        messagesTimeline.isInitialLoadComplete = true;
+        thinkingTimeline.isInitialLoadComplete = true;
+        messagesTimeline.requestUpdate();
+        thinkingTimeline.requestUpdate();
+      }, 100);
+
+      // Set thinking state
+      thinkingTimeline.llmCalls = 1;
+      thinkingTimeline.toolCalls = ["bash"];
+
+      // Control buttons
+      let messageCount = messages.length;
+      document.getElementById("add-message").addEventListener("click", () => {
+        const newMessage = createMockMessage({
+          idx: messageCount++,
+          content: `New message added at ${new Date().toLocaleTimeString()}`,
+          type: messageCount % 2 === 0 ? "user" : "agent",
+          timestamp: new Date().toISOString(),
+        });
+        messages.push(newMessage);
+        messagesTimeline.messages = [...messages];
+      });
+
+      document
+        .getElementById("toggle-thinking")
+        .addEventListener("click", () => {
+          if (thinkingTimeline.llmCalls > 0) {
+            thinkingTimeline.llmCalls = 0;
+            thinkingTimeline.toolCalls = [];
+          } else {
+            thinkingTimeline.llmCalls = 1;
+            thinkingTimeline.toolCalls = ["bash"];
+          }
+        });
+
+      document
+        .getElementById("clear-messages")
+        .addEventListener("click", () => {
+          messages.length = 0;
+          messagesTimeline.messages = [];
+          messageCount = 0;
+        });
+    </script>
+  </body>
+</html>

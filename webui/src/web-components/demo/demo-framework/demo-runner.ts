@@ -99,6 +99,7 @@ export class DemoRunner {
       "sketch-call-status",
       "sketch-chat-input",
       "sketch-container-status",
+      "sketch-timeline",
       "sketch-tool-calls",
       "sketch-view-mode-select",
     ];
