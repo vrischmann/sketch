@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ import (
 	"sketch.dev/llm"
 	"sketch.dev/llm/gem"
 	"sketch.dev/llm/oai"
+	"sketch.dev/mcp"
 
 	"sketch.dev/browser"
 	"sketch.dev/dockerimg"
@@ -379,6 +381,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		if err != nil {
 			return err
 		}
+		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	} else {
 		// When not using skaband, get API key from environment or flag
 		envName := "ANTHROPIC_API_KEY"
@@ -443,6 +446,27 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	return nil
 }
 
+func skabandMcpConfiguration(flags CLIFlags) string {
+	skabandaddr, err := skabandclient.LocalhostToDockerInternal(flags.skabandAddr)
+	if err != nil {
+		skabandaddr = flags.skabandAddr
+	}
+	config := mcp.ServerConfig{
+		Name: "sketchdev",
+		Type: "http",
+		URL:  skabandaddr + "/api/mcp",
+		Headers: map[string]string{
+			"Session-Id": flags.sessionID,
+			"Public-Key": "_sketch_public_key_",
+		},
+	}
+	out, err := json.Marshal(&config)
+	if err != nil {
+		panic("programming error" + err.Error())
+	}
+	return string(out)
+}
+
 // runInContainerMode handles execution inside the Docker container.
 // The inInsideSketch parameter indicates whether we're inside the sketch container
 // with access to outside environment variables.
@@ -483,6 +507,9 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 		if err != nil {
 			return err
 		}
+
+		// Add MCP Server for skaband
+		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	}
 
 	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, false, logFile)

@@ -81,17 +81,7 @@ func ParseServerConfigs(ctx context.Context, configs []string) ([]ServerConfig, 
 	return serverConfigs, errors
 }
 
-// ConnectToServers connects to multiple MCP servers in parallel
-func (m *MCPManager) ConnectToServers(ctx context.Context, configs []string, timeout time.Duration) ([]MCPServerConnection, []error) {
-	serverConfigs, parseErrors := ParseServerConfigs(ctx, configs)
-	if len(serverConfigs) == 0 {
-		if len(parseErrors) > 0 {
-			return nil, parseErrors
-		}
-		return nil, nil
-	}
-	return m.ConnectToServerConfigs(ctx, serverConfigs, timeout, parseErrors)
-} // ConnectToServerConfigs connects to multiple parsed MCP server configs in parallel
+// ConnectToServerConfigs connects to multiple parsed MCP server configs in parallel
 func (m *MCPManager) ConnectToServerConfigs(ctx context.Context, serverConfigs []ServerConfig, timeout time.Duration, existingErrors []error) ([]MCPServerConnection, []error) {
 	if len(serverConfigs) == 0 {
 		return nil, existingErrors
