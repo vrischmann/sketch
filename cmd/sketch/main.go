@@ -28,7 +28,6 @@ import (
 
 	"sketch.dev/browser"
 	"sketch.dev/dockerimg"
-	"sketch.dev/httprr"
 	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
 	"sketch.dev/loop"
@@ -518,27 +517,7 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 // setupAndRunAgent handles the common logic for setting up and running the agent
 // in both container and unsafe modes.
 func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
-	// Configure HTTP client with optional recording
 	var client *http.Client
-	if flags.httprrFile != "" {
-		var err error
-		var rr *httprr.RecordReplay
-		if flags.record {
-			rr, err = httprr.OpenForRecording(flags.httprrFile, http.DefaultTransport)
-		} else {
-			rr, err = httprr.Open(flags.httprrFile, http.DefaultTransport)
-		}
-		if err != nil {
-			return fmt.Errorf("httprr: %v", err)
-		}
-		// Scrub API keys from requests for security
-		rr.ScrubReq(func(req *http.Request) error {
-			req.Header.Del("x-api-key")
-			req.Header.Del("anthropic-api-key")
-			return nil
-		})
-		client = rr.Client()
-	}
 
 	wd, err := os.Getwd()
 	if err != nil {
