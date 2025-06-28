@@ -519,6 +519,12 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
 	var client *http.Client
 
+	// Set the public key environment variable if provided
+	// This is needed for MCP server authentication placeholder replacement
+	if pubKey != "" {
+		os.Setenv("SKETCH_PUB_KEY", pubKey)
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
