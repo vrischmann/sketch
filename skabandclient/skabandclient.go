@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -266,6 +267,16 @@ func NewSessionID() string {
 		s += strings.Repeat("0", 16-len(s))
 	}
 	return s[0:4] + "-" + s[4:8] + "-" + s[8:12] + "-" + s[12:16]
+}
+
+// Regex pattern for SessionID format: xxxx-xxxx-xxxx-xxxx
+// Where x is a valid Crockford Base32 character (0-9, A-H, J-N, P-Z)
+// Case-insensitive match
+var sessionIdRegexp = regexp.MustCompile(
+	"^[0-9A-HJ-NP-Za-hj-np-z]{4}-[0-9A-HJ-NP-Za-hj-np-z]{4}-[0-9A-HJ-NP-Za-hj-np-z]{4}-[0-9A-HJ-NP-Za-hj-np-z]{4}")
+
+func ValidateSessionID(sessionID string) bool {
+	return sessionIdRegexp.MatchString(sessionID)
 }
 
 // Addr returns the skaband server address
