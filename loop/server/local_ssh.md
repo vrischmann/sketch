@@ -14,7 +14,7 @@ The Sketch SSH system uses a certificate-based approach to establish mutual trus
 ```mermaid
 sequenceDiagram
     participant User
-    participant Host as Host Machine (SSHTheater)
+    participant Host as Host Machine (LocalSSHimmer)
     participant Container as Container (SSH Server)
     participant Client as SSH Client (ssh/VSCode)
 
@@ -83,7 +83,7 @@ sequenceDiagram
 
 ## Implementation Components
 
-- **SSHTheater**: Manages certificate generation and SSH configuration on the host
+- **LocalSSHimmer**: Manages certificate generation and SSH configuration on the host
 - **Custom SSH Server**: Enforces certificate validation in the container
 - **SSH Client Configuration**: Automatically configured to use the right certificates
 
@@ -99,7 +99,7 @@ sequenceDiagram
 
 ### Hybrid Configuration Model
 
-SSHTheater uses a hybrid approach to balance security and practicality:
+LocalSSHimmer uses a hybrid approach to balance security and practicality:
 
 1. **Localhost-Restricted CA Trust** for host verification:
    - A single `@cert-authority localhost,127.0.0.1,[::1]` entry in known_hosts
