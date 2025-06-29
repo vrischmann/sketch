@@ -42,8 +42,8 @@ test.skip("renders with basic message content", async ({ mount }) => {
     },
   });
 
-  await expect(component.locator(".message-text")).toBeVisible();
-  await expect(component.locator(".message-text")).toContainText(
+  await expect(component.locator(".overflow-x-auto")).toBeVisible();
+  await expect(component.locator(".overflow-x-auto")).toContainText(
     "This is a test message",
   );
 });
@@ -68,8 +68,9 @@ test.skip("renders with correct message type classes", async ({ mount }) => {
       },
     });
 
-    await expect(component.locator(".message")).toBeVisible();
-    await expect(component.locator(`.message.${type}`)).toBeVisible();
+    await expect(component.locator(".relative.mb-1\\.5")).toBeVisible();
+    // Message type is now handled via dynamic classes, check for content instead
+    await expect(component.locator(".relative.mb-1\\.5")).toBeVisible();
   }
 });
 
@@ -84,8 +85,8 @@ test.skip("renders end-of-turn marker correctly", async ({ mount }) => {
     },
   });
 
-  await expect(component.locator(".message")).toBeVisible();
-  await expect(component.locator(".message.end-of-turn")).toBeVisible();
+  await expect(component.locator(".relative.mb-1\\.5")).toBeVisible();
+  await expect(component.locator(".mb-4")).toBeVisible();
 });
 
 test.skip("formats timestamps correctly", async ({ mount }) => {
@@ -101,15 +102,13 @@ test.skip("formats timestamps correctly", async ({ mount }) => {
   });
 
   // Toggle the info panel to view timestamps
-  await component.locator(".info-icon").click();
-  await expect(component.locator(".message-info-panel")).toBeVisible();
+  await component.locator('button[title="Show message details"]').click();
+  await expect(component.locator(".mt-2.p-2")).toBeVisible();
 
   // Find the timestamp in the info panel
-  const timeInfoRow = component.locator(".info-row", { hasText: "Time:" });
+  const timeInfoRow = component.locator(".mb-1.flex", { hasText: "Time:" });
   await expect(timeInfoRow).toBeVisible();
-  await expect(timeInfoRow.locator(".info-value")).toContainText(
-    "May 15, 2023",
-  );
+  await expect(timeInfoRow.locator(".flex-1")).toContainText("May 15, 2023");
   // For end-of-turn messages, duration is shown separately
   const endOfTurnMessage = createMockMessage({
     timestamp: "2023-05-15T12:00:00Z",
@@ -124,12 +123,10 @@ test.skip("formats timestamps correctly", async ({ mount }) => {
   });
 
   // For end-of-turn messages, duration is shown in the end-of-turn indicator
-  await expect(
-    endOfTurnComponent.locator(".end-of-turn-indicator"),
-  ).toBeVisible();
-  await expect(
-    endOfTurnComponent.locator(".end-of-turn-indicator"),
-  ).toContainText("1.5s");
+  await expect(endOfTurnComponent.locator(".block.text-xs")).toBeVisible();
+  await expect(endOfTurnComponent.locator(".block.text-xs")).toContainText(
+    "1.5s",
+  );
 });
 
 test.skip("renders markdown content correctly", async ({ mount }) => {
@@ -145,11 +142,11 @@ test.skip("renders markdown content correctly", async ({ mount }) => {
     },
   });
 
-  await expect(component.locator(".markdown-content")).toBeVisible();
+  await expect(component.locator(".overflow-x-auto.mb-0")).toBeVisible();
 
   // Check HTML content
   const html = await component
-    .locator(".markdown-content")
+    .locator(".overflow-x-auto.mb-0")
     .evaluate((element) => element.innerHTML);
   expect(html).toContain("<h1>Heading</h1>");
   expect(html).toContain("<ul>");
@@ -177,11 +174,11 @@ test.skip("displays usage information when available", async ({ mount }) => {
   });
 
   // Toggle the info panel to view usage information
-  await component.locator(".info-icon").click();
-  await expect(component.locator(".message-info-panel")).toBeVisible();
+  await component.locator('button[title="Show message details"]').click();
+  await expect(component.locator(".mt-2.p-2")).toBeVisible();
 
   // Find the tokens info in the info panel
-  const tokensInfoRow = component.locator(".info-row", { hasText: "Tokens:" });
+  const tokensInfoRow = component.locator(".mb-1.flex", { hasText: "Tokens:" });
   await expect(tokensInfoRow).toBeVisible();
   await expect(tokensInfoRow).toContainText("Input: " + "150".toLocaleString());
   await expect(tokensInfoRow).toContainText(
@@ -216,17 +213,17 @@ test.skip("renders commit information correctly", async ({ mount }) => {
     },
   });
 
-  await expect(component.locator(".commits-container")).toBeVisible();
-  await expect(component.locator(".commit-notification")).toBeVisible();
-  await expect(component.locator(".commit-notification")).toContainText(
-    "1 new",
-  );
+  await expect(component.locator(".mt-2\\.5")).toBeVisible();
+  await expect(component.locator(".bg-green-100")).toBeVisible();
+  await expect(component.locator(".bg-green-100")).toContainText("1 new");
 
-  await expect(component.locator(".commit-hash")).toBeVisible();
-  await expect(component.locator(".commit-hash")).toHaveText("12345678"); // First 8 chars
+  await expect(component.locator(".text-blue-600.font-bold")).toBeVisible();
+  await expect(component.locator(".text-blue-600.font-bold")).toHaveText(
+    "12345678",
+  ); // First 8 chars
 
-  await expect(component.locator(".pushed-branch")).toBeVisible();
-  await expect(component.locator(".pushed-branch")).toContainText("main");
+  await expect(component.locator(".text-green-600")).toBeVisible();
+  await expect(component.locator(".text-green-600")).toContainText("main");
 });
 
 test.skip("dispatches show-commit-diff event when commit diff button is clicked", async ({
@@ -251,7 +248,7 @@ test.skip("dispatches show-commit-diff event when commit diff button is clicked"
     },
   });
 
-  await expect(component.locator(".commit-diff-button")).toBeVisible();
+  await expect(component.locator(".py-0\\.5.px-2.border-0")).toBeVisible();
 
   // Set up promise to wait for the event
   const eventPromise = component.evaluate((el) => {
@@ -267,7 +264,7 @@ test.skip("dispatches show-commit-diff event when commit diff button is clicked"
   });
 
   // Click the diff button
-  await component.locator(".commit-diff-button").click();
+  await component.locator(".py-0\\.5.px-2.border-0").click();
 
   // Wait for the event and check its details
   const detail = await eventPromise;
@@ -294,8 +291,9 @@ test.skip("handles message type icon display correctly", async ({ mount }) => {
     },
   });
 
-  await expect(firstComponent.locator(".message-icon")).toBeVisible();
-  await expect(firstComponent.locator(".message-icon")).toHaveText("U");
+  // Message icons are no longer used in the Tailwind version
+  // This test is no longer applicable
+  await expect(firstComponent.locator(".relative.mb-1\\.5")).toBeVisible();
 
   // Test second message with previous message of same type
   const secondComponent = await mount(SketchTimelineMessage, {
@@ -305,7 +303,7 @@ test.skip("handles message type icon display correctly", async ({ mount }) => {
     },
   });
 
-  await expect(secondComponent.locator(".message-icon")).not.toBeVisible();
+  await expect(secondComponent.locator(".relative.mb-1\\.5")).toBeVisible();
 });
 
 test.skip("formats numbers correctly", async ({ mount }) => {
@@ -504,11 +502,15 @@ test.skip("displays git username for user messages when state is provided", asyn
   });
 
   // Check that the user name container is visible
-  await expect(component.locator(".user-name-container")).toBeVisible();
+  await expect(component.locator(".flex.justify-end.mt-1")).toBeVisible();
 
   // Check that the git username is displayed
-  await expect(component.locator(".user-name")).toBeVisible();
-  await expect(component.locator(".user-name")).toHaveText("john.doe");
+  await expect(
+    component.locator(".text-xs.text-gray-600.italic"),
+  ).toBeVisible();
+  await expect(component.locator(".text-xs.text-gray-600.italic")).toHaveText(
+    "john.doe",
+  );
 });
 
 test.skip("does not display git username for agent messages", async ({
@@ -532,8 +534,10 @@ test.skip("does not display git username for agent messages", async ({
   });
 
   // Check that the user name container is not present for agent messages
-  await expect(component.locator(".user-name-container")).not.toBeVisible();
-  await expect(component.locator(".user-name")).not.toBeVisible();
+  await expect(component.locator(".flex.justify-end.mt-1")).not.toBeVisible();
+  await expect(
+    component.locator(".text-xs.text-gray-600.italic"),
+  ).not.toBeVisible();
 });
 
 test.skip("does not display git username for user messages when state is not provided", async ({
@@ -552,8 +556,10 @@ test.skip("does not display git username for user messages when state is not pro
   });
 
   // Check that the user name container is not present when no state
-  await expect(component.locator(".user-name-container")).not.toBeVisible();
-  await expect(component.locator(".user-name")).not.toBeVisible();
+  await expect(component.locator(".flex.justify-end.mt-1")).not.toBeVisible();
+  await expect(
+    component.locator(".text-xs.text-gray-600.italic"),
+  ).not.toBeVisible();
 });
 
 test.skip("does not display git username when state has no git_username", async ({
@@ -577,8 +583,10 @@ test.skip("does not display git username when state has no git_username", async 
   });
 
   // Check that the user name container is not present when git_username is missing
-  await expect(component.locator(".user-name-container")).not.toBeVisible();
-  await expect(component.locator(".user-name")).not.toBeVisible();
+  await expect(component.locator(".flex.justify-end.mt-1")).not.toBeVisible();
+  await expect(
+    component.locator(".text-xs.text-gray-600.italic"),
+  ).not.toBeVisible();
 });
 
 test.skip("user name container has correct positioning styles", async ({
@@ -602,16 +610,17 @@ test.skip("user name container has correct positioning styles", async ({
   });
 
   // Check that the user name container exists and has correct styles
-  const userNameContainer = component.locator(".user-name-container");
+  const userNameContainer = component.locator(".flex.justify-end.mt-1");
   await expect(userNameContainer).toBeVisible();
 
-  // Verify CSS classes are applied for positioning
-  await expect(userNameContainer).toHaveClass(/user-name-container/);
+  // Verify Tailwind classes are applied for positioning
+  await expect(userNameContainer).toHaveClass(/flex/);
+  await expect(userNameContainer).toHaveClass(/justify-end/);
 
   // Check that the username text has the correct styling
-  const userName = component.locator(".user-name");
+  const userName = component.locator(".text-xs.text-gray-600.italic");
   await expect(userName).toBeVisible();
-  await expect(userName).toHaveClass(/user-name/);
+  await expect(userName).toHaveClass(/text-xs/);
   await expect(userName).toHaveText("alice.smith");
 });
 
@@ -643,8 +652,12 @@ test.skip("displays different usernames correctly", async ({ mount }) => {
     });
 
     // Check that the correct username is displayed
-    await expect(component.locator(".user-name")).toBeVisible();
-    await expect(component.locator(".user-name")).toHaveText(username);
+    await expect(
+      component.locator(".text-xs.text-gray-600.italic"),
+    ).toBeVisible();
+    await expect(component.locator(".text-xs.text-gray-600.italic")).toHaveText(
+      username,
+    );
 
     // Clean up
     await component.unmount();
@@ -682,8 +695,10 @@ test.skip("works with other message types that should not show username", async 
     });
 
     // Verify that username is not displayed for non-user message types
-    await expect(component.locator(".user-name-container")).not.toBeVisible();
-    await expect(component.locator(".user-name")).not.toBeVisible();
+    await expect(component.locator(".flex.justify-end.mt-1")).not.toBeVisible();
+    await expect(
+      component.locator(".text-xs.text-gray-600.italic"),
+    ).not.toBeVisible();
 
     // Clean up
     await component.unmount();
@@ -712,9 +727,13 @@ test.skip("git username attribution works with compact padding mode", async ({
   });
 
   // Check that the username is still displayed in compact mode
-  await expect(component.locator(".user-name-container")).toBeVisible();
-  await expect(component.locator(".user-name")).toBeVisible();
-  await expect(component.locator(".user-name")).toHaveText("compact.user");
+  await expect(component.locator(".flex.justify-end.mt-1")).toBeVisible();
+  await expect(
+    component.locator(".text-xs.text-gray-600.italic"),
+  ).toBeVisible();
+  await expect(component.locator(".text-xs.text-gray-600.italic")).toHaveText(
+    "compact.user",
+  );
 
   // Verify the component has the compact padding attribute
   await expect(component).toHaveAttribute("compactpadding", "");

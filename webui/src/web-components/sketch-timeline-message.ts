@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { css, html, LitElement, render } from "lit";
+import { html, render } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { AgentMessage, State } from "../types";
@@ -56,8 +56,10 @@ function loadMermaid(): Promise<typeof mermaid> {
   return mermaidLoadPromise;
 }
 import "./sketch-tool-calls";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
+
 @customElement("sketch-timeline-message")
-export class SketchTimelineMessage extends LitElement {
+export class SketchTimelineMessage extends SketchTailwindElement {
   @property()
   message: AgentMessage;
 
@@ -79,754 +81,8 @@ export class SketchTimelineMessage extends LitElement {
   @state()
   showInfo: boolean = false;
 
-  // See https://lit.dev/docs/components/styles/ for how lit-element handles CSS.
-  // Note that these styles only apply to the scope of this web component's
-  // shadow DOM node, so they won't leak out or collide with CSS declared in
-  // other components or the containing web page (...unless you want it to do that).
-  static styles = css`
-    .message {
-      position: relative;
-      margin-bottom: 6px;
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-    }
-
-    .message-container {
-      display: flex;
-      position: relative;
-      width: 100%;
-    }
-
-    .message-metadata-left {
-      flex: 0 0 80px;
-      padding: 3px 5px;
-      text-align: right;
-      font-size: 11px;
-      color: #777;
-      align-self: flex-start;
-    }
-
-    .message-metadata-right {
-      flex: 0 0 80px;
-      padding: 3px 5px;
-      text-align: left;
-      font-size: 11px;
-      color: #777;
-      align-self: flex-start;
-    }
-
-    .message-bubble-container {
-      flex: 1;
-      display: flex;
-      max-width: calc(100% - 160px);
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    :host([compactpadding]) .message-bubble-container {
-      max-width: 100%;
-    }
-
-    :host([compactpadding]) .message-metadata-left,
-    :host([compactpadding]) .message-metadata-right {
-      display: none;
-    }
-
-    .user .message-bubble-container {
-      justify-content: flex-end;
-    }
-
-    .agent .message-bubble-container,
-    .tool .message-bubble-container,
-    .error .message-bubble-container {
-      justify-content: flex-start;
-    }
-
-    .message-content {
-      position: relative;
-      padding: 6px 10px;
-      border-radius: 12px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      max-width: 100%;
-      width: fit-content;
-      min-width: min-content;
-      overflow-wrap: break-word;
-      word-break: break-word;
-    }
-
-    /* User message styling */
-    .user .message-content {
-      background-color: #2196f3;
-      color: white;
-      border-bottom-right-radius: 5px;
-    }
-
-    /* Agent message styling */
-    .agent .message-content,
-    .tool .message-content,
-    .error .message-content {
-      background-color: #f1f1f1;
-      color: black;
-      border-bottom-left-radius: 5px;
-    }
-
-    /* Copy button styles */
-    .message-text-container,
-    .tool-result-container {
-      position: relative;
-    }
-
-    .message-actions {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      z-index: 10;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    .message-text-container:hover .message-actions,
-    .tool-result-container:hover .message-actions {
-      opacity: 1;
-    }
-
-    .message-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .copy-icon,
-    .info-icon {
-      background-color: transparent;
-      border: none;
-      color: rgba(0, 0, 0, 0.6);
-      cursor: pointer;
-      padding: 3px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      transition: all 0.15s ease;
-    }
-
-    .user .copy-icon,
-    .user .info-icon {
-      color: rgba(255, 255, 255, 0.8);
-    }
-
-    .copy-icon:hover,
-    .info-icon:hover {
-      background-color: rgba(0, 0, 0, 0.08);
-    }
-
-    .user .copy-icon:hover,
-    .user .info-icon:hover {
-      background-color: rgba(255, 255, 255, 0.15);
-    }
-
-    /* Message metadata styling */
-    .message-type {
-      font-weight: bold;
-      font-size: 11px;
-    }
-
-    .message-timestamp {
-      display: block;
-      font-size: 10px;
-      color: #888;
-      margin-top: 2px;
-    }
-
-    .message-duration {
-      display: block;
-      font-size: 10px;
-      color: #888;
-      margin-top: 2px;
-    }
-
-    .message-usage {
-      display: block;
-      font-size: 10px;
-      color: #888;
-      margin-top: 3px;
-    }
-
-    .conversation-id {
-      font-family: monospace;
-      font-size: 12px;
-      padding: 2px 4px;
-      margin-left: auto;
-    }
-
-    .parent-info {
-      font-size: 11px;
-      opacity: 0.8;
-    }
-
-    .subconversation {
-      border-left: 2px solid transparent;
-      padding-left: 5px;
-      margin-left: 20px;
-      transition: margin-left 0.3s ease;
-    }
-
-    .message-text {
-      overflow-x: auto;
-      margin-bottom: 0;
-      font-family: sans-serif;
-      padding: 2px 0;
-      user-select: text;
-      cursor: text;
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      font-size: 14px;
-      line-height: 1.35;
-      text-align: left;
-    }
-
-    /* Style for code blocks within messages */
-    .message-text pre,
-    .message-text code {
-      font-family: monospace;
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 4px;
-      padding: 2px 4px;
-      overflow-x: auto;
-      max-width: 100%;
-      white-space: pre-wrap; /* Allow wrapping for very long lines */
-      word-break: break-all; /* Break words at any character */
-      box-sizing: border-box; /* Include padding in width calculation */
-    }
-
-    /* Code block container styles */
-    .code-block-container {
-      position: relative;
-      margin: 8px 0;
-      border-radius: 6px;
-      overflow: hidden;
-      background: rgba(0, 0, 0, 0.05);
-    }
-
-    .user .code-block-container {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .code-block-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 4px 8px;
-      background: rgba(0, 0, 0, 0.1);
-      font-size: 12px;
-    }
-
-    .user .code-block-header {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-    }
-
-    .code-language {
-      font-family: monospace;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .code-copy-button {
-      background: transparent;
-      border: none;
-      color: inherit;
-      cursor: pointer;
-      padding: 2px;
-      border-radius: 3px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.7;
-      transition: all 0.15s ease;
-    }
-
-    .code-copy-button:hover {
-      opacity: 1;
-      background: rgba(0, 0, 0, 0.1);
-    }
-
-    .user .code-copy-button:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .code-block-container pre {
-      margin: 0;
-      padding: 8px;
-      background: transparent;
-    }
-
-    .code-block-container code {
-      background: transparent;
-      padding: 0;
-      display: block;
-      width: 100%;
-    }
-
-    .user .message-text pre,
-    .user .message-text code {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-    }
-
-    .tool-details {
-      margin-top: 3px;
-      padding-top: 3px;
-      border-top: 1px dashed #e0e0e0;
-      font-size: 12px;
-    }
-
-    .tool-name {
-      font-size: 12px;
-      font-weight: bold;
-      margin-bottom: 2px;
-      background: #f0f0f0;
-      padding: 2px 4px;
-      border-radius: 2px;
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
-
-    .tool-input,
-    .tool-result {
-      margin-top: 2px;
-      padding: 3px 5px;
-      background: #f7f7f7;
-      border-radius: 2px;
-      font-family: monospace;
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre;
-      line-height: 1.3;
-      user-select: text;
-      cursor: text;
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-    }
-
-    .tool-result {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .usage-info {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px dashed #e0e0e0;
-      font-size: 12px;
-      color: #666;
-    }
-
-    /* Custom styles for IRC-like experience */
-    .user .message-content {
-      border-left-color: #2196f3;
-    }
-
-    .agent .message-content {
-      border-left-color: #4caf50;
-    }
-
-    .tool .message-content {
-      border-left-color: #ff9800;
-    }
-
-    .error .message-content {
-      border-left-color: #f44336;
-    }
-
-    /* Compact message styling - distinct visual separation */
-    .compact {
-      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-      border: 2px solid #fd7e14;
-      border-radius: 12px;
-      margin: 20px 0;
-      padding: 0;
-    }
-
-    .compact .message-content {
-      border-left: 4px solid #fd7e14;
-      background: rgba(253, 126, 20, 0.05);
-      font-weight: 500;
-    }
-
-    .compact .message-text {
-      color: #8b4513;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    .compact::before {
-      content: "📚 CONVERSATION EPOCH";
-      display: block;
-      text-align: center;
-      font-size: 11px;
-      font-weight: bold;
-      color: #8b4513;
-      background: #fd7e14;
-      color: white;
-      padding: 4px 8px;
-      margin: 0;
-      border-radius: 8px 8px 0 0;
-      letter-spacing: 1px;
-    }
-
-    /* Pre-compaction messages get a subtle diagonal stripe background */
-    .pre-compaction {
-      background: repeating-linear-gradient(
-        45deg,
-        #ffffff,
-        #ffffff 10px,
-        #f8f8f8 10px,
-        #f8f8f8 20px
-      );
-      opacity: 0.85;
-      border-left: 3px solid #ddd;
-    }
-
-    .pre-compaction .message-content {
-      background: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(1px);
-      color: #333; /* Ensure dark text for readability */
-    }
-
-    .pre-compaction .message-text {
-      color: #333; /* Ensure dark text in message content */
-    }
-
-    /* Make message type display bold but without the IRC-style markers */
-    .message-type {
-      font-weight: bold;
-    }
-
-    /* Commit message styling */
-    .commits-container {
-      margin-top: 10px;
-    }
-
-    .commit-notification {
-      background-color: #e8f5e9;
-      color: #2e7d32;
-      font-weight: 500;
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 10px;
-      margin-bottom: 8px;
-      text-align: center;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .commit-card {
-      background-color: #f5f5f5;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 6px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-      padding: 6px 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .commit-hash {
-      color: #0366d6;
-      font-weight: bold;
-      font-family: monospace;
-      cursor: pointer;
-      text-decoration: none;
-      background-color: rgba(3, 102, 214, 0.08);
-      padding: 2px 5px;
-      border-radius: 4px;
-    }
-
-    .commit-hash:hover {
-      background-color: rgba(3, 102, 214, 0.15);
-    }
-
-    .commit-branch {
-      color: #28a745;
-      font-weight: 500;
-      cursor: pointer;
-      font-family: monospace;
-      background-color: rgba(40, 167, 69, 0.08);
-      padding: 2px 5px;
-      border-radius: 4px;
-    }
-
-    .commit-branch:hover {
-      background-color: rgba(40, 167, 69, 0.15);
-    }
-
-    .commit-branch-container {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .commit-branch-container .copy-icon {
-      opacity: 0.7;
-      display: flex;
-      align-items: center;
-    }
-
-    .commit-branch-container .copy-icon svg {
-      vertical-align: middle;
-    }
-
-    .commit-branch-container:hover .copy-icon {
-      opacity: 1;
-    }
-
-    .octocat-link {
-      color: #586069;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      transition: color 0.2s ease;
-    }
-
-    .octocat-link:hover {
-      color: #0366d6;
-    }
-
-    .octocat-icon {
-      width: 14px;
-      height: 14px;
-    }
-
-    .commit-subject {
-      font-size: 13px;
-      color: #333;
-      flex-grow: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .commit-diff-button {
-      padding: 3px 8px;
-      border: none;
-      border-radius: 4px;
-      background-color: #0366d6;
-      color: white;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: block;
-      margin-left: auto;
-    }
-
-    .commit-diff-button:hover {
-      background-color: #0256b4;
-    }
-
-    /* Tool call cards */
-    .tool-call-cards-container {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    /* Error message specific styling */
-    .error .message-content {
-      background-color: #ffebee;
-      border-left: 3px solid #f44336;
-    }
-
-    .end-of-turn {
-      margin-bottom: 15px;
-    }
-
-    .end-of-turn-indicator {
-      display: block;
-      font-size: 11px;
-      color: #777;
-      padding: 2px 0;
-      margin-top: 8px;
-      text-align: right;
-      font-style: italic;
-    }
-
-    .user .end-of-turn-indicator {
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    /* Message info panel styling */
-    .message-info-panel {
-      margin-top: 8px;
-      padding: 8px;
-      background-color: rgba(0, 0, 0, 0.03);
-      border-radius: 6px;
-      font-size: 12px;
-      transition: all 0.2s ease;
-      border-left: 2px solid rgba(0, 0, 0, 0.1);
-    }
-
-    /* User name styling - positioned outside and below the message bubble */
-    .user-name-container {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 4px;
-      padding-right: 80px; /* Account for right metadata area */
-    }
-
-    :host([compactpadding]) .user-name-container {
-      padding-right: 0; /* No right padding in compact mode */
-    }
-
-    .user-name {
-      font-size: 11px;
-      color: #666;
-      font-style: italic;
-      text-align: right;
-    }
-
-    .user .message-info-panel {
-      background-color: rgba(255, 255, 255, 0.15);
-      border-left: 2px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .info-row {
-      margin-bottom: 3px;
-      display: flex;
-    }
-
-    .info-label {
-      font-weight: bold;
-      margin-right: 5px;
-      min-width: 60px;
-    }
-
-    .info-value {
-      flex: 1;
-    }
-
-    .conversation-id {
-      font-family: monospace;
-      font-size: 10px;
-      word-break: break-all;
-    }
-
-    .markdown-content {
-      box-sizing: border-box;
-      min-width: 200px;
-      margin: 0 auto;
-    }
-
-    .markdown-content p {
-      margin-block-start: 0.3em;
-      margin-block-end: 0.3em;
-    }
-
-    .markdown-content p:first-child {
-      margin-block-start: 0;
-    }
-
-    .markdown-content p:last-child {
-      margin-block-end: 0;
-    }
-
-    /* Styling for markdown elements */
-    .markdown-content a {
-      color: inherit;
-      text-decoration: underline;
-    }
-
-    .user .markdown-content a {
-      color: #fff;
-      text-decoration: underline;
-    }
-
-    .markdown-content ul,
-    .markdown-content ol {
-      padding-left: 1.5em;
-      margin: 0.5em 0;
-    }
-
-    .markdown-content blockquote {
-      border-left: 3px solid rgba(0, 0, 0, 0.2);
-      padding-left: 1em;
-      margin-left: 0.5em;
-      font-style: italic;
-    }
-
-    .user .markdown-content blockquote {
-      border-left: 3px solid rgba(255, 255, 255, 0.4);
-    }
-
-    /* Mermaid diagram styling */
-    .mermaid-container {
-      margin: 1em 0;
-      padding: 0.5em;
-      background-color: #f8f8f8;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-
-    .mermaid {
-      text-align: center;
-    }
-
-    /* Print styles for message components */
-    @media print {
-      .message {
-        page-break-inside: avoid;
-        margin-bottom: 12px;
-      }
-
-      .message-container {
-        page-break-inside: avoid;
-      }
-
-      /* Hide copy buttons and interactive elements during printing */
-      .copy-icon,
-      .info-icon,
-      .commit-diff-button {
-        display: none !important;
-      }
-
-      /* Ensure code blocks print properly */
-      .message-content pre {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        page-break-inside: avoid;
-        background: #f8f8f8 !important;
-        border: 1px solid #ddd !important;
-        padding: 8px !important;
-      }
-
-      /* Ensure tool calls section prints properly */
-      .tool-calls-section {
-        page-break-inside: avoid;
-      }
-
-      /* Simplify message metadata for print */
-      .message-metadata-left {
-        font-size: 10px;
-      }
-
-      /* Ensure content doesn't break poorly */
-      .message-content {
-        orphans: 3;
-        widows: 3;
-      }
-
-      /* Hide floating messages during print */
-      .floating-message {
-        display: none !important;
-      }
-    }
-  `;
+  // Styles have been converted to Tailwind classes applied directly to HTML elements
+  // since this component now extends SketchTailwindElement which disables shadow DOM
 
   // Track mermaid diagrams that need rendering
   private mermaidDiagrams = new Map();
@@ -839,6 +95,292 @@ export class SketchTimelineMessage extends LitElement {
   // See https://lit.dev/docs/components/lifecycle/
   connectedCallback() {
     super.connectedCallback();
+    this.ensureGlobalStyles();
+  }
+
+  // Ensure global styles are injected when component is used
+  private ensureGlobalStyles() {
+    if (!document.querySelector("#sketch-timeline-message-styles")) {
+      const floatingMessageStyles = document.createElement("style");
+      floatingMessageStyles.id = "sketch-timeline-message-styles";
+      floatingMessageStyles.textContent = this.getGlobalStylesContent();
+      document.head.appendChild(floatingMessageStyles);
+    }
+  }
+
+  // Get the global styles content
+  private getGlobalStylesContent(): string {
+    return `
+  .floating-message {
+    background-color: rgba(31, 41, 55, 1);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+
+  .floating-message.success {
+    background-color: rgba(34, 197, 94, 0.9);
+  }
+
+  .floating-message.error {
+    background-color: rgba(239, 68, 68, 0.9);
+  }
+
+  /* Comprehensive markdown content styling */
+  .markdown-content h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin: 1rem 0 0.5rem 0;
+    line-height: 1.25;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0.875rem 0 0.5rem 0;
+    line-height: 1.25;
+  }
+
+  .markdown-content h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.375rem 0;
+    line-height: 1.375;
+  }
+
+  .markdown-content h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0.625rem 0 0.375rem 0;
+    line-height: 1.375;
+  }
+
+  .markdown-content h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.5rem 0 0.25rem 0;
+    line-height: 1.5;
+  }
+
+  .markdown-content h6 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0.5rem 0 0.25rem 0;
+    line-height: 1.5;
+  }
+
+  .markdown-content h1:first-child,
+  .markdown-content h2:first-child,
+  .markdown-content h3:first-child,
+  .markdown-content h4:first-child,
+  .markdown-content h5:first-child,
+  .markdown-content h6:first-child {
+    margin-top: 0;
+  }
+
+  .markdown-content p {
+    margin: 0.25rem 0;
+  }
+
+  .markdown-content p:first-child {
+    margin-top: 0;
+  }
+
+  .markdown-content p:last-child {
+    margin-bottom: 0;
+  }
+
+  .markdown-content a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .markdown-content ul {
+    list-style-type: disc;
+  }
+
+  .markdown-content ol {
+    list-style-type: decimal;
+  }
+
+  .markdown-content li {
+    margin: 0.25rem 0;
+  }
+
+  .markdown-content blockquote {
+    border-left: 3px solid rgba(0, 0, 0, 0.2);
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+    font-style: italic;
+    color: rgba(0, 0, 0, 0.7);
+  }
+
+  .markdown-content strong {
+    font-weight: 700;
+  }
+
+  .markdown-content em {
+    font-style: italic;
+  }
+
+  .markdown-content hr {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin: 1rem 0;
+  }
+
+  /* User message specific markdown styling */
+  sketch-timeline-message .bg-blue-500 .markdown-content a {
+    color: #fff;
+    text-decoration: underline;
+  }
+
+  sketch-timeline-message .bg-blue-500 .markdown-content blockquote {
+    border-left: 3px solid rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  sketch-timeline-message .bg-blue-500 .markdown-content hr {
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* Code block styling within markdown */
+  .markdown-content pre,
+  .markdown-content code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 2px 4px;
+    overflow-x: auto;
+    max-width: 100%;
+    word-break: break-all;
+    box-sizing: border-box;
+  }
+
+  .markdown-content pre {
+    padding: 8px 12px;
+    margin: 0.5rem 0;
+    line-height: 1.4;
+  }
+
+  .markdown-content pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  /* User message code styling */
+  sketch-timeline-message .bg-blue-500 .markdown-content pre,
+  sketch-timeline-message .bg-blue-500 .markdown-content code {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
+  sketch-timeline-message .bg-blue-500 .markdown-content pre code {
+    background: transparent;
+  }
+
+  /* Code block containers */
+  .code-block-container {
+    position: relative;
+    margin: 8px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  sketch-timeline-message .bg-blue-500 .code-block-container {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.1);
+    font-size: 12px;
+  }
+
+  sketch-timeline-message .bg-blue-500 .code-block-header {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
+  .code-language {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .code-copy-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: all 0.15s ease;
+  }
+
+  .code-copy-button:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  sketch-timeline-message .bg-blue-500 .code-copy-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .code-block-container pre {
+    margin: 0;
+    padding: 8px;
+    background: transparent;
+  }
+
+  .code-block-container code {
+    background: transparent;
+    padding: 0;
+    display: block;
+    width: 100%;
+  }
+
+  /* Mermaid diagram styling */
+  .mermaid-container {
+    margin: 1rem 0;
+    padding: 0.5rem;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+
+  .mermaid {
+    text-align: center;
+  }
+
+  /* Print styles */
+  @media print {
+    .floating-message,
+    .commit-diff-button,
+    button[title="Copy to clipboard"],
+    button[title="Show message details"] {
+      display: none !important;
+    }
+  }
+`;
   }
 
   // After the component is updated and rendered, render any mermaid diagrams
@@ -1301,24 +843,57 @@ export class SketchTimelineMessage extends LitElement {
       this.message?.idx !== undefined &&
       this.message.idx < this.firstMessageIndex;
 
+    // Dynamic classes based on message type and state
+    const messageClasses = [
+      "relative mb-1.5 flex flex-col w-full", // base message styles
+      isEndOfTurn ? "mb-4" : "", // end-of-turn spacing
+      isPreCompaction ? "opacity-85 border-l-2 border-gray-300" : "", // pre-compaction styling
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const bubbleContainerClasses = [
+      "flex-1 flex overflow-hidden text-ellipsis",
+      this.compactPadding ? "max-w-full" : "max-w-[calc(100%-160px)]",
+      this.message?.type === "user" ? "justify-end" : "justify-start",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const messageContentClasses = [
+      "relative px-2.5 py-1.5 rounded-xl shadow-sm max-w-full w-fit min-w-min break-words word-break-words",
+      // User message styling
+      this.message?.type === "user"
+        ? "bg-blue-500 text-white rounded-br-sm"
+        : // Agent/tool/error message styling
+          "bg-gray-100 text-black rounded-bl-sm",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     return html`
-      <div
-        class="message ${this.message?.type} ${isEndOfTurn
-          ? "end-of-turn"
-          : ""} ${isPreCompaction ? "pre-compaction" : ""}"
-      >
-        <div class="message-container">
-          <!-- Left area (empty for simplicity) -->
-          <div class="message-metadata-left"></div>
+      <div class="${messageClasses}">
+        <div class="flex relative w-full">
+          <!-- Left metadata area -->
+          <div
+            class="${this.compactPadding
+              ? "hidden"
+              : "flex-none w-20 px-1 py-0.5 text-right text-xs text-gray-500 self-start"}"
+          ></div>
 
           <!-- Message bubble -->
-          <div class="message-bubble-container">
-            <div class="message-content">
-              <div class="message-text-container">
-                <div class="message-actions">
+          <div class="${bubbleContainerClasses}">
+            <div class="${messageContentClasses}">
+              <div class="relative">
+                <div
+                  class="absolute top-1 right-1 z-10 opacity-0 hover:opacity-100 transition-opacity duration-200 flex gap-1.5"
+                >
                   ${copyButton(this.message?.content)}
                   <button
-                    class="info-icon"
+                    class="bg-transparent border-none ${this.message?.type ===
+                    "user"
+                      ? "text-white/80 hover:bg-white/15"
+                      : "text-black/60 hover:bg-black/8"} cursor-pointer p-0.5 rounded-full flex items-center justify-center w-6 h-6 transition-all duration-150"
                     title="Show message details"
                     @click=${this._toggleInfo}
                   >
@@ -1341,7 +916,9 @@ export class SketchTimelineMessage extends LitElement {
                 </div>
                 ${this.message?.content
                   ? html`
-                      <div class="message-text markdown-content">
+                      <div
+                        class="overflow-x-auto mb-0 font-sans py-0.5 select-text cursor-text text-sm leading-relaxed text-left min-w-[200px] box-border mx-auto markdown-content"
+                      >
                         ${unsafeHTML(
                           this.renderMarkdown(this.message?.content),
                         )}
@@ -1352,7 +929,11 @@ export class SketchTimelineMessage extends LitElement {
                 <!-- End of turn indicator inside the bubble -->
                 ${isEndOfTurn && this.message?.elapsed
                   ? html`
-                      <div class="end-of-turn-indicator">
+                      <div
+                        class="block text-xs ${this.message?.type === "user"
+                          ? "text-white/70"
+                          : "text-gray-500"} py-0.5 mt-2 text-right italic"
+                      >
                         end of turn
                         (${this._formatDuration(this.message?.elapsed)})
                       </div>
@@ -1362,37 +943,40 @@ export class SketchTimelineMessage extends LitElement {
                 <!-- Info panel that can be toggled -->
                 ${this.showInfo
                   ? html`
-                      <div class="message-info-panel">
-                        <div class="info-row">
-                          <span class="info-label">Type:</span>
-                          <span class="info-value">${this.message?.type}</span>
+                      <div
+                        class="mt-2 p-2 ${this.message?.type === "user"
+                          ? "bg-white/15 border-l-2 border-white/20"
+                          : "bg-black/5 border-l-2 border-black/10"} rounded-md text-xs transition-all duration-200"
+                      >
+                        <div class="mb-1 flex">
+                          <span class="font-bold mr-1 min-w-[60px]">Type:</span>
+                          <span class="flex-1">${this.message?.type}</span>
                         </div>
-                        <div class="info-row">
-                          <span class="info-label">Time:</span>
-                          <span class="info-value"
-                            >${this.formatTimestamp(
-                              this.message?.timestamp,
-                              "",
-                            )}</span
-                          >
+                        <div class="mb-1 flex">
+                          <span class="font-bold mr-1 min-w-[60px]">Time:</span>
+                          <span class="flex-1">
+                            ${this.formatTimestamp(this.message?.timestamp, "")}
+                          </span>
                         </div>
                         ${this.message?.elapsed
                           ? html`
-                              <div class="info-row">
-                                <span class="info-label">Duration:</span>
-                                <span class="info-value"
-                                  >${this._formatDuration(
-                                    this.message?.elapsed,
-                                  )}</span
+                              <div class="mb-1 flex">
+                                <span class="font-bold mr-1 min-w-[60px]"
+                                  >Duration:</span
                                 >
+                                <span class="flex-1">
+                                  ${this._formatDuration(this.message?.elapsed)}
+                                </span>
                               </div>
                             `
                           : ""}
                         ${this.message?.usage
                           ? html`
-                              <div class="info-row">
-                                <span class="info-label">Tokens:</span>
-                                <span class="info-value">
+                              <div class="mb-1 flex">
+                                <span class="font-bold mr-1 min-w-[60px]"
+                                  >Tokens:</span
+                                >
+                                <span class="flex-1">
                                   ${this.message?.usage
                                     ? html`
                                         <div>
@@ -1446,11 +1030,15 @@ export class SketchTimelineMessage extends LitElement {
                           : ""}
                         ${this.message?.conversation_id
                           ? html`
-                              <div class="info-row">
-                                <span class="info-label">Conversation ID:</span>
-                                <span class="info-value conversation-id"
-                                  >${this.message?.conversation_id}</span
+                              <div class="mb-1 flex">
+                                <span class="font-bold mr-1 min-w-[60px]"
+                                  >Conversation ID:</span
                                 >
+                                <span
+                                  class="flex-1 font-mono text-xs break-all"
+                                >
+                                  ${this.message?.conversation_id}
+                                </span>
                               </div>
                             `
                           : ""}
@@ -1469,20 +1057,24 @@ export class SketchTimelineMessage extends LitElement {
                   `
                 : ""}
 
-              <!-- Commits section (redesigned as bubbles) -->
+              <!-- Commits section -->
               ${this.message?.commits
                 ? html`
-                    <div class="commits-container">
-                      <div class="commit-notification">
+                    <div class="mt-2.5">
+                      <div
+                        class="bg-green-100 text-green-800 font-medium text-xs py-1.5 px-2.5 rounded-2xl mb-2 text-center shadow-sm"
+                      >
                         ${this.message.commits.length} new
                         commit${this.message.commits.length > 1 ? "s" : ""}
                         detected
                       </div>
                       ${this.message.commits.map((commit) => {
                         return html`
-                          <div class="commit-card">
+                          <div
+                            class="bg-gray-100 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 flex items-center gap-2"
+                          >
                             <span
-                              class="commit-hash"
+                              class="text-blue-600 font-bold font-mono cursor-pointer no-underline bg-blue-600/10 py-0.5 px-1 rounded hover:bg-blue-600/20"
                               title="Click to copy: ${commit.hash}"
                               @click=${(e) =>
                                 this.copyToClipboard(
@@ -1498,9 +1090,9 @@ export class SketchTimelineMessage extends LitElement {
                                     commit.pushed_branch,
                                   );
                                   return html`
-                                    <div class="commit-branch-container">
+                                    <div class="flex items-center gap-1.5">
                                       <span
-                                        class="commit-branch pushed-branch"
+                                        class="text-green-600 font-medium cursor-pointer font-mono bg-green-600/10 py-0.5 px-1 rounded hover:bg-green-600/20"
                                         title="Click to copy: ${commit.pushed_branch}"
                                         @click=${(e) =>
                                           this.copyToClipboard(
@@ -1510,7 +1102,7 @@ export class SketchTimelineMessage extends LitElement {
                                         >${commit.pushed_branch}</span
                                       >
                                       <span
-                                        class="copy-icon"
+                                        class="opacity-70 flex items-center hover:opacity-100"
                                         @click=${(e) => {
                                           e.stopPropagation();
                                           this.copyToClipboard(
@@ -1529,6 +1121,7 @@ export class SketchTimelineMessage extends LitElement {
                                           stroke-width="2"
                                           stroke-linecap="round"
                                           stroke-linejoin="round"
+                                          class="align-middle"
                                         >
                                           <rect
                                             x="9"
@@ -1549,13 +1142,13 @@ export class SketchTimelineMessage extends LitElement {
                                               href="${githubLink}"
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              class="octocat-link"
+                                              class="text-gray-600 no-underline flex items-center transition-colors duration-200 hover:text-blue-600"
                                               title="Open ${commit.pushed_branch} on GitHub"
                                               @click=${(e) =>
                                                 e.stopPropagation()}
                                             >
                                               <svg
-                                                class="octocat-icon"
+                                                class="w-3.5 h-3.5"
                                                 viewBox="0 0 16 16"
                                                 width="14"
                                                 height="14"
@@ -1572,11 +1165,13 @@ export class SketchTimelineMessage extends LitElement {
                                   `;
                                 })()
                               : ``}
-                            <span class="commit-subject"
-                              >${commit.subject}</span
+                            <span
+                              class="text-sm text-gray-700 flex-grow truncate"
                             >
+                              ${commit.subject}
+                            </span>
                             <button
-                              class="commit-diff-button"
+                              class="py-0.5 px-2 border-0 rounded bg-blue-600 text-white text-xs cursor-pointer transition-all duration-200 block ml-auto hover:bg-blue-700"
                               @click=${() => this.showCommit(commit.hash)}
                             >
                               View Diff
@@ -1590,15 +1185,25 @@ export class SketchTimelineMessage extends LitElement {
             </div>
           </div>
 
-          <!-- Right side (empty for consistency) -->
-          <div class="message-metadata-right"></div>
+          <!-- Right metadata area -->
+          <div
+            class="${this.compactPadding
+              ? "hidden"
+              : "flex-none w-20 px-1 py-0.5 text-left text-xs text-gray-500 self-start"}"
+          ></div>
         </div>
 
         <!-- User name for user messages - positioned outside and below the bubble -->
         ${this.message?.type === "user" && this.state?.git_username
           ? html`
-              <div class="user-name-container">
-                <div class="user-name">${this.state.git_username}</div>
+              <div
+                class="flex justify-end mt-1 ${this.compactPadding
+                  ? ""
+                  : "pr-20"}"
+              >
+                <div class="text-xs text-gray-600 italic text-right">
+                  ${this.state.git_username}
+                </div>
               </div>
             `
           : ""}
@@ -1608,9 +1213,6 @@ export class SketchTimelineMessage extends LitElement {
 }
 
 function copyButton(textToCopy: string) {
-  // Use an icon of overlapping rectangles for copy
-  const buttonClass = "copy-icon";
-
   // SVG for copy icon (two overlapping rectangles)
   const copyIcon = html`<svg
     xmlns="http://www.w3.org/2000/svg"
@@ -1643,7 +1245,7 @@ function copyButton(textToCopy: string) {
   </svg>`;
 
   const ret = html`<button
-    class="${buttonClass}"
+    class="bg-transparent border-none cursor-pointer p-0.5 rounded-full flex items-center justify-center w-6 h-6 transition-all duration-150"
     title="Copy to clipboard"
     @click=${(e: Event) => {
       e.stopPropagation();
@@ -1674,52 +1276,8 @@ function copyButton(textToCopy: string) {
   return ret;
 }
 
-// Create global styles for floating messages
-const floatingMessageStyles = document.createElement("style");
-floatingMessageStyles.textContent = `
-  .floating-message {
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: system-ui, sans-serif;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-  }
-
-  .floating-message.success {
-    background-color: rgba(40, 167, 69, 0.9);
-  }
-
-  .floating-message.error {
-    background-color: rgba(220, 53, 69, 0.9);
-  }
-
-  /* Style for code, pre elements, and tool components to ensure proper wrapping/truncation */
-  pre, code, sketch-tool-calls, sketch-tool-card, sketch-tool-card-bash {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  
-  /* Special rule for the message content container */
-  .message-content {
-    max-width: 100% !important;
-    overflow: hidden !important;
-  }
-  
-  /* Ensure tool call containers don't overflow */
-  ::slotted(sketch-tool-calls) {
-    max-width: 100%;
-    width: 100%;
-    overflow-wrap: break-word;
-    word-break: break-word;
-  }
-`;
-document.head.appendChild(floatingMessageStyles);
+// Global styles are now injected in the component's connectedCallback() method
+// to ensure they are added when the component is actually used, not at module load time
 
 declare global {
   interface HTMLElementTagNameMap {
