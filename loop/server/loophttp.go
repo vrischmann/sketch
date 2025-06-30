@@ -1032,12 +1032,11 @@ func initDebugMux() *http.ServeMux {
 			pid %d<br>
 			build %s<br>
 			<ul>
-					<li><a href="/debug/pprof/cmdline">pprof/cmdline</a></li>
-					<li><a href="/debug/pprof/profile">pprof/profile</a></li>
-					<li><a href="/debug/pprof/symbol">pprof/symbol</a></li>
-					<li><a href="/debug/pprof/trace">pprof/trace</a></li>
-					<li><a href="/debug/pprof/goroutine?debug=1">pprof/goroutine?debug=1</a></li>
-					<li><a href="/debug/metrics">metrics</a></li>
+					<li><a href="pprof/cmdline">pprof/cmdline</a></li>
+					<li><a href="pprof/profile">pprof/profile</a></li>
+					<li><a href="pprof/symbol">pprof/symbol</a></li>
+					<li><a href="pprof/trace">pprof/trace</a></li>
+					<li><a href="pprof/goroutine?debug=1">pprof/goroutine?debug=1</a></li>
 			</ul>
 			</body>
 			</html>
