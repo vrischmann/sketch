@@ -18,12 +18,27 @@ import (
 	"sketch.dev/llm"
 )
 
-// Patch is a tool for precise text modifications in files.
-var Patch = &llm.Tool{
-	Name:        PatchName,
-	Description: strings.TrimSpace(PatchDescription),
-	InputSchema: llm.MustSchema(PatchInputSchema),
-	Run:         PatchRun,
+// PatchCallback defines the signature for patch tool callbacks.
+// It runs after the patch tool has executed.
+// It receives the patch input, the tool call results (both content and error),
+// and returns a new, possibly altered tool call result.
+type PatchCallback func(input PatchInput, result []llm.Content, err error) ([]llm.Content, error)
+
+// Patch creates a patch tool. The callback may be nil.
+func Patch(callback PatchCallback) *llm.Tool {
+	return &llm.Tool{
+		Name:        PatchName,
+		Description: strings.TrimSpace(PatchDescription),
+		InputSchema: llm.MustSchema(PatchInputSchema),
+		Run: func(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+			var input PatchInput
+			result, err := patchRun(ctx, m, &input)
+			if callback != nil {
+				return callback(input, result, err)
+			}
+			return result, err
+		},
+	}
 }
 
 const (
@@ -82,20 +97,22 @@ Usage notes:
 
 // TODO: maybe rename PatchRequest to PatchOperation or PatchSpec or PatchPart or just Patch?
 
-type patchInput struct {
+// PatchInput represents the input structure for patch operations.
+type PatchInput struct {
 	Path    string         `json:"path"`
-	Patches []patchRequest `json:"patches"`
+	Patches []PatchRequest `json:"patches"`
 }
 
-type patchRequest struct {
+// PatchRequest represents a single patch operation.
+type PatchRequest struct {
 	Operation string `json:"operation"`
 	OldText   string `json:"oldText,omitempty"`
 	NewText   string `json:"newText,omitempty"`
 }
 
-// PatchRun is the entry point for the user_patch tool.
-func PatchRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
-	var input patchInput
+// patchRun implements the guts of the patch tool.
+// It populates input from m.
+func patchRun(ctx context.Context, m json.RawMessage, input *PatchInput) ([]llm.Content, error) {
 	if err := json.Unmarshal(m, &input); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user_patch input: %w", err)
 	}

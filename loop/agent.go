@@ -1269,7 +1269,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	browserTools = bTools
 
 	convo.Tools = []*llm.Tool{
-		bashTool, claudetool.Keyword, claudetool.Patch,
+		bashTool, claudetool.Keyword, claudetool.Patch(nil),
 		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.setSlugTool(), a.commitMessageStyleTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
