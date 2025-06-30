@@ -183,22 +183,13 @@ func TestNavigateTool(t *testing.T) {
 	}
 
 	// Verify the response is successful
-	var response struct {
-		Status string `json:"status"`
-		Error  string `json:"error,omitempty"`
-	}
-
 	resultText := result[0].Text
-	if err := json.Unmarshal([]byte(resultText), &response); err != nil {
-		t.Fatalf("Error unmarshaling response: %v", err)
-	}
-
-	if response.Status != "success" {
+	if !strings.Contains(resultText, "done") {
 		// If browser automation is not available, skip the test
-		if strings.Contains(response.Error, "browser automation not available") {
+		if strings.Contains(resultText, "browser automation not available") {
 			t.Skip("Browser automation not available in this environment")
 		} else {
-			t.Errorf("Expected status 'success', got '%s' with error: %s", response.Status, response.Error)
+			t.Fatalf("Expected done in result text, got: %s", resultText)
 		}
 	}
 
@@ -351,8 +342,8 @@ func TestDefaultViewportSize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Navigation error: %v", err)
 	}
-	if !strings.Contains(content[0].Text, "success") {
-		t.Fatalf("Expected success in navigation response, got: %s", content[0].Text)
+	if !strings.Contains(content[0].Text, "done") {
+		t.Fatalf("Expected done in navigation response, got: %s", content[0].Text)
 	}
 
 	// Check default viewport dimensions via JavaScript
@@ -412,8 +403,8 @@ func TestResizeTool(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error: %v", err)
 		}
-		if !strings.Contains(content[0].Text, "success") {
-			t.Fatalf("Expected success in response, got: %s", content[0].Text)
+		if !strings.Contains(content[0].Text, "done") {
+			t.Fatalf("Expected done in response, got: %s", content[0].Text)
 		}
 
 		// Navigate to a test page and verify using JavaScript to get window dimensions
@@ -422,8 +413,8 @@ func TestResizeTool(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error: %v", err)
 		}
-		if !strings.Contains(content[0].Text, "success") {
-			t.Fatalf("Expected success in response, got: %s", content[0].Text)
+		if !strings.Contains(content[0].Text, "done") {
+			t.Fatalf("Expected done in response, got: %s", content[0].Text)
 		}
 
 		// Check dimensions via JavaScript
