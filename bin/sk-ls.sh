@@ -7,15 +7,15 @@
 
 docker ps --format "{{.Names}}|{{.Ports}}" | \
   grep sketch | \
-  sed -E 's/.*0\.0\.0\.0:([0-9]+)->80.*/\1/' | \
+  sed -n -E 's/.*0\.0\.0\.0:([0-9]+)->80.*/\1/p' | \
   while read port; do
     # Get container name for this port
     name=$(docker ps --filter "publish=$port" --format "{{.Names}}")
-    
+
     # Get sketch title from its state endpoint
     title=$(curl --connect-timeout 1 -s "http://localhost:$port/state" | jq -r '.slug // "N/A"')
     message_count=$(curl --connect-timeout 1 -s "http://localhost:$port/state" | jq -r '.message_count // "N/A"')
-    
+
     # Format and print the result
     printf "%-30s http://localhost:%d/   %s %s\n" "$name" "$port" "$title" "$message_count"
   done
