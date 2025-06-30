@@ -455,8 +455,9 @@ func skabandMcpConfiguration(flags CLIFlags) string {
 		Type: "http",
 		URL:  skabandaddr + "/api/mcp",
 		Headers: map[string]string{
-			"Session-Id": flags.sessionID,
-			"Public-Key": "_sketch_public_key_",
+			"Session-Id":     flags.sessionID,
+			"Public-Key":     "env:SKETCH_PUB_KEY",
+			"Session-Secret": "env:SKETCH_MODEL_API_KEY",
 		},
 	}
 	out, err := json.Marshal(&config)
@@ -652,7 +653,8 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 			}
 		}
 		if agentConfig.SkabandClient != nil {
-			go agentConfig.SkabandClient.DialAndServeLoop(ctx, flags.sessionID, srv, connectFn)
+			sessionSecret := apiKey
+			go agentConfig.SkabandClient.DialAndServeLoop(ctx, flags.sessionID, sessionSecret, srv, connectFn)
 		}
 	}
 

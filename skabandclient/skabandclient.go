@@ -47,7 +47,7 @@ type SkabandClient struct {
 	client    *http.Client
 }
 
-func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, h http.Handler) (err error) {
+func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, sessionSecret string, h http.Handler) (err error) {
 	// Connect to the server.
 	var conn net.Conn
 	if strings.HasPrefix(hostURL, "https://") {
@@ -84,6 +84,7 @@ func DialAndServe(ctx context.Context, hostURL, sessionID, clientPubKey string, 
 	req.Header.Set("Upgrade", "ska")
 	req.Header.Set("Session-ID", sessionID)
 	req.Header.Set("Public-Key", clientPubKey)
+	req.Header.Set("Session-Secret", sessionSecret)
 
 	if err := req.Write(conn); err != nil {
 		return fmt.Errorf("skabandclient.Dial: write upgrade request: %w", err)
@@ -379,7 +380,7 @@ func (c *SkabandClient) ReadSketchSession(ctx context.Context, targetSessionID, 
 }
 
 // DialAndServeLoop is a redial loop around DialAndServe.
-func (c *SkabandClient) DialAndServeLoop(ctx context.Context, sessionID string, srv http.Handler, connectFn func(connected bool)) {
+func (c *SkabandClient) DialAndServeLoop(ctx context.Context, sessionID string, sessionSecret string, srv http.Handler, connectFn func(connected bool)) {
 	skabandAddr := c.addr
 	clientPubKey := c.publicKey
 
@@ -413,7 +414,7 @@ func (c *SkabandClient) DialAndServeLoop(ctx context.Context, sessionID string, 
 
 	var lastErrLog time.Time
 	for {
-		if err := DialAndServe(ctx, skabandAddr, sessionID, clientPubKey, skabandHandler); err != nil {
+		if err := DialAndServe(ctx, skabandAddr, sessionID, clientPubKey, sessionSecret, skabandHandler); err != nil {
 			// NOTE: *just* backoff the logging. Backing off dialing
 			// is bad UX. Doing so saves negligible CPU and doing so
 			// without hurting UX requires interrupting the backoff with

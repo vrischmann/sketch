@@ -1291,9 +1291,9 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 		for i := range serverConfigs {
 			if serverConfigs[i].Headers != nil {
 				for key, value := range serverConfigs[i].Headers {
-					// Replace _sketch_public_key_ placeholder
-					if value == "_sketch_public_key_" {
-						serverConfigs[i].Headers[key] = os.Getenv("SKETCH_PUB_KEY")
+					// Replace env placeholders. E.g., "env:FOO" becomes os.Getenv("FOO")
+					if strings.HasPrefix(value, "env:") {
+						serverConfigs[i].Headers[key] = os.Getenv(value[4:])
 					}
 				}
 			}
