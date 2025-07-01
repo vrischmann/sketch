@@ -76,6 +76,28 @@ export class MockGitDataService implements GitDataService {
       deletions: 3,
     },
     {
+      path: "src/components/DialogPicker.js",
+      old_path: "src/components/FilePicker.js",
+      status: "C85",
+      new_mode: "100644",
+      old_mode: "100644",
+      old_hash: "def0123456789abcdef0123456789abcdef0123",
+      new_hash: "hij0123456789abcdef0123456789abcdef0123",
+      additions: 8,
+      deletions: 2,
+    },
+    {
+      path: "src/components/RangeSelector.js", 
+      old_path: "src/components/RangePicker.js",
+      status: "R95",
+      new_mode: "100644",
+      old_mode: "100644",
+      old_hash: "cde0123456789abcdef0123456789abcdef0123",
+      new_hash: "klm0123456789abcdef0123456789abcdef0123",
+      additions: 5,
+      deletions: 3,
+    },
+    {
       path: "src/styles/main.css",
       old_path: "",
       status: "M",
@@ -230,6 +252,110 @@ export class MockGitDataService implements GitDataService {
   );
 }`;
 
+  private dialogPickerJS = `function DialogPicker({ files, onFileSelect, onClose }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showDialog, setShowDialog] = useState(false);
+  
+  // Similar to FilePicker but with modal dialog functionality
+  useEffect(() => {
+    setSelectedIndex(0);
+    if (files.length > 0) {
+      onFileSelect(files[0]);
+    }
+  }, [files, onFileSelect]);
+  
+  return (
+    <div className="dialog-picker">
+      <button onClick={() => setShowDialog(true)}>
+        Open File Dialog
+      </button>
+      {showDialog && (
+        <div className="modal-overlay" onClick={() => setShowDialog(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Select File</h3>
+            <select value={selectedIndex} onChange={(e) => {
+              const index = parseInt(e.target.value, 10);
+              setSelectedIndex(index);
+              onFileSelect(files[index]);
+            }}>
+              {files.map((file, index) => (
+                <option key={file.path} value={index}>
+                  {file.status} {file.path}
+                </option>
+              ))}
+            </select>
+            <div className="modal-buttons">
+              <button onClick={() => setShowDialog(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}`;
+
+  private rangeSelectorJS = `function RangeSelector({ commits, onRangeChange, allowCustomRange = true }) {
+  const [rangeType, setRangeType] = useState('range');
+  const [startCommit, setStartCommit] = useState(commits[0]);
+  const [endCommit, setEndCommit] = useState(commits[commits.length - 1]);
+  const [customRange, setCustomRange] = useState('');
+
+  const handleTypeChange = (e) => {
+    setRangeType(e.target.value);
+    if (e.target.value === 'single') {
+      onRangeChange({ type: 'single', commit: startCommit });
+    } else if (e.target.value === 'custom' && customRange) {
+      onRangeChange({ type: 'custom', range: customRange });
+    } else {
+      onRangeChange({ type: 'range', from: startCommit, to: endCommit });
+    }
+  };
+
+  return (
+    <div className="range-selector">
+      <div className="range-type-selector">
+        <label>
+          <input 
+            type="radio" 
+            value="range" 
+            checked={rangeType === 'range'} 
+            onChange={handleTypeChange} 
+          />
+          Commit Range
+        </label>
+        <label>
+          <input 
+            type="radio" 
+            value="single" 
+            checked={rangeType === 'single'} 
+            onChange={handleTypeChange} 
+          />
+          Single Commit
+        </label>
+        {allowCustomRange && (
+          <label>
+            <input 
+              type="radio" 
+              value="custom" 
+              checked={rangeType === 'custom'} 
+              onChange={handleTypeChange} 
+            />
+            Custom Range
+          </label>
+        )}
+      </div>
+      {rangeType === 'custom' && (
+        <input 
+          type="text" 
+          placeholder="Enter custom range (e.g., HEAD~5..HEAD)"
+          value={customRange}
+          onChange={(e) => setCustomRange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}`;
+
   private mainCSSOriginal = `body {
   font-family: sans-serif;
   margin: 0;
@@ -353,6 +479,10 @@ button {
       return this.filePickerJS;
     } else if (fileHash === "cde0123456789abcdef0123456789abcdef0123") {
       return this.rangePickerJS;
+    } else if (fileHash === "hij0123456789abcdef0123456789abcdef0123") {
+      return this.dialogPickerJS;
+    } else if (fileHash === "klm0123456789abcdef0123456789abcdef0123") {
+      return this.rangeSelectorJS;
     } else if (fileHash === "ghi0123456789abcdef0123456789abcdef0123") {
       return this.mainCSSModified;
     } else if (fileHash === "fgh0123456789abcdef0123456789abcdef0123") {
@@ -396,6 +526,10 @@ button {
       return this.filePickerJS;
     } else if (filePath === "src/components/RangePicker.js") {
       return this.rangePickerJS;
+    } else if (filePath === "src/components/DialogPicker.js") {
+      return this.dialogPickerJS;
+    } else if (filePath === "src/components/RangeSelector.js") {
+      return this.rangeSelectorJS;
     } else if (filePath === "src/styles/main.css") {
       return this.mainCSSModified;
     }

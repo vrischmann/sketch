@@ -371,6 +371,11 @@ export class SketchDiff2View extends LitElement {
       color: #0c5460;
     }
 
+    .file-status.copied {
+      background-color: #e2e3ff;
+      color: #383d41;
+    }
+
     .file-changes {
       margin-left: 8px;
       font-size: 12px;
@@ -873,9 +878,13 @@ export class SketchDiff2View extends LitElement {
       case "D":
         return "deleted";
       case "R":
+      case "C":
       default:
         if (status.toUpperCase().startsWith("R")) {
           return "renamed";
+        }
+        if (status.toUpperCase().startsWith("C")) {
+          return "copied";
         }
         return "modified";
     }
@@ -893,9 +902,13 @@ export class SketchDiff2View extends LitElement {
       case "D":
         return "Deleted";
       case "R":
+      case "C":
       default:
         if (status.toUpperCase().startsWith("R")) {
           return "Renamed";
+        }
+        if (status.toUpperCase().startsWith("C")) {
+          return "Copied";
         }
         return "Modified";
     }
