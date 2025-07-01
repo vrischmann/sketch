@@ -21,12 +21,17 @@ type CodeReviewer struct {
 	initialStatus   []fileStatus // git status of files at initial commit, absolute paths
 	reviewed        []string     // history of all commits which have been reviewed
 	initialWorktree string       // git worktree at initial commit, absolute path
+	// "Related files" caching
+	processedChangedFileSets map[string]bool   // hash of sorted changedFiles -> processed
+	reportedRelatedFiles     map[string]bool   // file path -> reported
 }
 
 func NewCodeReviewer(ctx context.Context, repoRoot, sketchBaseRef string) (*CodeReviewer, error) {
 	r := &CodeReviewer{
-		repoRoot:      repoRoot,
-		sketchBaseRef: sketchBaseRef,
+		repoRoot:                 repoRoot,
+		sketchBaseRef:            sketchBaseRef,
+		processedChangedFileSets: make(map[string]bool),
+		reportedRelatedFiles:     make(map[string]bool),
 	}
 	if r.repoRoot == "" {
 		return nil, fmt.Errorf("NewCodeReviewer: repoRoot must be non-empty")

@@ -116,6 +116,7 @@ func initGitRepo(dir string) error {
 // processTestFiles processes the files in the txtar archive in sequence.
 func processTestFiles(t *testing.T, archive *txtar.Archive, dir string, update bool) error {
 	var initialCommit string
+	var reviewer *CodeReviewer
 	filesForNextCommit := make(map[string]bool)
 
 	for i, file := range archive.Files {
@@ -127,14 +128,18 @@ func processTestFiles(t *testing.T, archive *txtar.Archive, dir string, update b
 			}
 			clear(filesForNextCommit)
 			initialCommit = cmp.Or(initialCommit, commit)
-			// fmt.Println("initial commit:", initialCommit)
-			// cmd := exec.Command("git", "log")
-			// cmd.Dir = dir
-			// cmd.Stdout = os.Stdout
-			// cmd.Run()
+			if reviewer == nil && initialCommit != "" {
+				reviewer, err = NewCodeReviewer(context.Background(), dir, initialCommit)
+				if err != nil {
+					return fmt.Errorf("error creating code reviewer: %w", err)
+				}
+			}
 
 		case ".run_test":
-			got, err := runDifferentialTest(dir, initialCommit)
+			if reviewer == nil {
+				return fmt.Errorf("no code reviewer available, need initial commit first")
+			}
+			got, err := runDifferentialTest(reviewer)
 			if err != nil {
 				return fmt.Errorf("error running differential test: %w", err)
 			}
@@ -153,11 +158,11 @@ func processTestFiles(t *testing.T, archive *txtar.Archive, dir string, update b
 			}
 
 		case ".run_autoformat":
-			if initialCommit == "" {
-				return fmt.Errorf("initial commit not set, cannot run autoformat")
+			if reviewer == nil {
+				return fmt.Errorf("no code reviewer available, need initial commit first")
 			}
 
-			got, err := runAutoformat(dir, initialCommit)
+			got, err := runAutoformat(reviewer)
 			if err != nil {
 				return fmt.Errorf("error running autoformat: %w", err)
 			}
@@ -227,19 +232,8 @@ func makeGitCommit(dir, message string, files map[string]bool) (string, error) {
 }
 
 // runDifferentialTest runs the code review tool on the repository and returns the result.
-func runDifferentialTest(dir, initialCommit string) (string, error) {
-	if initialCommit == "" {
-		return "", fmt.Errorf("initial commit not set, cannot run differential test")
-	}
-
-	// Create a code reviewer for the repository
+func runDifferentialTest(reviewer *CodeReviewer) (string, error) {
 	ctx := context.Background()
-	reviewer, err := NewCodeReviewer(ctx, dir, initialCommit)
-	if err != nil {
-		return "", fmt.Errorf("error creating code reviewer: %w", err)
-	}
-
-	// Run the code review
 	result, err := reviewer.Run(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("error running code review: %w", err)
@@ -250,6 +244,7 @@ func runDifferentialTest(dir, initialCommit string) (string, error) {
 	if len(result) > 0 {
 		resultStr = result[0].Text
 	}
+	dir := reviewer.repoRoot
 	normalized := normalizePaths(resultStr, dir)
 	return normalized, nil
 }
@@ -267,16 +262,10 @@ func initGoModule(dir string) error {
 }
 
 // runAutoformat runs the autoformat function on the repository and returns the list of formatted files.
-func runAutoformat(dir, initialCommit string) ([]string, error) {
-	if initialCommit == "" {
-		return nil, fmt.Errorf("initial commit not set, cannot run autoformat")
-	}
+func runAutoformat(reviewer *CodeReviewer) ([]string, error) {
 	ctx := context.Background()
-	reviewer, err := NewCodeReviewer(ctx, dir, initialCommit)
-	if err != nil {
-		return nil, fmt.Errorf("error creating code reviewer: %w", err)
-	}
 	formattedFiles := reviewer.autoformat(ctx)
+	dir := reviewer.repoRoot
 	normalizedFiles := make([]string, len(formattedFiles))
 	for i, file := range formattedFiles {
 		normalizedFiles[i] = normalizePaths(file, dir)

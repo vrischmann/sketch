@@ -178,3 +178,39 @@ func TestCompareTestResults_ExistingPackage(t *testing.T) {
 		}
 	}
 }
+
+// TestHashChangedFiles tests the hash function for changed files
+func TestHashChangedFiles(t *testing.T) {
+	reviewer := &CodeReviewer{
+		repoRoot:                 "/app",
+		processedChangedFileSets: make(map[string]bool),
+		reportedRelatedFiles:     make(map[string]bool),
+	}
+
+	// Test that same files in different order produce same hash
+	files1 := []string{"/app/a.go", "/app/b.go"}
+	files2 := []string{"/app/b.go", "/app/a.go"}
+
+	hash1 := reviewer.hashChangedFiles(files1)
+	hash2 := reviewer.hashChangedFiles(files2)
+
+	if hash1 != hash2 {
+		t.Errorf("Expected same hash for same files in different order, got %q vs %q", hash1, hash2)
+	}
+
+	// Test that different files produce different hash
+	files3 := []string{"/app/a.go", "/app/c.go"}
+	hash3 := reviewer.hashChangedFiles(files3)
+
+	if hash1 == hash3 {
+		t.Errorf("Expected different hash for different files, got same hash %q", hash1)
+	}
+
+	// Test single file
+	files4 := []string{"/app/a.go"}
+	hash4 := reviewer.hashChangedFiles(files4)
+
+	if hash1 == hash4 {
+		t.Errorf("Expected different hash for different number of files, got same hash %q", hash1)
+	}
+}

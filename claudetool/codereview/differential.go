@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -968,9 +970,59 @@ type RelatedFile struct {
 	Correlation float64 // Correlation score (0.0-1.0)
 }
 
-// findRelatedFiles identifies files that are historically related to the changed files
+// hashChangedFiles creates a deterministic hash of the changed files set
+func (r *CodeReviewer) hashChangedFiles(changedFiles []string) string {
+	// Sort files for deterministic hashing
+	sorted := slices.Clone(changedFiles)
+	slices.Sort(sorted)
+	h := sha256.New()
+	enc := json.NewEncoder(h)
+	err := enc.Encode(sorted)
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// findRelatedFiles reports files that are historically related to the changed files
 // by analyzing git commit history for co-occurrences.
+// This function implements caching to avoid duplicate CPU and LLM processing:
+// 1. If the exact same set of changedFiles has been processed before, return nil, nil
+// 2. If all related files have been previously reported, return nil, nil
+// 3. Otherwise, return the full set of related files and mark them as reported
 func (r *CodeReviewer) findRelatedFiles(ctx context.Context, changedFiles []string) ([]RelatedFile, error) {
+	cf := r.hashChangedFiles(changedFiles)
+	if r.processedChangedFileSets[cf] {
+		return nil, nil
+	}
+	r.processedChangedFileSets[cf] = true // don't re-process, even on error
+
+	relatedFiles, err := r.computeRelatedFiles(ctx, changedFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	hasNew := false
+	for _, rf := range relatedFiles {
+		if !r.reportedRelatedFiles[rf.Path] {
+			hasNew = true
+			break
+		}
+	}
+	if !hasNew {
+		return nil, nil
+	}
+
+	// We have new file(s) that haven't been called to the LLM's attention yet.
+	for _, rf := range relatedFiles {
+		r.reportedRelatedFiles[rf.Path] = true
+	}
+
+	return relatedFiles, nil
+}
+
+// computeRelatedFiles implements findRelatedFiles, without caching.
+func (r *CodeReviewer) computeRelatedFiles(ctx context.Context, changedFiles []string) ([]RelatedFile, error) {
 	commits, err := r.getCommitsTouchingFiles(ctx, changedFiles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get commits touching files: %w", err)
