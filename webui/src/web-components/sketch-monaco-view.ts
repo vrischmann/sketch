@@ -340,7 +340,7 @@ export class CodeDiffEditor extends LitElement {
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
       padding: 12px;
       z-index: 10001;
-      width: 350px;
+      width: 600px;
       animation: fadeIn 0.2s ease-in-out;
       max-height: 80vh;
       overflow-y: auto;
@@ -380,10 +380,20 @@ export class CodeDiffEditor extends LitElement {
       margin-bottom: 10px;
       font-family: monospace;
       font-size: 12px;
-      max-height: 100px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .selected-text-preview.small-selection {
+      /* For selections of 10 lines or fewer, ensure all content is visible */
+      max-height: none;
+    }
+
+    .selected-text-preview.large-selection {
+      /* For selections larger than 10 lines, limit height with scroll */
+      max-height: 280px; /* Approximately 10 lines at 12px font with 1.4 line-height */
     }
 
     .comment-textarea {
@@ -480,7 +490,9 @@ export class CodeDiffEditor extends LitElement {
               </div>
               ${this.selectedLines
                 ? html`
-                    <div class="selected-text-preview">
+                    <div
+                      class="selected-text-preview ${this.getPreviewCssClass()}"
+                    >
                       ${this.selectedLines.text}
                     </div>
                   `
@@ -511,6 +523,21 @@ export class CodeDiffEditor extends LitElement {
   private handleCommentInput(e: Event) {
     const target = e.target as HTMLTextAreaElement;
     this.commentText = target.value;
+  }
+
+  /**
+   * Get CSS class for selected text preview based on number of lines
+   */
+  private getPreviewCssClass(): string {
+    if (!this.selectedLines) {
+      return "large-selection";
+    }
+
+    // Count the number of lines in the selected text
+    const lineCount = this.selectedLines.text.split("\n").length;
+
+    // If 10 lines or fewer, show all content; otherwise, limit height
+    return lineCount <= 10 ? "small-selection" : "large-selection";
   }
 
   /**
@@ -635,9 +662,9 @@ export class CodeDiffEditor extends LitElement {
           const viewportWidth = window.innerWidth;
           const viewportHeight = window.innerHeight;
 
-          // Estimated box dimensions
-          const boxWidth = 350;
-          const boxHeight = 300;
+          // Estimated box dimensions (updated for wider box)
+          const boxWidth = 600;
+          const boxHeight = 400;
 
           // Check if box would go off the right edge
           if (screenLeft + boxWidth > viewportWidth) {
