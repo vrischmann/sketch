@@ -1188,3 +1188,78 @@ func shouldIgnoreDiagnostic(message string) bool {
 	}
 	return false
 }
+
+// WarmTestCache runs 'go test -c' on relevant packages in the background
+// to warm up the Go build cache. This is intended to be called after patch
+// operations to prepare for future differential testing.
+// It uses the base commit (before state) to warm cache for packages that
+// will likely be tested during code review.
+func (r *CodeReviewer) WarmTestCache(modifiedFile string) {
+	if !r.isGoRepository() {
+		return
+	}
+	if !strings.HasSuffix(modifiedFile, ".go") {
+		return
+	}
+
+	// Worktree must be created serially
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	if err := r.initializeInitialCommitWorktree(ctx); err != nil {
+		cancel()
+		return
+	}
+
+	go func() {
+		defer cancel()
+
+		if err := r.warmTestCache(ctx, modifiedFile); err != nil {
+			slog.DebugContext(ctx, "cache warming failed", "err", err)
+		}
+	}()
+}
+
+func (r *CodeReviewer) warmTestCache(ctx context.Context, modifiedFile string) error {
+	allPkgs, err := r.packagesForFiles(ctx, []string{r.absPath(modifiedFile)})
+	if err != nil {
+		return fmt.Errorf("failed to get packages for files: %w", err)
+	}
+	if len(allPkgs) == 0 {
+		return nil
+	}
+
+	var pkgPaths []string
+	r.warmMutex.Lock()
+	for pkgPath := range allPkgs {
+		if strings.HasSuffix(pkgPath, ".test") {
+			continue
+		}
+		if r.warmedPackages[pkgPath] {
+			continue
+		}
+		// One attempt is enough.
+		r.warmedPackages[pkgPath] = true
+		pkgPaths = append(pkgPaths, pkgPath)
+	}
+	r.warmMutex.Unlock()
+
+	if len(pkgPaths) == 0 {
+		return nil
+	}
+
+	// Avoid stressing the machine: max 2 concurrent processes.
+	args := []string{"test", "-c", "-p", "2", "-o", "/dev/null"}
+	args = append(args, pkgPaths...)
+
+	cmd := exec.CommandContext(ctx, "go", args...)
+	cmd.Dir = r.initialWorktree
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+
+	slog.DebugContext(ctx, "warming test cache", "packages", len(pkgPaths), "worktree", r.initialWorktree)
+
+	start := time.Now()
+	// Run the command and ignore errors - this is best effort
+	err = cmd.Run()
+	slog.DebugContext(ctx, "cache warming complete", "duration", time.Since(start), "error", err)
+	return nil
+}

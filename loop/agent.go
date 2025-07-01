@@ -1269,7 +1269,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	browserTools = bTools
 
 	convo.Tools = []*llm.Tool{
-		bashTool, claudetool.Keyword, claudetool.Patch(nil),
+		bashTool, claudetool.Keyword, claudetool.Patch(a.patchCallback),
 		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.setSlugTool(), a.commitMessageStyleTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
@@ -1458,6 +1458,15 @@ func (a *Agent) commitMessageStyleTool() *llm.Tool {
 		},
 	}
 	return preCommit
+}
+
+// patchCallback is the agent's patch tool callback.
+// It warms the codereview cache in the background.
+func (a *Agent) patchCallback(input claudetool.PatchInput, result []llm.Content, err error) ([]llm.Content, error) {
+	if a.codereview != nil {
+		a.codereview.WarmTestCache(input.Path)
+	}
+	return result, err
 }
 
 func (a *Agent) Ready() <-chan struct{} {

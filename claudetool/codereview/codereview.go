@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"sketch.dev/claudetool"
 )
@@ -22,8 +23,11 @@ type CodeReviewer struct {
 	reviewed        []string     // history of all commits which have been reviewed
 	initialWorktree string       // git worktree at initial commit, absolute path
 	// "Related files" caching
-	processedChangedFileSets map[string]bool   // hash of sorted changedFiles -> processed
-	reportedRelatedFiles     map[string]bool   // file path -> reported
+	processedChangedFileSets map[string]bool // hash of sorted changedFiles -> processed
+	reportedRelatedFiles     map[string]bool // file path -> reported
+	// Pre-warming of Go build/test cache
+	warmMutex      sync.Mutex      // protects warmedPackages map
+	warmedPackages map[string]bool // packages that have been cache warmed
 }
 
 func NewCodeReviewer(ctx context.Context, repoRoot, sketchBaseRef string) (*CodeReviewer, error) {
@@ -32,6 +36,7 @@ func NewCodeReviewer(ctx context.Context, repoRoot, sketchBaseRef string) (*Code
 		sketchBaseRef:            sketchBaseRef,
 		processedChangedFileSets: make(map[string]bool),
 		reportedRelatedFiles:     make(map[string]bool),
+		warmedPackages:           make(map[string]bool),
 	}
 	if r.repoRoot == "" {
 		return nil, fmt.Errorf("NewCodeReviewer: repoRoot must be non-empty")
@@ -250,6 +255,9 @@ func (r *CodeReviewer) ResolveCommit(ctx context.Context, ref string) (string, e
 }
 
 func (r *CodeReviewer) absPath(relPath string) string {
+	if filepath.IsAbs(relPath) {
+		return relPath
+	}
 	return filepath.Clean(filepath.Join(r.repoRoot, relPath))
 }
 
