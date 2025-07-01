@@ -1071,7 +1071,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                       ${this.message.commits.map((commit) => {
                         return html`
                           <div
-                            class="bg-gray-100 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 flex items-center gap-2"
+                            class="text-sm bg-gray-100 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 flex items-center gap-2"
                           >
                             <span
                               class="text-blue-600 font-bold font-mono cursor-pointer no-underline bg-blue-600/10 py-0.5 px-1 rounded hover:bg-blue-600/20"
