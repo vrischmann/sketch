@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SketchTimeline } from "./web-components/sketch-timeline";
 import { aggregateAgentMessages } from "./web-components/aggregateAgentMessages";
 import { State } from "./types";
 
 // Ensure this dependency ends up in the bundle (the "as SketchTimeline" reference below
 // is insufficient for the bundler to include it).
+// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 SketchTimeline;
 
 export function renderMessagesViewer(viewData: any, container: HTMLDivElement) {

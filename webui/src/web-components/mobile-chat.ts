@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
@@ -479,9 +480,7 @@ export class MobileChat extends LitElement {
     return html`
       <div class="tool-calls">
         ${message.tool_calls.map((toolCall) => {
-          const statusIcon = this.getToolStatusIcon(toolCall);
           const summary = this.getToolSummary(toolCall);
-          const duration = this.getToolDuration(toolCall);
 
           return html`
             <div class="tool-call-item ${toolCall.name}">
@@ -494,7 +493,7 @@ export class MobileChat extends LitElement {
     `;
   }
 
-  private getToolStatusIcon(toolCall: any): string {
+  private getToolStatusIcon(_toolCall: any): string {
     // Don't show status icons for mobile
     return "";
   }
@@ -503,6 +502,7 @@ export class MobileChat extends LitElement {
     try {
       const input = JSON.parse(toolCall.input || "{}");
 
+      /* eslint-disable no-case-declarations */
       switch (toolCall.name) {
         case "bash":
           const command = input.command || "";
@@ -571,12 +571,13 @@ export class MobileChat extends LitElement {
             ? inputStr.substring(0, 50) + "..."
             : inputStr;
       }
-    } catch (e) {
+      /* eslint-enable no-case-declarations */
+    } catch {
       return "Tool call";
     }
   }
 
-  private getToolDuration(toolCall: any): string {
+  private getToolDuration(_toolCall: any): string {
     // Don't show duration for mobile
     return "";
   }
@@ -605,7 +606,7 @@ export class MobileChat extends LitElement {
           : displayMessages.map((message) => {
               const role = this.getMessageRole(message);
               const text = this.getMessageText(message);
-              const timestamp = message.timestamp;
+              // const timestamp = message.timestamp; // Unused for mobile layout
 
               return html`
                 <div class="message ${role}">

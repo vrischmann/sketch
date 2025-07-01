@@ -1,13 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import "./sketch-monaco-view";
 import "./sketch-diff-range-picker";
 import "./sketch-diff-empty-view";
-import {
-  GitDiffFile,
-  GitDataService,
-  DefaultGitDataService,
-} from "./git-data-service";
+import { GitDiffFile, GitDataService } from "./git-data-service";
 import { DiffRange } from "./sketch-diff-range-picker";
 
 /**
@@ -694,13 +691,11 @@ export class SketchDiff2View extends LitElement {
     this.fileContents.clear();
 
     try {
-      let fromCommit: string;
-      let toCommit: string;
       let isUnstagedChanges = false;
 
       // Determine the commits to compare based on the current range
-      fromCommit = this.currentRange.from;
-      toCommit = this.currentRange.to;
+      const _fromCommit = this.currentRange.from;
+      const toCommit = this.currentRange.to;
       // Check if this is an unstaged changes view
       isUnstagedChanges = toCommit === "";
 

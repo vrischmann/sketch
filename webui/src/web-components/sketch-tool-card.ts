@@ -7,7 +7,7 @@ import {
   MultipleChoiceParams,
   State,
 } from "../types";
-import { marked, MarkedOptions, Renderer } from "marked";
+import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 // Shared utility function for markdown rendering with DOMPurify sanitization

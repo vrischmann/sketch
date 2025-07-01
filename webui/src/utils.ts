@@ -20,7 +20,7 @@ export function formatNumber(
   if (num === undefined || num === null) return defaultValue;
   try {
     return num.toLocaleString();
-  } catch (e) {
+  } catch {
     return String(num);
   }
 }

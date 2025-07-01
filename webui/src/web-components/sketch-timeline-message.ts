@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { css, html, LitElement, render } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property, state } from "lit/decorators.js";
@@ -1124,7 +1125,7 @@ export class SketchTimelineMessage extends LitElement {
         second: "2-digit",
         hour12: true,
       });
-    } catch (e) {
+    } catch {
       return defaultValue;
     }
   }
@@ -1136,7 +1137,7 @@ export class SketchTimelineMessage extends LitElement {
     if (num === undefined || num === null) return defaultValue;
     try {
       return num.toLocaleString();
-    } catch (e) {
+    } catch {
       return String(num);
     }
   }
@@ -1150,7 +1151,7 @@ export class SketchTimelineMessage extends LitElement {
       // Use 4 decimal places for message-level costs, 2 for totals
       const decimalPlaces = isMessageLevel ? 4 : 2;
       return `$${parseFloat(String(num)).toFixed(decimalPlaces)}`;
-    } catch (e) {
+    } catch {
       return defaultValue;
     }
   }

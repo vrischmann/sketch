@@ -123,7 +123,7 @@ export class MobileShell extends LitElement {
 
   private handleConnectionStatusChanged(
     status: ConnectionStatus,
-    errorMessage?: string,
+    _errorMessage?: string,
   ) {
     this.connectionStatus = status;
   }

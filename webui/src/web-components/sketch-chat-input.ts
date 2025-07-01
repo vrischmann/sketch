@@ -1,5 +1,5 @@
 import { html } from "lit";
-import { customElement, property, state, query } from "lit/decorators.js";
+import { customElement, state, query } from "lit/decorators.js";
 import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 
 @customElement("sketch-chat-input")

@@ -1,6 +1,5 @@
-import { http, HttpResponse, delay } from "msw";
+import { http, HttpResponse } from "msw";
 import { initialState, initialMessages } from "../../../fixtures/dummy";
-import { AgentMessage, State } from "../../../types";
 
 // Mock state updates for SSE simulation
 const EMPTY_CONVERSATION =
@@ -43,11 +42,10 @@ export const handlers = [
         }
 
         // Simulate heartbeats and new messages
-        let heartbeatInterval;
         let messageInterval;
 
         // Send heartbeats every 30 seconds
-        heartbeatInterval = setInterval(() => {
+        const heartbeatInterval = setInterval(() => {
           controller.enqueue(
             encoder.encode(
               formatSSE("heartbeat", { timestamp: new Date().toISOString() }),

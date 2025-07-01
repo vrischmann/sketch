@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from "@sand4rt/experimental-ct-web";
 import { SketchAppShell } from "./sketch-app-shell";
 import { initialMessages, initialState } from "../fixtures/dummy";
@@ -327,37 +328,6 @@ test("correctly determines working state with non-end-of-turn agent message", as
   page,
   mount,
 }) => {
-  // Create test messages where the last agent message doesn't have end_of_turn
-  const testMessages = [
-    {
-      idx: 0,
-      type: "user" as const,
-      content: "Please help me",
-      timestamp: "2023-05-15T12:00:00Z",
-      end_of_turn: true,
-      conversation_id: "conv123",
-      parent_conversation_id: null,
-    },
-    {
-      idx: 1,
-      type: "agent" as const,
-      content: "Working on it...",
-      timestamp: "2023-05-15T12:01:00Z",
-      end_of_turn: false, // Agent is still working
-      conversation_id: "conv123",
-      parent_conversation_id: null,
-    },
-    {
-      idx: 2,
-      type: "commit" as const,
-      content: "Commit detected: def456",
-      timestamp: "2023-05-15T12:02:00Z",
-      end_of_turn: false,
-      conversation_id: "conv123",
-      parent_conversation_id: null,
-    },
-  ];
-
   // Skip SSE mocking for this test - we'll set data directly
   await page.route("**/stream*", async (route) => {
     await route.abort();

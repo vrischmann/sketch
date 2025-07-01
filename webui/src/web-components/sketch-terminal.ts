@@ -1,6 +1,7 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { css, html, LitElement } from "lit";
 import { customElement } from "lit/decorators.js";
 import "./sketch-container-status";

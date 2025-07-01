@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from "@sand4rt/experimental-ct-web";
-import { State, AgentMessage } from "./types";
+import { State } from "./types";
 
 // Test the messages-viewer logic without importing the actual module
 // to avoid decorator issues in the test environment

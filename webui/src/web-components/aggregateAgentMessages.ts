@@ -8,7 +8,7 @@ export function aggregateAgentMessages(
   const seenIds = new Set<number>();
   const toolCallResults = new Map<string, AgentMessage>();
 
-  let ret: AgentMessage[] = mergedArray
+  const ret: AgentMessage[] = mergedArray
     .filter((msg) => {
       if (msg.type == "tool") {
         toolCallResults.set(msg.tool_call_id, msg);

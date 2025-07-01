@@ -3,7 +3,7 @@
 
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { GitDataService, DefaultGitDataService } from "./git-data-service";
+import { GitDataService } from "./git-data-service";
 import { GitLogEntry } from "../types";
 
 /**
@@ -494,7 +494,7 @@ export class SketchDiffRangePicker extends LitElement {
   /**
    * Handle blur event on select button
    */
-  handleBlur(event: FocusEvent) {
+  handleBlur(_event: FocusEvent) {
     // Small delay to allow click events to process
     setTimeout(() => {
       if (!this.shadowRoot?.activeElement?.closest(".custom-select")) {

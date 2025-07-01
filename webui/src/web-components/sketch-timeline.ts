@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { html } from "lit";
 import { PropertyValues } from "lit";
 import { repeat } from "lit/directives/repeat.js";
@@ -679,7 +680,7 @@ export class SketchTimeline extends SketchTailwindElement {
     }
   }
 
-  private _handleScroll(event) {
+  private _handleScroll(_event) {
     if (!this.scrollContainer.value) return;
 
     const container = this.scrollContainer.value;
@@ -898,13 +899,13 @@ export class SketchTimeline extends SketchTailwindElement {
               ? repeat(
                   this.visibleMessages,
                   this.messageKey,
-                  (message, index) => {
+                  (message, _index) => {
                     // Find the previous message in the full filtered messages array
                     const filteredMessages = this.filteredMessages;
                     const messageIndex = filteredMessages.findIndex(
                       (m) => m === message,
                     );
-                    let previousMessage =
+                    const previousMessage =
                       messageIndex > 0
                         ? filteredMessages[messageIndex - 1]
                         : undefined;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-async-promise-executor, @typescript-eslint/ban-ts-comment */
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createRef, Ref, ref } from "lit/directives/ref.js";
@@ -1653,7 +1654,7 @@ export class CodeDiffEditor extends LitElement {
           remeasureFonts: () => {
             window.monaco!.editor.remeasureFonts();
             (window as any).sketchDebug.editors.forEach(
-              (editor: any, index: number) => {
+              (editor: any, _index: number) => {
                 if (editor && editor.layout) {
                   editor.layout();
                 }
@@ -1662,7 +1663,7 @@ export class CodeDiffEditor extends LitElement {
           },
           layoutAll: () => {
             (window as any).sketchDebug.editors.forEach(
-              (editor: any, index: number) => {
+              (editor: any, _index: number) => {
                 if (editor && editor.layout) {
                   editor.layout();
                 }

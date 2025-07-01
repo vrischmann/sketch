@@ -1,6 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { unsafeHTML } from "lit/directives/unsafe-html.js";
+// import { unsafeHTML } from "lit/directives/unsafe-html.js"; // Unused import
 import { TodoList, TodoItem } from "../types.js";
 
 @customElement("sketch-todo-panel")
@@ -441,7 +441,7 @@ export class SketchTodoPanel extends LitElement {
       const completedCount = this.todoList.items.filter(
         (item) => item.status === "completed",
       ).length;
-      const inProgressCount = this.todoList.items.filter(
+      const _inProgressCount = this.todoList.items.filter(
         (item) => item.status === "in-progress",
       ).length;
 
@@ -521,7 +521,7 @@ export class SketchTodoPanel extends LitElement {
     this.commentText = "";
   }
 
-  private handleOverlayClick(e: Event) {
+  private handleOverlayClick(_e: Event) {
     // Close when clicking outside the comment box
     this.closeCommentBox();
   }

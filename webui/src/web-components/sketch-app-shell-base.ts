@@ -1,7 +1,8 @@
-import { css, html, LitElement } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { html } from "lit";
+import { property, state } from "lit/decorators.js";
 import { ConnectionStatus, DataManager } from "../data";
-import { AgentMessage, GitLogEntry, State } from "../types";
+import { AgentMessage, State } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
 
@@ -19,7 +20,7 @@ import "./sketch-timeline";
 import "./sketch-view-mode-select";
 import "./sketch-todo-panel";
 
-import { createRef, ref } from "lit/directives/ref.js";
+import { createRef } from "lit/directives/ref.js";
 import { SketchChatInput } from "./sketch-chat-input";
 
 type ViewMode = "chat" | "diff2" | "terminal";
@@ -322,12 +323,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     }
   }
 
-  private _handleMultipleChoice(event: CustomEvent) {
-    window.console.log("_handleMultipleChoice", event);
-    this._sendChat;
-  }
-
-  private _handleDiffComment(event: CustomEvent) {
+  private _handleDiffComment(_event: CustomEvent) {
     // Empty stub required by the event binding in the template
     // Actual handling occurs at global level in sketch-chat-input component
   }
@@ -567,7 +563,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       try {
         const todoData = JSON.parse(latestTodoContent);
         hasTodos = todoData.items && todoData.items.length > 0;
-      } catch (error) {
+      } catch {
         // Invalid JSON, treat as no todos
         hasTodos = false;
       }
@@ -1101,12 +1097,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
         console.error("Error cancelling operation:", error);
       }
     });
-
-    // Setup end button
-    const endButton = this.renderRoot?.querySelector(
-      "#endButton",
-    ) as HTMLButtonElement;
-    // We're already using the @click binding in the HTML, so manual event listener not needed here
 
     // Process any existing messages to find commit information
     if (this.messages && this.messages.length > 0) {

@@ -270,7 +270,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
       return html``;
     }
 
-    const sshHost = this.getSSHHostname();
+    const _sshHost = this.getSSHHostname();
     const sshConnectionString = this.getSSHConnectionString();
     const sshCommand = `ssh ${sshConnectionString}`;
     const vscodeCommand = `code --remote ssh-remote+${sshConnectionString} /app -n`;
@@ -604,9 +604,9 @@ export class SketchContainerStatus extends SketchTailwindElement {
                       >Total cost:</span
                     >
                     <span id="totalCost" class="text-xs font-semibold break-all"
-                      >$${(this.state?.total_usage?.total_cost_usd).toFixed(
-                        2,
-                      )}</span
+                      >$${(
+                        this.state?.total_usage?.total_cost_usd ?? 0
+                      ).toFixed(2)}</span
                     >
                   </div>
                 `

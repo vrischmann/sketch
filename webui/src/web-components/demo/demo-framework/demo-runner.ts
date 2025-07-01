@@ -1,13 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Demo runner that dynamically loads and executes demo modules
  */
 
-import {
-  DemoModule,
-  DemoRegistry,
-  DemoRunnerOptions,
-  DemoNavigationEvent,
-} from "./types";
+import { DemoModule, DemoRunnerOptions, DemoNavigationEvent } from "./types";
 
 export class DemoRunner {
   private container: HTMLElement;

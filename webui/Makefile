@@ -10,7 +10,7 @@ demo:
 dev:
 	npm run dev
 
-# TypeScript type checking
+# TypeScript type checking and linting
 # Note: The actual esbuild bundling happens in esbuild.go
 check:
 	npm test

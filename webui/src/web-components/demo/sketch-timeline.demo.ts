@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Demo module for sketch-timeline component
  */
@@ -38,7 +39,7 @@ function createMockMessages(count: number): AgentMessage[] {
                 name: "bash",
                 input: `echo "Tool call example ${i}"`,
                 tool_call_id: `call_${i}`,
-                args: `{"command": "echo \"Tool call example ${i}\""}`,
+                args: `{"command": "echo 'Tool call example ${i}'"}`,
                 result: `Tool call example ${i}`,
               },
             ]

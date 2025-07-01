@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Demo module for sketch-view-mode-select component
  */
@@ -253,7 +254,7 @@ const demo: DemoModule = {
     examplesContainer.style.cssText =
       "display: flex; flex-direction: column; gap: 20px; margin: 20px 0;";
 
-    containerExamples.forEach((example, index) => {
+    containerExamples.forEach((example) => {
       // Create container wrapper
       const wrapper = document.createElement("div");
       wrapper.style.cssText = `
