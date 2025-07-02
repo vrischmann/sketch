@@ -1,4 +1,4 @@
-FROM ghcr.io/boldsoftware/sketch:741e5a2d5a35c7fb3282a265bdd0cf24
+FROM ghcr.io/boldsoftware/sketch:82c32883426c519eada7250c0017e6b7
 
 ARG GIT_USER_EMAIL
 ARG GIT_USER_NAME
@@ -7,7 +7,7 @@ RUN git config --global user.email "$GIT_USER_EMAIL" && \
     git config --global user.name "$GIT_USER_NAME" && \
     git config --global http.postBuffer 524288000
 
-LABEL sketch_context="2811549d4dc8d74da6b1b59d0918b0ed8014f7c662d80ec75b6e5f75dba599c3"
+LABEL sketch_context="69b535ce4ef4f44fc2994d9f117ccf1285b86ed626681c65c4c556e213cdc2f3"
 COPY . /app
 RUN rm -f /app/tmp-sketch-dockerfile
 
@@ -17,7 +17,7 @@ RUN if [ -f go.mod ]; then go mod download; fi
 # Switch to lenient shell so we are more likely to get past failing extra_cmds.
 SHELL ["/bin/bash", "-uo", "pipefail", "-c"]
 
-RUN go mod tidy || true
+RUN pip install --break-system-packages requests || true
 
 # Switch back to strict shell after extra_cmds.
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]

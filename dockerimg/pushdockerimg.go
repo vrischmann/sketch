@@ -76,6 +76,7 @@ Press Enter to continue or Ctrl+C to abort...`)
 	run("docker", "buildx", "build",
 		"--platform", "linux/amd64,linux/arm64",
 		"-t", path,
+		"-t", name+":latest",
 		"--push",
 		".",
 	)

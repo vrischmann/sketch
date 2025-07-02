@@ -25,6 +25,9 @@ RUN apt-get update; \
 		ca-certificates wget \
 		git jq sqlite3 npm nodejs gh ripgrep fzf python3 curl vim lsof iproute2 less \
 		docker.io docker-compose-v2 docker-buildx \
+		make python3-pip python-is-python3 tree net-tools file build-essential \
+		pipx cargo psmisc bsdmainutils openssh-client sudo \
+		unzip yarn util-linux \
 		libglib2.0-0 libnss3 libx11-6 libxcomposite1 libxdamage1 \
 		libxext6 libxi6 libxrandr2 libgbm1 libgtk-3-0 \
 		fonts-noto-color-emoji fonts-symbola && \
