@@ -40,6 +40,14 @@ import (
 	"golang.org/x/term"
 )
 
+// Version information set by GoReleaser at build time
+var (
+	version = "dev"     // version string
+	commit  = "none"    // git commit hash
+	date    = "unknown" // build timestamp
+	builtBy = "unknown" // who built this binary
+)
+
 func main() {
 	err := run()
 	if err != nil {
@@ -59,9 +67,21 @@ func run() error {
 	}
 
 	if flagArgs.version {
+		fmt.Printf("sketch %s\n", version)
+
+		if commit != "none" {
+			fmt.Printf("  commit: %s\n", commit)
+		}
+		if date != "unknown" {
+			fmt.Printf("  built: %s\n", date)
+		}
+		if builtBy != "unknown" {
+			fmt.Printf("  by: %s\n", builtBy)
+		}
+
 		bi, ok := debug.ReadBuildInfo()
 		if ok {
-			fmt.Printf("%s@%v\n", bi.Path, bi.Main.Version)
+			fmt.Printf("  buildinfo: %s@%v\n", bi.Path, bi.Main.Version)
 		}
 		return nil
 	}
