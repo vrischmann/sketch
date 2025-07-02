@@ -13,7 +13,9 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/http/httputil"
 	"net/http/pprof"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -131,7 +133,66 @@ type Server struct {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Check if Host header matches "p<port>.localhost" pattern and proxy to that port
+	if port := s.ParsePortProxyHost(r.Host); port != "" {
+		s.proxyToPort(w, r, port)
+		return
+	}
+
 	s.mux.ServeHTTP(w, r)
+}
+
+// ParsePortProxyHost checks if host matches "p<port>.localhost" pattern and returns the port
+func (s *Server) ParsePortProxyHost(host string) string {
+	// Remove port suffix if present (e.g., "p8000.localhost:8080" -> "p8000.localhost")
+	hostname := host
+	if idx := strings.LastIndex(host, ":"); idx > 0 {
+		hostname = host[:idx]
+	}
+
+	// Check if hostname matches p<port>.localhost pattern
+	if strings.HasSuffix(hostname, ".localhost") {
+		prefix := strings.TrimSuffix(hostname, ".localhost")
+		if strings.HasPrefix(prefix, "p") && len(prefix) > 1 {
+			port := prefix[1:] // Remove 'p' prefix
+			// Basic validation - port should be numeric and in valid range
+			if portNum, err := strconv.Atoi(port); err == nil && portNum > 0 && portNum <= 65535 {
+				return port
+			}
+		}
+	}
+
+	return ""
+}
+
+// proxyToPort proxies the request to localhost:<port>
+func (s *Server) proxyToPort(w http.ResponseWriter, r *http.Request, port string) {
+	// Create a reverse proxy to localhost:<port>
+	target, err := url.Parse(fmt.Sprintf("http://localhost:%s", port))
+	if err != nil {
+		http.Error(w, "Failed to parse proxy target", http.StatusInternalServerError)
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	// Customize the Director to modify the request
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		// Set the target host
+		req.URL.Host = target.Host
+		req.URL.Scheme = target.Scheme
+		req.Host = target.Host
+	}
+
+	// Handle proxy errors
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		slog.Error("Proxy error", "error", err, "target", target.String(), "port", port)
+		http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
+	}
+
+	proxy.ServeHTTP(w, r)
 }
 
 // New creates a new HTTP server.

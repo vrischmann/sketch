@@ -581,3 +581,82 @@ func TestPortEventsEndpointMethodNotAllowed(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusMethodNotAllowed, status)
 	}
 }
+
+func TestParsePortProxyHost(t *testing.T) {
+	tests := []struct {
+		name     string
+		host     string
+		wantPort string
+	}{
+		{
+			name:     "valid port proxy host",
+			host:     "p8000.localhost",
+			wantPort: "8000",
+		},
+		{
+			name:     "valid port proxy host with port suffix",
+			host:     "p8000.localhost:8080",
+			wantPort: "8000",
+		},
+		{
+			name:     "different port",
+			host:     "p3000.localhost",
+			wantPort: "3000",
+		},
+		{
+			name:     "regular localhost",
+			host:     "localhost",
+			wantPort: "",
+		},
+		{
+			name:     "different domain",
+			host:     "p8000.example.com",
+			wantPort: "",
+		},
+		{
+			name:     "missing p prefix",
+			host:     "8000.localhost",
+			wantPort: "",
+		},
+		{
+			name:     "invalid port",
+			host:     "pabc.localhost",
+			wantPort: "",
+		},
+		{
+			name:     "just p prefix",
+			host:     "p.localhost",
+			wantPort: "",
+		},
+		{
+			name:     "port too high",
+			host:     "p99999.localhost",
+			wantPort: "",
+		},
+		{
+			name:     "port zero",
+			host:     "p0.localhost",
+			wantPort: "",
+		},
+		{
+			name:     "negative port",
+			host:     "p-1.localhost",
+			wantPort: "",
+		},
+	}
+
+	// Create a test server to access the method
+	s, err := server.New(nil, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotPort := s.ParsePortProxyHost(tt.host)
+			if gotPort != tt.wantPort {
+				t.Errorf("parsePortProxyHost(%q) = %q, want %q", tt.host, gotPort, tt.wantPort)
+			}
+		})
+	}
+}
