@@ -87,7 +87,7 @@ export class MockGitDataService implements GitDataService {
       deletions: 2,
     },
     {
-      path: "src/components/RangeSelector.js", 
+      path: "src/components/RangeSelector.js",
       old_path: "src/components/RangePicker.js",
       status: "R95",
       new_mode: "100644",
