@@ -96,6 +96,7 @@ export class DemoRunner {
       "sketch-container-status",
       "sketch-timeline",
       "sketch-timeline-message",
+      "sketch-todo-panel",
       "sketch-tool-calls",
       "sketch-view-mode-select",
     ];
