@@ -1,7 +1,8 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { State, ToolCall } from "../types";
+import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 import "./sketch-tool-card";
 import "./sketch-tool-card-take-screenshot";
 import "./sketch-tool-card-about-sketch";
@@ -18,7 +19,7 @@ import "./sketch-tool-card-browser-recent-console-logs";
 import "./sketch-tool-card-browser-clear-console-logs";
 
 @customElement("sketch-tool-calls")
-export class SketchToolCalls extends LitElement {
+export class SketchToolCalls extends SketchTailwindElement {
   @property()
   toolCalls: ToolCall[] = [];
 
@@ -31,68 +32,8 @@ export class SketchToolCalls extends LitElement {
   @state()
   expanded: boolean = false;
 
-  static styles = css`
-    /* Tool calls container styles */
-    .tool-calls-container {
-      margin-top: 8px;
-      padding-top: 4px;
-      max-width: 100%;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* Card container */
-    .tool-call-card {
-      display: flex;
-      flex-direction: column;
-      background-color: rgba(255, 255, 255, 0.6);
-      border-radius: 6px;
-      margin-bottom: 6px;
-      overflow: hidden;
-      cursor: pointer;
-      border-left: 2px solid rgba(0, 0, 0, 0.1);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-      max-width: 100%;
-      overflow-wrap: break-word;
-      word-break: break-word;
-    }
-
-    /* Status indicators for tool calls */
-    .tool-call-status {
-      margin-right: 4px;
-      text-align: center;
-    }
-
-    .tool-call-status.spinner {
-      animation: spin 1s infinite linear;
-      display: inline-block;
-      width: 1em;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .tool-call-cards-container {
-      display: block;
-    }
-  `;
-
   constructor() {
     super();
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
   }
 
   cardForToolCall(toolCall: ToolCall, open: boolean) {
@@ -238,8 +179,8 @@ export class SketchToolCalls extends LitElement {
       return html``;
     }
 
-    return html`<div class="tool-calls-container">
-      <div class="tool-call-cards-container">
+    return html`<div class="mt-2 pt-1 max-w-full w-full box-border">
+      <div class="block">
         ${repeat(this.toolCalls, this.toolUseKey, (toolCall, idx) => {
           let shouldOpen = false;
           // Always expand screenshot tool calls, expand last tool call if this.open is true
@@ -251,7 +192,7 @@ export class SketchToolCalls extends LitElement {
           }
           return html`<div
             id="${toolCall.tool_call_id}"
-            class="tool-call-card ${toolCall.name}"
+            class="flex flex-col bg-white/60 rounded-md mb-1.5 overflow-hidden cursor-pointer border-l-2 border-black/10 shadow-sm max-w-full break-words ${toolCall.name}"
           >
             ${this.cardForToolCall(toolCall, shouldOpen)}
           </div>`;
