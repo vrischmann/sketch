@@ -188,7 +188,7 @@ export class SketchDiff2View extends SketchTailwindElement {
         border: 0 !important;
         z-index: -1 !important;
       }
-      
+
       /* Aggressively hide all Monaco scrollbar elements */
       .monaco-editor .scrollbar,
       .monaco-editor .scroll-decoration,
@@ -208,7 +208,7 @@ export class SketchDiff2View extends SketchTailwindElement {
         height: 0 !important;
         opacity: 0 !important;
       }
-      
+
       /* Target the specific scrollbar classes that Monaco uses */
       .monaco-scrollable-element > .scrollbar,
       .monaco-scrollable-element > .scroll-decoration,
@@ -218,7 +218,7 @@ export class SketchDiff2View extends SketchTailwindElement {
         width: 0 !important;
         height: 0 !important;
       }
-      
+
       /* Remove scrollbar space/padding from content area */
       .monaco-editor .monaco-scrollable-element,
       .monaco-diff-editor .monaco-scrollable-element {
@@ -227,15 +227,34 @@ export class SketchDiff2View extends SketchTailwindElement {
         margin-right: 0 !important;
         margin-bottom: 0 !important;
       }
-      
+
       /* Ensure the diff content takes full width without scrollbar space */
       .monaco-diff-editor .editor.modified,
       .monaco-diff-editor .editor.original {
         margin-right: 0 !important;
         padding-right: 0 !important;
       }
-    `;
+  `;
     document.head.appendChild(styleElement);
+  }
+
+  // Override createRenderRoot to apply host styles for proper sizing while still using light DOM
+  createRenderRoot() {
+    // Use light DOM like SketchTailwindElement but still apply host styles
+    const style = document.createElement("style");
+    style.textContent = `
+      sketch-diff2-view {
+        height: -webkit-fill-available;
+      }
+    `;
+
+    // Add the style to the document head if not already present
+    if (!document.head.querySelector("style[data-sketch-diff2-view]")) {
+      style.setAttribute("data-sketch-diff2-view", "");
+      document.head.appendChild(style);
+    }
+
+    return this;
   }
 
   connectedCallback() {
