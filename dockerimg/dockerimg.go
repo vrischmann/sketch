@@ -906,11 +906,6 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 // and then we can decide what to do.
 func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, _ bool) error {
 	dockerfileContent := fmt.Sprintf(`FROM %s
-ARG GIT_USER_EMAIL
-ARG GIT_USER_NAME
-RUN git config --global user.email "$GIT_USER_EMAIL" && \
-    git config --global user.name "$GIT_USER_NAME" && \
-    git config --global http.postBuffer 524288000
 COPY . /app
 WORKDIR /app
 RUN if [ -f go.mod ]; then go mod download; fi

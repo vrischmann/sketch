@@ -1094,6 +1094,28 @@ func (a *Agent) Init(ini AgentInit) error {
 	if !ini.NoGit {
 		// Capture the original origin before we potentially replace it below
 		a.gitOrigin = getGitOrigin(ctx, a.workingDir)
+
+		// Configure git user settings
+		if a.config.GitEmail != "" {
+			cmd := exec.CommandContext(ctx, "git", "config", "--global", "user.email", a.config.GitEmail)
+			cmd.Dir = a.workingDir
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("git config --global user.email: %s: %v", out, err)
+			}
+		}
+		if a.config.GitUsername != "" {
+			cmd := exec.CommandContext(ctx, "git", "config", "--global", "user.name", a.config.GitUsername)
+			cmd.Dir = a.workingDir
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("git config --global user.name: %s: %v", out, err)
+			}
+		}
+		// Configure git http.postBuffer
+		cmd := exec.CommandContext(ctx, "git", "config", "--global", "http.postBuffer", "524288000")
+		cmd.Dir = a.workingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git config --global http.postBuffer: %s: %v", out, err)
+		}
 	}
 
 	// If a remote git addr was specified, we configure the origin remote
