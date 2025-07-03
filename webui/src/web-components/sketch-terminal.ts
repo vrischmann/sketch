@@ -24,8 +24,6 @@ export class SketchTerminal extends SketchTailwindElement {
   // Flag to track if we're currently processing a terminal input
   private processingTerminalInput: boolean = false;
 
-
-
   constructor() {
     super();
     this._resizeHandler = this._resizeHandler.bind(this);
@@ -354,7 +352,11 @@ export class SketchTerminal extends SketchTailwindElement {
 
   render() {
     return html`
-      <div id="terminalView" class="w-full bg-gray-100 rounded-lg overflow-hidden mb-5 shadow-md p-4" style="height: 70vh;">
+      <div
+        id="terminalView"
+        class="w-full bg-gray-100 rounded-lg overflow-hidden mb-5 shadow-md p-4"
+        style="height: 70vh;"
+      >
         <div id="terminalContainer" class="w-full h-full overflow-hidden"></div>
       </div>
     `;
