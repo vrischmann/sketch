@@ -2,7 +2,7 @@
 import { html } from "lit";
 import { property, state } from "lit/decorators.js";
 import { ConnectionStatus, DataManager } from "../data";
-import { AgentMessage, State } from "../types";
+import { AgentMessage, State, Usage } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
 
@@ -37,6 +37,8 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
 
   // Last commit information
   @state()
+  @state()
+  latestUsage: Usage | null = null;
 
   // Reference to the container status element
   containerStatusElement: any = null;
@@ -643,6 +645,11 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
           break; // Only show one notification per batch of messages
         }
       }
+      const msgsWithUsage = newMessages.filter((msg) => msg.usage);
+      if (msgsWithUsage.length > 0) {
+        this.latestUsage =
+          msgsWithUsage[msgsWithUsage.length - 1]?.usage || null;
+      }
     }
 
     // Check if todo panel should be visible after agent loop iteration
@@ -878,6 +885,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
 
         <!-- Container status info moved above tabs -->
         <sketch-container-status
+          .latestUsage=${this.latestUsage}
           .state=${this.containerState}
           id="container-status"
         ></sketch-container-status>

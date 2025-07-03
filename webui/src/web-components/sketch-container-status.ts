@@ -1,4 +1,4 @@
-import { State, AgentMessage } from "../types";
+import { State, AgentMessage, Usage } from "../types";
 import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { formatNumber } from "../utils";
@@ -19,6 +19,9 @@ export class SketchContainerStatus extends SketchTailwindElement {
 
   @state()
   lastCommitCopied: boolean = false;
+
+  @state()
+  latestUsage: Usage | null = null;
 
   // CSS animations that can't be easily replaced with Tailwind
   connectedCallback() {
@@ -523,7 +526,8 @@ export class SketchContainerStatus extends SketchTailwindElement {
           <!-- Last Commit section moved to main grid -->
 
           <div
-            class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2 mt-2.5"
+            class="grid gap-2 mt-2.5"
+            style="grid-template-columns: auto auto"
           >
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span class="text-xs text-gray-600 mr-1 font-medium"
@@ -584,6 +588,18 @@ export class SketchContainerStatus extends SketchTailwindElement {
                   (this.state?.total_usage?.input_tokens || 0) +
                     (this.state?.total_usage?.cache_read_input_tokens || 0) +
                     (this.state?.total_usage?.cache_creation_input_tokens || 0),
+                )}</span
+              >
+            </div>
+            <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
+              <span class="text-xs text-gray-600 mr-1 font-medium"
+                >Context size:</span
+              >
+              <span id="contextWindow" class="text-xs font-semibold break-all"
+                >${formatNumber(
+                  (this.latestUsage?.input_tokens || 0) +
+                    (this.latestUsage?.cache_read_input_tokens || 0) +
+                    (this.latestUsage?.cache_creation_input_tokens || 0),
                 )}</span
               >
             </div>
