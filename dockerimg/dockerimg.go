@@ -889,6 +889,21 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 // TODO: git config stuff could be environment variables at runtime for email and username.
 // The git docs seem to say that http.postBuffer is a bug in our git proxy more than a thing
 // that's needed, but we haven't found the bug yet!
+//
+// TODO: There is a caching tension. A base image is great for tools (like, some version
+// of Go). Then you want a git repo, which is much faster to incrementally fetch rather
+// than cloning every time. Then you want some build artifacts, like perhaps the
+// "go mod download" cache, or the "go build" cache or the "npm install" cache.
+// The implementation here copies the working directory (not just the git repo!),
+// and runs "go mod download". This is an ok compromise, but a power user might want
+// less caching or more caching, depending on their use case. One approach we could take
+// is to punt entirely if /app/.git already exists. If the user has provided a -base-image with
+// their git repo, let's assume they know what they're doing, and they've customized their image
+// for their use case. On the other side of the spectrum is cloning their repo every time,
+// or running git clean -xdf, which minimizes surprises but slows down builds.
+// Note that buildx has some support for conditional COPY, but without buildx, which
+// we can't reliably depend on, we have to run the base image to inspect its file system,
+// and then we can decide what to do.
 func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, _ bool) error {
 	dockerfileContent := fmt.Sprintf(`FROM %s
 ARG GIT_USER_EMAIL
