@@ -161,8 +161,6 @@ export class SketchDiff2View extends SketchTailwindElement {
   @state()
   private viewMode: "all" | "single" = "all";
 
-
-
   @property({ attribute: false, type: Object })
   gitService!: GitDataService;
 
@@ -285,7 +283,9 @@ export class SketchDiff2View extends SketchTailwindElement {
   render() {
     return html`
       <div class="flex h-full flex-1 flex-col min-h-0 overflow-hidden relative">
-        <div class="px-4 py-2 border-b border-gray-300 bg-gray-100 flex-shrink-0">
+        <div
+          class="px-4 py-2 border-b border-gray-300 bg-gray-100 flex-shrink-0"
+        >
           <div class="flex flex-col gap-3">
             <div class="w-full flex items-center gap-3">
               <sketch-diff-range-picker
@@ -300,7 +300,11 @@ export class SketchDiff2View extends SketchTailwindElement {
         </div>
 
         <div class="flex-1 overflow-auto flex flex-col min-h-0 relative h-full">
-          <div class="flex-1 overflow-auto min-h-0 flex flex-col relative h-full">${this.renderDiffContent()}</div>
+          <div
+            class="flex-1 overflow-auto min-h-0 flex flex-col relative h-full"
+          >
+            ${this.renderDiffContent()}
+          </div>
         </div>
       </div>
     `;
@@ -333,7 +337,9 @@ export class SketchDiff2View extends SketchTailwindElement {
 
   renderDiffContent() {
     if (this.loading) {
-      return html`<div class="flex items-center justify-center h-full">Loading diff...</div>`;
+      return html`<div class="flex items-center justify-center h-full">
+        Loading diff...
+      </div>`;
     }
 
     if (this.error) {
@@ -531,16 +537,30 @@ export class SketchDiff2View extends SketchTailwindElement {
     const content = this.fileContents.get(file.path);
     if (!content) {
       return html`
-        <div class="flex flex-col border-b-4 border-gray-300 mb-0 last:border-b-0">
-          <div class="bg-gray-100 border-b border-gray-300 px-4 py-2 font-medium text-sm text-gray-800 sticky top-0 z-10 shadow-sm flex justify-between items-center">${this.renderFileHeader(file)}</div>
-          <div class="flex items-center justify-center h-full">Loading ${file.path}...</div>
+        <div
+          class="flex flex-col border-b-4 border-gray-300 mb-0 last:border-b-0"
+        >
+          <div
+            class="bg-gray-100 border-b border-gray-300 px-4 py-2 font-medium text-sm text-gray-800 sticky top-0 z-10 shadow-sm flex justify-between items-center"
+          >
+            ${this.renderFileHeader(file)}
+          </div>
+          <div class="flex items-center justify-center h-full">
+            Loading ${file.path}...
+          </div>
         </div>
       `;
     }
 
     return html`
-      <div class="flex flex-col border-b-4 border-gray-300 mb-0 last:border-b-0">
-        <div class="bg-gray-100 border-b border-gray-300 px-4 py-2 font-medium text-sm text-gray-800 sticky top-0 z-10 shadow-sm flex justify-between items-center">${this.renderFileHeader(file)}</div>
+      <div
+        class="flex flex-col border-b-4 border-gray-300 mb-0 last:border-b-0"
+      >
+        <div
+          class="bg-gray-100 border-b border-gray-300 px-4 py-2 font-medium text-sm text-gray-800 sticky top-0 z-10 shadow-sm flex justify-between items-center"
+        >
+          ${this.renderFileHeader(file)}
+        </div>
         <div class="flex flex-col min-h-[200px] overflow-visible">
           <sketch-monaco-view
             class="flex flex-col w-full min-h-[200px] flex-1"
@@ -574,7 +594,10 @@ export class SketchDiff2View extends SketchTailwindElement {
 
     return html`
       <div class="flex items-center gap-2">
-        <span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 ${statusClasses}">${statusText}</span>
+        <span
+          class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 ${statusClasses}"
+          >${statusText}</span
+        >
         <span class="font-mono font-normal text-gray-600">${pathInfo}</span>
         ${changesInfo
           ? html`<span class="ml-2 text-xs text-gray-600">${changesInfo}</span>`
@@ -781,7 +804,9 @@ export class SketchDiff2View extends SketchTailwindElement {
 
     const content = this.fileContents.get(this.selectedFile);
     if (!content) {
-      return html`<div class="flex items-center justify-center h-full">Loading ${this.selectedFile}...</div>`;
+      return html`<div class="flex items-center justify-center h-full">
+        Loading ${this.selectedFile}...
+      </div>`;
     }
 
     return html`
