@@ -2,12 +2,13 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement } from "lit/decorators.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 import "./sketch-container-status";
 
 @customElement("sketch-terminal")
-export class SketchTerminal extends LitElement {
+export class SketchTerminal extends SketchTailwindElement {
   // Terminal instance
   private terminal: Terminal | null = null;
   // Terminal fit addon for handling resize
@@ -23,25 +24,7 @@ export class SketchTerminal extends LitElement {
   // Flag to track if we're currently processing a terminal input
   private processingTerminalInput: boolean = false;
 
-  static styles = css`
-    /* Terminal View Styles */
-    .terminal-view {
-      width: 100%;
-      background-color: #f5f5f5;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      padding: 15px;
-      height: 70vh;
-    }
 
-    .terminal-container {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-  `;
 
   constructor() {
     super();
@@ -50,7 +33,7 @@ export class SketchTerminal extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.loadXtermlCSS();
+    this.loadXtermCSS();
     // Setup resize handler
     window.addEventListener("resize", this._resizeHandler);
     // Listen for view mode changes to detect when terminal becomes visible
@@ -110,12 +93,12 @@ export class SketchTerminal extends LitElement {
     }
   }
 
-  // Load xterm CSS into the shadow DOM
-  private async loadXtermlCSS() {
+  // Load xterm CSS globally since we're using light DOM
+  private async loadXtermCSS() {
     try {
-      // Check if xterm styles are already loaded
+      // Check if xterm styles are already loaded globally
       const styleId = "xterm-styles";
-      if (this.shadowRoot?.getElementById(styleId)) {
+      if (document.getElementById(styleId)) {
         return; // Already loaded
       }
 
@@ -131,13 +114,13 @@ export class SketchTerminal extends LitElement {
 
       const cssText = await response.text();
 
-      // Create a style element and append to shadow DOM
+      // Create a style element and append to document head
       const style = document.createElement("style");
       style.id = styleId;
       style.textContent = cssText;
-      this.renderRoot?.appendChild(style);
+      document.head.appendChild(style);
 
-      console.log("xterm CSS loaded into shadow DOM");
+      console.log("xterm CSS loaded globally");
     } catch (error) {
       console.error("Error loading xterm CSS:", error);
     }
@@ -148,7 +131,7 @@ export class SketchTerminal extends LitElement {
    * @param terminalContainer The DOM element to contain the terminal
    */
   public async initializeTerminal(): Promise<void> {
-    const terminalContainer = this.renderRoot.querySelector(
+    const terminalContainer = this.querySelector(
       "#terminalContainer",
     ) as HTMLElement;
 
@@ -371,8 +354,8 @@ export class SketchTerminal extends LitElement {
 
   render() {
     return html`
-      <div id="terminalView" class="terminal-view">
-        <div id="terminalContainer" class="terminal-container"></div>
+      <div id="terminalView" class="w-full bg-gray-100 rounded-lg overflow-hidden mb-5 shadow-md p-4" style="height: 70vh;">
+        <div id="terminalContainer" class="w-full h-full overflow-hidden"></div>
       </div>
     `;
   }
