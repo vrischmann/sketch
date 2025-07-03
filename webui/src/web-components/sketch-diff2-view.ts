@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 import "./sketch-monaco-view";
 import "./sketch-diff-range-picker";
 import "./sketch-diff-empty-view";
@@ -11,7 +12,7 @@ import { DiffRange } from "./sketch-diff-range-picker";
  * A component that displays diffs using Monaco editor with range and file pickers
  */
 @customElement("sketch-diff2-view")
-export class SketchDiff2View extends LitElement {
+export class SketchDiff2View extends SketchTailwindElement {
   /**
    * Handles comment events from the Monaco editor and forwards them to the chat input
    * using the same event format as the original diff view for consistency.
@@ -160,284 +161,7 @@ export class SketchDiff2View extends LitElement {
   @state()
   private viewMode: "all" | "single" = "all";
 
-  static styles = css`
-    :host {
-      display: flex;
-      height: 100%;
-      flex: 1;
-      flex-direction: column;
-      min-height: 0; /* Critical for flex child behavior */
-      overflow: hidden;
-      position: relative; /* Establish positioning context */
-    }
 
-    .controls {
-      padding: 8px 16px;
-      border-bottom: 1px solid var(--border-color, #e0e0e0);
-      background-color: var(--background-light, #f8f8f8);
-      flex-shrink: 0; /* Prevent controls from shrinking */
-    }
-
-    .controls-container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .range-row {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .file-selector-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .file-selector {
-      min-width: 200px;
-      padding: 8px 12px;
-      border: 1px solid var(--border-color, #ccc);
-      border-radius: 4px;
-      background-color: var(--background-color, #fff);
-      font-family: var(--font-family, system-ui, sans-serif);
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    .file-selector:focus {
-      outline: none;
-      border-color: var(--accent-color, #007acc);
-      box-shadow: 0 0 0 2px var(--accent-color-light, rgba(0, 122, 204, 0.2));
-    }
-
-    .file-selector:disabled {
-      background-color: var(--background-disabled, #f5f5f5);
-      color: var(--text-disabled, #999);
-      cursor: not-allowed;
-    }
-
-    .spacer {
-      flex: 1;
-    }
-
-    sketch-diff-range-picker {
-      flex: 1;
-      min-width: 400px; /* Ensure minimum width for range picker */
-    }
-
-    .view-toggle-button,
-    .header-expand-button {
-      background-color: transparent;
-      border: 1px solid var(--border-color, #e0e0e0);
-      border-radius: 4px;
-      padding: 6px 8px;
-      font-size: 14px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background-color 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      min-height: 32px;
-    }
-
-    .view-toggle-button:hover,
-    .header-expand-button:hover {
-      background-color: var(--background-hover, #e8e8e8);
-    }
-
-    .diff-container {
-      flex: 1;
-      overflow: auto;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      position: relative;
-      height: 100%;
-    }
-
-    .diff-content {
-      flex: 1;
-      overflow: auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      height: 100%;
-    }
-
-    .multi-file-diff-container {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      min-height: 100%;
-    }
-
-    .file-diff-section {
-      display: flex;
-      flex-direction: column;
-      border-bottom: 3px solid var(--border-color, #e0e0e0);
-      margin-bottom: 0;
-    }
-
-    .file-diff-section:last-child {
-      border-bottom: none;
-    }
-
-    .file-header {
-      background-color: var(--background-light, #f8f8f8);
-      border-bottom: 1px solid var(--border-color, #e0e0e0);
-      padding: 8px 16px;
-      font-family: var(--font-family, system-ui, sans-serif);
-      font-weight: 500;
-      font-size: 14px;
-      color: var(--text-primary-color, #333);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .file-header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .file-header-right {
-      display: flex;
-      align-items: center;
-    }
-
-    .file-expand-button {
-      background-color: transparent;
-      border: 1px solid var(--border-color, #e0e0e0);
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      min-height: 32px;
-    }
-
-    .file-expand-button:hover {
-      background-color: var(--background-hover, #e8e8e8);
-    }
-
-    .file-path {
-      font-family: monospace;
-      font-weight: normal;
-      color: var(--text-secondary-color, #666);
-    }
-
-    .file-status {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 12px;
-      font-weight: bold;
-      margin-right: 8px;
-    }
-
-    .file-status.added {
-      background-color: #d4edda;
-      color: #155724;
-    }
-
-    .file-status.modified {
-      background-color: #fff3cd;
-      color: #856404;
-    }
-
-    .file-status.deleted {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
-
-    .file-status.renamed {
-      background-color: #d1ecf1;
-      color: #0c5460;
-    }
-
-    .file-status.copied {
-      background-color: #e2e3ff;
-      color: #383d41;
-    }
-
-    .file-changes {
-      margin-left: 8px;
-      font-size: 12px;
-      color: var(--text-secondary-color, #666);
-    }
-
-    .file-diff-editor {
-      display: flex;
-      flex-direction: column;
-      min-height: 200px;
-      /* Height will be set dynamically by monaco editor */
-      overflow: visible; /* Ensure content is not clipped */
-    }
-
-    .loading,
-    .empty-diff {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      font-family: var(--font-family, system-ui, sans-serif);
-    }
-
-    .empty-diff {
-      color: var(--text-secondary-color, #666);
-      font-size: 16px;
-      text-align: center;
-    }
-
-    .error {
-      color: var(--error-color, #dc3545);
-      padding: 16px;
-      font-family: var(--font-family, system-ui, sans-serif);
-    }
-
-    sketch-monaco-view {
-      --editor-width: 100%;
-      --editor-height: 100%;
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      min-height: 200px;
-      /* Ensure Monaco view takes full container space */
-      flex: 1;
-    }
-
-    /* Single file view styles */
-    .single-file-view {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-    }
-
-    .single-file-monaco {
-      flex: 1;
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-    }
-  `;
 
   @property({ attribute: false, type: Object })
   gitService!: GitDataService;
@@ -560,21 +284,24 @@ export class SketchDiff2View extends LitElement {
 
   render() {
     return html`
-      <div class="controls">
-        <div class="controls-container">
-          <div class="range-row">
-            <sketch-diff-range-picker
-              .gitService="${this.gitService}"
-              @range-change="${this.handleRangeChange}"
-            ></sketch-diff-range-picker>
-            <div class="spacer"></div>
-            ${this.renderFileSelector()}
+      <div class="flex h-full flex-1 flex-col min-h-0 overflow-hidden relative">
+        <div class="px-4 py-2 border-b border-gray-300 bg-gray-100 flex-shrink-0">
+          <div class="flex flex-col gap-3">
+            <div class="w-full flex items-center gap-3">
+              <sketch-diff-range-picker
+                class="flex-1 min-w-[400px]"
+                .gitService="${this.gitService}"
+                @range-change="${this.handleRangeChange}"
+              ></sketch-diff-range-picker>
+              <div class="flex-1"></div>
+              ${this.renderFileSelector()}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="diff-container">
-        <div class="diff-content">${this.renderDiffContent()}</div>
+        <div class="flex-1 overflow-auto flex flex-col min-h-0 relative h-full">
+          <div class="flex-1 overflow-auto min-h-0 flex flex-col relative h-full">${this.renderDiffContent()}</div>
+        </div>
       </div>
     `;
   }
@@ -583,9 +310,9 @@ export class SketchDiff2View extends LitElement {
     const fileCount = this.files.length;
 
     return html`
-      <div class="file-selector-container">
+      <div class="flex items-center gap-2">
         <select
-          class="file-selector"
+          class="min-w-[200px] px-3 py-2 border border-gray-400 rounded bg-white text-sm cursor-pointer focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
           .value="${this.selectedFile}"
           @change="${this.handleFileSelection}"
           ?disabled="${fileCount === 0}"
@@ -606,11 +333,11 @@ export class SketchDiff2View extends LitElement {
 
   renderDiffContent() {
     if (this.loading) {
-      return html`<div class="loading">Loading diff...</div>`;
+      return html`<div class="flex items-center justify-center h-full">Loading diff...</div>`;
     }
 
     if (this.error) {
-      return html`<div class="error">${this.error}</div>`;
+      return html`<div class="text-red-600 p-4">${this.error}</div>`;
     }
 
     if (this.files.length === 0) {
@@ -624,7 +351,7 @@ export class SketchDiff2View extends LitElement {
 
     // Render multi-file view
     return html`
-      <div class="multi-file-diff-container">
+      <div class="flex flex-col w-full min-h-full">
         ${this.files.map((file, index) => this.renderFileDiff(file, index))}
       </div>
     `;
@@ -804,18 +531,19 @@ export class SketchDiff2View extends LitElement {
     const content = this.fileContents.get(file.path);
     if (!content) {
       return html`
-        <div class="file-diff-section">
-          <div class="file-header">${this.renderFileHeader(file)}</div>
-          <div class="loading">Loading ${file.path}...</div>
+        <div class="flex flex-col border-b-4 border-gray-300 mb-0 last:border-b-0">
+          <div class="bg-gray-100 border-b border-gray-300 px-4 py-2 font-medium text-sm text-gray-800 sticky top-0 z-10 shadow-sm flex justify-between items-center">${this.renderFileHeader(file)}</div>
+          <div class="flex items-center justify-center h-full">Loading ${file.path}...</div>
         </div>
       `;
     }
 
     return html`
-      <div class="file-diff-section">
-        <div class="file-header">${this.renderFileHeader(file)}</div>
-        <div class="file-diff-editor">
+      <div class="flex flex-col border-b-4 border-gray-300 mb-0 last:border-b-0">
+        <div class="bg-gray-100 border-b border-gray-300 px-4 py-2 font-medium text-sm text-gray-800 sticky top-0 z-10 shadow-sm flex justify-between items-center">${this.renderFileHeader(file)}</div>
+        <div class="flex flex-col min-h-[200px] overflow-visible">
           <sketch-monaco-view
+            class="flex flex-col w-full min-h-[200px] flex-1"
             .originalCode="${content.original}"
             .modifiedCode="${content.modified}"
             .originalFilename="${file.path}"
@@ -837,7 +565,7 @@ export class SketchDiff2View extends LitElement {
    * Render file header with status and path info
    */
   renderFileHeader(file: GitDiffFile) {
-    const statusClass = this.getFileStatusClass(file.status);
+    const statusClasses = this.getFileStatusTailwindClasses(file.status);
     const statusText = this.getFileStatusText(file.status);
     const changesInfo = this.getChangesInfo(file);
     const pathInfo = this.getPathInfo(file);
@@ -845,16 +573,16 @@ export class SketchDiff2View extends LitElement {
     const isExpanded = this.fileExpandStates.get(file.path) ?? false;
 
     return html`
-      <div class="file-header-left">
-        <span class="file-status ${statusClass}">${statusText}</span>
-        <span class="file-path">${pathInfo}</span>
+      <div class="flex items-center gap-2">
+        <span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 ${statusClasses}">${statusText}</span>
+        <span class="font-mono font-normal text-gray-600">${pathInfo}</span>
         ${changesInfo
-          ? html`<span class="file-changes">${changesInfo}</span>`
+          ? html`<span class="ml-2 text-xs text-gray-600">${changesInfo}</span>`
           : ""}
       </div>
-      <div class="file-header-right">
+      <div class="flex items-center">
         <button
-          class="file-expand-button"
+          class="bg-transparent border border-gray-300 rounded px-2 py-1 text-sm cursor-pointer whitespace-nowrap transition-colors duration-200 flex items-center justify-center min-w-8 min-h-8 hover:bg-gray-200"
           @click="${() => this.toggleFileExpansion(file.path)}"
           title="${isExpanded
             ? "Collapse: Hide unchanged regions to focus on changes"
@@ -867,26 +595,26 @@ export class SketchDiff2View extends LitElement {
   }
 
   /**
-   * Get CSS class for file status
+   * Get Tailwind CSS classes for file status
    */
-  getFileStatusClass(status: string): string {
+  getFileStatusTailwindClasses(status: string): string {
     switch (status.toUpperCase()) {
       case "A":
-        return "added";
+        return "bg-green-100 text-green-800";
       case "M":
-        return "modified";
+        return "bg-yellow-100 text-yellow-800";
       case "D":
-        return "deleted";
+        return "bg-red-100 text-red-800";
       case "R":
       case "C":
       default:
         if (status.toUpperCase().startsWith("R")) {
-          return "renamed";
+          return "bg-cyan-100 text-cyan-800";
         }
         if (status.toUpperCase().startsWith("C")) {
-          return "copied";
+          return "bg-indigo-100 text-indigo-800";
         }
-        return "modified";
+        return "bg-yellow-100 text-yellow-800";
     }
   }
 
@@ -1029,7 +757,7 @@ export class SketchDiff2View extends LitElement {
 
     return html`
       <button
-        class="header-expand-button"
+        class="bg-transparent border border-gray-300 rounded px-1.5 py-1.5 text-sm cursor-pointer whitespace-nowrap transition-colors duration-200 flex items-center justify-center min-w-8 min-h-8 hover:bg-gray-200"
         @click="${() => this.toggleFileExpansion(this.selectedFile)}"
         title="${isExpanded
           ? "Collapse: Hide unchanged regions to focus on changes"
@@ -1048,18 +776,18 @@ export class SketchDiff2View extends LitElement {
       (f) => f.path === this.selectedFile,
     );
     if (!selectedFileData) {
-      return html`<div class="error">Selected file not found</div>`;
+      return html`<div class="text-red-600 p-4">Selected file not found</div>`;
     }
 
     const content = this.fileContents.get(this.selectedFile);
     if (!content) {
-      return html`<div class="loading">Loading ${this.selectedFile}...</div>`;
+      return html`<div class="flex items-center justify-center h-full">Loading ${this.selectedFile}...</div>`;
     }
 
     return html`
-      <div class="single-file-view">
+      <div class="flex-1 flex flex-col h-full min-h-0">
         <sketch-monaco-view
-          class="single-file-monaco"
+          class="flex-1 w-full h-full min-h-0"
           .originalCode="${content.original}"
           .modifiedCode="${content.modified}"
           .originalFilename="${selectedFileData.path}"
