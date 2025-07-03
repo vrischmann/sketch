@@ -395,7 +395,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
     // Add a small delay to ensure the DOM is fully rendered
     setTimeout(async () => {
       // Find all mermaid containers in our shadow root
-      const containers = this.shadowRoot?.querySelectorAll(".mermaid");
+      const containers = this.querySelectorAll(".mermaid");
       if (!containers || containers.length === 0) return;
 
       try {
@@ -453,8 +453,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
   setupCodeBlockCopyButtons() {
     setTimeout(() => {
       // Find all copy buttons in code blocks
-      const copyButtons =
-        this.shadowRoot?.querySelectorAll(".code-copy-button");
+      const copyButtons = this.querySelectorAll(".code-copy-button");
       if (!copyButtons || copyButtons.length === 0) return;
 
       // Add click event listener to each button
@@ -464,7 +463,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
           const codeId = (button as HTMLElement).dataset.codeId;
           if (!codeId) return;
 
-          const codeElement = this.shadowRoot?.querySelector(`#${codeId}`);
+          const codeElement = this.querySelector(`#${codeId}`);
           if (!codeElement) return;
 
           const codeText = codeElement.textContent || "";

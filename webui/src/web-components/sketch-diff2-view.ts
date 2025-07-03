@@ -104,7 +104,7 @@ export class SketchDiff2View extends SketchTailwindElement {
       const { path, content } = event.detail;
 
       // Get Monaco view component
-      const monacoView = this.shadowRoot?.querySelector("sketch-monaco-view");
+      const monacoView = this.querySelector("sketch-monaco-view");
       if (!monacoView) {
         console.error("Monaco view not found");
         return;
@@ -288,7 +288,7 @@ export class SketchDiff2View extends SketchTailwindElement {
     this.fileExpandStates.set(filePath, newState);
 
     // Apply to the specific Monaco view component for this file
-    const monacoView = this.shadowRoot?.querySelector(
+    const monacoView = this.querySelector(
       `sketch-monaco-view[data-file-path="${filePath}"]`,
     );
     if (monacoView) {
@@ -856,9 +856,7 @@ export class SketchDiff2View extends SketchTailwindElement {
    */
   refreshDiffView() {
     // First refresh the range picker to get updated branch information
-    const rangePicker = this.shadowRoot?.querySelector(
-      "sketch-diff-range-picker",
-    );
+    const rangePicker = this.querySelector("sketch-diff-range-picker");
     if (rangePicker) {
       (rangePicker as any).loadCommits();
     }
