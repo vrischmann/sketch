@@ -23,9 +23,6 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"sketch.dev/browser"
-	"sketch.dev/llm"
-	"sketch.dev/llm/ant"
-	"sketch.dev/llm/gem"
 	"sketch.dev/loop/server"
 	"sketch.dev/skribe"
 	"sketch.dev/webui"
@@ -68,6 +65,9 @@ type ContainerConfig struct {
 
 	// ForceRebuild forces rebuilding of the Docker image even if it exists
 	ForceRebuild bool
+
+	// BaseImage is the base Docker image to use for layering the repo
+	BaseImage string
 
 	// Host directory to copy container logs into, if not set to ""
 	ContainerLogDest string
@@ -166,7 +166,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		return err
 	}
 
-	imgName, err := findOrBuildDockerImage(ctx, config.Path, gitRoot, config.Model, config.ModelURL, config.ModelAPIKey, config.ForceRebuild, config.Verbose)
+	imgName, err := findOrBuildDockerImage(ctx, gitRoot, config.BaseImage, config.ForceRebuild, config.Verbose)
 	if err != nil {
 		return err
 	}
@@ -792,106 +792,137 @@ func postContainerInitConfig(ctx context.Context, localAddr string, sshAvailable
 	return nil
 }
 
-func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, modelAPIKey string, forceRebuild, verbose bool) (imgName string, err error) {
-	h := sha256.Sum256([]byte(gitRoot))
-	imgName = "sketch-" + hex.EncodeToString(h[:6])
-
-	var curImgInitFilesHash string
-	if out, err := combinedOutput(ctx, "docker", "inspect", "--format", "{{json .Config.Labels}}", imgName); err != nil {
-		if strings.Contains(strings.ToLower(string(out)), "no such object") {
-			// Image does not exist, continue and build it.
-			curImgInitFilesHash = ""
-		} else {
-			return "", fmt.Errorf("docker inspect failed: %s, %v", out, err)
-		}
-	} else {
-		m := map[string]string{}
-		if err := json.Unmarshal(bytes.TrimSpace(out), &m); err != nil {
-			return "", fmt.Errorf("docker inspect output unparsable: %s, %v", out, err)
-		}
-		curImgInitFilesHash = m["sketch_context"]
+func findOrBuildDockerImage(ctx context.Context, gitRoot, baseImage string, forceRebuild, verbose bool) (imgName string, err error) {
+	// Default to the published sketch image if no base image is specified
+	if baseImage == "" {
+		imageTag := dockerfileBaseHash()
+		baseImage = fmt.Sprintf("%s:%s", dockerImgName, imageTag)
 	}
 
-	candidates, err := findRepoDockerfiles(cwd, gitRoot)
+	// Ensure the base image exists locally, pull if necessary
+	if err := ensureBaseImageExists(ctx, baseImage); err != nil {
+		return "", fmt.Errorf("failed to ensure base image %s exists: %w", baseImage, err)
+	}
+
+	// Get the base image container ID for caching
+	baseImageID, err := getDockerImageID(ctx, baseImage)
 	if err != nil {
-		return "", fmt.Errorf("find dockerfile: %w", err)
+		return "", fmt.Errorf("failed to get base image ID for %s: %w", baseImage, err)
 	}
 
-	var initFiles map[string]string
-	var dockerfilePath string
-	var generatedDockerfile string
+	// Create a cache key based on base image ID and working directory
+	// Docker naming conventions restrict you to 20 characters per path component
+	// and only allow lowercase letters, digits, underscores, and dashes, so encoding
+	// the hash and the repo directory is sadly a bit of a non-starter.
+	cacheKey := createCacheKey(baseImageID, gitRoot)
+	imgName = "sketch-" + cacheKey
 
-	// Prioritize Dockerfile.sketch over Dockerfile, then fall back to generated dockerfile
-	if len(candidates) > 0 {
-		dockerfilePath = prioritizeDockerfiles(candidates)
-		contents, err := os.ReadFile(dockerfilePath)
-		if err != nil {
-			return "", err
-		}
-		fmt.Printf("using %s as dev env\n", dockerfilePath)
-		if hashInitFiles(map[string]string{dockerfilePath: string(contents)}) == curImgInitFilesHash && !forceRebuild {
-			return imgName, nil
-		}
-	} else {
-		initFiles, err = readInitFiles(os.DirFS(gitRoot))
-		if err != nil {
-			return "", err
-		}
-		subPathWorkingDir, err := filepath.Rel(gitRoot, cwd)
-		if err != nil {
-			return "", err
-		}
-		initFileHash := hashInitFiles(initFiles)
-		if curImgInitFilesHash == initFileHash && !forceRebuild {
-			return imgName, nil
-		}
-
-		start := time.Now()
-
-		var service llm.Service
-		if model == "gemini" {
-			service = &gem.Service{
-				URL:    modelURL,
-				APIKey: modelAPIKey,
-				HTTPC:  http.DefaultClient,
+	// Check if the cached image exists and is up to date
+	if !forceRebuild {
+		if exists, err := dockerImageExists(ctx, imgName); err != nil {
+			return "", fmt.Errorf("failed to check if image exists: %w", err)
+		} else if exists {
+			if verbose {
+				fmt.Printf("using cached image %s\n", imgName)
 			}
-		} else {
-			service = &ant.Service{
-				URL:    modelURL,
-				APIKey: modelAPIKey,
-				HTTPC:  http.DefaultClient,
-			}
-		}
-
-		generatedDockerfile, err = createDockerfile(ctx, service, initFiles, subPathWorkingDir, verbose)
-		if err != nil {
-			return "", fmt.Errorf("create dockerfile: %w", err)
-		}
-		// Create a unique temporary directory for the Dockerfile
-		tmpDir, err := os.MkdirTemp("", "sketch-docker-*")
-		if err != nil {
-			return "", fmt.Errorf("failed to create temporary directory: %w", err)
-		}
-		dockerfilePath = filepath.Join(tmpDir, tmpSketchDockerfile)
-		if err := os.WriteFile(dockerfilePath, []byte(generatedDockerfile), 0o666); err != nil {
-			return "", err
-		}
-		// Remove the temporary directory and all contents when done
-		defer os.RemoveAll(tmpDir)
-
-		if verbose {
-			fmt.Fprintf(os.Stderr, "generated Dockerfile in %s:\n\t%s\n\n", time.Since(start).Round(time.Millisecond), strings.Replace(generatedDockerfile, "\n", "\n\t", -1))
+			return imgName, nil
 		}
 	}
 
+	// Build the layered image
+	if err := buildLayeredImage(ctx, imgName, baseImage, gitRoot, verbose); err != nil {
+		return "", fmt.Errorf("failed to build layered image: %w", err)
+	}
+
+	return imgName, nil
+}
+
+// ensureBaseImageExists checks if the base image exists locally and pulls it if not
+func ensureBaseImageExists(ctx context.Context, imageName string) error {
+	exists, err := dockerImageExists(ctx, imageName)
+	if err != nil {
+		return fmt.Errorf("failed to check if image exists: %w", err)
+	}
+
+	if !exists {
+		fmt.Printf("🐋 pulling base image %s...\n", imageName)
+		if out, err := combinedOutput(ctx, "docker", "pull", imageName); err != nil {
+			return fmt.Errorf("docker pull %s failed: %s: %w", imageName, out, err)
+		}
+		fmt.Printf("✅ successfully pulled %s\n", imageName)
+	}
+
+	return nil
+}
+
+// getDockerImageID gets the container ID for a Docker image
+func getDockerImageID(ctx context.Context, imageName string) (string, error) {
+	out, err := combinedOutput(ctx, "docker", "inspect", "--format", "{{.Id}}", imageName)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// createCacheKey creates a cache key from base image ID and working directory
+func createCacheKey(baseImageID, gitRoot string) string {
+	h := sha256.New()
+	h.Write([]byte(baseImageID))
+	h.Write([]byte(gitRoot))
+	return hex.EncodeToString(h.Sum(nil))[:12] // Use first 12 chars for shorter name
+}
+
+// dockerImageExists checks if a Docker image exists locally
+func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
+	out, err := combinedOutput(ctx, "docker", "inspect", imageName)
+	if err != nil {
+		if strings.Contains(strings.ToLower(string(out)), "no such object") ||
+			strings.Contains(strings.ToLower(string(out)), "no such image") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// buildLayeredImage builds a new Docker image by layering the repo on top of the base image
+// TODO: git config stuff could be environment variables at runtime for email and username.
+// The git docs seem to say that http.postBuffer is a bug in our git proxy more than a thing
+// that's needed, but we haven't found the bug yet!
+func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, _ bool) error {
+	dockerfileContent := fmt.Sprintf(`FROM %s
+ARG GIT_USER_EMAIL
+ARG GIT_USER_NAME
+RUN git config --global user.email "$GIT_USER_EMAIL" && \
+    git config --global user.name "$GIT_USER_NAME" && \
+    git config --global http.postBuffer 524288000
+COPY . /app
+WORKDIR /app
+RUN if [ -f go.mod ]; then go mod download; fi
+CMD ["/bin/sketch"]
+`, baseImage)
+
+	// Create a temporary directory for the Dockerfile
+	tmpDir, err := os.MkdirTemp("", "sketch-docker-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dockerfilePath := filepath.Join(tmpDir, "Dockerfile")
+	if err := os.WriteFile(dockerfilePath, []byte(dockerfileContent), 0o666); err != nil {
+		return fmt.Errorf("failed to write Dockerfile: %w", err)
+	}
+
+	// Get git user info
 	var gitUserEmail, gitUserName string
 	if out, err := combinedOutput(ctx, "git", "config", "--get", "user.email"); err != nil {
-		return "", fmt.Errorf("git user.email is not set. Please run 'git config --global user.email \"your.email@example.com\"' to set your email address")
+		return fmt.Errorf("git user.email is not set. Please run 'git config --global user.email \"your.email@example.com\"' to set your email address")
 	} else {
 		gitUserEmail = strings.TrimSpace(string(out))
 	}
 	if out, err := combinedOutput(ctx, "git", "config", "--get", "user.name"); err != nil {
-		return "", fmt.Errorf("git user.name is not set. Please run 'git config --global user.name \"Your Name\"' to set your name")
+		return fmt.Errorf("git user.name is not set. Please run 'git config --global user.name \"Your Name\"' to set your name")
 	} else {
 		gitUserName = strings.TrimSpace(string(out))
 	}
@@ -903,23 +934,8 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 		"-f", dockerfilePath,
 		"--build-arg", "GIT_USER_EMAIL=" + gitUserEmail,
 		"--build-arg", "GIT_USER_NAME=" + gitUserName,
+		".",
 	}
-
-	// Add the sketch_context label for image reuse detection
-	var contextHash string
-	if len(candidates) > 0 {
-		// Building from Dockerfile.sketch or similar static file
-		contents, err := os.ReadFile(dockerfilePath)
-		if err != nil {
-			return "", err
-		}
-		contextHash = hashInitFiles(map[string]string{dockerfilePath: string(contents)})
-	} else {
-		// Building from generated dockerfile
-		contextHash = hashInitFiles(initFiles)
-	}
-	cmdArgs = append(cmdArgs, "--label", "sketch_context="+contextHash)
-	cmdArgs = append(cmdArgs, ".")
 
 	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
 	cmd.Dir = gitRoot
@@ -928,95 +944,14 @@ func findOrBuildDockerImage(ctx context.Context, cwd, gitRoot, model, modelURL, 
 	// and this gives good context.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	fmt.Printf("🏗️  building docker image %s... (use -verbose to see build output)\n", imgName)
+	fmt.Printf("🏗️  building docker image %s from base %s...\n", imgName, baseImage)
 
 	err = run(ctx, "docker build", cmd)
 	if err != nil {
-		var msg string
-		if generatedDockerfile != "" {
-			if !verbose {
-				fmt.Fprintf(os.Stderr, "Generated Dockerfile:\n\t%s\n\n", strings.Replace(generatedDockerfile, "\n", "\n\t", -1))
-			}
-			msg = fmt.Sprintf("\n\nThe generated Dockerfile failed to build.\nYou can override it by committing a Dockerfile to your project.")
-		}
-		return "", fmt.Errorf("docker build failed: %v%s", err, msg)
+		return fmt.Errorf("docker build failed: %v", err)
 	}
 	fmt.Printf("built docker image %s in %s\n", imgName, time.Since(start).Round(time.Millisecond))
-	return imgName, nil
-}
-
-func findRepoDockerfiles(cwd, gitRoot string) ([]string, error) {
-	files, err := findDirDockerfiles(cwd)
-	if err != nil {
-		return nil, err
-	}
-	if len(files) > 0 {
-		return files, nil
-	}
-
-	path := cwd
-	for path != gitRoot {
-		path = filepath.Dir(path)
-		files, err := findDirDockerfiles(path)
-		if err != nil {
-			return nil, err
-		}
-		if len(files) > 0 {
-			return files, nil
-		}
-	}
-	return files, nil
-}
-
-// prioritizeDockerfiles returns the highest priority dockerfile from a list of candidates.
-// Priority order: Dockerfile.sketch > Dockerfile > other Dockerfile.*
-func prioritizeDockerfiles(candidates []string) string {
-	if len(candidates) == 0 {
-		return ""
-	}
-	if len(candidates) == 1 {
-		return candidates[0]
-	}
-
-	// Look for Dockerfile.sketch first (case insensitive)
-	for _, candidate := range candidates {
-		basename := strings.ToLower(filepath.Base(candidate))
-		if basename == "dockerfile.sketch" {
-			return candidate
-		}
-	}
-
-	// Look for Dockerfile second (case insensitive)
-	for _, candidate := range candidates {
-		basename := strings.ToLower(filepath.Base(candidate))
-		if basename == "dockerfile" {
-			return candidate
-		}
-	}
-
-	// Return first remaining candidate
-	return candidates[0]
-}
-
-// findDirDockerfiles finds all "Dockerfile*" files in a directory.
-func findDirDockerfiles(root string) (res []string, err error) {
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() && root != path {
-			return filepath.SkipDir
-		}
-		name := strings.ToLower(info.Name())
-		if name == "dockerfile" || strings.HasPrefix(name, "dockerfile.") || strings.HasSuffix(name, ".dockerfile") {
-			res = append(res, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
+	return nil
 }
 
 func checkForEmptyGitRepo(ctx context.Context, path string) error {

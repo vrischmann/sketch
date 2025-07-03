@@ -223,6 +223,7 @@ type CLIFlags struct {
 	dumpDist     string
 	sshPort      int
 	forceRebuild bool
+	baseImage    string
 	linkToGitHub bool
 	ignoreSig    bool
 
@@ -275,6 +276,10 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.version, "version", false, "print the version and exit")
 	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
+	// Get the default image info for help text
+	defaultImageName, _, defaultTag := dockerimg.DefaultImage()
+	defaultHelpText := fmt.Sprintf("base Docker image to use (defaults to %s:%s); see https://sketch.dev/docs/docker for instructions", defaultImageName, defaultTag)
+	userFlags.StringVar(&flags.baseImage, "base-image", "", defaultHelpText)
 
 	userFlags.StringVar(&flags.dockerArgs, "docker-args", "", "additional arguments to pass to the docker create command (e.g., --memory=2g --cpus=2)")
 	userFlags.Var(&flags.mounts, "mount", "volume to mount in the container in format /path/on/host:/path/in/container (can be repeated)")
@@ -437,6 +442,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		SketchPubKey:      pubKey,
 		SSHPort:           flags.sshPort,
 		ForceRebuild:      flags.forceRebuild,
+		BaseImage:         flags.baseImage,
 		OutsideHostname:   getHostname(),
 		OutsideOS:         runtime.GOOS,
 		OutsideWorkingDir: cwd,

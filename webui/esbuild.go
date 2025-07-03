@@ -108,6 +108,9 @@ func ZipPath() (string, error) {
 	return hashZip, err
 }
 
+// TODO: This path being /root/.cache/sketch/webui/skui-....zip means that the Dockerfile
+// in createdockerfile.go needs to create the parent directory. Ideally we bundle the built webui
+// into the binary and avoid this altogether.
 func zipPath() (cacheDir, hashZip string, err error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
