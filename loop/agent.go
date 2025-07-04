@@ -152,8 +152,7 @@ type CodingAgent interface {
 	// CompactConversation compacts the current conversation by generating a summary
 	// and restarting the conversation with that summary as the initial context
 	CompactConversation(ctx context.Context) error
-	// GetPortMonitor returns the port monitor instance for accessing port events
-	GetPortMonitor() *PortMonitor
+
 	// SkabandAddr returns the skaband address if configured
 	SkabandAddr() string
 }
@@ -460,9 +459,6 @@ type Agent struct {
 
 	// Track outstanding tool calls by ID with their names
 	outstandingToolCalls map[string]string
-
-	// Port monitoring
-	portMonitor *PortMonitor
 }
 
 // NewIterator implements CodingAgent.
@@ -1071,8 +1067,8 @@ func NewAgent(config AgentConfig) *Agent {
 		stateMachine:         NewStateMachine(),
 		workingDir:           config.WorkingDir,
 		outsideHTTP:          config.OutsideHTTP,
-		portMonitor:          NewPortMonitor(),
-		mcpManager:           mcp.NewMCPManager(),
+
+		mcpManager: mcp.NewMCPManager(),
 	}
 	return agent
 }
@@ -1526,12 +1522,6 @@ func (a *Agent) CancelTurn(cause error) {
 }
 
 func (a *Agent) Loop(ctxOuter context.Context) {
-	// Start port monitoring when the agent loop begins
-	// Only monitor ports when running in a container
-	if a.IsInContainer() {
-		a.portMonitor.Start(ctxOuter)
-	}
-
 	// Set up cleanup when context is done
 	defer func() {
 		if a.mcpManager != nil {
@@ -2538,11 +2528,6 @@ func updateOrCreateHook(hookPath, content, distinctiveLine string) error {
 	}
 
 	return nil
-}
-
-// GetPortMonitor returns the port monitor instance for accessing port events
-func (a *Agent) GetPortMonitor() *PortMonitor {
-	return a.portMonitor
 }
 
 // SkabandAddr returns the skaband address if configured
