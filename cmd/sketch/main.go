@@ -20,24 +20,22 @@ import (
 	"strings"
 	"syscall"
 
-	"sketch.dev/experiment"
-	"sketch.dev/llm"
-	"sketch.dev/llm/gem"
-	"sketch.dev/llm/oai"
-	"sketch.dev/mcp"
-
+	"golang.org/x/term"
 	"sketch.dev/browser"
 	"sketch.dev/dockerimg"
+	"sketch.dev/experiment"
+	"sketch.dev/llm"
 	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
+	"sketch.dev/llm/gem"
+	"sketch.dev/llm/oai"
 	"sketch.dev/loop"
 	"sketch.dev/loop/server"
+	"sketch.dev/mcp"
 	"sketch.dev/skabandclient"
 	"sketch.dev/skribe"
 	"sketch.dev/termui"
 	"sketch.dev/webui"
-
-	"golang.org/x/term"
 )
 
 // Version information set by GoReleaser at build time
