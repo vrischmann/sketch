@@ -119,6 +119,9 @@ type TermUI struct {
 
 	// Pending message count, for graceful shutdown
 	messageWaitGroup sync.WaitGroup
+
+	currentSlug string
+	titlePushed bool
 }
 
 type chatMessage struct {
@@ -157,7 +160,7 @@ func (ui *TermUI) Run(ctx context.Context) error {
 	return nil
 }
 
-func (ui *TermUI) LogToolUse(resp *loop.AgentMessage) {
+func (ui *TermUI) HandleToolUse(resp *loop.AgentMessage) {
 	inputData := map[string]any{}
 	if err := json.Unmarshal([]byte(resp.ToolInput), &inputData); err != nil {
 		ui.AppendSystemMessage("error: %v", err)
@@ -169,6 +172,12 @@ func (ui *TermUI) LogToolUse(resp *loop.AgentMessage) {
 		return
 	}
 	ui.AppendSystemMessage("%s\n", buf.String())
+
+	if resp.ToolName == "set-slug" {
+		if slug, ok := inputData["slug"].(string); ok {
+			ui.updateTitleWithSlug(slug)
+		}
+	}
 }
 
 func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
@@ -195,7 +204,7 @@ func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
 		case loop.AgentMessageType:
 			ui.AppendChatMessage(chatMessage{thinking: thinking, idx: resp.Idx, sender: "🕴️ ", content: resp.Content})
 		case loop.ToolUseMessageType:
-			ui.LogToolUse(resp)
+			ui.HandleToolUse(resp)
 		case loop.ErrorMessageType:
 			ui.AppendSystemMessage("❌ %s", resp.Content)
 		case loop.BudgetMessageType:
@@ -411,7 +420,7 @@ func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 	ui.trm = term.NewTerminal(ui.stdin, "")
 	width, height, err := term.GetSize(int(ui.stdin.Fd()))
 	if err != nil {
-		return fmt.Errorf("Error getting terminal size: %v\n", err)
+		return fmt.Errorf("get terminal size: %v", err)
 	}
 	ui.trm.SetSize(width, height)
 	// Handle terminal resizes...
@@ -432,6 +441,8 @@ func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 	}()
 
 	ui.updatePrompt(false)
+	ui.pushTerminalTitle()
+	ui.setTerminalTitle("sketch")
 
 	// This is the only place where we should call fe.trm.Write:
 	go func() {
@@ -475,6 +486,8 @@ func (ui *TermUI) initializeTerminalUI(ctx context.Context) error {
 func (ui *TermUI) RestoreOldState() error {
 	ui.mu.Lock()
 	defer ui.mu.Unlock()
+	ui.setTerminalTitle("")
+	ui.popTerminalTitle()
 	return term.Restore(int(ui.stdin.Fd()), ui.oldState)
 }
 
@@ -554,4 +567,35 @@ func (ui *TermUI) getGitHubBranchURL(branchName string) string {
 		}
 	}
 	return ""
+}
+
+// pushTerminalTitle pushes the current terminal title onto the title stack
+// Only works on xterm-compatible terminals, but does no harm elsewhere
+func (ui *TermUI) pushTerminalTitle() {
+	fmt.Fprintf(ui.stderr, "\033[22;0t")
+	ui.titlePushed = true
+}
+
+// popTerminalTitle pops the terminal title from the title stack
+func (ui *TermUI) popTerminalTitle() {
+	if ui.titlePushed {
+		fmt.Fprintf(ui.stderr, "\033[23;0t")
+		ui.titlePushed = false
+	}
+}
+
+func (ui *TermUI) setTerminalTitle(title string) {
+	fmt.Fprintf(ui.stderr, "\033]0;%s\007", title)
+}
+
+// updateTitleWithSlug updates the terminal title with slug slug
+func (ui *TermUI) updateTitleWithSlug(slug string) {
+	ui.mu.Lock()
+	defer ui.mu.Unlock()
+	ui.currentSlug = slug
+	title := "sketch"
+	if slug != "" {
+		title = fmt.Sprintf("sketch: %s", slug)
+	}
+	ui.setTerminalTitle(title)
 }
