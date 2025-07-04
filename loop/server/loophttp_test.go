@@ -14,6 +14,7 @@ import (
 	"sketch.dev/llm/conversation"
 	"sketch.dev/loop"
 	"sketch.dev/loop/server"
+	"tailscale.com/portlist"
 )
 
 // mockAgent is a mock implementation of loop.CodingAgent for testing
@@ -263,6 +264,14 @@ func (m *mockAgent) IncrementRetryNumber() {
 func (m *mockAgent) SkabandAddr() string   { return m.skabandAddr }
 func (m *mockAgent) LinkToGitHub() bool    { return false }
 func (m *mockAgent) DiffStats() (int, int) { return 0, 0 }
+func (m *mockAgent) GetPorts() []portlist.Port {
+	// Mock returns a few test ports
+	return []portlist.Port{
+		{Proto: "tcp", Port: 22, Process: "sshd", Pid: 1234},
+		{Proto: "tcp", Port: 80, Process: "nginx", Pid: 5678},
+		{Proto: "tcp", Port: 8080, Process: "test-server", Pid: 9012},
+	}
+}
 
 // TestSSEStream tests the SSE stream endpoint
 func TestSSEStream(t *testing.T) {
@@ -587,4 +596,80 @@ func TestParsePortProxyHost(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestStateEndpointIncludesPorts tests that the /state endpoint includes port information
+func TestStateEndpointIncludesPorts(t *testing.T) {
+	mockAgent := &mockAgent{
+		messages:      []loop.AgentMessage{},
+		messageCount:  0,
+		currentState:  "initial",
+		subscribers:   []chan *loop.AgentMessage{},
+		gitUsername:   "test-user",
+		initialCommit: "abc123",
+		branchName:    "test-branch",
+		branchPrefix:  "test-",
+		workingDir:    "/tmp/test",
+		sessionID:     "test-session",
+		slug:          "test-slug",
+		skabandAddr:   "http://localhost:8080",
+	}
+
+	// Create a test server
+	server, err := server.New(mockAgent, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a test request to the /state endpoint
+	req, err := http.NewRequest("GET", "/state", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a response recorder
+	rr := httptest.NewRecorder()
+
+	// Execute the request
+	server.ServeHTTP(rr, req)
+
+	// Check the response
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Check that the response contains port information
+	responseBody := rr.Body.String()
+	t.Logf("Response body: %s", responseBody)
+
+	// Verify the response contains the expected ports
+	if !strings.Contains(responseBody, `"open_ports"`) {
+		t.Error("Response should contain 'open_ports' field")
+	}
+
+	if !strings.Contains(responseBody, `"port": 22`) {
+		t.Error("Response should contain port 22 from mock")
+	}
+
+	if !strings.Contains(responseBody, `"port": 80`) {
+		t.Error("Response should contain port 80 from mock")
+	}
+
+	if !strings.Contains(responseBody, `"port": 8080`) {
+		t.Error("Response should contain port 8080 from mock")
+	}
+
+	if !strings.Contains(responseBody, `"process": "sshd"`) {
+		t.Error("Response should contain process name 'sshd'")
+	}
+
+	if !strings.Contains(responseBody, `"process": "nginx"`) {
+		t.Error("Response should contain process name 'nginx'")
+	}
+
+	if !strings.Contains(responseBody, `"proto": "tcp"`) {
+		t.Error("Response should contain protocol 'tcp'")
+	}
+
+	t.Log("State endpoint includes port information correctly")
 }

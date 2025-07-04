@@ -30,6 +30,7 @@ import (
 	"sketch.dev/llm/conversation"
 	"sketch.dev/mcp"
 	"sketch.dev/skabandclient"
+	"tailscale.com/portlist"
 )
 
 const (
@@ -155,6 +156,9 @@ type CodingAgent interface {
 
 	// SkabandAddr returns the skaband address if configured
 	SkabandAddr() string
+
+	// GetPorts returns the cached list of open TCP ports
+	GetPorts() []portlist.Port
 }
 
 type CodingAgentMessageType string
@@ -168,6 +172,7 @@ const (
 	CommitMessageType  CodingAgentMessageType = "commit"  // for displaying git commits
 	AutoMessageType    CodingAgentMessageType = "auto"    // for automated notifications like autoformatting
 	CompactMessageType CodingAgentMessageType = "compact" // for conversation compaction notifications
+	PortMessageType    CodingAgentMessageType = "port"    // for port monitoring events
 
 	cancelToolUseMessage = "Stop responding to my previous message. Wait for me to ask you something else before attempting to use any more tools."
 )
@@ -430,6 +435,8 @@ type Agent struct {
 	gitOrigin string
 	// MCP manager for handling MCP server connections
 	mcpManager *mcp.MCPManager
+	// Port monitor for tracking TCP ports
+	portMonitor *PortMonitor
 
 	// Time when the current turn started (reset at the beginning of InnerLoop)
 	startOfTurn time.Time
@@ -653,6 +660,14 @@ func (a *Agent) CompactConversation(ctx context.Context) error {
 }
 
 func (a *Agent) URL() string { return a.url }
+
+// GetPorts returns the cached list of open TCP ports.
+func (a *Agent) GetPorts() []portlist.Port {
+	if a.portMonitor == nil {
+		return nil
+	}
+	return a.portMonitor.GetPorts()
+}
 
 // BranchName returns the git branch name for the conversation.
 func (a *Agent) BranchName() string {
@@ -1070,6 +1085,10 @@ func NewAgent(config AgentConfig) *Agent {
 
 		mcpManager: mcp.NewMCPManager(),
 	}
+
+	// Initialize port monitor with 5-second interval
+	agent.portMonitor = NewPortMonitor(agent, 5*time.Second)
+
 	return agent
 }
 
@@ -1522,10 +1541,22 @@ func (a *Agent) CancelTurn(cause error) {
 }
 
 func (a *Agent) Loop(ctxOuter context.Context) {
+	// Start port monitoring
+	if a.portMonitor != nil && a.IsInContainer() {
+		if err := a.portMonitor.Start(ctxOuter); err != nil {
+			slog.WarnContext(ctxOuter, "Failed to start port monitor", "error", err)
+		} else {
+			slog.InfoContext(ctxOuter, "Port monitor started")
+		}
+	}
+
 	// Set up cleanup when context is done
 	defer func() {
 		if a.mcpManager != nil {
 			a.mcpManager.Close()
+		}
+		if a.portMonitor != nil && a.IsInContainer() {
+			a.portMonitor.Stop()
 		}
 	}()
 

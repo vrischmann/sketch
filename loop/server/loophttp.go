@@ -104,6 +104,15 @@ type State struct {
 	SSHConnectionString  string                        `json:"ssh_connection_string,omitempty"` // SSH connection string for container
 	DiffLinesAdded       int                           `json:"diff_lines_added"`                // Lines added from sketch-base to HEAD
 	DiffLinesRemoved     int                           `json:"diff_lines_removed"`              // Lines removed from sketch-base to HEAD
+	OpenPorts            []Port                        `json:"open_ports,omitempty"`            // Currently open TCP ports
+}
+
+// Port represents an open TCP port
+type Port struct {
+	Proto   string `json:"proto"`   // "tcp" or "udp"
+	Port    uint16 `json:"port"`    // port number
+	Process string `json:"process"` // optional process name
+	Pid     int    `json:"pid"`     // process ID
 }
 
 type InitRequest struct {
@@ -1308,7 +1317,27 @@ func (s *Server) getState() State {
 		SSHConnectionString:  s.agent.SSHConnectionString(),
 		DiffLinesAdded:       diffAdded,
 		DiffLinesRemoved:     diffRemoved,
+		OpenPorts:            s.getOpenPorts(),
 	}
+}
+
+// getOpenPorts retrieves the current open ports from the agent
+func (s *Server) getOpenPorts() []Port {
+	ports := s.agent.GetPorts()
+	if ports == nil {
+		return nil
+	}
+
+	result := make([]Port, len(ports))
+	for i, port := range ports {
+		result[i] = Port{
+			Proto:   port.Proto,
+			Port:    port.Port,
+			Process: port.Process,
+			Pid:     port.Pid,
+		}
+	}
+	return result
 }
 
 func (s *Server) handleGitRawDiff(w http.ResponseWriter, r *http.Request) {
