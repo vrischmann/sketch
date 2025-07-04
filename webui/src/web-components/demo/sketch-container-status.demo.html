@@ -23,6 +23,15 @@
             total_cost_usd: 2.03,
           },
           working_dir: "/app",
+          session_id: "demo-session-123",
+          skaband_addr: "https://sketch.dev",
+          open_ports: [
+            { proto: "tcp", port: 22, process: "ssh", pid: 100 },
+            { proto: "tcp", port: 80, process: "nginx", pid: 200 },
+            { proto: "tcp", port: 3000, process: "node", pid: 300 },
+            { proto: "tcp", port: 8080, process: "python", pid: 400 },
+            { proto: "tcp", port: 9000, process: "go", pid: 500 }
+          ]
         };
       });
     </script>

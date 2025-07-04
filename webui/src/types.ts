@@ -61,6 +61,13 @@ export interface CumulativeUsage {
 	tool_uses: { [key: string]: number } | null;
 }
 
+export interface Port {
+	proto: string;
+	port: number;
+	process: string;
+	pid: number;
+}
+
 export interface State {
 	state_version: number;
 	message_count: number;
@@ -94,6 +101,7 @@ export interface State {
 	ssh_connection_string?: string;
 	diff_lines_added: number;
 	diff_lines_removed: number;
+	open_ports?: Port[] | null;
 }
 
 export interface TodoItem {

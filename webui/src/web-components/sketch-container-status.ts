@@ -1,4 +1,4 @@
-import { State, AgentMessage, Usage } from "../types";
+import { State, AgentMessage, Usage, Port } from "../types";
 import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { formatNumber } from "../utils";
@@ -22,6 +22,15 @@ export class SketchContainerStatus extends SketchTailwindElement {
 
   @state()
   latestUsage: Usage | null = null;
+
+  @state()
+  showPortsPopup: boolean = false;
+
+  @state()
+  previousPorts: Port[] = [];
+
+  @state()
+  highlightedPorts: Set<number> = new Set();
 
   // CSS animations that can't be easily replaced with Tailwind
   connectedCallback() {
@@ -54,6 +63,11 @@ export class SketchContainerStatus extends SketchTailwindElement {
     document.addEventListener("click", (event) => {
       if (this.showDetails && !this.contains(event.target as Node)) {
         this.showDetails = false;
+        this.requestUpdate();
+      }
+      // Close the ports popup when clicking outside of it
+      if (this.showPortsPopup && !this.contains(event.target as Node)) {
+        this.showPortsPopup = false;
         this.requestUpdate();
       }
     });
@@ -222,6 +236,88 @@ export class SketchContainerStatus extends SketchTailwindElement {
     } else {
       return `root@${connectionString}`;
     }
+  }
+
+  /**
+   * Get sorted ports (by port number) from state, filtering out ports < 1024
+   */
+  getSortedPorts(): Port[] {
+    if (!this.state?.open_ports) {
+      return [];
+    }
+    return [...this.state.open_ports]
+      .filter(port => port.port >= 1024)
+      .sort((a, b) => a.port - b.port);
+  }
+
+  /**
+   * Generate URL for a port based on skaband_addr or localhost
+   */
+  getPortUrl(port: number): string {
+    if (this.state?.skaband_addr) {
+      // Use skaband proxy pattern: skabandaddr/proxy/<sessionId>/<port>
+      return `${this.state.skaband_addr}/proxy/${this.state.session_id}/${port}`;
+    } else {
+      // Use localhost pattern: http://p{port}.localhost:{sketch_port}
+      // We need to extract the port from the current URL
+      const currentPort = window.location.port || '80';
+      return `http://p${port}.localhost:${currentPort}`;
+    }
+  }
+
+  /**
+   * Handle port link clicks
+   *
+   * TODO: Whereas Chrome resolves *.localhost as localhost,
+   * Safari does not. Ideally, if skaband_addr is empty, we
+   * could do a quick "fetch(p${port}.localhost)", and, if it
+   * doesn't work at all, we could show the user a modal explaining
+   * to use /etc/hosts. But, anyway, this would be nice but isn't done.
+   */
+  onPortClick(port: number, event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const url = this.getPortUrl(port);
+    window.open(url, '_blank');
+  }
+
+  /**
+   * Show more ports popup
+   */
+  private _showMorePorts(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.showPortsPopup = !this.showPortsPopup;
+    this.requestUpdate();
+  }
+
+  /**
+   * Update port tracking and highlight newly opened ports
+   */
+  public updatePortInfo(newPorts: Port[]): void {
+    const currentPorts = newPorts.filter(port => port.port >= 1024);
+    const previousPortNumbers = new Set(this.previousPorts.map(p => p.port));
+
+    // Find newly opened ports
+    const newlyOpenedPorts = currentPorts.filter(port => !previousPortNumbers.has(port.port));
+
+    if (newlyOpenedPorts.length > 0) {
+      // Add newly opened ports to highlighted set
+      newlyOpenedPorts.forEach(port => {
+        this.highlightedPorts.add(port.port);
+      });
+
+      // Remove highlights after animation completes
+      setTimeout(() => {
+        newlyOpenedPorts.forEach(port => {
+          this.highlightedPorts.delete(port.port);
+        });
+        this.requestUpdate();
+      }, 1500);
+    }
+
+    this.previousPorts = [...currentPorts];
+    this.requestUpdate();
   }
 
   // Format GitHub repository URL to org/repo format
@@ -502,6 +598,39 @@ export class SketchContainerStatus extends SketchTailwindElement {
           </div>
         </div>
 
+        <!-- Ports section -->
+        ${(() => {
+          const ports = this.getSortedPorts();
+          if (ports.length === 0) {
+            return html``;
+          }
+          const displayPorts = ports.slice(0, 2);
+          const remainingPorts = ports.slice(2);
+          return html`
+            <div class="flex items-center gap-1 ml-2">
+              ${displayPorts.map(port => html`
+                <button
+                  class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-1 ${this.highlightedPorts.has(port.port) ? 'pulse-custom' : ''}"
+                  @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
+                  title="Open ${port.process} on port ${port.port}"
+                >
+                  <span>${port.process}(${port.port})</span>
+                  <span>🔗</span>
+                </button>
+              `)}
+              ${remainingPorts.length > 0 ? html`
+                <button
+                  class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors ${remainingPorts.some(port => this.highlightedPorts.has(port.port)) ? 'pulse-custom' : ''}"
+                  @click=${(e: MouseEvent) => this._showMorePorts(e)}
+                  title="Show ${remainingPorts.length} more ports"
+                >
+                  +${remainingPorts.length}
+                </button>
+              ` : html``}
+            </div>
+          `;
+        })()}
+
         <!-- Info toggle button -->
         <button
           class="info-toggle ml-2 w-6 h-6 rounded-full flex items-center justify-center ${this
@@ -640,6 +769,27 @@ export class SketchContainerStatus extends SketchTailwindElement {
 
           <!-- SSH Connection Information -->
           ${this.renderSSHSection()}
+        </div>
+
+        <!-- Ports popup -->
+        <div
+          class="${this.showPortsPopup
+            ? "block"
+            : "hidden"} absolute min-w-max top-full right-0 z-20 bg-white rounded-lg p-3 shadow-lg mt-1.5 border border-gray-200"
+        >
+          <h3 class="text-sm font-semibold mb-2">Open Ports</h3>
+          <div class="flex flex-col gap-1">
+            ${this.getSortedPorts().map(port => html`
+              <button
+                class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-2 justify-between"
+                @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
+                title="Open ${port.process} on port ${port.port}"
+              >
+                <span>${port.process}(${port.port})</span>
+                <span>🔗</span>
+              </button>
+            `)}
+          </div>
         </div>
       </div>
     `;
