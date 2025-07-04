@@ -246,7 +246,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
       return [];
     }
     return [...this.state.open_ports]
-      .filter(port => port.port >= 1024)
+      .filter((port) => port.port >= 1024)
       .sort((a, b) => a.port - b.port);
   }
 
@@ -260,7 +260,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
     } else {
       // Use localhost pattern: http://p{port}.localhost:{sketch_port}
       // We need to extract the port from the current URL
-      const currentPort = window.location.port || '80';
+      const currentPort = window.location.port || "80";
       return `http://p${port}.localhost:${currentPort}`;
     }
   }
@@ -278,7 +278,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
     event.preventDefault();
     event.stopPropagation();
     const url = this.getPortUrl(port);
-    window.open(url, '_blank');
+    window.open(url, "_blank");
   }
 
   /**
@@ -295,21 +295,23 @@ export class SketchContainerStatus extends SketchTailwindElement {
    * Update port tracking and highlight newly opened ports
    */
   public updatePortInfo(newPorts: Port[]): void {
-    const currentPorts = newPorts.filter(port => port.port >= 1024);
-    const previousPortNumbers = new Set(this.previousPorts.map(p => p.port));
+    const currentPorts = newPorts.filter((port) => port.port >= 1024);
+    const previousPortNumbers = new Set(this.previousPorts.map((p) => p.port));
 
     // Find newly opened ports
-    const newlyOpenedPorts = currentPorts.filter(port => !previousPortNumbers.has(port.port));
+    const newlyOpenedPorts = currentPorts.filter(
+      (port) => !previousPortNumbers.has(port.port),
+    );
 
     if (newlyOpenedPorts.length > 0) {
       // Add newly opened ports to highlighted set
-      newlyOpenedPorts.forEach(port => {
+      newlyOpenedPorts.forEach((port) => {
         this.highlightedPorts.add(port.port);
       });
 
       // Remove highlights after animation completes
       setTimeout(() => {
-        newlyOpenedPorts.forEach(port => {
+        newlyOpenedPorts.forEach((port) => {
           this.highlightedPorts.delete(port.port);
         });
         this.requestUpdate();
@@ -608,25 +610,37 @@ export class SketchContainerStatus extends SketchTailwindElement {
           const remainingPorts = ports.slice(2);
           return html`
             <div class="flex items-center gap-1 ml-2">
-              ${displayPorts.map(port => html`
-                <button
-                  class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-1 ${this.highlightedPorts.has(port.port) ? 'pulse-custom' : ''}"
-                  @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
-                  title="Open ${port.process} on port ${port.port}"
-                >
-                  <span>${port.process}(${port.port})</span>
-                  <span>🔗</span>
-                </button>
-              `)}
-              ${remainingPorts.length > 0 ? html`
-                <button
-                  class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors ${remainingPorts.some(port => this.highlightedPorts.has(port.port)) ? 'pulse-custom' : ''}"
-                  @click=${(e: MouseEvent) => this._showMorePorts(e)}
-                  title="Show ${remainingPorts.length} more ports"
-                >
-                  +${remainingPorts.length}
-                </button>
-              ` : html``}
+              ${displayPorts.map(
+                (port) => html`
+                  <button
+                    class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-1 ${this.highlightedPorts.has(
+                      port.port,
+                    )
+                      ? "pulse-custom"
+                      : ""}"
+                    @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
+                    title="Open ${port.process} on port ${port.port}"
+                  >
+                    <span>${port.process}(${port.port})</span>
+                    <span>🔗</span>
+                  </button>
+                `,
+              )}
+              ${remainingPorts.length > 0
+                ? html`
+                    <button
+                      class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors ${remainingPorts.some(
+                        (port) => this.highlightedPorts.has(port.port),
+                      )
+                        ? "pulse-custom"
+                        : ""}"
+                      @click=${(e: MouseEvent) => this._showMorePorts(e)}
+                      title="Show ${remainingPorts.length} more ports"
+                    >
+                      +${remainingPorts.length}
+                    </button>
+                  `
+                : html``}
             </div>
           `;
         })()}
@@ -779,16 +793,18 @@ export class SketchContainerStatus extends SketchTailwindElement {
         >
           <h3 class="text-sm font-semibold mb-2">Open Ports</h3>
           <div class="flex flex-col gap-1">
-            ${this.getSortedPorts().map(port => html`
-              <button
-                class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-2 justify-between"
-                @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
-                title="Open ${port.process} on port ${port.port}"
-              >
-                <span>${port.process}(${port.port})</span>
-                <span>🔗</span>
-              </button>
-            `)}
+            ${this.getSortedPorts().map(
+              (port) => html`
+                <button
+                  class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-2 justify-between"
+                  @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
+                  title="Open ${port.process} on port ${port.port}"
+                >
+                  <span>${port.process}(${port.port})</span>
+                  <span>🔗</span>
+                </button>
+              `,
+            )}
           </div>
         </div>
       </div>

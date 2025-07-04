@@ -175,7 +175,7 @@ func (pm *PortMonitor) sendPortNotification(event string, port portlist.Port) {
 
 	// Skip low ports and sketch's ports
 	if port.Port < 1024 || port.Pid == 1 {
-	  return
+		return
 	}
 
 	// TODO: Structure this so that UI can display it more nicely.
