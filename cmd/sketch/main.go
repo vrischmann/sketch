@@ -518,7 +518,7 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 		envName := "ANTHROPIC_API_KEY"
 		if flags.modelName == "gemini" {
 			envName = gem.GeminiAPIKeyEnv
-		} else if flags.modelName == "mistral-medium-3" {
+		} else if strings.HasPrefix(flags.modelName, "mistral") {
 			envName = oai.MistralAPIKeyEnv
 		}
 		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)

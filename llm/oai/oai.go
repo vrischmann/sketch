@@ -186,6 +186,13 @@ var (
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
+	MistralLarge = Model{
+		UserName:  "mistral-large-2411",
+		ModelName: "mistral-large-latest",
+		URL:       MistralURL,
+		APIKeyEnv: MistralAPIKeyEnv,
+	}
+
 	MistralMedium = Model{
 		UserName:  "mistral-medium-3",
 		ModelName: "mistral-medium-latest",
@@ -235,6 +242,7 @@ var ModelsRegistry = []Model{
 	FireworksDeepseekV3,
 	FireworksLlama4Maverick,
 	MistralMedium,
+	MistralLarge,
 	DevstralSmall,
 }
 
