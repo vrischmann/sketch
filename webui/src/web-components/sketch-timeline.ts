@@ -801,7 +801,8 @@ export class SketchTimeline extends SketchTailwindElement {
 
   render() {
     // Check if messages array is empty and render welcome box if it is
-    if (this.messages.length === 0) {
+    // Skip welcome box in newsessions (compactPadding) context
+    if (this.messages.length === 0 && !this.compactPadding) {
       const compactClass = this.compactPadding ? "compact-padding" : "";
       return html`
         <div class="relative h-full">
