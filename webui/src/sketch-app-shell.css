@@ -21,6 +21,20 @@ body {
     format("truetype");
 }
 
+/*
+ * SketchTailwindElement components need explicit host-level styling
+ * since they disable shadow DOM and lose :host CSS selector support
+ */
+sketch-diff2-view {
+  display: flex;
+  height: 100%;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0; /* Critical for flex child behavior */
+  overflow: hidden;
+  position: relative; /* Establish positioning context */
+}
+
 /* Print styles for full chat printing */
 @media print {
   html,

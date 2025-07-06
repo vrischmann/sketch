@@ -47,9 +47,9 @@ export class SketchDiff2View extends SketchTailwindElement {
       const monacoView = event.target as HTMLElement;
       if (!monacoView) return;
 
-      // Find the parent file-diff-editor container
+      // Find the parent Monaco editor container (now using Tailwind classes)
       const fileDiffEditor = monacoView.closest(
-        ".file-diff-editor",
+        ".flex.flex-col.w-full.min-h-\\[200px\\].flex-1",
       ) as HTMLElement;
       if (!fileDiffEditor) return;
 
@@ -61,7 +61,7 @@ export class SketchDiff2View extends SketchTailwindElement {
       const newHeightStr = `${newHeight}px`;
 
       if (currentHeight !== newHeightStr) {
-        // Update the file-diff-editor height to match monaco's height
+        // Update the container height to match monaco's height
         fileDiffEditor.style.height = newHeightStr;
 
         // Remove any previous min-height constraint that might interfere
@@ -301,30 +301,22 @@ export class SketchDiff2View extends SketchTailwindElement {
 
   render() {
     return html`
-      <div class="flex h-full flex-1 flex-col min-h-0 overflow-hidden relative">
-        <div
-          class="px-4 py-2 border-b border-gray-300 bg-gray-100 flex-shrink-0"
-        >
-          <div class="flex flex-col gap-3">
-            <div class="w-full flex items-center gap-3">
-              <sketch-diff-range-picker
-                class="flex-1 min-w-[400px]"
-                .gitService="${this.gitService}"
-                @range-change="${this.handleRangeChange}"
-              ></sketch-diff-range-picker>
-              <div class="flex-1"></div>
-              ${this.renderFileSelector()}
-            </div>
+      <div class="px-4 py-2 border-b border-gray-300 bg-gray-100 flex-shrink-0">
+        <div class="flex flex-col gap-3">
+          <div class="w-full flex items-center gap-3">
+            <sketch-diff-range-picker
+              class="flex-1 min-w-[400px]"
+              .gitService="${this.gitService}"
+              @range-change="${this.handleRangeChange}"
+            ></sketch-diff-range-picker>
+            <div class="flex-1"></div>
+            ${this.renderFileSelector()}
           </div>
         </div>
+      </div>
 
-        <div class="flex-1 overflow-auto flex flex-col min-h-0 relative h-full">
-          <div
-            class="flex-1 overflow-auto min-h-0 flex flex-col relative h-full"
-          >
-            ${this.renderDiffContent()}
-          </div>
-        </div>
+      <div class="flex-1 overflow-auto flex flex-col min-h-0 relative h-full">
+        ${this.renderDiffContent()}
       </div>
     `;
   }
@@ -580,7 +572,7 @@ export class SketchDiff2View extends SketchTailwindElement {
         >
           ${this.renderFileHeader(file)}
         </div>
-        <div class="flex flex-col min-h-[200px] overflow-visible">
+        <div class="flex flex-col w-full min-h-[200px] flex-1">
           <sketch-monaco-view
             class="flex flex-col w-full min-h-[200px] flex-1"
             .originalCode="${content.original}"
@@ -615,8 +607,9 @@ export class SketchDiff2View extends SketchTailwindElement {
       <div class="flex items-center gap-2">
         <span
           class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 ${statusClasses}"
-          >${statusText}</span
         >
+          ${statusText}
+        </span>
         <span class="font-mono font-normal text-gray-600">${pathInfo}</span>
         ${changesInfo
           ? html`<span class="ml-2 text-xs text-gray-600">${changesInfo}</span>`
