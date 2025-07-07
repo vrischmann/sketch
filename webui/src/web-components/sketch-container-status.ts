@@ -664,7 +664,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
         <div
           class="${this.showDetails
             ? "block"
-            : "hidden"} absolute min-w-max top-full z-10 bg-white rounded-lg p-4 shadow-lg mt-1.5"
+            : "hidden"} absolute min-w-max top-full z-100 bg-white rounded-lg p-4 shadow-lg mt-1.5"
         >
           <!-- Last Commit section moved to main grid -->
 
