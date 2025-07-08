@@ -358,19 +358,7 @@ func Build() (fs.FS, error) {
 		return nil, fmt.Errorf("failed to compress .js/.js.map/.css files: %w", err)
 	}
 
-	// Everything succeeded, so we write tmpHashDir to hashZip
-	buf := new(bytes.Buffer)
-	w := zip.NewWriter(buf)
-	if err := w.AddFS(os.DirFS(tmpHashDir)); err != nil {
-		return nil, err
-	}
-	if err := w.Close(); err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(hashZip, buf.Bytes(), 0o666); err != nil {
-		return nil, err
-	}
-	return zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	return os.DirFS(tmpHashDir), nil
 }
 
 func esbuildBundle(outDir, src, metafilePath string) error {

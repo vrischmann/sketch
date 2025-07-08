@@ -1,8 +1,12 @@
 package dockerimg
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -101,5 +105,74 @@ func TestEnsureBaseImageExists(t *testing.T) {
 	err := ensureBaseImageExists(ctx, "nonexistent/image:tag")
 	if err == nil {
 		t.Error("Expected error for nonexistent image, got nil")
+	}
+}
+
+// TestBinaryCaching tests the content-addressable binary caching functionality
+func TestBinaryCaching(t *testing.T) {
+	// Mock the embedded binary
+	testBinary := []byte("fake binary content for testing")
+
+	// Calculate expected hash
+	hash := sha256.Sum256(testBinary)
+	hashHex := hex.EncodeToString(hash[:])
+
+	// Create a temporary directory for this test
+	tempDir := t.TempDir()
+	cacheDir := filepath.Join(tempDir, "sketch-binary-cache")
+	binaryPath := filepath.Join(cacheDir, hashHex)
+
+	// First, create the cache directory
+	err := os.MkdirAll(cacheDir, 0o755)
+	if err != nil {
+		t.Fatalf("Failed to create cache directory: %v", err)
+	}
+
+	// Verify the binary doesn't exist initially
+	if _, err := os.Stat(binaryPath); !os.IsNotExist(err) {
+		t.Fatalf("Binary should not exist initially, but stat returned: %v", err)
+	}
+
+	// Write the binary (simulating first time)
+	err = os.WriteFile(binaryPath, testBinary, 0o700)
+	if err != nil {
+		t.Fatalf("Failed to write binary: %v", err)
+	}
+
+	// Verify the binary now exists and has correct permissions
+	info, err := os.Stat(binaryPath)
+	if err != nil {
+		t.Fatalf("Failed to stat cached binary: %v", err)
+	}
+
+	if info.Mode().Perm() != 0o700 {
+		t.Errorf("Expected permissions 0700, got %o", info.Mode().Perm())
+	}
+
+	// Verify content matches
+	cachedContent, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatalf("Failed to read cached binary: %v", err)
+	}
+
+	if !bytes.Equal(testBinary, cachedContent) {
+		t.Error("Cached binary content doesn't match original")
+	}
+
+	// Test that the same hash produces the same path
+	hash2 := sha256.Sum256(testBinary)
+	hashHex2 := hex.EncodeToString(hash2[:])
+
+	if hashHex != hashHex2 {
+		t.Error("Same content should produce same hash")
+	}
+
+	// Test that different content produces different hash
+	differentBinary := []byte("different fake binary content")
+	differentHash := sha256.Sum256(differentBinary)
+	differentHashHex := hex.EncodeToString(differentHash[:])
+
+	if hashHex == differentHashHex {
+		t.Error("Different content should produce different hash")
 	}
 }

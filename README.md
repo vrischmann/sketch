@@ -25,9 +25,13 @@ Sketch helps with most programming environments, but Sketch has extra goodies fo
 
 ## 📋 Quick Start
 
+Grab the most recent [nightly release](https://github.com/boldsoftware/sketch/releases).
+
+To build yourself, clone this repo, and then run:
+
 ```sh
-go install sketch.dev/cmd/sketch@latest
-sketch
+$ make
+$ ./sketch
 ```
 
 ## 🔧 Requirements

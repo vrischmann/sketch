@@ -23,9 +23,9 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"sketch.dev/browser"
+	"sketch.dev/embedded"
 	"sketch.dev/loop/server"
 	"sketch.dev/skribe"
-	"sketch.dev/webui"
 )
 
 // ContainerConfig holds all configuration for launching a container
@@ -171,14 +171,6 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		return err
 	}
 
-	linuxSketchBin := config.SketchBinaryLinux
-	if linuxSketchBin == "" {
-		linuxSketchBin, err = buildLinuxSketchBin(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	cntrName := "sketch-" + config.SessionID
 	defer func() {
 		if config.NoCleanup {
@@ -236,28 +228,12 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	config.Upstream = upstream
 	config.Commit = commit
 
-	// Create the sketch container
+	// Create the sketch container, copy over linux sketch
 	if err := createDockerContainer(ctx, cntrName, hostPort, relPath, imgName, config); err != nil {
 		return fmt.Errorf("failed to create docker container: %w", err)
 	}
-
-	// Copy the sketch linux binary into the container
-	if out, err := combinedOutput(ctx, "docker", "cp", linuxSketchBin, cntrName+":/bin/sketch"); err != nil {
-		return fmt.Errorf("docker cp: %s, %w", out, err)
-	}
-
-	// Make sure that the webui is built so we can copy the results to the container.
-	_, err = webui.Build()
-	if err != nil {
-		return fmt.Errorf("failed to build webui: %w", err)
-	}
-
-	webuiZipPath, err := webui.ZipPath()
-	if err != nil {
-		return err
-	}
-	if out, err := combinedOutput(ctx, "docker", "cp", webuiZipPath, cntrName+":/root/.cache/sketch/webui/"+filepath.Base(webuiZipPath)); err != nil {
-		return fmt.Errorf("docker cp: %s, %w", out, err)
+	if err := copyEmbeddedLinuxBinaryToContainer(ctx, cntrName); err != nil {
+		return fmt.Errorf("failed to copy linux binary to container: %w", err)
 	}
 
 	fmt.Printf("📦 running in container %s\n", cntrName)
@@ -1180,6 +1156,40 @@ func getHostGoModCacheDir(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to get GOMODCACHE: %s: %w", out, err)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// copyEmbeddedLinuxBinaryToContainer copies the embedded linux binary to the container
+func copyEmbeddedLinuxBinaryToContainer(ctx context.Context, containerName string) error {
+	bin := embedded.LinuxBinary()
+	if bin == nil {
+		return fmt.Errorf("nil embedded linux binary reader, did you build using `make`?")
+	}
+
+	cacheDir := filepath.Join(os.TempDir(), "sketch-binary-cache")
+	if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+		return fmt.Errorf("failed to create cache directory: %w", err)
+	}
+
+	hash := sha256.Sum256(bin)
+	binaryPath := filepath.Join(cacheDir, hex.EncodeToString(hash[:]))
+	_, statErr := os.Stat(binaryPath)
+	switch {
+	case os.IsNotExist(statErr):
+		if err := os.WriteFile(binaryPath, bin, 0o700); err != nil {
+			return fmt.Errorf("failed to write binary to cache: %w", err)
+		}
+	case statErr != nil:
+		return fmt.Errorf("failed to check if cached binary exists: %w", statErr)
+	}
+	// TODO: clean up old sketch binaries from the cache dir:
+	// maybe set a max of 5, and then delete oldest after that by atime/mtime/ctime
+
+	if out, err := combinedOutput(ctx, "docker", "cp", binaryPath, containerName+":/bin/sketch"); err != nil {
+		return fmt.Errorf("docker cp failed: %s: %w", out, err)
+	}
+
+	slog.DebugContext(ctx, "copied embedded linux binary to container", "container", containerName)
+	return nil
 }
 
 const seccompProfile = `{

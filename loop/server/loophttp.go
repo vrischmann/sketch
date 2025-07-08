@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
@@ -26,14 +25,13 @@ import (
 	"syscall"
 	"time"
 
-	"sketch.dev/git_tools"
-	"sketch.dev/loop/server/gzhandler"
-
 	"github.com/creack/pty"
 	"sketch.dev/claudetool/browse"
+	"sketch.dev/embedded"
+	"sketch.dev/git_tools"
 	"sketch.dev/llm/conversation"
 	"sketch.dev/loop"
-	"sketch.dev/webui"
+	"sketch.dev/loop/server/gzhandler"
 )
 
 // terminalSession represents a terminal session with its PTY and the event channel
@@ -214,11 +212,6 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		terminalSessions: make(map[string]*terminalSession),
 		sshAvailable:     false,
 		sshError:         "",
-	}
-
-	webBundle, err := webui.Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build web bundle, did you run 'go generate sketch.dev/loop/...'?: %w", err)
 	}
 
 	s.mux.HandleFunc("/stream", s.handleSSEStream)
@@ -488,7 +481,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 	})
 
-	s.mux.Handle("/static/", http.StripPrefix("/static/", gzhandler.New(webBundle)))
+	s.mux.Handle("/static/", http.StripPrefix("/static/", gzhandler.New(embedded.WebUIFS())))
 
 	// Terminal WebSocket handler
 	// Terminal endpoints - predefined terminals 1-9
@@ -528,33 +521,14 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		s.handleTerminalInput(w, r, sessionID)
 	})
 
-	// Handler for interface selection via URL parameters (?m for mobile, ?d for desktop, auto-detect by default)
+	// Handler for interface selection via URL parameters (?m for mobile)
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Check URL parameters for interface selection
-		queryParams := r.URL.Query()
-
-		// Check if mobile interface is requested (?m parameter)
-		if queryParams.Has("m") {
-			// Serve the mobile-app-shell.html file
-			data, err := fs.ReadFile(webBundle, "mobile-app-shell.html")
-			if err != nil {
-				http.Error(w, "Mobile interface not found", http.StatusNotFound)
-				return
-			}
-			w.Header().Set("Content-Type", "text/html")
-			w.Write(data)
-			return
+		webuiFS := embedded.WebUIFS()
+		appShell := "sketch-app-shell.html"
+		if r.URL.Query().Has("m") {
+			appShell = "mobile-app-shell.html"
 		}
-
-		// Check if desktop interface is explicitly requested (?d parameter)
-		// or serve desktop by default
-		data, err := fs.ReadFile(webBundle, "sketch-app-shell.html")
-		if err != nil {
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(data)
+		http.ServeFileFS(w, r, webuiFS, appShell)
 	})
 
 	// Handler for /commit-description - returns the description of a git commit

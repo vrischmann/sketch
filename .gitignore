@@ -5,3 +5,6 @@ node_modules
 
 # goreleaser builds
 dist
+
+# makefile artifact
+sketch

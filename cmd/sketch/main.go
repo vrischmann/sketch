@@ -38,12 +38,13 @@ import (
 	"sketch.dev/webui"
 )
 
-// Version information set by GoReleaser at build time
+// Version information set by ldflags at build time
 var (
-	version = "dev"     // version string
-	commit  = "none"    // git commit hash
-	date    = "unknown" // build timestamp
-	builtBy = "unknown" // who built this binary
+	version  = "dev"     // version string
+	commit   = "none"    // git commit hash
+	date     = "unknown" // build timestamp
+	builtBy  = "unknown" // who built this binary
+	makefile = ""        // marker indicating a makefile build
 )
 
 func main() {
@@ -58,6 +59,11 @@ func main() {
 // execution path based on whether we're running in a container or not.
 func run() error {
 	flagArgs := parseCLIFlags()
+
+	// If not built with make, embedded assets will be missing.
+	if makefile == "" {
+		return fmt.Errorf("please use `make` to build sketch")
+	}
 
 	// Set up signal handling if -ignoresig flag is set
 	if flagArgs.ignoreSig {
