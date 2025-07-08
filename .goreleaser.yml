@@ -4,26 +4,32 @@ project_name: sketch
 # Build configuration
 before:
   hooks:
-    - "npm ci --prefix webui"
-    - "npm run build --prefix webui"
+    - make clean
 
 builds:
   - id: sketch
+    # Note: this build corresponds to 'make outie'; please keep them in sync.
     main: ./cmd/sketch
-    env:
-      - CGO_ENABLED=0
+    binary: sketch
     goos:
       - linux
       - darwin
     goarch:
       - amd64
       - arm64
+    tags:
+      - outie
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.makefile=goreleaser
+    hooks:
+      pre:
+        - ./.goreleaser/build-target.sh
 
 archives:
   - id: releaseArchive
-    format: tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md

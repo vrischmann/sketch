@@ -9,6 +9,10 @@ COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo "dev")
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_TIME) -X main.makefile=true
 
+# Support for cross-compilation, used by GoReleaser
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
+
 .PHONY: all clean help
 .PHONY: outie innie
 .PHONY: webui-assets
@@ -16,7 +20,8 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BU
 all: outie
 
 outie: innie
-	go build -ldflags="$(LDFLAGS)" -tags=outie -o sketch ./cmd/sketch
+	# Note: This incantation is duplicated in .goreleaser.yml; please keep them in sync.
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -tags=outie -o sketch ./cmd/sketch
 
 innie: webui-assets
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -tags=innie -o embedded/sketch-linux/sketch-linux-amd64 ./cmd/sketch
@@ -24,7 +29,7 @@ innie: webui-assets
 
 webui-assets:
 	rm -rf embedded/webui-dist
-	go run ./cmd/genwebui -- embedded/webui-dist
+	unset GOOS GOARCH && go run ./cmd/genwebui -- embedded/webui-dist
 
 clean:
 	@echo "Cleaning build artifacts..."
