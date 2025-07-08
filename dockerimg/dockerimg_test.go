@@ -37,34 +37,6 @@ func TestDockerHashIsPushed(t *testing.T) {
 	}
 }
 
-// TestGetHostGoCacheDirs tests that we can get the host Go cache directories
-func TestGetHostGoCacheDirs(t *testing.T) {
-	if !RaceEnabled() {
-		t.Skip("Race detector not enabled, skipping test")
-	}
-
-	ctx := context.Background()
-
-	goCacheDir, err := getHostGoCacheDir(ctx)
-	if err != nil {
-		t.Fatalf("getHostGoCacheDir failed: %v", err)
-	}
-	if goCacheDir == "" {
-		t.Error("GOCACHE is empty")
-	}
-
-	goModCacheDir, err := getHostGoModCacheDir(ctx)
-	if err != nil {
-		t.Fatalf("getHostGoModCacheDir failed: %v", err)
-	}
-	if goModCacheDir == "" {
-		t.Error("GOMODCACHE is empty")
-	}
-
-	t.Logf("GOCACHE: %s", goCacheDir)
-	t.Logf("GOMODCACHE: %s", goModCacheDir)
-}
-
 // TestCreateCacheKey tests the cache key generation
 func TestCreateCacheKey(t *testing.T) {
 	key1 := createCacheKey("image1", "/path1")

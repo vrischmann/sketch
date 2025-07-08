@@ -263,14 +263,3 @@ func TextContent(text string) []Content {
 		Text: text,
 	}}
 }
-
-// ImageContent creates an image content for tool results.
-// MediaType should be "image/jpeg" or "image/png"
-func ImageContent(text string, mediaType string, base64Data string) []Content {
-	return []Content{{
-		Type:      ContentTypeText,
-		Text:      text,
-		MediaType: mediaType,
-		Data:      base64Data,
-	}}
-}
