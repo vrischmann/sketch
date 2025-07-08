@@ -75,14 +75,14 @@ func (pm *PortMonitor) Start(ctx context.Context) error {
 // Stop stops the port monitor.
 func (pm *PortMonitor) Stop() {
 	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
 	if !pm.running {
+		pm.mu.Unlock()
 		return
 	}
 
 	pm.running = false
 	pm.cancel()
+	pm.mu.Unlock()
 	pm.wg.Wait()
 	pm.poller.Close()
 }
