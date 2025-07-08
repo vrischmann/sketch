@@ -355,29 +355,28 @@ func TestDefaultViewportSize(t *testing.T) {
 
 	// Parse the result to verify dimensions
 	var response struct {
-		Result struct {
-			Width  float64 `json:"width"`
-			Height float64 `json:"height"`
-		} `json:"result"`
+		Width  float64 `json:"width"`
+		Height float64 `json:"height"`
 	}
 
-	if err := json.Unmarshal([]byte(content[0].Text), &response); err != nil {
-		t.Fatalf("Failed to parse evaluation response: %v", err)
+	text := content[0].Text
+	text = strings.TrimPrefix(text, "<javascript_result>")
+	text = strings.TrimSuffix(text, "</javascript_result>")
+
+	if err := json.Unmarshal([]byte(text), &response); err != nil {
+		t.Fatalf("Failed to parse evaluation response (%q => %q): %v", content[0].Text, text, err)
 	}
 
 	// Verify the default viewport size is 1280x720
 	expectedWidth := 1280.0
 	expectedHeight := 720.0
 
-	if response.Result.Width != expectedWidth {
-		t.Errorf("Expected default width %v, got %v", expectedWidth, response.Result.Width)
+	if response.Width != expectedWidth {
+		t.Errorf("Expected default width %v, got %v", expectedWidth, response.Width)
 	}
-
-	if response.Result.Height != expectedHeight {
-		t.Errorf("Expected default height %v, got %v", expectedHeight, response.Result.Height)
+	if response.Height != expectedHeight {
+		t.Errorf("Expected default height %v, got %v", expectedHeight, response.Height)
 	}
-
-	t.Logf("✅ Default viewport size verified: %vx%v", response.Result.Width, response.Result.Height)
 }
 
 // TestResizeTool tests the browser resize functionality
