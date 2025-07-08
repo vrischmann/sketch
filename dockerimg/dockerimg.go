@@ -1161,9 +1161,15 @@ func getHostGoModCacheDir(ctx context.Context) (string, error) {
 
 // copyEmbeddedLinuxBinaryToContainer copies the embedded linux binary to the container
 func copyEmbeddedLinuxBinaryToContainer(ctx context.Context, containerName string) error {
-	bin := embedded.LinuxBinary()
+	out, err := combinedOutput(ctx, "docker", "version", "--format", "{{.Server.Arch}}")
+	if err != nil {
+		return fmt.Errorf("failed to detect Docker server architecture: %s: %w", out, err)
+	}
+	arch := strings.TrimSpace(string(out))
+
+	bin := embedded.LinuxBinary(arch)
 	if bin == nil {
-		return fmt.Errorf("nil embedded linux binary reader, did you build using `make`?")
+		return fmt.Errorf("no embedded linux binary for architecture %q", arch)
 	}
 
 	// Stream a tarball to docker cp.

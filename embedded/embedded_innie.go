@@ -11,7 +11,7 @@ import (
 var webUIAssets embed.FS
 
 // LinuxBinary returns the embedded linux binary.
-func LinuxBinary() []byte {
+func LinuxBinary(arch string) []byte {
 	return nil
 }
 
