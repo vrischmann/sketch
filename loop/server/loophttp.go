@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -1440,6 +1441,10 @@ func (s *Server) handleGitCat(w http.ResponseWriter, r *http.Request) {
 
 	// Get file content using GitCat
 	content, err := git_tools.GitCat(repoDir, path)
+	if errors.Is(err, os.ErrNotExist) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading file: %v", err), http.StatusInternalServerError)
 		return
