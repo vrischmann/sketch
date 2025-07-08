@@ -10,7 +10,6 @@ require (
 	github.com/evanw/esbuild v0.25.2
 	github.com/fatih/color v1.18.0
 	github.com/gliderlabs/ssh v0.3.8
-	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/mark3labs/mcp-go v0.32.0
@@ -25,6 +24,7 @@ require (
 	golang.org/x/term v0.32.0
 	golang.org/x/tools v0.32.0
 	mvdan.cc/sh/v3 v3.11.1-0.20250530001257-46bb4f2b309f
+	tailscale.com v1.84.3
 )
 
 require (
@@ -43,7 +43,6 @@ require (
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	tailscale.com v1.84.3 // indirect
 )
 
 tool golang.org/x/tools/cmd/stringer
