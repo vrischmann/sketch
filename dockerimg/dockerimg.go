@@ -2,6 +2,7 @@
 package dockerimg
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -1165,30 +1166,45 @@ func copyEmbeddedLinuxBinaryToContainer(ctx context.Context, containerName strin
 		return fmt.Errorf("nil embedded linux binary reader, did you build using `make`?")
 	}
 
-	cacheDir := filepath.Join(os.TempDir(), "sketch-binary-cache")
-	if err := os.MkdirAll(cacheDir, 0o700); err != nil {
-		return fmt.Errorf("failed to create cache directory: %w", err)
-	}
+	// Stream a tarball to docker cp.
+	pr, pw := io.Pipe()
 
-	hash := sha256.Sum256(bin)
-	binaryPath := filepath.Join(cacheDir, hex.EncodeToString(hash[:]))
-	_, statErr := os.Stat(binaryPath)
-	switch {
-	case os.IsNotExist(statErr):
-		if err := os.WriteFile(binaryPath, bin, 0o700); err != nil {
-			return fmt.Errorf("failed to write binary to cache: %w", err)
+	errCh := make(chan error, 1)
+	go func() {
+		defer pw.Close()
+		tw := tar.NewWriter(pw)
+
+		hdr := &tar.Header{
+			Name: "bin/sketch", // final path inside the container
+			Mode: 0o700,
+			Size: int64(len(bin)),
 		}
-	case statErr != nil:
-		return fmt.Errorf("failed to check if cached binary exists: %w", statErr)
-	}
-	// TODO: clean up old sketch binaries from the cache dir:
-	// maybe set a max of 5, and then delete oldest after that by atime/mtime/ctime
+		if err := tw.WriteHeader(hdr); err != nil {
+			errCh <- fmt.Errorf("failed to write tar header: %w", err)
+			return
+		}
+		if _, err := tw.Write(bin); err != nil {
+			errCh <- fmt.Errorf("failed to write binary to tar: %w", err)
+			return
+		}
+		if err := tw.Close(); err != nil {
+			errCh <- fmt.Errorf("failed to close tar writer: %w", err)
+			return
+		}
+		errCh <- nil
+	}()
 
-	if out, err := combinedOutput(ctx, "docker", "cp", binaryPath, containerName+":/bin/sketch"); err != nil {
-		return fmt.Errorf("docker cp failed: %s: %w", out, err)
-	}
+	cmd := exec.CommandContext(ctx, "docker", "cp", "-", containerName+":/")
+	cmd.Stdin = pr
 
-	slog.DebugContext(ctx, "copied embedded linux binary to container", "container", containerName)
+	out, cmdErr := cmd.CombinedOutput()
+
+	if tarErr := <-errCh; tarErr != nil {
+		return tarErr
+	}
+	if cmdErr != nil {
+		return fmt.Errorf("docker cp failed: %s: %w", out, cmdErr)
+	}
 	return nil
 }
 
