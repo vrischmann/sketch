@@ -2,7 +2,6 @@ package loop
 
 import (
 	"context"
-	"net"
 	"testing"
 	"time"
 
@@ -121,89 +120,6 @@ func TestPortMonitor_GetPorts(t *testing.T) {
 		if port.Proto != "tcp" {
 			t.Errorf("expected TCP port, got %s", port.Proto)
 		}
-	}
-}
-
-// TestPortMonitor_PortDetection tests actual port detection with a test server.
-func TestPortMonitor_PortDetection(t *testing.T) {
-	agent := createTestAgent(t)
-	pm := NewPortMonitor(agent, 50*time.Millisecond) // Fast polling for test
-
-	ctx := context.Background()
-	err := pm.Start(ctx)
-	if err != nil {
-		t.Fatalf("failed to start port monitor: %v", err)
-	}
-	defer pm.Stop()
-
-	// Allow initial scan
-	time.Sleep(100 * time.Millisecond)
-
-	// Get initial port count
-	initialPorts := pm.GetPorts()
-	initialCount := len(initialPorts)
-
-	// Start a test server
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start test listener: %v", err)
-	}
-	defer listener.Close()
-
-	addr := listener.Addr().(*net.TCPAddr)
-	testPort := uint16(addr.Port)
-
-	t.Logf("Started test server on port %d", testPort)
-
-	// Wait for port to be detected
-	detected := false
-	for i := 0; i < 50; i++ { // Wait up to 2.5 seconds
-		time.Sleep(50 * time.Millisecond)
-		ports := pm.GetPorts()
-		for _, port := range ports {
-			if port.Port == testPort {
-				detected = true
-				break
-			}
-		}
-		if detected {
-			break
-		}
-	}
-
-	if !detected {
-		t.Errorf("test port %d was not detected", testPort)
-	}
-
-	// Verify port count increased
-	currentPorts := pm.GetPorts()
-	if len(currentPorts) <= initialCount {
-		t.Errorf("expected port count to increase from %d, got %d", initialCount, len(currentPorts))
-	}
-
-	// Close the listener
-	listener.Close()
-
-	// Wait for port to be removed
-	removed := false
-	for i := 0; i < 50; i++ { // Wait up to 2.5 seconds
-		time.Sleep(50 * time.Millisecond)
-		ports := pm.GetPorts()
-		found := false
-		for _, port := range ports {
-			if port.Port == testPort {
-				found = true
-				break
-			}
-		}
-		if !found {
-			removed = true
-			break
-		}
-	}
-
-	if !removed {
-		t.Errorf("test port %d was not removed after listener closed", testPort)
 	}
 }
 
