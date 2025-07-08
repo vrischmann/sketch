@@ -233,6 +233,8 @@ func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
 					ui.AppendSystemMessage("🔄 new commit: [%s] %s", commit.Hash[:8], commit.Subject)
 				}
 			}
+		case loop.PortMessageType:
+			ui.AppendSystemMessage("🔌 %s", resp.Content)
 		default:
 			ui.AppendSystemMessage("❌ Unexpected Message Type %s %v", resp.Type, resp)
 		}

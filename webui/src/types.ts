@@ -142,6 +142,6 @@ export interface GitLogEntry {
 	subject: string;
 }
 
-export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto';
+export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto' | 'port';
 
 export type Duration = number;
