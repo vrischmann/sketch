@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/creack/pty"
@@ -836,7 +835,9 @@ func (s *Server) createTerminalSession(sessionID string) (*terminalSession, erro
 	go s.readFromPtyAndBroadcast(sessionID, session)
 
 	return session, nil
-} // handleTerminalEvents handles SSE connections for terminal output
+}
+
+// handleTerminalEvents handles SSE connections for terminal output
 func (s *Server) handleTerminalEvents(w http.ResponseWriter, r *http.Request, sessionID string) {
 	// Check if the session exists, if not, create it
 	s.ptyMutex.Lock()
@@ -965,10 +966,9 @@ func (s *Server) readFromPtyAndBroadcast(sessionID string, session *terminalSess
 
 		// Ensure process is terminated
 		if session.cmd.Process != nil {
-			session.cmd.Process.Signal(syscall.SIGTERM)
-			time.Sleep(100 * time.Millisecond)
 			session.cmd.Process.Kill()
 		}
+		session.cmd.Wait()
 
 		// Close all client channels
 		session.eventsClientsMutex.Lock()
