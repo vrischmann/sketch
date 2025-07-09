@@ -23,44 +23,77 @@ import (
 // PermissionCallback is a function type for checking if a command is allowed to run
 type PermissionCallback func(command string) error
 
-// BashTool is a struct for executing shell commands with bash -c and optional timeout
+// BashTool specifies a llm.Tool for executing shell commands.
 type BashTool struct {
 	// CheckPermission is called before running any command, if set
 	CheckPermission PermissionCallback
 	// EnableJITInstall enables just-in-time tool installation for missing commands
 	EnableJITInstall bool
+	// Timeouts holds the configurable timeout values (uses defaults if nil)
+	Timeouts *Timeouts
 }
 
 const (
 	EnableBashToolJITInstall = true
 	NoBashToolJITInstall     = false
+
+	DefaultFastTimeout       = 30 * time.Second
+	DefaultSlowTimeout       = 15 * time.Minute
+	DefaultBackgroundTimeout = 24 * time.Hour
 )
 
-// NewBashTool creates a new Bash tool with optional permission callback
-func NewBashTool(checkPermission PermissionCallback, enableJITInstall bool) *llm.Tool {
-	tool := &BashTool{
-		CheckPermission:  checkPermission,
-		EnableJITInstall: enableJITInstall,
-	}
+// Timeouts holds the configurable timeout values for bash commands.
+type Timeouts struct {
+	Fast       time.Duration // regular commands (e.g., ls, echo, simple scripts)
+	Slow       time.Duration // commands that may reasonably take longer (e.g., downloads, builds, tests)
+	Background time.Duration // background commands (e.g., servers, long-running processes)
+}
 
+// Fast returns t's fast timeout, or DefaultFastTimeout if t is nil.
+func (t *Timeouts) fast() time.Duration {
+	if t == nil {
+		return DefaultFastTimeout
+	}
+	return t.Fast
+}
+
+// Slow returns t's slow timeout, or DefaultSlowTimeout if t is nil.
+func (t *Timeouts) slow() time.Duration {
+	if t == nil {
+		return DefaultSlowTimeout
+	}
+	return t.Slow
+}
+
+// Background returns t's background timeout, or DefaultBackgroundTimeout if t is nil.
+func (t *Timeouts) background() time.Duration {
+	if t == nil {
+		return DefaultBackgroundTimeout
+	}
+	return t.Background
+}
+
+// Tool returns an llm.Tool based on b.
+func (b *BashTool) Tool() *llm.Tool {
 	return &llm.Tool{
 		Name:        bashName,
 		Description: strings.TrimSpace(bashDescription),
 		InputSchema: llm.MustSchema(bashInputSchema),
-		Run:         tool.Run,
+		Run:         b.Run,
 	}
 }
-
-// The Bash tool executes shell commands with bash -c and optional timeout
-var Bash = NewBashTool(nil, NoBashToolJITInstall)
 
 const (
 	bashName        = "bash"
 	bashDescription = `
-Executes a shell command using bash -c with an optional timeout, returning combined stdout and stderr.
-When run with background flag, the process may keep running after the tool call returns, and
-the agent can inspect the output by reading the output files. Use the background task when, for example,
-starting a server to test something. Be sure to kill the process group when done.
+Executes shell commands via bash -c, returning combined stdout/stderr.
+
+With background=true, returns immediately while process continues running
+with output redirected to files. Kill process group when done.
+Use background for servers/demos that need to stay running.
+
+MUST set slow_ok=true for potentially slow commands: builds, downloads,
+installs, tests, or any other substantive operation.
 `
 	// If you modify this, update the termui template for prettier rendering.
 	bashInputSchema = `
@@ -70,15 +103,15 @@ starting a server to test something. Be sure to kill the process group when done
   "properties": {
     "command": {
       "type": "string",
-      "description": "Shell script to execute"
+      "description": "Shell to execute"
     },
-    "timeout": {
-      "type": "string",
-      "description": "Timeout as a Go duration string, defaults to 10s if background is false; 10m if background is true"
+    "slow_ok": {
+      "type": "boolean",
+      "description": "Use extended timeout"
     },
     "background": {
       "type": "boolean",
-      "description": "If true, executes the command in the background without waiting for completion"
+      "description": "Execute in background"
     }
   }
 }
@@ -87,7 +120,7 @@ starting a server to test something. Be sure to kill the process group when done
 
 type bashInput struct {
 	Command    string `json:"command"`
-	Timeout    string `json:"timeout,omitempty"`
+	SlowOK     bool   `json:"slow_ok,omitempty"`
 	Background bool   `json:"background,omitempty"`
 }
 
@@ -97,19 +130,14 @@ type BackgroundResult struct {
 	StderrFile string `json:"stderr_file"`
 }
 
-func (i *bashInput) timeout() time.Duration {
-	if i.Timeout != "" {
-		dur, err := time.ParseDuration(i.Timeout)
-		if err == nil {
-			return dur
-		}
-	}
-
-	// Otherwise, use different defaults based on background mode
-	if i.Background {
-		return 10 * time.Minute
-	} else {
-		return 10 * time.Second
+func (i *bashInput) timeout(t *Timeouts) time.Duration {
+	switch {
+	case i.Background:
+		return t.background()
+	case i.SlowOK:
+		return t.slow()
+	default:
+		return t.fast()
 	}
 }
 
@@ -140,9 +168,11 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, e
 		}
 	}
 
+	timeout := req.timeout(b.Timeouts)
+
 	// If Background is set to true, use executeBackgroundBash
 	if req.Background {
-		result, err := executeBackgroundBash(ctx, req)
+		result, err := executeBackgroundBash(ctx, req, timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +186,7 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, e
 	}
 
 	// For foreground commands, use executeBash
-	out, execErr := executeBash(ctx, req)
+	out, execErr := executeBash(ctx, req, timeout)
 	if execErr != nil {
 		return nil, execErr
 	}
@@ -165,8 +195,8 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, e
 
 const maxBashOutputLength = 131072
 
-func executeBash(ctx context.Context, req bashInput) (string, error) {
-	execCtx, cancel := context.WithTimeout(ctx, req.timeout())
+func executeBash(ctx context.Context, req bashInput, timeout time.Duration) (string, error) {
+	execCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// Can't do the simple thing and call CombinedOutput because of the need to kill the process group.
@@ -218,7 +248,7 @@ func executeBash(ctx context.Context, req bashInput) (string, error) {
 		if len(partialOutput) > maxBashOutputLength {
 			partialOutput = partialOutput[:maxBashOutputLength] + "\n[output truncated due to size]\n"
 		}
-		return "", fmt.Errorf("command timed out after %s\nCommand output (until it timed out):\n%s", req.timeout(), outstr)
+		return "", fmt.Errorf("command timed out after %s\nCommand output (until it timed out):\n%s", timeout, outstr)
 	}
 	if err != nil {
 		return "", fmt.Errorf("command failed: %w\n%s", err, outstr)
@@ -246,7 +276,7 @@ func humanizeBytes(bytes int) string {
 }
 
 // executeBackgroundBash executes a command in the background and returns the pid and output file locations
-func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResult, error) {
+func executeBackgroundBash(ctx context.Context, req bashInput, timeout time.Duration) (*BackgroundResult, error) {
 	// Create temporary directory for output files
 	tmpDir, err := os.MkdirTemp("", "sketch-bg-")
 	if err != nil {
@@ -296,7 +326,6 @@ func executeBackgroundBash(ctx context.Context, req bashInput) (*BackgroundResul
 
 	// Set up timeout handling if a timeout was specified
 	pid := cmd.Process.Pid
-	timeout := req.timeout()
 	if timeout > 0 {
 		// Launch a goroutine that will kill the process after the timeout
 		go func() {
@@ -377,7 +406,7 @@ func (b *BashTool) installTools(ctx context.Context, missing []string) error {
 	}
 	subConvo := info.Convo.SubConvo()
 	subConvo.Hidden = true
-	subBash := NewBashTool(nil, NoBashToolJITInstall)
+	subBash := &BashTool{EnableJITInstall: NoBashToolJITInstall}
 
 	done := false
 	doneTool := &llm.Tool{
@@ -428,7 +457,7 @@ func (b *BashTool) installTools(ctx context.Context, missing []string) error {
 	}
 
 	subConvo.Tools = []*llm.Tool{
-		subBash,
+		subBash.Tool(),
 		doneTool,
 	}
 

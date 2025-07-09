@@ -40,7 +40,7 @@ var (
 {{else if eq .msg.ToolName "keyword_search" -}}
  🔍 {{ .input.query}}: {{.input.search_terms -}}
 {{else if eq .msg.ToolName "bash" -}}
- 🖥️{{if .input.background}}🔄{{end}}  {{ .input.command -}}
+ 🖥️  {{if .input.background}}🥷  {{end}}{{if .input.slow_ok}}🐢  {{end}}{{ .input.command -}}
 {{else if eq .msg.ToolName "patch" -}}
  ⌨️  {{.input.path -}}
 {{else if eq .msg.ToolName "done" -}}

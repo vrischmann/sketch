@@ -11,12 +11,60 @@ import (
 	"time"
 )
 
+func TestBashSlowOk(t *testing.T) {
+	// Test that slow_ok flag is properly handled
+	t.Run("SlowOk Flag", func(t *testing.T) {
+		input := json.RawMessage(`{"command":"echo 'slow test'","slow_ok":true}`)
+
+		bashTool := (&BashTool{}).Tool()
+		result, err := bashTool.Run(context.Background(), input)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		expected := "slow test\n"
+		if len(result) == 0 || result[0].Text != expected {
+			t.Errorf("Expected %q, got %q", expected, result[0].Text)
+		}
+	})
+
+	// Test that slow_ok with background works
+	t.Run("SlowOk with Background", func(t *testing.T) {
+		input := json.RawMessage(`{"command":"echo 'slow background test'","slow_ok":true,"background":true}`)
+
+		bashTool := (&BashTool{}).Tool()
+		result, err := bashTool.Run(context.Background(), input)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		// Should return background result JSON
+		var bgResult BackgroundResult
+		resultStr := result[0].Text
+		if err := json.Unmarshal([]byte(resultStr), &bgResult); err != nil {
+			t.Fatalf("Failed to unmarshal background result: %v", err)
+		}
+
+		if bgResult.PID <= 0 {
+			t.Errorf("Invalid PID returned: %d", bgResult.PID)
+		}
+
+		// Clean up
+		os.Remove(bgResult.StdoutFile)
+		os.Remove(bgResult.StderrFile)
+		os.Remove(filepath.Dir(bgResult.StdoutFile))
+	})
+}
+
 func TestBashTool(t *testing.T) {
+	var bashTool BashTool
+	tool := bashTool.Tool()
+
 	// Test basic functionality
 	t.Run("Basic Command", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo 'Hello, world!'"}`)
 
-		result, err := Bash.Run(context.Background(), input)
+		result, err := tool.Run(context.Background(), input)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -31,7 +79,7 @@ func TestBashTool(t *testing.T) {
 	t.Run("Command With Arguments", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo -n foo && echo -n bar"}`)
 
-		result, err := Bash.Run(context.Background(), input)
+		result, err := tool.Run(context.Background(), input)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -42,21 +90,21 @@ func TestBashTool(t *testing.T) {
 		}
 	})
 
-	// Test with timeout parameter
-	t.Run("With Timeout", func(t *testing.T) {
+	// Test with slow_ok parameter
+	t.Run("With SlowOK", func(t *testing.T) {
 		inputObj := struct {
 			Command string `json:"command"`
-			Timeout string `json:"timeout"`
+			SlowOK  bool   `json:"slow_ok"`
 		}{
 			Command: "sleep 0.1 && echo 'Completed'",
-			Timeout: "5s",
+			SlowOK:  true,
 		}
 		inputJSON, err := json.Marshal(inputObj)
 		if err != nil {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := Bash.Run(context.Background(), inputJSON)
+		result, err := tool.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -67,21 +115,22 @@ func TestBashTool(t *testing.T) {
 		}
 	})
 
-	// Test command timeout
+	// Test command timeout with custom timeout config
 	t.Run("Command Timeout", func(t *testing.T) {
-		inputObj := struct {
-			Command string `json:"command"`
-			Timeout string `json:"timeout"`
-		}{
-			Command: "sleep 0.5 && echo 'Should not see this'",
-			Timeout: "100ms",
+		// Use a custom BashTool with very short timeout
+		customTimeouts := &Timeouts{
+			Fast:       100 * time.Millisecond,
+			Slow:       100 * time.Millisecond,
+			Background: 100 * time.Millisecond,
 		}
-		inputJSON, err := json.Marshal(inputObj)
-		if err != nil {
-			t.Fatalf("Failed to marshal input: %v", err)
+		customBash := &BashTool{
+			Timeouts: customTimeouts,
 		}
+		tool := customBash.Tool()
 
-		_, err = Bash.Run(context.Background(), inputJSON)
+		input := json.RawMessage(`{"command":"sleep 0.5 && echo 'Should not see this'"}`)
+
+		_, err := tool.Run(context.Background(), input)
 		if err == nil {
 			t.Errorf("Expected timeout error, got none")
 		} else if !strings.Contains(err.Error(), "timed out") {
@@ -93,7 +142,7 @@ func TestBashTool(t *testing.T) {
 	t.Run("Failed Command", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"exit 1"}`)
 
-		_, err := Bash.Run(context.Background(), input)
+		_, err := tool.Run(context.Background(), input)
 		if err == nil {
 			t.Errorf("Expected error for failed command, got none")
 		}
@@ -103,7 +152,7 @@ func TestBashTool(t *testing.T) {
 	t.Run("Invalid JSON Input", func(t *testing.T) {
 		input := json.RawMessage(`{"command":123}`) // Invalid JSON (command must be string)
 
-		_, err := Bash.Run(context.Background(), input)
+		_, err := tool.Run(context.Background(), input)
 		if err == nil {
 			t.Errorf("Expected error for invalid input, got none")
 		}
@@ -117,10 +166,9 @@ func TestExecuteBash(t *testing.T) {
 	t.Run("Successful Command", func(t *testing.T) {
 		req := bashInput{
 			Command: "echo 'Success'",
-			Timeout: "5s",
 		}
 
-		output, err := executeBash(ctx, req)
+		output, err := executeBash(ctx, req, 5*time.Second)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -135,10 +183,9 @@ func TestExecuteBash(t *testing.T) {
 	t.Run("SKETCH Environment Variable", func(t *testing.T) {
 		req := bashInput{
 			Command: "echo $SKETCH",
-			Timeout: "5s",
 		}
 
-		output, err := executeBash(ctx, req)
+		output, err := executeBash(ctx, req, 5*time.Second)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -153,10 +200,9 @@ func TestExecuteBash(t *testing.T) {
 	t.Run("Command with stderr", func(t *testing.T) {
 		req := bashInput{
 			Command: "echo 'Error message' >&2 && echo 'Success'",
-			Timeout: "5s",
 		}
 
-		output, err := executeBash(ctx, req)
+		output, err := executeBash(ctx, req, 5*time.Second)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -171,10 +217,9 @@ func TestExecuteBash(t *testing.T) {
 	t.Run("Failed Command with stderr", func(t *testing.T) {
 		req := bashInput{
 			Command: "echo 'Error message' >&2 && exit 1",
-			Timeout: "5s",
 		}
 
-		_, err := executeBash(ctx, req)
+		_, err := executeBash(ctx, req, 5*time.Second)
 		if err == nil {
 			t.Errorf("Expected error for failed command, got none")
 		} else if !strings.Contains(err.Error(), "Error message") {
@@ -186,11 +231,10 @@ func TestExecuteBash(t *testing.T) {
 	t.Run("Command Timeout", func(t *testing.T) {
 		req := bashInput{
 			Command: "sleep 1 && echo 'Should not see this'",
-			Timeout: "100ms",
 		}
 
 		start := time.Now()
-		_, err := executeBash(ctx, req)
+		_, err := executeBash(ctx, req, 100*time.Millisecond)
 		elapsed := time.Since(start)
 
 		// Command should time out after ~100ms, not wait for full 1 second
@@ -207,6 +251,9 @@ func TestExecuteBash(t *testing.T) {
 }
 
 func TestBackgroundBash(t *testing.T) {
+	var bashTool BashTool
+	tool := bashTool.Tool()
+
 	// Test basic background execution
 	t.Run("Basic Background Command", func(t *testing.T) {
 		inputObj := struct {
@@ -221,7 +268,7 @@ func TestBackgroundBash(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := Bash.Run(context.Background(), inputJSON)
+		result, err := tool.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -279,7 +326,7 @@ func TestBackgroundBash(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := Bash.Run(context.Background(), inputJSON)
+		result, err := tool.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -337,7 +384,7 @@ func TestBackgroundBash(t *testing.T) {
 		}
 
 		// Start the command in the background
-		result, err := Bash.Run(context.Background(), inputJSON)
+		result, err := tool.Run(context.Background(), inputJSON)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -390,8 +437,8 @@ func TestBashTimeout(t *testing.T) {
 			Command:    "echo 'test'",
 			Background: false,
 		}
-		fgTimeout := foreground.timeout()
-		expectedFg := 10 * time.Second
+		fgTimeout := foreground.timeout(nil)
+		expectedFg := 30 * time.Second
 		if fgTimeout != expectedFg {
 			t.Errorf("Expected foreground default timeout to be %v, got %v", expectedFg, fgTimeout)
 		}
@@ -401,22 +448,38 @@ func TestBashTimeout(t *testing.T) {
 			Command:    "echo 'test'",
 			Background: true,
 		}
-		bgTimeout := background.timeout()
-		expectedBg := 10 * time.Minute
+		bgTimeout := background.timeout(nil)
+		expectedBg := 24 * time.Hour
 		if bgTimeout != expectedBg {
 			t.Errorf("Expected background default timeout to be %v, got %v", expectedBg, bgTimeout)
 		}
 
-		// Test explicit timeout overrides defaults
-		explicit := bashInput{
+		// Test slow_ok timeout
+		slowOk := bashInput{
 			Command:    "echo 'test'",
-			Background: true,
-			Timeout:    "5s",
+			Background: false,
+			SlowOK:     true,
 		}
-		explicitTimeout := explicit.timeout()
-		expectedExplicit := 5 * time.Second
-		if explicitTimeout != expectedExplicit {
-			t.Errorf("Expected explicit timeout to be %v, got %v", expectedExplicit, explicitTimeout)
+		slowTimeout := slowOk.timeout(nil)
+		expectedSlow := 15 * time.Minute
+		if slowTimeout != expectedSlow {
+			t.Errorf("Expected slow_ok timeout to be %v, got %v", expectedSlow, slowTimeout)
+		}
+
+		// Test custom timeout config
+		customTimeouts := &Timeouts{
+			Fast:       5 * time.Second,
+			Slow:       2 * time.Minute,
+			Background: 1 * time.Hour,
+		}
+		customFast := bashInput{
+			Command:    "echo 'test'",
+			Background: false,
+		}
+		customTimeout := customFast.timeout(customTimeouts)
+		expectedCustom := 5 * time.Second
+		if customTimeout != expectedCustom {
+			t.Errorf("Expected custom timeout to be %v, got %v", expectedCustom, customTimeout)
 		}
 	})
 }

@@ -385,7 +385,9 @@ export class SketchToolCardBash extends LitElement {
   render() {
     const inputData = JSON.parse(this.toolCall?.input || "{}");
     const isBackground = inputData?.background === true;
-    const backgroundIcon = isBackground ? "🔄 " : "";
+    const isSlowOk = inputData?.slow_ok === true;
+    const backgroundIcon = isBackground ? "🥷 " : "";
+    const slowIcon = isSlowOk ? "🐢 " : "";
 
     // Truncate the command if it's too long to display nicely
     const command = inputData?.command || "";
@@ -405,12 +407,12 @@ export class SketchToolCardBash extends LitElement {
           class="command-wrapper"
           style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
         >
-          ${backgroundIcon}${displayCommand}
+          ${backgroundIcon}${slowIcon}${displayCommand}
         </div>
       </span>
       <div slot="input" class="input">
         <div class="tool-call-result-container">
-          <pre>${backgroundIcon}${inputData?.command}</pre>
+          <pre>${backgroundIcon}${slowIcon}${inputData?.command}</pre>
         </div>
       </div>
       ${this.toolCall?.result_message?.tool_result

@@ -19,9 +19,11 @@ import (
 	"runtime/debug"
 	"strings"
 	"syscall"
+	"time"
 
 	"golang.org/x/term"
 	"sketch.dev/browser"
+	"sketch.dev/claudetool"
 	"sketch.dev/dockerimg"
 	"sketch.dev/experiment"
 	"sketch.dev/llm"
@@ -247,6 +249,10 @@ type CLIFlags struct {
 	sshConnectionString string
 	subtraceToken       string
 	mcpServers          StringSliceFlag
+	// Timeout configuration for bash tool
+	bashFastTimeout       string
+	bashSlowTimeout       string
+	bashBackgroundTimeout string
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -285,6 +291,9 @@ func parseCLIFlags() CLIFlags {
 	userFlags.StringVar(&flags.branchPrefix, "branch-prefix", "sketch/", "prefix for git branches created by sketch")
 	userFlags.BoolVar(&flags.ignoreSig, "ignoresig", false, "ignore typical termination signals (SIGINT, SIGTERM)")
 	userFlags.Var(&flags.mcpServers, "mcp", "MCP server configuration as JSON (can be repeated). Schema: {\"name\": \"server-name\", \"type\": \"stdio|http|sse\", \"url\": \"...\", \"command\": \"...\", \"args\": [...], \"env\": {...}, \"headers\": {...}}")
+	userFlags.StringVar(&flags.bashFastTimeout, "bash-fast-timeout", "30s", "timeout for fast bash commands")
+	userFlags.StringVar(&flags.bashSlowTimeout, "bash-slow-timeout", "10m", "timeout for slow bash commands (downloads, builds, tests)")
+	userFlags.StringVar(&flags.bashBackgroundTimeout, "bash-background-timeout", "24h", "timeout for background bash commands")
 
 	// Internal flags (for sketch developers or internal use)
 	// Args to sketch innie:
@@ -589,6 +598,25 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		SSHConnectionString: flags.sshConnectionString,
 		MCPServers:          flags.mcpServers,
 	}
+
+	// Parse timeout configuration
+	var bashTimeouts claudetool.Timeouts
+	if dur, err := time.ParseDuration(flags.bashFastTimeout); err == nil {
+		bashTimeouts.Fast = dur
+	} else {
+		bashTimeouts.Fast = claudetool.DefaultFastTimeout
+	}
+	if dur, err := time.ParseDuration(flags.bashSlowTimeout); err == nil {
+		bashTimeouts.Slow = dur
+	} else {
+		bashTimeouts.Slow = claudetool.DefaultSlowTimeout
+	}
+	if dur, err := time.ParseDuration(flags.bashBackgroundTimeout); err == nil {
+		bashTimeouts.Background = dur
+	} else {
+		bashTimeouts.Background = claudetool.DefaultBackgroundTimeout
+	}
+	agentConfig.BashTimeouts = &bashTimeouts
 
 	// Create SkabandClient if skaband address is provided
 	if flags.skabandAddr != "" && pubKey != "" {

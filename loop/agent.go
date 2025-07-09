@@ -1060,6 +1060,8 @@ type AgentConfig struct {
 	SkabandClient *skabandclient.SkabandClient
 	// MCP server configurations
 	MCPServers []string
+	// Timeout configuration for bash tool
+	BashTimeouts *claudetool.Timeouts
 }
 
 // NewAgent creates a new Agent.
@@ -1294,7 +1296,11 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 		return nil
 	}
 
-	bashTool := claudetool.NewBashTool(bashPermissionCheck, claudetool.EnableBashToolJITInstall)
+	bashTool := &claudetool.BashTool{
+		CheckPermission:  bashPermissionCheck,
+		EnableJITInstall: claudetool.EnableBashToolJITInstall,
+		Timeouts:         a.config.BashTimeouts,
+	}
 
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display
@@ -1314,7 +1320,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	browserTools = bTools
 
 	convo.Tools = []*llm.Tool{
-		bashTool, claudetool.Keyword, claudetool.Patch(a.patchCallback),
+		bashTool.Tool(), claudetool.Keyword, claudetool.Patch(a.patchCallback),
 		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.setSlugTool(), a.commitMessageStyleTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
