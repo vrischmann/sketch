@@ -1201,7 +1201,14 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                   : "pr-20"}"
               >
                 <div class="text-xs text-gray-600 italic text-right">
-                  ${this.state.git_username}
+                  ${this.state?.link_to_github
+                    ? html`@<a
+                          class="no-underline hover:underline"
+                          href="${this.state.link_to_github}"
+                          title="${this.state.git_username} on GitHub"
+                          >${this.state.git_username}</a
+                        >`
+                    : ""}
                 </div>
               </div>
             `
