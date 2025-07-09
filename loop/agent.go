@@ -159,6 +159,9 @@ type CodingAgent interface {
 
 	// GetPorts returns the cached list of open TCP ports
 	GetPorts() []portlist.Port
+
+	// TokenContextWindow returns the TokenContextWindow size of the model the agent is using.
+	TokenContextWindow() int
 }
 
 type CodingAgentMessageType string
@@ -466,6 +469,11 @@ type Agent struct {
 
 	// Track outstanding tool calls by ID with their names
 	outstandingToolCalls map[string]string
+}
+
+// TokenContextWindow implements CodingAgent.
+func (a *Agent) TokenContextWindow() int {
+	return a.config.Service.TokenContextWindow()
 }
 
 // NewIterator implements CodingAgent.

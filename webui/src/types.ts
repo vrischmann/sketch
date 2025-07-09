@@ -102,6 +102,7 @@ export interface State {
 	diff_lines_added: number;
 	diff_lines_removed: number;
 	open_ports?: Port[] | null;
+	token_context_window?: number;
 }
 
 export interface TodoItem {

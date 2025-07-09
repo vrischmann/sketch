@@ -103,6 +103,7 @@ type State struct {
 	DiffLinesAdded       int                           `json:"diff_lines_added"`                // Lines added from sketch-base to HEAD
 	DiffLinesRemoved     int                           `json:"diff_lines_removed"`              // Lines removed from sketch-base to HEAD
 	OpenPorts            []Port                        `json:"open_ports,omitempty"`            // Currently open TCP ports
+	TokenContextWindow   int                           `json:"token_context_window,omitempty"`
 }
 
 // Port represents an open TCP port
@@ -1293,6 +1294,7 @@ func (s *Server) getState() State {
 		DiffLinesAdded:       diffAdded,
 		DiffLinesRemoved:     diffRemoved,
 		OpenPorts:            s.getOpenPorts(),
+		TokenContextWindow:   s.agent.TokenContextWindow(),
 	}
 }
 

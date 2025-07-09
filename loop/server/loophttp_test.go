@@ -36,6 +36,11 @@ type mockAgent struct {
 	skabandAddr              string
 }
 
+// TokenContextWindow implements loop.CodingAgent.
+func (m *mockAgent) TokenContextWindow() int {
+	return 200000
+}
+
 func (m *mockAgent) NewIterator(ctx context.Context, nextMessageIdx int) loop.MessageIterator {
 	m.mu.RLock()
 	// Send existing messages that should be available immediately

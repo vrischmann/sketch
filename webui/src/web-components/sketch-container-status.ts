@@ -736,14 +736,14 @@ export class SketchContainerStatus extends SketchTailwindElement {
             </div>
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span class="text-xs text-gray-600 mr-1 font-medium"
-                >Context size:</span
+                >Context Window:</span
               >
               <span id="contextWindow" class="text-xs font-semibold break-all"
                 >${formatNumber(
                   (this.latestUsage?.input_tokens || 0) +
                     (this.latestUsage?.cache_read_input_tokens || 0) +
                     (this.latestUsage?.cache_creation_input_tokens || 0),
-                )}</span
+                )}/${formatNumber(this.state?.token_context_window || 0)}</span
               >
             </div>
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
