@@ -347,6 +347,11 @@ func Build() (fs.FS, error) {
 			return fmt.Errorf("failed to close gzip file %s: %w", gzipPath, err)
 		}
 
+		// The gzip handler will decompress on-the-fly for browsers that don't support gzip.
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("failed to remove uncompressed file %s: %w", path, err)
+		}
+
 		return nil
 	})
 	if err != nil {

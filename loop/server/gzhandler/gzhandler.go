@@ -3,6 +3,7 @@
 package gzhandler
 
 import (
+	"compress/gzip"
 	"io"
 	"io/fs"
 	"mime"
@@ -26,61 +27,73 @@ func New(root fs.FS) http.Handler {
 
 // ServeHTTP serves a file with special handling for pre-compressed .gz files
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Clean and prepare the URL path
 	urlPath := r.URL.Path
 	if !strings.HasPrefix(urlPath, "/") {
 		urlPath = "/" + urlPath
 	}
 	urlPath = path.Clean(urlPath)
 
-	// Check if client accepts gzip encoding
-	acceptEncoding := r.Header.Get("Accept-Encoding")
-	acceptsGzip := strings.Contains(acceptEncoding, "gzip")
-
 	// Check if the file itself is not a gzip file (we don't want to double-compress)
 	isCompressibleFile := !strings.HasSuffix(urlPath, ".gz")
-
-	if acceptsGzip && isCompressibleFile {
-		// Try to open the gzipped version of the file
-		gzPath := urlPath + ".gz"
-		gzFile, err := h.root.Open(gzPath)
-
-		if err == nil {
-			defer gzFile.Close()
-
-			// Get file info to check if it's a regular file
-			gzStat, err := gzFile.Stat()
-			if err != nil || gzStat.IsDir() {
-				// Not a valid file, fall back to normal serving
-				http.FileServer(h.root).ServeHTTP(w, r)
-				return
-			}
-
-			// Determine the content type based on the original file (not the .gz)
-			contentType := mime.TypeByExtension(path.Ext(urlPath))
-			if contentType == "" {
-				contentType = "application/octet-stream"
-			}
-
-			// Set the appropriate headers for serving gzipped content
-			w.Header().Set("Content-Type", contentType)
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Set("Vary", "Accept-Encoding")
-
-			// Read the gzipped file into memory to avoid 'seeker can't seek' error
-			gzippedData, err := io.ReadAll(gzFile)
-			if err != nil {
-				http.Error(w, "Error reading gzipped content", http.StatusInternalServerError)
-				return
-			}
-
-			// Write the headers and gzipped content
-			w.WriteHeader(http.StatusOK)
-			w.Write(gzippedData)
-			return
-		}
+	if !isCompressibleFile {
+		// Fall back to regular serving.
+		http.FileServer(h.root).ServeHTTP(w, r)
+		return
 	}
 
-	// Fall back to standard file serving if gzipped version not found or not applicable
-	http.FileServer(h.root).ServeHTTP(w, r)
+	// Try to open the gzipped version of the file
+	gzPath := urlPath + ".gz"
+	gzFile, err := h.root.Open(gzPath)
+	if err != nil {
+		// Fall back to regular serving.
+		http.FileServer(h.root).ServeHTTP(w, r)
+		return
+	}
+	defer gzFile.Close()
+
+	// Fall back to regular serving for directories (how would this even happen?)
+	gzStat, err := gzFile.Stat()
+	if err != nil || gzStat.IsDir() {
+		// Not a valid file, fall back to normal serving
+		http.FileServer(h.root).ServeHTTP(w, r)
+		return
+	}
+
+	// Determine the content type based on the original file (not the .gz)
+	contentType := mime.TypeByExtension(path.Ext(urlPath))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	acceptsGzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+	if acceptsGzip {
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
+
+		// Read the gzipped file into memory to avoid 'seeker can't seek' error
+		gzippedData, err := io.ReadAll(gzFile)
+		if err != nil {
+			http.Error(w, "Error reading gzipped content", http.StatusInternalServerError)
+			return
+		}
+
+		// Write the headers and gzipped content
+		w.WriteHeader(http.StatusOK)
+		w.Write(gzippedData)
+		return
+	}
+
+	// No gzip support; decompress for them.
+
+	// Decompress the .gz file and serve it uncompressed
+	gzReader, err := gzip.NewReader(gzFile)
+	if err != nil {
+		http.FileServer(h.root).ServeHTTP(w, r)
+		return
+	}
+	defer gzReader.Close()
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	io.Copy(w, gzReader)
 }
