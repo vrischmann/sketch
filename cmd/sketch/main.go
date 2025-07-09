@@ -40,11 +40,8 @@ import (
 
 // Version information set by ldflags at build time
 var (
-	version  = "dev"     // version string
-	commit   = "none"    // git commit hash
-	date     = "unknown" // build timestamp
-	builtBy  = "unknown" // who built this binary
-	makefile = ""        // marker indicating a makefile build
+	release = "dev" // release version
+	builtBy = ""    // how this binary got built (makefile, goreleaser)
 )
 
 func main() {
@@ -61,8 +58,11 @@ func run() error {
 	flagArgs := parseCLIFlags()
 
 	// If not built with make, embedded assets will be missing.
-	if makefile == "" {
-		return fmt.Errorf("please use `make` to build sketch")
+	if builtBy == "" {
+		// If your sketch binary isn't working and you are seeing this warning,
+		// it's probably because your build method has stale or missing embedded assets.
+		// See the makefile/GoReleaser configs for how to build.
+		fmt.Fprintln(os.Stderr, "⚠️  not using a recommended build method")
 	}
 
 	// Set up signal handling if -ignoresig flag is set
@@ -71,21 +71,15 @@ func run() error {
 	}
 
 	if flagArgs.version {
-		fmt.Printf("sketch %s\n", version)
-
-		if commit != "none" {
-			fmt.Printf("  commit: %s\n", commit)
-		}
-		if date != "unknown" {
-			fmt.Printf("  built: %s\n", date)
-		}
-		if builtBy != "unknown" {
-			fmt.Printf("  by: %s\n", builtBy)
-		}
-
+		fmt.Printf("sketch %s\n", release)
+		fmt.Printf("\tbuild.system: %s\n", builtBy)
 		bi, ok := debug.ReadBuildInfo()
 		if ok {
-			fmt.Printf("  buildinfo: %s@%v\n", bi.Path, bi.Main.Version)
+			for _, s := range bi.Settings {
+				if strings.HasPrefix(s.Key, "vcs.") {
+					fmt.Printf("\t%s: %v\n", s.Key, s.Value)
+				}
+			}
 		}
 		return nil
 	}

@@ -8,7 +8,7 @@ before:
 
 builds:
   - id: sketch
-    # Note: this build corresponds to 'make outie'; please keep them in sync.
+    # Note: this build corresponds to build/outie.sh; please keep them in sync.
     main: ./cmd/sketch
     binary: sketch
     goos:
@@ -17,16 +17,16 @@ builds:
     goarch:
       - amd64
       - arm64
-    tags:
-      - outie
     ldflags:
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
-      - -X main.date={{.Date}}
-      - -X main.makefile=goreleaser
+      - -X main.release={{.Version}}
+      - -X main.builtBy=goreleaser
+    env:
+      - SKETCH_VERSION={{.Version}}
+      - BUILT_BY=goreleaser
     hooks:
       pre:
-        - ./.goreleaser/build-target.sh
+        - ./build/webui.sh
+        - ./build/innie.sh
 
 archives:
   - id: releaseArchive

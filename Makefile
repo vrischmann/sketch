@@ -4,35 +4,30 @@
 # 1. Linux binary ("innie") - runs in container, embeds webui assets
 # 2. Native binary ("outie") - runs on user's machine, embeds innie
 
-BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
-VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo "dev")
-LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_TIME) -X main.makefile=true
-
-# Support for cross-compilation, used by GoReleaser
+# Allow overriding some env vars, used by GoReleaser
+BUILT_BY ?= make
+SKETCH_VERSION ?=
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
-.PHONY: all clean help
-.PHONY: outie innie
-.PHONY: webui-assets
+export BUILT_BY
+export SKETCH_VERSION
+export GOOS
+export GOARCH
+export LDFLAGS := -X main.builtBy=$(BUILT_BY) -X main.release=$(SKETCH_VERSION)
+
+.PHONY: all clean outie innie webui
 
 all: outie
 
 outie: innie
-	# Note: This incantation is duplicated in .goreleaser.yml; please keep them in sync.
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -tags=outie -o sketch ./cmd/sketch
+	./build/outie.sh
 
-innie: webui-assets
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -tags=innie -o embedded/sketch-linux/sketch-linux-amd64 ./cmd/sketch
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$(LDFLAGS)" -tags=innie -o embedded/sketch-linux/sketch-linux-arm64 ./cmd/sketch
+innie: webui
+	./build/innie.sh
 
-webui-assets:
-	rm -rf embedded/webui-dist
-	unset GOOS GOARCH && go run ./cmd/genwebui -- embedded/webui-dist
+webui:
+	./build/webui.sh
 
 clean:
-	@echo "Cleaning build artifacts..."
-	rm -f sketch
-	rm -rf embedded/sketch-linux embedded/webui-dist
-	cd webui && rm -rf node_modules dist
+	./build/clean.sh
