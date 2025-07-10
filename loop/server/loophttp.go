@@ -1443,12 +1443,14 @@ func (s *Server) handleGitCat(w http.ResponseWriter, r *http.Request) {
 
 	// Get file content using GitCat
 	content, err := git_tools.GitCat(repoDir, path)
-	if errors.Is(err, os.ErrNotExist) {
+	switch {
+	case err == nil:
+		// continued below
+	case errors.Is(err, os.ErrNotExist), strings.Contains(err.Error(), "not tracked by git"):
 		w.WriteHeader(http.StatusNoContent)
 		return
-	}
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading file: %v", err), http.StatusInternalServerError)
+	default:
+		http.Error(w, fmt.Sprintf("error reading file: %v", err), http.StatusInternalServerError)
 		return
 	}
 

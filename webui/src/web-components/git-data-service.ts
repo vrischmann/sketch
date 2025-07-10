@@ -166,6 +166,9 @@ export class DefaultGitDataService implements GitDataService {
           `Failed to fetch working copy content (${response.status}): ${errorText}`,
         );
       }
+      if (response.status === 204) {
+        return ""; // file doesn't exist
+      }
 
       const data = await response.json();
       return data.output || "";
