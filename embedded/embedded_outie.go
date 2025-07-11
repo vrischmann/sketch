@@ -3,6 +3,7 @@
 package embedded
 
 import (
+	"embed"
 	_ "embed"
 	"io/fs"
 )
@@ -24,8 +25,12 @@ func LinuxBinary(arch string) []byte {
 	return nil
 }
 
-// WebUIFS returns the embedded webui filesystem.
+//go:embed webui-dist
+var webUIAssets embed.FS
+
+// WebUIFS returns the embedded webui filesystem for direct serving
 func WebUIFS() fs.FS {
-	// webUIAssets are not present in outie
-	return nil
+	// TODO: can we avoid this fs.Sub somehow?
+	webuiFS, _ := fs.Sub(webUIAssets, "webui-dist")
+	return webuiFS
 }
