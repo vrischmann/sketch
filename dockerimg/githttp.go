@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/cgi"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -107,6 +109,12 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Dumb hack for bare repos: if the path starts with .git, and there is no .git, strip it off.
+	path := r.URL.Path
+	if _, err := os.Stat(filepath.Join(g.gitRepoRoot, path)); os.IsNotExist(err) {
+		path = strings.TrimPrefix(path, "/.git") // turn /.git/info/refs into /info/refs
+	}
+
 	w.Header().Set("Cache-Control", "no-cache")
 	h := &cgi.Handler{
 		Path: gitBin,
@@ -114,7 +122,7 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Dir:  g.gitRepoRoot,
 		Env: []string{
 			"GIT_PROJECT_ROOT=" + g.gitRepoRoot,
-			"PATH_INFO=" + r.URL.Path,
+			"PATH_INFO=" + path,
 			"QUERY_STRING=" + r.URL.RawQuery,
 			"REQUEST_METHOD=" + r.Method,
 			"GIT_HTTP_EXPORT_ALL=true",

@@ -434,8 +434,6 @@ type Agent struct {
 	outsideHostname   string
 	outsideOS         string
 	outsideWorkingDir string
-	// URL of the git remote 'origin' if it exists
-	gitOrigin string
 	// MCP manager for handling MCP server connections
 	mcpManager *mcp.MCPManager
 	// Port monitor for tracking TCP ports
@@ -742,7 +740,7 @@ func (a *Agent) OutsideWorkingDir() string {
 
 // GitOrigin returns the URL of the git remote 'origin' if it exists.
 func (a *Agent) GitOrigin() string {
-	return a.gitOrigin
+	return a.config.OriginalGitOrigin
 }
 
 // GitUsername returns the git user name from the agent config.
@@ -1046,6 +1044,8 @@ type AgentConfig struct {
 	OutsideHTTP string
 	// Outtie's Git server
 	GitRemoteAddr string
+	// Original git origin URL from host repository, if any
+	OriginalGitOrigin string
 	// Upstream branch for git work
 	Upstream string
 	// Commit to checkout from Outtie
@@ -1116,9 +1116,24 @@ func (a *Agent) Init(ini AgentInit) error {
 	ctx := a.config.Context
 	slog.InfoContext(ctx, "agent initializing")
 
+	// If a remote + commit was specified, clone it.
+	if a.config.Commit != "" && a.gitState.gitRemoteAddr != "" {
+		slog.InfoContext(ctx, "cloning git repo", "commit", a.config.Commit)
+		// TODO: --reference-if-able instead?
+		cmd := exec.CommandContext(ctx, "git", "clone", "--reference", "/git-ref", a.gitState.gitRemoteAddr, "/app")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to clone repository from %s: %s: %w", a.gitState.gitRemoteAddr, out, err)
+		}
+	}
+
+	if a.workingDir != "" {
+		err := os.Chdir(a.workingDir)
+		if err != nil {
+			return fmt.Errorf("failed to change working directory to %s: %w", a.workingDir, err)
+		}
+	}
+
 	if !ini.NoGit {
-		// Capture the original origin before we potentially replace it below
-		a.gitOrigin = getGitOrigin(ctx, a.workingDir)
 
 		// Configure git user settings
 		if a.config.GitEmail != "" {
@@ -1143,37 +1158,11 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 	}
 
-	// If a remote git addr was specified, we configure the origin remote
-	if a.gitState.gitRemoteAddr != "" {
-		slog.InfoContext(ctx, "Configuring git remote", slog.String("remote", a.gitState.gitRemoteAddr))
-
-		// Remove existing origin remote if it exists
-		cmd := exec.CommandContext(ctx, "git", "remote", "remove", "origin")
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			// Ignore error if origin doesn't exist
-			slog.DebugContext(ctx, "git remote remove origin (ignoring if not exists)", slog.String("output", string(out)))
-		}
-
-		// Add the new remote as origin
-		cmd = exec.CommandContext(ctx, "git", "remote", "add", "origin", a.gitState.gitRemoteAddr)
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git remote add origin: %s: %v", out, err)
-		}
-
-	}
-
 	// If a commit was specified, we fetch and reset to it.
 	if a.config.Commit != "" && a.gitState.gitRemoteAddr != "" {
-		slog.InfoContext(ctx, "updating git repo", slog.String("commit", a.config.Commit))
+		slog.InfoContext(ctx, "updating git repo", "commit", a.config.Commit)
 
-		cmd := exec.CommandContext(ctx, "git", "stash")
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git stash: %s: %v", out, err)
-		}
-		cmd = exec.CommandContext(ctx, "git", "fetch", "--prune", "origin")
+		cmd := exec.CommandContext(ctx, "git", "fetch", "--prune", "origin")
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git fetch: %s: %w", out, err)
@@ -2306,19 +2295,6 @@ func computeDiffStats(ctx context.Context, repoRoot, baseRef string) (int, int, 
 	}
 
 	return totalAdded, totalRemoved, nil
-}
-
-// getGitOrigin returns the URL of the git remote 'origin' if it exists
-func getGitOrigin(ctx context.Context, dir string) string {
-	cmd := exec.CommandContext(ctx, "git", "config", "--get", "remote.origin.url")
-	cmd.Dir = dir
-	stderr := new(strings.Builder)
-	cmd.Stderr = stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
 }
 
 // systemPromptData contains the data used to render the system prompt template

@@ -134,8 +134,13 @@ func run() error {
 	}
 	slog.SetDefault(slog.New(slogHandler))
 
+	// Detect whether we're inside the sketch container
+	inInsideSketch := flagArgs.outsideHostname != ""
+
 	// Change to working directory if specified
-	if flagArgs.workingDir != "" {
+	// Delay chdir when running in container mode, so that container setup can happen first,
+	// which might be necessary for the requested working dir to exist.
+	if flagArgs.workingDir != "" && !inInsideSketch {
 		if err := os.Chdir(flagArgs.workingDir); err != nil {
 			return fmt.Errorf("sketch: cannot change directory to %q: %v", flagArgs.workingDir, err)
 		}
@@ -148,9 +153,6 @@ func run() error {
 	if flagArgs.gitEmail == "" {
 		flagArgs.gitEmail = defaultGitEmail()
 	}
-
-	// Detect if we're inside the sketch container
-	inInsideSketch := flagArgs.outsideHostname != ""
 
 	// Dispatch to the appropriate execution path
 	if inInsideSketch {
@@ -242,6 +244,7 @@ type CLIFlags struct {
 	mounts              StringSliceFlag
 	termUI              bool
 	gitRemoteURL        string
+	originalGitOrigin   string
 	upstream            string
 	commit              string
 	outsideHTTP         string
@@ -308,6 +311,7 @@ func parseCLIFlags() CLIFlags {
 	internalFlags.StringVar(&flags.outsideWorkingDir, "outside-working-dir", "", "(internal) working dir on the outside system")
 	internalFlags.StringVar(&flags.sketchBinaryLinux, "sketch-binary-linux", "", "(development) path to a pre-built sketch binary for linux")
 	internalFlags.StringVar(&flags.gitRemoteURL, "git-remote-url", "", "(internal) git remote for outside sketch")
+	internalFlags.StringVar(&flags.originalGitOrigin, "original-git-origin", "", "(internal) original git origin URL from host repository")
 	internalFlags.StringVar(&flags.upstream, "upstream", "", "(internal) upstream branch for git work")
 	internalFlags.StringVar(&flags.commit, "commit", "", "(internal) the git commit reference to check out from git remote url")
 	internalFlags.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
@@ -564,12 +568,28 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		return err
 	}
 
+	// In container mode, do the (delayed) chdir.
+	if flags.workingDir != "" && inInsideSketch {
+		if filepath.IsAbs(flags.workingDir) {
+			wd = flags.workingDir
+		} else {
+			wd = filepath.Join(wd, flags.workingDir)
+		}
+	}
+
 	llmService, err := selectLLMService(client, flags.modelName, modelURL, apiKey)
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM service: %w", err)
 	}
 	budget := conversation.Budget{
 		MaxDollars: flags.maxDollars,
+	}
+
+	// Get the original git origin URL
+	originalGitOrigin := flags.originalGitOrigin
+	if originalGitOrigin == "" && flags.outsideHostname == "" {
+		// Not in container mode, get the git origin directly
+		originalGitOrigin = getGitOrigin(ctx, wd)
 	}
 
 	agentConfig := loop.AgentConfig{
@@ -590,6 +610,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		InDocker:            flags.outsideHostname != "",
 		OneShot:             flags.oneShot,
 		GitRemoteAddr:       flags.gitRemoteURL,
+		OriginalGitOrigin:   originalGitOrigin,
 		Upstream:            flags.upstream,
 		OutsideHTTP:         flags.outsideHTTP,
 		Commit:              flags.commit,
@@ -930,4 +951,15 @@ func setupSignalIgnoring() {
 			_ = sig // Suppress unused variable warning
 		}
 	}()
+}
+
+// getGitOrigin returns the URL of the git remote 'origin' if it exists
+func getGitOrigin(ctx context.Context, dir string) string {
+	cmd := exec.CommandContext(ctx, "git", "config", "--get", "remote.origin.url")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

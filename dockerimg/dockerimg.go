@@ -113,6 +113,9 @@ type ContainerConfig struct {
 
 	GitRemoteUrl string
 
+	// Original git origin URL from the host repository
+	OriginalGitOrigin string
+
 	// Upstream branch for git work
 	Upstream string
 
@@ -158,10 +161,21 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	if err != nil {
 		return err
 	}
-	gitRoot, err := findGitRoot(ctx, config.Path)
+	// Bail early if sketch was started from a path that isn't in a git repo.
+	err = requireGitRepo(ctx, config.Path)
 	if err != nil {
 		return err
 	}
+
+	// Best effort attempt to get repo root; fall back to current directory.
+	gitRoot := config.Path
+	if root, err := gitRepoRoot(ctx, config.Path); err == nil {
+		gitRoot = root
+	}
+
+	// Capture the original git origin URL before we set up the temporary git server
+	config.OriginalGitOrigin = getOriginalGitOrigin(ctx, gitRoot)
+
 	err = checkForEmptyGitRepo(ctx, config.Path)
 	if err != nil {
 		return err
@@ -578,6 +592,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 		cmdArgs = append(cmdArgs, "-commit="+config.Commit)
 		cmdArgs = append(cmdArgs, "-upstream="+config.Upstream)
 	}
+	if config.OriginalGitOrigin != "" {
+		cmdArgs = append(cmdArgs, "-original-git-origin="+config.OriginalGitOrigin)
+	}
 	if config.OutsideHTTP != "" {
 		cmdArgs = append(cmdArgs, "-outside-http="+config.OutsideHTTP)
 	}
@@ -758,6 +775,8 @@ func createCacheKey(baseImageID, gitRoot string) string {
 	h := sha256.New()
 	h.Write([]byte(baseImageID))
 	h.Write([]byte(gitRoot))
+	// one-time cache-busting for the transition from copying git repos to only copying git objects
+	h.Write([]byte("git-objects"))
 	return hex.EncodeToString(h.Sum(nil))[:12] // Use first 12 chars for shorter name
 }
 
@@ -774,7 +793,8 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 	return true, nil
 }
 
-// buildLayeredImage builds a new Docker image by layering the repo on top of the base image
+// buildLayeredImage builds a new Docker image by layering the repo on top of the base image.
+//
 // TODO: git config stuff could be environment variables at runtime for email and username.
 // The git docs seem to say that http.postBuffer is a bug in our git proxy more than a thing
 // that's needed, but we haven't found the bug yet!
@@ -783,21 +803,33 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 // of Go). Then you want a git repo, which is much faster to incrementally fetch rather
 // than cloning every time. Then you want some build artifacts, like perhaps the
 // "go mod download" cache, or the "go build" cache or the "npm install" cache.
-// The implementation here copies the working directory (not just the git repo!),
-// and runs "go mod download". This is an ok compromise, but a power user might want
+// The implementation here copies the git objects into the base image.
+// That enables fast clones into the container, because most of the git objects are already there.
+// It also avoids copying uncommitted changes, configs/hooks, etc.
+// TODO: We should also set up fake temporary Go module(s) so we can run "go mod download".
+// This is an ok compromise, but a power user might want
 // less caching or more caching, depending on their use case. One approach we could take
 // is to punt entirely if /app/.git already exists. If the user has provided a -base-image with
 // their git repo, let's assume they know what they're doing, and they've customized their image
-// for their use case. On the other side of the spectrum is cloning their repo every time,
-// or running git clean -xdf, which minimizes surprises but slows down builds.
+// for their use case.
 // Note that buildx has some support for conditional COPY, but without buildx, which
 // we can't reliably depend on, we have to run the base image to inspect its file system,
 // and then we can decide what to do.
-func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, _ bool) error {
+//
+// We may in the future want to enable people to bring along uncommitted changes to tracked files.
+// To do that, we would run `git stash create` in outie at launch time, treat HEAD as the base commit,
+// and add in the stash commit as a new commit atop it.
+// That would accurately model the base commit as well as the uncommitted changes.
+// (This wouldn't happen here, but at agent/container initialization time.)
+//
+// repoPath is the current working directory where sketch is being run from.
+func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, verbose bool) error {
+	// Shove a bunch of git objects into the image for faster future cloning.
 	dockerfileContent := fmt.Sprintf(`FROM %s
-COPY . /app
+COPY . /git-ref
 WORKDIR /app
-RUN if [ -f go.mod ]; then go mod download; fi
+# TODO: restore go.mod download
+# RUN if [ -f go.mod ]; then go mod download; fi
 CMD ["/bin/sketch"]
 `, baseImage)
 
@@ -836,8 +868,13 @@ CMD ["/bin/sketch"]
 		".",
 	}
 
+	commonDir, err := gitCommonDir(ctx, gitRoot)
+	if err != nil {
+		return fmt.Errorf("failed to get git common dir: %w", err)
+	}
+
 	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
-	cmd.Dir = gitRoot
+	cmd.Dir = commonDir
 	// We print the docker build output whether or not the user
 	// has selected --verbose. Building an image takes a while
 	// and this gives good context.
@@ -864,13 +901,14 @@ func checkForEmptyGitRepo(ctx context.Context, path string) error {
 	return nil
 }
 
-func findGitRoot(ctx context.Context, path string) (string, error) {
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
+// requireGitRepo confirms that path is within a git repository.
+func requireGitRepo(ctx context.Context, path string) error {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir")
 	cmd.Dir = path
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if strings.Contains(string(out), "not a git repository") {
-			return "", fmt.Errorf(`sketch needs to run from within a git repo, but %s is not part of a git repo.
+			return fmt.Errorf(`sketch needs to run from within a git repo, but %s is not part of a git repo.
 Consider one of the following options:
 	- cd to a different dir that is already part of a git repo first, or
 	- to create a new git repo from this directory (%s), run this command:
@@ -880,10 +918,38 @@ Consider one of the following options:
 and try running sketch again.
 `, path, path)
 		}
+		return fmt.Errorf("git rev-parse --git-dir: %s: %w", out, err)
+	}
+	return nil
+}
+
+// gitRepoRoot attempts to find the git repository root directory.
+// Returns an error if not in a git repository or if it's a bare repository.
+// This is used to calculate relative paths for preserving user's working directory context.
+func gitRepoRoot(ctx context.Context, path string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
+	cmd.Dir = path
+	out, err := cmd.CombinedOutput()
+	if err != nil {
 		return "", fmt.Errorf("git rev-parse --show-toplevel: %s: %w", out, err)
 	}
 	// The returned path is absolute.
 	return strings.TrimSpace(string(out)), nil
+}
+
+// gitCommonDir finds the git common directory for path.
+func gitCommonDir(ctx context.Context, path string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-common-dir")
+	cmd.Dir = path
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse --git-common-dir: %s: %w", out, err)
+	}
+	gitCommonDir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(gitCommonDir) {
+		gitCommonDir = filepath.Join(path, gitCommonDir)
+	}
+	return gitCommonDir, nil
 }
 
 // getEnvForwardingFromGitConfig retrieves environment variables to pass through to Docker
@@ -908,6 +974,17 @@ func getEnvForwardingFromGitConfig(ctx context.Context) []string {
 		envVars = append(envVars, envVar+"="+os.Getenv(envVar))
 	}
 	return envVars
+}
+
+// getOriginalGitOrigin returns the URL of the git remote 'origin' if it exists in the given directory
+func getOriginalGitOrigin(ctx context.Context, dir string) string {
+	cmd := exec.CommandContext(ctx, "git", "config", "--get", "remote.origin.url")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // parseDockerArgs parses a string containing space-separated Docker arguments into an array of strings.
