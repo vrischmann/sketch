@@ -1226,10 +1226,6 @@ func (a *Agent) Init(ini AgentInit) error {
 		}
 		a.repoRoot = repoRoot
 
-		if err != nil {
-			return fmt.Errorf("resolveRef: %w", err)
-		}
-
 		if a.IsInContainer() {
 			if err := setupGitHooks(a.repoRoot); err != nil {
 				slog.WarnContext(ctx, "failed to set up git hooks", "err", err)
@@ -2024,7 +2020,7 @@ func removeGitHooks(_ context.Context, repoPath string) error {
 }
 
 func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
-	msgs, commits, error := a.gitState.handleGitCommits(ctx, a.SessionID(), a.repoRoot, a.SketchGitBaseRef(), a.config.BranchPrefix)
+	msgs, commits, error := a.gitState.handleGitCommits(ctx, a.repoRoot, a.SketchGitBaseRef(), a.config.BranchPrefix)
 	for _, msg := range msgs {
 		a.pushToOutbox(ctx, msg)
 	}
@@ -2033,7 +2029,7 @@ func (a *Agent) handleGitCommits(ctx context.Context) ([]*GitCommit, error) {
 
 // handleGitCommits() highlights new commits to the user. When running
 // under docker, new HEADs are pushed to a branch according to the slug.
-func (ags *AgentGitState) handleGitCommits(ctx context.Context, sessionID string, repoRoot string, baseRef string, branchPrefix string) ([]AgentMessage, []*GitCommit, error) {
+func (ags *AgentGitState) handleGitCommits(ctx context.Context, repoRoot string, baseRef string, branchPrefix string) ([]AgentMessage, []*GitCommit, error) {
 	ags.mu.Lock()
 	defer ags.mu.Unlock()
 
