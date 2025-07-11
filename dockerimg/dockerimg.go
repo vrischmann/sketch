@@ -512,9 +512,6 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	} else {
 		cmdArgs = append(cmdArgs, "-p", "0:22") // use an ephemeral host port for ssh.
 	}
-	if relPath != "." {
-		cmdArgs = append(cmdArgs, "-w", "/app/"+relPath)
-	}
 	// colima does this by default, but Linux docker seems to need this set explicitly
 	cmdArgs = append(cmdArgs, "--add-host", "host.docker.internal:host-gateway")
 
@@ -567,6 +564,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	)
 	// Set SSH connection string based on session ID for SSH Theater
 	cmdArgs = append(cmdArgs, "-ssh-connection-string=sketch-"+config.SessionID)
+	if relPath != "." {
+		cmdArgs = append(cmdArgs, "-C", relPath)
+	}
 	if config.Model != "" {
 		cmdArgs = append(cmdArgs, "-model="+config.Model)
 	}
