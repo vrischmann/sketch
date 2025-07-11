@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -146,5 +147,156 @@ func TestBinaryCaching(t *testing.T) {
 
 	if hashHex == differentHashHex {
 		t.Error("Different content should produce different hash")
+	}
+}
+
+func TestCollectGoModules(t *testing.T) {
+	// Create a temporary directory with test files
+	tempDir := t.TempDir()
+
+	// Initialize a git repository
+	cmd := exec.Command("git", "init", ".")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	// Create test go.mod files
+	modContent := "module test\n\ngo 1.19\n"
+	sumContent := "example.com/test v1.0.0 h1:abc\n"
+
+	// Root go.mod
+	if err := os.WriteFile(filepath.Join(tempDir, "go.mod"), []byte(modContent), 0o644); err != nil {
+		t.Fatalf("Failed to create go.mod: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tempDir, "go.sum"), []byte(sumContent), 0o644); err != nil {
+		t.Fatalf("Failed to create go.sum: %v", err)
+	}
+
+	// Subdirectory go.mod
+	subDir := filepath.Join(tempDir, "subdir")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatalf("Failed to create subdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "go.mod"), []byte(modContent), 0o644); err != nil {
+		t.Fatalf("Failed to create subdir/go.mod: %v", err)
+	}
+	// No go.sum for subdir to test the case where go.sum is missing
+
+	// Add files to git
+	cmd = exec.Command("git", "add", ".")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to add files to git: %v", err)
+	}
+
+	// Configure git user for the test repo
+	cmd = exec.Command("git", "config", "user.email", "test@example.com")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to set git user email: %v", err)
+	}
+	cmd = exec.Command("git", "config", "user.name", "Test User")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to set git user name: %v", err)
+	}
+
+	// Commit the files
+	cmd = exec.Command("git", "commit", "-m", "test commit")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to commit files: %v", err)
+	}
+
+	// Collect go modules
+	ctx := context.Background()
+	modules, err := collectGoModules(ctx, tempDir)
+	if err != nil {
+		t.Fatalf("collectGoModules failed: %v", err)
+	}
+
+	// Verify results
+	if len(modules) != 2 {
+		t.Fatalf("Expected 2 modules, got %d", len(modules))
+	}
+
+	// Check root module
+	root := modules[0]
+	if root.modPath != "go.mod" {
+		t.Errorf("Expected root modPath to be 'go.mod', got %s", root.modPath)
+	}
+	if root.modSHA == "" {
+		t.Errorf("Expected root modSHA to be non-empty")
+	}
+	if root.sumSHA == "" {
+		t.Errorf("Expected root sumSHA to be non-empty")
+	}
+
+	// Check subdir module
+	sub := modules[1]
+	if sub.modPath != "subdir/go.mod" {
+		t.Errorf("Expected subdir modPath to be 'subdir/go.mod', got %s", sub.modPath)
+	}
+	if sub.modSHA == "" {
+		t.Errorf("Expected subdir modSHA to be non-empty")
+	}
+	if sub.sumSHA != "" {
+		t.Errorf("Expected subdir sumSHA to be empty, got %s", sub.sumSHA)
+	}
+}
+
+func TestCollectGoModulesNoModFiles(t *testing.T) {
+	// Create a temporary directory with no go.mod files
+	tempDir := t.TempDir()
+
+	// Initialize a git repository
+	cmd := exec.Command("git", "init", ".")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to init git repo: %v", err)
+	}
+
+	// Create a non-go.mod file
+	if err := os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# Test"), 0o644); err != nil {
+		t.Fatalf("Failed to create README.md: %v", err)
+	}
+
+	// Add files to git
+	cmd = exec.Command("git", "add", ".")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to add files to git: %v", err)
+	}
+
+	// Configure git user for the test repo
+	cmd = exec.Command("git", "config", "user.email", "test@example.com")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to set git user email: %v", err)
+	}
+	cmd = exec.Command("git", "config", "user.name", "Test User")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to set git user name: %v", err)
+	}
+
+	// Commit the files
+	cmd = exec.Command("git", "commit", "-m", "test commit")
+	cmd.Dir = tempDir
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to commit files: %v", err)
+	}
+
+	// Collect go modules
+	ctx := context.Background()
+	modules, err := collectGoModules(ctx, tempDir)
+	if err != nil {
+		t.Fatalf("collectGoModules failed: %v", err)
+	}
+
+	// Verify no modules found
+	if len(modules) != 0 {
+		t.Fatalf("Expected 0 modules, got %d", len(modules))
 	}
 }

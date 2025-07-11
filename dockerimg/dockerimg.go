@@ -806,7 +806,9 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 // The implementation here copies the git objects into the base image.
 // That enables fast clones into the container, because most of the git objects are already there.
 // It also avoids copying uncommitted changes, configs/hooks, etc.
-// TODO: We should also set up fake temporary Go module(s) so we can run "go mod download".
+// We also set up fake temporary Go module(s) so we can run "go mod download".
+// TODO: maybe 'go list ./...' and then do a build as well to populate the build cache.
+// TODO: 'npm install', etc? We have the rails for it.
 // This is an ok compromise, but a power user might want
 // less caching or more caching, depending on their use case. One approach we could take
 // is to punt entirely if /app/.git already exists. If the user has provided a -base-image with
@@ -824,14 +826,35 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 //
 // repoPath is the current working directory where sketch is being run from.
 func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, verbose bool) error {
-	// Shove a bunch of git objects into the image for faster future cloning.
-	dockerfileContent := fmt.Sprintf(`FROM %s
-COPY . /git-ref
-WORKDIR /app
-# TODO: restore go.mod download
-# RUN if [ -f go.mod ]; then go mod download; fi
-CMD ["/bin/sketch"]
-`, baseImage)
+	goModules, err := collectGoModules(ctx, gitRoot)
+	if err != nil {
+		return fmt.Errorf("failed to collect go modules: %w", err)
+	}
+
+	buf := new(strings.Builder)
+	line := func(msg string, args ...any) {
+		fmt.Fprintf(buf, msg+"\n", args...)
+	}
+
+	line("FROM %s", baseImage)
+	line("COPY . /git-ref")
+
+	for _, module := range goModules {
+		line("RUN mkdir -p /go-module")
+		line("RUN git --git-dir=/git-ref --work-tree=/go-module cat-file blob %s > /go-module/go.mod", module.modSHA)
+		if module.sumSHA != "" {
+			line("RUN git --git-dir=/git-ref --work-tree=/go-module cat-file blob %s > /go-module/go.sum", module.sumSHA)
+		}
+		// drop any replaced modules
+		line("RUN cd /go-module && go mod edit -json | jq -r '.Replace? // [] | .[] | .Old.Path' | xargs -r -I{} go mod edit -dropreplace={} -droprequire={}")
+		// grab what’s left, best effort only to avoid breaking on (say) private modules
+		line("RUN cd /go-module && go mod download || true")
+		line("RUN rm -rf /go-module")
+	}
+
+	line("WORKDIR /app")
+	line(`CMD ["/bin/sketch"]`)
+	dockerfileContent := buf.String()
 
 	// Create a temporary directory for the Dockerfile
 	tmpDir, err := os.MkdirTemp("", "sketch-docker-*")
@@ -950,6 +973,62 @@ func gitCommonDir(ctx context.Context, path string) (string, error) {
 		gitCommonDir = filepath.Join(path, gitCommonDir)
 	}
 	return gitCommonDir, nil
+}
+
+// goModuleInfo represents a Go module with its file paths and blob SHAs
+type goModuleInfo struct {
+	// modPath is the path to the go.mod file, for debugging
+	modPath string
+	// modSHA is the git blob SHA of the go.mod file
+	modSHA string
+	// sumSHA is the git blob SHA of the go.sum file, empty if no go.sum exists
+	sumSHA string
+}
+
+// collectGoModules returns all go.mod files in the git repository with their blob SHAs.
+func collectGoModules(ctx context.Context, gitRoot string) ([]goModuleInfo, error) {
+	cmd := exec.CommandContext(ctx, "git", "ls-files", "-z", "*.mod")
+	cmd.Dir = gitRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files -z *.mod: %s: %w", out, err)
+	}
+
+	modFiles := strings.Split(string(out), "\x00")
+	var modules []goModuleInfo
+	for _, file := range modFiles {
+		if filepath.Base(file) != "go.mod" {
+			continue
+		}
+
+		modSHA, err := getGitBlobSHA(ctx, gitRoot, file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get blob SHA for %s: %w", file, err)
+		}
+
+		// If corresponding go.sum exists, get its SHA
+		sumFile := filepath.Join(filepath.Dir(file), "go.sum")
+		sumSHA, _ := getGitBlobSHA(ctx, gitRoot, sumFile) // best effort
+
+		modules = append(modules, goModuleInfo{
+			modPath: file,
+			modSHA:  modSHA,
+			sumSHA:  sumSHA,
+		})
+	}
+
+	return modules, nil
+}
+
+// getGitBlobSHA returns the git blob SHA for a file at HEAD
+func getGitBlobSHA(ctx context.Context, gitRoot, filePath string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD:"+filePath)
+	cmd.Dir = gitRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD:%s: %s: %w", filePath, out, err)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // getEnvForwardingFromGitConfig retrieves environment variables to pass through to Docker
