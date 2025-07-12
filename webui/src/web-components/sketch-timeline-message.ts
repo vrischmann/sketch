@@ -852,7 +852,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
       .join(" ");
 
     const bubbleContainerClasses = [
-      "flex-1 flex overflow-hidden text-ellipsis",
+      "flex-1 flex text-ellipsis",
       this.compactPadding ? "max-w-full" : "max-w-[calc(100%-160px)]",
       this.message?.type === "user" ? "justify-end" : "justify-start",
     ]
