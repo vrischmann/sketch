@@ -1,36 +1,39 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
+import "./sketch-tool-card-base";
 
 @customElement("sketch-tool-card-browser-clear-console-logs")
-export class SketchToolCardBrowserClearConsoleLogs extends LitElement {
+export class SketchToolCardBrowserClearConsoleLogs extends SketchTailwindElement {
   @property()
   toolCall: ToolCall;
 
   @property()
   open: boolean;
 
-  static styles = css`
-    .summary-text {
-      font-family: monospace;
-      color: #444;
-      word-break: break-all;
-    }
-  `;
-
   render() {
+    const summaryContent = html`<span class="font-mono text-gray-700 break-all">
+      🧹 Clear console logs
+    </span>`;
+    const inputContent = html`<div>Clear all console logs</div>`;
+    const resultContent = this.toolCall?.result_message?.tool_result
+      ? html`<pre
+          class="bg-gray-200 text-black p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
+        >
+${this.toolCall.result_message.tool_result}</pre
+        >`
+      : "";
+
     return html`
-      <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text"> 🧹 Clear console logs </span>
-        <div slot="input">
-          <div>Clear all console logs</div>
-        </div>
-        <div slot="result">
-          ${this.toolCall?.result_message?.tool_result
-            ? html`<pre>${this.toolCall.result_message.tool_result}</pre>`
-            : ""}
-        </div>
-      </sketch-tool-card>
+      <sketch-tool-card-base
+        .open=${this.open}
+        .toolCall=${this.toolCall}
+        .summaryContent=${summaryContent}
+        .inputContent=${inputContent}
+        .resultContent=${resultContent}
+      >
+      </sketch-tool-card-base>
     `;
   }
 }

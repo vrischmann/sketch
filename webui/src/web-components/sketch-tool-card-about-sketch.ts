@@ -1,8 +1,10 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
 import { ToolCall } from "../types";
 import { marked } from "marked";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
+import "./sketch-tool-card-base";
 
 // Safely renders markdown with fallback to plain text on failure
 function renderMarkdown(markdownContent: string): string {
@@ -19,51 +21,38 @@ function renderMarkdown(markdownContent: string): string {
 }
 
 @customElement("sketch-tool-card-about-sketch")
-export class SketchToolCardAboutSketch extends LitElement {
+export class SketchToolCardAboutSketch extends SketchTailwindElement {
   @property() toolCall: ToolCall;
   @property() open: boolean;
 
-  static styles = css`
-    .summary-text {
-      font-style: italic;
-    }
-    .about-sketch-content {
-      background: rgb(246, 248, 250);
-      border-radius: 6px;
-      padding: 12px;
-      margin-top: 10px;
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid #e1e4e8;
-    }
-    .sketch-label {
-      font-weight: bold;
-      color: #24292e;
-    }
-    .icon {
-      margin-right: 6px;
-    }
-  `;
+  // Styles now handled by Tailwind classes in template
 
   render() {
     const resultText = this.toolCall?.result_message?.tool_result || "";
 
+    const summaryContent = html`<span class="italic">
+      <span class="mr-1.5">📚</span> About Sketch
+    </span>`;
+    const inputContent = html`<div>
+      <span class="font-bold text-gray-800"></span>
+    </div>`;
+    const resultContent = this.toolCall?.result_message?.tool_result
+      ? html`<div
+          class="bg-gray-50 rounded-md p-3 mt-2.5 max-h-[300px] overflow-y-auto border border-gray-200"
+        >
+          ${unsafeHTML(renderMarkdown(resultText))}
+        </div>`
+      : "";
+
     return html`
-      <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          <span class="icon">📚</span> About Sketch
-        </span>
-        <div slot="input">
-          <div><span class="sketch-label"></span></div>
-        </div>
-        ${this.toolCall?.result_message?.tool_result
-          ? html`<div slot="result">
-              <div class="about-sketch-content">
-                ${unsafeHTML(renderMarkdown(resultText))}
-              </div>
-            </div>`
-          : ""}
-      </sketch-tool-card>
+      <sketch-tool-card-base
+        .open=${this.open}
+        .toolCall=${this.toolCall}
+        .summaryContent=${summaryContent}
+        .inputContent=${inputContent}
+        .resultContent=${resultContent}
+      >
+      </sketch-tool-card-base>
     `;
   }
 }

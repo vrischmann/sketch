@@ -1,9 +1,11 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ToolCall } from "../types";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
+import "./sketch-tool-card-base";
 
 @customElement("sketch-tool-card-take-screenshot")
-export class SketchToolCardTakeScreenshot extends LitElement {
+export class SketchToolCardTakeScreenshot extends SketchTailwindElement {
   @property()
   toolCall: ToolCall;
 
@@ -15,55 +17,6 @@ export class SketchToolCardTakeScreenshot extends LitElement {
 
   @state()
   loadError: boolean = false;
-
-  static styles = css`
-    .summary-text {
-      font-style: italic;
-      padding: 0.5em;
-    }
-
-    .screenshot-container {
-      margin: 10px 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .screenshot {
-      max-width: 100%;
-      max-height: 500px;
-      border-radius: 4px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-      border: 1px solid #ddd;
-    }
-
-    .loading-indicator {
-      margin: 20px;
-      color: #666;
-      font-style: italic;
-    }
-
-    .error-message {
-      color: #d32f2f;
-      font-style: italic;
-      margin: 10px 0;
-    }
-
-    .screenshot-info {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .selector-info {
-      padding: 4px 8px;
-      background-color: #f5f5f5;
-      border-radius: 4px;
-      font-family: monospace;
-      margin: 5px 0;
-      display: inline-block;
-    }
-  `;
 
   constructor() {
     super();
@@ -108,48 +61,55 @@ export class SketchToolCardTakeScreenshot extends LitElement {
     // Construct the URL for the screenshot (using relative URL without leading slash)
     const screenshotUrl = screenshotId ? `screenshot/${screenshotId}` : "";
 
-    return html`
-      <sketch-tool-card .open=${this.open} .toolCall=${this.toolCall}>
-        <span slot="summary" class="summary-text">
-          Screenshot of ${selector}
-        </span>
-        <div slot="input" class="selector-info">
-          ${selector !== "(full page)"
-            ? `Taking screenshot of element: ${selector}`
-            : `Taking full page screenshot`}
-        </div>
-        <div slot="result">
-          ${hasResult
-            ? html`
-                <div class="screenshot-container">
-                  ${!this.imageLoaded && !this.loadError
-                    ? html`<div class="loading-indicator">
-                        Loading screenshot...
+    const summaryContent = html`<span class="italic p-2">
+      Screenshot of ${selector}
+    </span>`;
+    const inputContent = html`<div
+      class="px-2 py-1 bg-gray-100 rounded font-mono my-1.5 inline-block"
+    >
+      ${selector !== "(full page)"
+        ? `Taking screenshot of element: ${selector}`
+        : `Taking full page screenshot`}
+    </div>`;
+    const resultContent = hasResult
+      ? html`
+          <div class="my-2.5 flex flex-col items-center">
+            ${!this.imageLoaded && !this.loadError
+              ? html`<div class="m-5 text-gray-600 italic">
+                  Loading screenshot...
+                </div>`
+              : ""}
+            ${this.loadError
+              ? html`<div class="text-red-700 italic my-2.5">
+                  Failed to load screenshot
+                </div>`
+              : html`
+                  <img
+                    class="max-w-full max-h-[500px] rounded shadow-md border border-gray-300"
+                    src="${screenshotUrl}"
+                    @load=${() => (this.imageLoaded = true)}
+                    @error=${() => (this.loadError = true)}
+                    ?hidden=${!this.imageLoaded}
+                  />
+                  ${this.imageLoaded
+                    ? html`<div class="mt-2 text-xs text-gray-600">
+                        Screenshot saved and displayed
                       </div>`
                     : ""}
-                  ${this.loadError
-                    ? html`<div class="error-message">
-                        Failed to load screenshot
-                      </div>`
-                    : html`
-                        <img
-                          class="screenshot"
-                          src="${screenshotUrl}"
-                          @load=${() => (this.imageLoaded = true)}
-                          @error=${() => (this.loadError = true)}
-                          ?hidden=${!this.imageLoaded}
-                        />
-                        ${this.imageLoaded
-                          ? html`<div class="screenshot-info">
-                              Screenshot saved and displayed
-                            </div>`
-                          : ""}
-                      `}
-                </div>
-              `
-            : ""}
-        </div>
-      </sketch-tool-card>
+                `}
+          </div>
+        `
+      : "";
+
+    return html`
+      <sketch-tool-card-base
+        .open=${this.open}
+        .toolCall=${this.toolCall}
+        .summaryContent=${summaryContent}
+        .inputContent=${inputContent}
+        .resultContent=${resultContent}
+      >
+      </sketch-tool-card-base>
     `;
   }
 }

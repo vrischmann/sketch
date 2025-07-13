@@ -1,3 +1,78 @@
+# Modern Component Architecture: SketchTailwindElement
+
+**IMPORTANT: New component architecture standards for all Sketch web components**
+
+## New Component Standard (Use This)
+
+All new Sketch web components should:
+
+1. **Inherit from `SketchTailwindElement`** instead of `LitElement`
+2. **Use Tailwind CSS classes** for styling instead of CSS-in-JS
+3. **Use property-based composition** instead of slot-based composition
+4. **Avoid Shadow DOM** whenever possible
+
+### Example of Modern Component:
+
+```typescript
+import { html } from "lit";
+import { customElement, property } from "lit/decorators.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
+import "./sketch-tool-card-base";
+
+@customElement("sketch-tool-card-example")
+export class SketchToolCardExample extends SketchTailwindElement {
+  @property() toolCall: ToolCall;
+  @property() open: boolean;
+
+  render() {
+    const summaryContent = html`<span class="font-mono text-sm text-gray-700">
+      ${this.toolCall?.name}
+    </span>`;
+
+    const inputContent = html`<div class="p-2 bg-gray-100 rounded">
+      <pre class="whitespace-pre-wrap break-words">${this.toolCall?.input}</pre>
+    </div>`;
+
+    return html`<sketch-tool-card-base
+      .open=${this.open}
+      .toolCall=${this.toolCall}
+      .summaryContent=${summaryContent}
+      .inputContent=${inputContent}
+    ></sketch-tool-card-base>`;
+  }
+}
+```
+
+### Key Differences from Legacy Components:
+
+- **Extends SketchTailwindElement** (not LitElement)
+- **Uses sketch-tool-card-base** with property binding (not slots)
+- **Tailwind classes** like `font-mono text-sm text-gray-700` (not CSS-in-JS)
+- **No static styles** or Shadow DOM
+- **Property-based composition** (`.summaryContent=${html\`...\`}`)
+
+## Legacy Components (Do NOT Use as Examples)
+
+Some existing components still use the old architecture and will be migrated:
+
+- Components that extend `LitElement` directly
+- Components that use `static styles = css\`...\``
+- Components that use slot-based composition (`<slot name="summary"></slot>`)
+- Components that rely on Shadow DOM
+
+**Do not use these legacy patterns for new components.** They are being phased out.
+
+## Migration Status
+
+As of the latest migration:
+
+- ✅ All tool card components now use SketchTailwindElement
+- ✅ Complete Shadow DOM elimination in tool card hierarchy
+- ✅ Consistent Tailwind CSS styling approach
+- 🔄 Other components will be migrated over time
+
+---
+
 # Component Architecture: sketch-tool-card and Related Components
 
 This document explains the relationship between LitElement subclasses in webui/src/web-components/ and the sketch-tool-card custom element, focusing on their containment relationship and CSS styling effects.
