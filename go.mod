@@ -3,12 +3,14 @@ module sketch.dev
 go 1.24.5
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/chromedp/cdproto v0.0.0-20250403032234-65de8f5d025b
 	github.com/chromedp/chromedp v0.13.6
 	github.com/creack/pty v1.1.24
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evanw/esbuild v0.25.2
 	github.com/fatih/color v1.18.0
+	github.com/fynelabs/selfupdate v0.2.1
 	github.com/gliderlabs/ssh v0.3.8
 	github.com/google/uuid v1.6.0
 	github.com/kevinburke/ssh_config v1.2.0

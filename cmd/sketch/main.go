@@ -37,6 +37,7 @@ import (
 	"sketch.dev/skabandclient"
 	"sketch.dev/skribe"
 	"sketch.dev/termui"
+	"sketch.dev/update"
 	"sketch.dev/webui"
 )
 
@@ -84,6 +85,10 @@ func run() error {
 			}
 		}
 		return nil
+	}
+
+	if flagArgs.doUpdate {
+		return doSelfUpdate()
 	}
 
 	if flagArgs.listModels {
@@ -228,6 +233,7 @@ type CLIFlags struct {
 	baseImage    string
 	linkToGitHub bool
 	ignoreSig    bool
+	doUpdate     bool
 
 	gitUsername         string
 	gitEmail            string
@@ -281,6 +287,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
 	userFlags.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
 	userFlags.BoolVar(&flags.version, "version", false, "print the version and exit")
+	userFlags.BoolVar(&flags.doUpdate, "update", false, "update to the latest version of sketch")
 	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
 	// Get the default image info for help text
@@ -962,4 +969,12 @@ func getGitOrigin(ctx context.Context, dir string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+func doSelfUpdate() error {
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+	return update.Do(context.Background(), release, executable)
 }
