@@ -2,6 +2,8 @@ package loop
 
 import (
 	"context"
+	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -221,6 +223,42 @@ func TestPortMonitor_FindRemovedPorts(t *testing.T) {
 
 	if !removedPorts[8080] || !removedPorts[22] {
 		t.Errorf("expected ports 8080 and 22 to be removed, got %v", removed)
+	}
+}
+
+// TestPortMonitor_ShouldIgnoreProcess tests the shouldIgnoreProcess function.
+func TestPortMonitor_ShouldIgnoreProcess(t *testing.T) {
+	agent := createTestAgent(t)
+	pm := NewPortMonitor(agent, 100*time.Millisecond)
+
+	// Test with current process (should not be ignored)
+	currentPid := os.Getpid()
+	if pm.shouldIgnoreProcess(currentPid) {
+		t.Errorf("current process should not be ignored")
+	}
+
+	// Test with invalid PID
+	if pm.shouldIgnoreProcess(0) {
+		t.Errorf("invalid PID should not be ignored")
+	}
+	if pm.shouldIgnoreProcess(-1) {
+		t.Errorf("negative PID should not be ignored")
+	}
+
+	// Test with a process that has SKETCH_IGNORE_PORTS=1
+	cmd := exec.Command("sleep", "5")
+	cmd.Env = append(os.Environ(), "SKETCH_IGNORE_PORTS=1")
+	err := cmd.Start()
+	if err != nil {
+		t.Fatalf("failed to start test process: %v", err)
+	}
+	defer cmd.Process.Kill()
+
+	// Allow a moment for the process to start
+	time.Sleep(100 * time.Millisecond)
+
+	if !pm.shouldIgnoreProcess(cmd.Process.Pid) {
+		t.Errorf("process with SKETCH_IGNORE_PORTS=1 should be ignored")
 	}
 }
 

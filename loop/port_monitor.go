@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,6 +180,11 @@ func (pm *PortMonitor) sendPortNotification(event string, port portlist.Port) {
 		return
 	}
 
+	// Skip processes with SKETCH_IGNORE_PORTS environment variable
+	if pm.shouldIgnoreProcess(port.Pid) {
+		return
+	}
+
 	// TODO: Structure this so that UI can display it more nicely.
 	content := fmt.Sprintf("Port %s: %s:%d", event, port.Proto, port.Port)
 	if port.Process != "" {
@@ -243,4 +250,29 @@ func findRemovedPorts(previous, current []portlist.Port) []portlist.Port {
 		}
 	}
 	return removed
+}
+
+// shouldIgnoreProcess checks if a process should be ignored based on its environment variables.
+func (pm *PortMonitor) shouldIgnoreProcess(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+
+	// Read the process environment from /proc/[pid]/environ
+	envFile := fmt.Sprintf("/proc/%d/environ", pid)
+	envData, err := os.ReadFile(envFile)
+	if err != nil {
+		// If we can't read the environment, don't ignore the process
+		return false
+	}
+
+	// Parse the environment variables (null-separated)
+	envVars := strings.Split(string(envData), "\x00")
+	for _, envVar := range envVars {
+		if envVar == "SKETCH_IGNORE_PORTS=1" {
+			return true
+		}
+	}
+
+	return false
 }
