@@ -25,6 +25,7 @@ const (
 	TogetherURL  = "https://api.together.xyz/v1"
 	GeminiURL    = "https://generativelanguage.googleapis.com/v1beta/openai/"
 	MistralURL   = "https://api.mistral.ai/v1"
+	MoonshotURL  = "https://api.moonshot.ai/v1"
 
 	// Environment variable names for API keys
 	OpenAIAPIKeyEnv    = "OPENAI_API_KEY"
@@ -32,6 +33,7 @@ const (
 	TogetherAPIKeyEnv  = "TOGETHER_API_KEY"
 	GeminiAPIKeyEnv    = "GEMINI_API_KEY"
 	MistralAPIKeyEnv   = "MISTRAL_API_KEY"
+	MoonshotAPIKeyEnv  = "MOONSHOT_API_KEY"
 )
 
 type Model struct {
@@ -186,6 +188,13 @@ var (
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
+	MoonshotKimiK2 = Model{
+		UserName:  "moonshot-kimi-k2",
+		ModelName: "moonshot-v1-auto",
+		URL:       MoonshotURL,
+		APIKeyEnv: MoonshotAPIKeyEnv,
+	}
+
 	MistralMedium = Model{
 		UserName:  "mistral-medium-3",
 		ModelName: "mistral-medium-latest",
@@ -233,6 +242,7 @@ var ModelsRegistry = []Model{
 	TogetherGemma2,
 	LlamaCPP,
 	FireworksDeepseekV3,
+	MoonshotKimiK2,
 	FireworksLlama4Maverick,
 	MistralMedium,
 	DevstralSmall,
