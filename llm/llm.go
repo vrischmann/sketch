@@ -21,12 +21,19 @@ type Service interface {
 
 // MustSchema validates that schema is a valid JSON schema and returns it as a json.RawMessage.
 // It panics if the schema is invalid.
+// The schema must have at least type="object" and a properties key.
 func MustSchema(schema string) json.RawMessage {
-	// TODO: validate schema, for now just make sure it's valid JSON
 	schema = strings.TrimSpace(schema)
 	bytes := []byte(schema)
-	if !json.Valid(bytes) {
-		panic("invalid JSON schema: " + schema)
+	var obj map[string]any
+	if err := json.Unmarshal(bytes, &obj); err != nil {
+		panic("failed to parse JSON schema: " + schema + ": " + err.Error())
+	}
+	if typ, ok := obj["type"]; !ok || typ != "object" {
+		panic("JSON schema must have type='object': " + schema)
+	}
+	if _, ok := obj["properties"]; !ok {
+		panic("JSON schema must have 'properties' key: " + schema)
 	}
 	return json.RawMessage(bytes)
 }
