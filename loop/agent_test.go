@@ -266,6 +266,7 @@ type MockConvoInterface struct {
 	overBudgetFunc               func() error
 	getIDFunc                    func() string
 	subConvoWithHistoryFunc      func() *conversation.Convo
+	debugJSONFunc                func() ([]byte, error)
 }
 
 func (m *MockConvoInterface) SendMessage(message llm.Message) (*llm.Response, error) {
@@ -342,6 +343,13 @@ func (m *MockConvoInterface) SubConvoWithHistory() *conversation.Convo {
 		return m.subConvoWithHistoryFunc()
 	}
 	return nil
+}
+
+func (m *MockConvoInterface) DebugJSON() ([]byte, error) {
+	if m.debugJSONFunc != nil {
+		return m.debugJSONFunc()
+	}
+	return []byte(`[{"role": "user", "content": [{"type": "text", "text": "mock conversation"}]}]`), nil
 }
 
 // TestAgentProcessTurnWithNilResponseNilError tests the scenario where Agent.processTurn receives
@@ -527,6 +535,10 @@ func (m *mockConvoInterface) ToolResultCancelContents(resp *llm.Response) ([]llm
 
 func (m *mockConvoInterface) CancelToolUse(toolUseID string, cause error) error {
 	return nil
+}
+
+func (m *mockConvoInterface) DebugJSON() ([]byte, error) {
+	return []byte(`[{"role": "user", "content": [{"type": "text", "text": "mock conversation"}]}]`), nil
 }
 
 func TestAgentProcessTurnStateTransitions(t *testing.T) {

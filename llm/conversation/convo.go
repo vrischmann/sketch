@@ -643,3 +643,8 @@ func (c *Convo) overBudget() error {
 	}
 	return err
 }
+
+// DebugJSON returns the conversation history as JSON for debugging purposes.
+func (c *Convo) DebugJSON() ([]byte, error) {
+	return json.MarshalIndent(c.messages, "", "  ")
+}

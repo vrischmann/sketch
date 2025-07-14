@@ -335,6 +335,7 @@ type ConvoInterface interface {
 	ToolResultCancelContents(resp *llm.Response) ([]llm.Content, error)
 	CancelToolUse(toolUseID string, cause error) error
 	SubConvoWithHistory() *conversation.Convo
+	DebugJSON() ([]byte, error)
 }
 
 // AgentGitState holds the state necessary for pushing to a remote git repo
@@ -472,6 +473,11 @@ type Agent struct {
 // TokenContextWindow implements CodingAgent.
 func (a *Agent) TokenContextWindow() int {
 	return a.config.Service.TokenContextWindow()
+}
+
+// GetConvo returns the conversation interface for debugging purposes.
+func (a *Agent) GetConvo() ConvoInterface {
+	return a.convo
 }
 
 // NewIterator implements CodingAgent.

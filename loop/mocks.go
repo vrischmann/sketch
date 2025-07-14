@@ -242,3 +242,22 @@ func (m *MockConvo) CancelToolUse(toolUseID string, cause error) error {
 
 	return retErr
 }
+
+// DebugJSON returns mock conversation data as JSON for debugging purposes
+func (m *MockConvo) DebugJSON() ([]byte, error) {
+	m.recordCall("DebugJSON")
+	exp, ok := m.findMatchingExpectation("DebugJSON")
+	if !ok {
+		// Return a simple mock JSON response if no expectation is set
+		return []byte(`{"mock": "conversation", "calls": {}}`), nil
+	}
+
+	var retErr error
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err, ok := exp.result[1].(error); ok {
+		retErr = err
+	}
+
+	return exp.result[0].([]byte), retErr
+}

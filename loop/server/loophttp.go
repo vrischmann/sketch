@@ -780,7 +780,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}()
 	})
 
-	debugMux := initDebugMux()
+	debugMux := initDebugMux(agent)
 	s.mux.HandleFunc("/debug/", func(w http.ResponseWriter, r *http.Request) {
 		debugMux.ServeHTTP(w, r)
 	})
@@ -1024,7 +1024,7 @@ func getShellPath() string {
 	return "/bin/sh"
 }
 
-func initDebugMux() *http.ServeMux {
+func initDebugMux(agent loop.CodingAgent) *http.ServeMux {
 	mux := http.NewServeMux()
 	build := "unknown build"
 	bi, ok := debug.ReadBuildInfo()
@@ -1045,6 +1045,7 @@ func initDebugMux() *http.ServeMux {
 					<li><a href="pprof/symbol">pprof/symbol</a></li>
 					<li><a href="pprof/trace">pprof/trace</a></li>
 					<li><a href="pprof/goroutine?debug=1">pprof/goroutine?debug=1</a></li>
+					<li><a href="conversation-history">conversation-history</a></li>
 			</ul>
 			</body>
 			</html>
@@ -1055,6 +1056,31 @@ func initDebugMux() *http.ServeMux {
 	mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
+
+	// Add conversation history debug handler
+	mux.HandleFunc("GET /debug/conversation-history", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		// Use type assertion to access the GetConvo method
+		type ConvoProvider interface {
+			GetConvo() loop.ConvoInterface
+		}
+
+		if convoProvider, ok := agent.(ConvoProvider); ok {
+			// Call the DebugJSON method to get the conversation history
+			historyJSON, err := convoProvider.GetConvo().DebugJSON()
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Error getting conversation history: %v", err), http.StatusInternalServerError)
+				return
+			}
+
+			// Write the JSON response
+			w.Write(historyJSON)
+		} else {
+			http.Error(w, "Agent does not support conversation history debugging", http.StatusNotImplemented)
+		}
+	})
+
 	return mux
 }
 
