@@ -628,9 +628,38 @@ Original context: You are working in a coding environment with full access to de
 	return textContent, nil
 }
 
+// dumpMessageHistoryToTmp dumps the agent's entire message history to /tmp as JSON
+// and returns the filename
+func (a *Agent) dumpMessageHistoryToTmp(ctx context.Context) (string, error) {
+	// Create a filename based on session ID and timestamp
+	timestamp := time.Now().Format("20060102-150405")
+	filename := fmt.Sprintf("/tmp/sketch-messages-%s-%s.json", a.config.SessionID, timestamp)
+
+	// Marshal the entire message history to JSON
+	jsonData, err := json.MarshalIndent(a.history, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal message history: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(filename, jsonData, 0644); err != nil {
+		return "", fmt.Errorf("failed to write message history to %s: %w", filename, err)
+	}
+
+	slog.InfoContext(ctx, "Dumped message history to file", "filename", filename, "message_count", len(a.history))
+	return filename, nil
+}
+
 // CompactConversation compacts the current conversation by generating a summary
 // and restarting the conversation with that summary as the initial context
 func (a *Agent) CompactConversation(ctx context.Context) error {
+	// Dump the entire message history to /tmp as JSON before compacting
+	dumpFile, err := a.dumpMessageHistoryToTmp(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to dump message history to /tmp", "error", err)
+		// Continue with compaction even if dump fails
+	}
+
 	summary, err := a.generateConversationSummary(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to generate conversation summary: %w", err)
@@ -662,11 +691,19 @@ func (a *Agent) CompactConversation(ctx context.Context) error {
 		Content: compactionMsg,
 	})
 
+	// Create the message content with dump file information if available
+	var messageContent string
+	if dumpFile != "" {
+		messageContent = fmt.Sprintf("Here's a summary of our previous work:\n\n%s\n\nThe complete message history has been dumped to %s for your reference if needed.\n\nPlease continue with the work based on this summary.", summary, dumpFile)
+	} else {
+		messageContent = fmt.Sprintf("Here's a summary of our previous work:\n\n%s\n\nPlease continue with the work based on this summary.", summary)
+	}
+
 	a.pushToOutbox(ctx, AgentMessage{
 		Type:    UserMessageType,
-		Content: fmt.Sprintf("Here's a summary of our previous work:\n\n%s\n\nPlease continue with the work based on this summary.", summary),
+		Content: messageContent,
 	})
-	a.inbox <- fmt.Sprintf("Here's a summary of our previous work:\n\n%s\n\nPlease continue with the work based on this summary.", summary)
+	a.inbox <- messageContent
 
 	return nil
 }
