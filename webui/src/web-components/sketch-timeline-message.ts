@@ -387,7 +387,6 @@ export class SketchTimelineMessage extends SketchTailwindElement {
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
     this.renderMermaidDiagrams();
-    this.setupCodeBlockCopyButtons();
   }
 
   // Render mermaid diagrams after the component is updated
@@ -449,58 +448,63 @@ export class SketchTimelineMessage extends SketchTailwindElement {
     }, 100); // Small delay to ensure DOM is ready
   }
 
-  // Setup code block copy buttons after component is updated
-  setupCodeBlockCopyButtons() {
-    setTimeout(() => {
-      // Find all copy buttons in code blocks
-      const copyButtons = this.querySelectorAll(".code-copy-button");
-      if (!copyButtons || copyButtons.length === 0) return;
-
-      // Add click event listener to each button
-      copyButtons.forEach((button) => {
-        button.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const codeId = (button as HTMLElement).dataset.codeId;
-          if (!codeId) return;
-
-          const codeElement = this.querySelector(`#${codeId}`);
-          if (!codeElement) return;
-
-          const codeText = codeElement.textContent || "";
-          const buttonRect = button.getBoundingClientRect();
-
-          // Copy code to clipboard
-          navigator.clipboard
-            .writeText(codeText)
-            .then(() => {
-              // Show success indicator
-              const originalHTML = button.innerHTML;
-              button.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 6L9 17l-5-5"></path>
-                </svg>
-              `;
-
-              // Display floating message
-              this.showFloatingMessage("Copied!", buttonRect, "success");
-
-              // Reset button after delay
-              setTimeout(() => {
-                button.innerHTML = originalHTML;
-              }, 2000);
-            })
-            .catch((err) => {
-              console.error("Failed to copy code:", err);
-              this.showFloatingMessage("Failed to copy!", buttonRect, "error");
-            });
-        });
-      });
-    }, 100); // Small delay to ensure DOM is ready
-  }
-
   // See https://lit.dev/docs/components/lifecycle/
   disconnectedCallback() {
     super.disconnectedCallback();
+  }
+
+  // Add post-sanitization button replacement
+  private addCopyButtons(html: string): string {
+    return html.replace(
+      /<span class="copy-button-placeholder"><\/span>/g,
+      `<button class="code-copy-button" title="Copy code">
+         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+         </svg>
+       </button>`,
+    );
+  }
+
+  // Event delegation handler for code copy functionality
+  private handleCodeCopy(event: Event) {
+    const button = event.target as HTMLElement;
+    if (!button.classList.contains("code-copy-button")) return;
+
+    event.stopPropagation();
+
+    // Find the code element using DOM traversal
+    const header = button.closest(".code-block-header");
+    const codeElement = header?.nextElementSibling?.querySelector("code");
+    if (!codeElement) return;
+
+    // Read the text directly from DOM (automatically unescapes HTML)
+    const codeText = codeElement.textContent || "";
+
+    // Copy to clipboard with visual feedback
+    navigator.clipboard
+      .writeText(codeText)
+      .then(() => {
+        // Show success feedback (icon change + floating message)
+        const originalHTML = button.innerHTML;
+        button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6L9 17l-5-5"></path>
+        </svg>`;
+        this.showFloatingMessage(
+          "Copied!",
+          button.getBoundingClientRect(),
+          "success",
+        );
+        setTimeout(() => (button.innerHTML = originalHTML), 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy code:", err);
+        this.showFloatingMessage(
+          "Failed to copy!",
+          button.getBoundingClientRect(),
+          "error",
+        );
+      });
   }
 
   renderMarkdown(markdownContent: string): string {
@@ -535,20 +539,15 @@ export class SketchTimelineMessage extends SketchTailwindElement {
         }
 
         const escapedText = codeMatch[1];
-        const id = `code-block-${Math.random().toString(36).substring(2, 10)}`;
         const langClass = lang ? ` class="language-${lang}"` : "";
 
+        // Use placeholder instead of actual button - will be replaced after sanitization
         return `<div class="code-block-container">
                  <div class="code-block-header">
                    ${lang ? `<span class="code-language">${lang}</span>` : ""}
-                   <button class="code-copy-button" title="Copy code" data-code-id="${id}">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                     </svg>
-                   </button>
+                   <span class="copy-button-placeholder"></span>
                  </div>
-                 <pre><code id="${id}"${langClass}>${escapedText}</code></pre>
+                 <pre><code${langClass}>${escapedText}</code></pre>
                </div>`;
       };
 
@@ -562,7 +561,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
 
       // Parse markdown and sanitize the output HTML with DOMPurify
       const htmlOutput = marked.parse(markdownContent, markedOptions) as string;
-      return DOMPurify.sanitize(htmlOutput, {
+      const sanitizedOutput = DOMPurify.sanitize(htmlOutput, {
         // Allow common HTML elements that are safe
         ALLOWED_TAGS: [
           "p",
@@ -637,6 +636,9 @@ export class SketchTimelineMessage extends SketchTailwindElement {
         // Keep whitespace for code formatting
         KEEP_CONTENT: true,
       });
+
+      // Add copy buttons after sanitization
+      return this.addCopyButtons(sanitizedOutput);
     } catch (error) {
       console.error("Error rendering markdown:", error);
       // Fallback to sanitized plain text if markdown parsing fails
@@ -917,6 +919,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                   ? html`
                       <div
                         class="overflow-x-auto mb-0 font-sans py-0.5 select-text cursor-text text-sm leading-relaxed text-left min-w-[200px] box-border mx-auto markdown-content"
+                        @click=${this.handleCodeCopy}
                       >
                         ${unsafeHTML(
                           this.renderMarkdown(this.message?.content),
