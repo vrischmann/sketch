@@ -45,8 +45,9 @@ signs:
     cmd: selfupdatectl
     args:
       - "sign"
-      - "--private-key={{.Env.SELFUPDATE_PRIVKEY_PATH}}"
+      - "--private-key=/dev/stdin"
       - "${artifact}"
+    stdin: "{{ .Env.SELFUPDATE_SIGNING_KEY }}"
     signature: "${artifact}.ed25519"
     artifacts: all
 

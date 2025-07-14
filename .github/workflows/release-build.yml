@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   nightly:
+    environment: release-build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -33,17 +34,6 @@ jobs:
       - name: Install selfupdatectl
         run: go install github.com/fynelabs/selfupdate/cmd/selfupdatectl@v0.2.1
 
-      - name: Extract Ed25519 signing key
-        env:
-          SELFUPDATE_SIGNING_KEY_B64: ${{ secrets.SELFUPDATE_ED25519_PRIVATE_KEY }}
-        run: |
-          # when https://github.com/fynelabs/selfupdate/issues/39 is fixed, we can stop writing to disk
-          set -euo pipefail
-          [[ -z "${SELFUPDATE_SIGNING_KEY_B64:-}" ]] && { echo >&2 "Signing key secret missing"; exit 1; }
-          selfupdate_keyfile=$(mktemp "$RUNNER_TEMP/ed25519.XXXXXX")
-          chmod 600 "$selfupdate_keyfile"
-          echo "$SELFUPDATE_SIGNING_KEY_B64" | base64 -d > "$selfupdate_keyfile"
-          echo "SELFUPDATE_PRIVKEY_PATH=$selfupdate_keyfile" >>"$GITHUB_ENV"
 
       - name: Check for changes since last tag
         id: check_changes
@@ -98,12 +88,8 @@ jobs:
           args: release --clean --parallelism 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SELFUPDATE_SIGNING_KEY: ${{ secrets.SELFUPDATE_ED25519_SIGNING_KEY }}
 
 
 
-      - name: Clean up signing key
-        if: always()
-        run: |
-          if [[ -n "${SELFUPDATE_PRIVKEY_PATH:-}" && -f "$SELFUPDATE_PRIVKEY_PATH" ]]; then
-            shred -u "$SELFUPDATE_PRIVKEY_PATH"
-          fi
+
