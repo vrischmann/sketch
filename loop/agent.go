@@ -642,7 +642,7 @@ func (a *Agent) dumpMessageHistoryToTmp(ctx context.Context) (string, error) {
 	}
 
 	// Write to file
-	if err := os.WriteFile(filename, jsonData, 0644); err != nil {
+	if err := os.WriteFile(filename, jsonData, 0o644); err != nil {
 		return "", fmt.Errorf("failed to write message history to %s: %w", filename, err)
 	}
 
