@@ -1124,11 +1124,20 @@ func (a *Agent) Init(ini AgentInit) error {
 
 	// If a remote + commit was specified, clone it.
 	if a.config.Commit != "" && a.gitState.gitRemoteAddr != "" {
-		slog.InfoContext(ctx, "cloning git repo", "commit", a.config.Commit)
-		// TODO: --reference-if-able instead?
-		cmd := exec.CommandContext(ctx, "git", "clone", "--reference", "/git-ref", a.gitState.gitRemoteAddr, "/app")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to clone repository from %s: %s: %w", a.gitState.gitRemoteAddr, out, err)
+		if _, err := os.Stat("/app/.git"); err == nil {
+			// Already a repo in /app.
+			// Make sure that the remote is configured correctly.
+			// We do a fetch below.
+			if err := upsertRemoteOrigin(ctx, "/app", a.gitState.gitRemoteAddr); err != nil {
+				return err
+			}
+		} else {
+			slog.InfoContext(ctx, "cloning git repo", "commit", a.config.Commit)
+			// TODO: --reference-if-able instead?
+			cmd := exec.CommandContext(ctx, "git", "clone", "--reference", "/git-ref", a.gitState.gitRemoteAddr, "/app")
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to clone repository from %s: %s: %w", a.gitState.gitRemoteAddr, out, err)
+			}
 		}
 	}
 
@@ -2239,6 +2248,25 @@ func repoRoot(ctx context.Context, dir string) (string, error) {
 		return "", fmt.Errorf("git rev-parse (in %s) failed: %w\n%s", dir, err, stderr)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// upsertRemoteOrigin configures the origin remote to point to the given URL.
+// If the origin remote exists, it updates the URL. If it doesn't exist, it adds it.
+func upsertRemoteOrigin(ctx context.Context, repoDir, remoteURL string) error {
+	// Try to set the URL for existing origin remote
+	cmd := exec.CommandContext(ctx, "git", "remote", "set-url", "origin", remoteURL)
+	cmd.Dir = repoDir
+	if _, err := cmd.CombinedOutput(); err == nil {
+		// Success.
+		return nil
+	}
+	// Origin doesn't exist; add it.
+	cmd = exec.CommandContext(ctx, "git", "remote", "add", "origin", remoteURL)
+	cmd.Dir = repoDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to add git remote origin: %s: %w", out, err)
+	}
+	return nil
 }
 
 func resolveRef(ctx context.Context, dir, refName string) (string, error) {

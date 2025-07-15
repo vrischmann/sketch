@@ -809,11 +809,8 @@ func dockerImageExists(ctx context.Context, imageName string) (bool, error) {
 // We also set up fake temporary Go module(s) so we can run "go mod download".
 // TODO: maybe 'go list ./...' and then do a build as well to populate the build cache.
 // TODO: 'npm install', etc? We have the rails for it.
-// This is an ok compromise, but a power user might want
-// less caching or more caching, depending on their use case. One approach we could take
-// is to punt entirely if /app/.git already exists. If the user has provided a -base-image with
-// their git repo, let's assume they know what they're doing, and they've customized their image
-// for their use case.
+// If /app/.git already exists, we fetch from the existing repo instead of cloning.
+// This lets advanced users arrange their git repo exactly as they desire.
 // Note that buildx has some support for conditional COPY, but without buildx, which
 // we can't reliably depend on, we have to run the base image to inspect its file system,
 // and then we can decide what to do.
