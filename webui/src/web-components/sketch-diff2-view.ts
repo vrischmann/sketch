@@ -161,6 +161,12 @@ export class SketchDiff2View extends SketchTailwindElement {
   @state()
   private viewMode: "all" | "single" = "all";
 
+  @state()
+  private untrackedFiles: string[] = [];
+
+  @state()
+  private showUntrackedPopup: boolean = false;
+
   @property({ attribute: false, type: Object })
   gitService!: GitDataService;
 
@@ -279,6 +285,24 @@ export class SketchDiff2View extends SketchTailwindElement {
     } else {
       this.loadDiffData();
     }
+
+    // Add click listener to close popup when clicking outside
+    document.addEventListener("click", this.handleDocumentClick.bind(this));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener("click", this.handleDocumentClick.bind(this));
+  }
+
+  handleDocumentClick(event: Event) {
+    if (this.showUntrackedPopup) {
+      const target = event.target as HTMLElement;
+      // Check if click is outside the popup and button
+      if (!target.closest(".relative")) {
+        this.showUntrackedPopup = false;
+      }
+    }
   }
 
   // Toggle hideUnchangedRegions setting for a specific file
@@ -309,6 +333,7 @@ export class SketchDiff2View extends SketchTailwindElement {
               .gitService="${this.gitService}"
               @range-change="${this.handleRangeChange}"
             ></sketch-diff-range-picker>
+            ${this.renderUntrackedFilesNotification()}
             <div class="flex-1"></div>
             ${this.renderFileSelector()}
           </div>
@@ -342,6 +367,89 @@ export class SketchDiff2View extends SketchTailwindElement {
           )}
         </select>
         ${this.selectedFile ? this.renderSingleFileExpandButton() : ""}
+      </div>
+    `;
+  }
+
+  renderUntrackedFilesNotification() {
+    if (!this.untrackedFiles || this.untrackedFiles.length === 0) {
+      return "";
+    }
+
+    const fileCount = this.untrackedFiles.length;
+    const fileCountText =
+      fileCount === 1 ? "1 untracked file" : `${fileCount} untracked files`;
+
+    return html`
+      <div class="relative">
+        <button
+          class="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          @click="${this.toggleUntrackedFilesPopup}"
+          type="button"
+        >
+          ${fileCount} untracked
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </button>
+
+        ${this.showUntrackedPopup
+          ? html`
+              <div
+                class="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-50"
+              >
+                <div class="p-4">
+                  <div class="flex items-start gap-3 mb-3">
+                    <svg
+                      class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900 mb-1">
+                        ${fileCountText}
+                      </div>
+                      <div class="text-sm text-gray-600 mb-3">
+                        These files are not tracked by git. They will be lost if the session ends now. The agent typically does not add files to git until it is ready for feedback.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="max-h-32 overflow-y-auto">
+                    <div class="text-sm text-gray-700">
+                      ${this.untrackedFiles.map(
+                        (file) => html`
+                          <div
+                            class="py-1 px-2 hover:bg-gray-100 rounded font-mono text-xs"
+                          >
+                            ${file}
+                          </div>
+                        `,
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `
+          : ""}
       </div>
     `;
   }
@@ -396,6 +504,14 @@ export class SketchDiff2View extends SketchTailwindElement {
       // Ensure files is always an array, even when API returns null
       if (!this.files) {
         this.files = [];
+      }
+
+      // Load untracked files for notification
+      try {
+        this.untrackedFiles = await this.gitService.getUntrackedFiles();
+      } catch (error) {
+        console.error("Error loading untracked files:", error);
+        this.untrackedFiles = [];
       }
 
       // Load content for all files
@@ -771,6 +887,10 @@ export class SketchDiff2View extends SketchTailwindElement {
 
     // Force re-render
     this.requestUpdate();
+  }
+
+  toggleUntrackedFilesPopup() {
+    this.showUntrackedPopup = !this.showUntrackedPopup;
   }
 
   /**

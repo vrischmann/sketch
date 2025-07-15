@@ -223,6 +223,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	s.mux.HandleFunc("/git/cat", s.handleGitCat)
 	s.mux.HandleFunc("/git/save", s.handleGitSave)
 	s.mux.HandleFunc("/git/recentlog", s.handleGitRecentLog)
+	s.mux.HandleFunc("/git/untracked", s.handleGitUntracked)
 
 	s.mux.HandleFunc("/diff", func(w http.ResponseWriter, r *http.Request) {
 		// Check if a specific commit hash was requested
@@ -1538,4 +1539,24 @@ func (s *Server) handleGitSave(w http.ResponseWriter, r *http.Request) {
 	// Return simple success response
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+func (s *Server) handleGitUntracked(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	repoDir := s.agent.RepoRoot()
+	untrackedFiles, err := git_tools.GitGetUntrackedFiles(repoDir)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting untracked files: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string][]string{
+		"untracked_files": untrackedFiles,
+	}
+	_ = json.NewEncoder(w).Encode(response) // can't do anything useful with errors anyway
 }

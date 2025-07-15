@@ -3,6 +3,7 @@ package git_tools
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -455,4 +456,22 @@ func AutoCommitDiffViewChanges(ctx context.Context, repoDir, filePath string) er
 	}
 
 	return nil
+}
+
+// GitGetUntrackedFiles returns a list of untracked files in the repository
+func GitGetUntrackedFiles(repoDir string) ([]string, error) {
+	cmd := exec.Command("git", "-C", repoDir, "ls-files", "--others", "--exclude-standard", "-z")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("error executing git ls-files: %w - %s", err, string(output))
+	}
+	var result []string
+	for path := range bytes.SplitSeq(output, []byte{0}) {
+		path = bytes.TrimSpace(path)
+		if len(path) == 0 {
+			continue
+		}
+		result = append(result, string(path))
+	}
+	return result, nil
 }

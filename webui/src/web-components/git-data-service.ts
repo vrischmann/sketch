@@ -65,6 +65,12 @@ export interface GitDataService {
    * @returns List of changed files
    */
   getUnstagedChanges(from?: string): Promise<GitDiffFile[]>;
+
+  /**
+   * Fetches list of untracked files in the repository
+   * @returns List of untracked file paths
+   */
+  getUntrackedFiles(): Promise<string[]>;
 }
 
 /**
@@ -229,6 +235,24 @@ export class DefaultGitDataService implements GitDataService {
       return this.baseCommitRef;
     } catch (error) {
       console.error("Error fetching base commit reference:", error);
+      throw error;
+    }
+  }
+
+  async getUntrackedFiles(): Promise<string[]> {
+    try {
+      const response = await fetch("git/untracked");
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch untracked files: ${response.statusText}`,
+        );
+      }
+
+      const data = await response.json();
+      return data.untracked_files || [];
+    } catch (error) {
+      console.error("Error fetching untracked files:", error);
       throw error;
     }
   }

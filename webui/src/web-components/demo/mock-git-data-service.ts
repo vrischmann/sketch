@@ -561,4 +561,15 @@ button {
     );
     // Return void as per interface
   }
+
+  async getUntrackedFiles(): Promise<string[]> {
+    console.log("[MockGitDataService] Getting untracked files");
+    // Return some mock untracked files for demo purposes
+    return [
+      "temp.txt",
+      "debug.log",
+      "config/local.json",
+      "node_modules/.cache/something"
+    ];
+  }
 }
