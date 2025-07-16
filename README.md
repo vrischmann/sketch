@@ -25,9 +25,15 @@ Sketch helps with most programming environments, but Sketch has extra goodies fo
 
 ## 📋 Quick Start
 
+### Install via GitHub Releases
+
 Grab the most recent [nightly release](https://github.com/boldsoftware/sketch/releases).
 
-To build yourself, clone this repo, and then run:
+Update by running `sketch -update`.
+
+### Build from source
+
+Clone this repo, and then run:
 
 ```sh
 $ make
@@ -40,7 +46,7 @@ Currently, Sketch runs on MacOS and Linux. It uses Docker for containers.
 
 | Platform | Installation                                                               |
 | -------- | -------------------------------------------------------------------------- |
-| MacOS    | `brew install colima` (or Docker Desktop/Orbstack)                         |
+| MacOS    | `brew install colima` (or [OrbStack](https://orbstack.dev/) or [Docker Desktop](https://www.docker.com/products/docker-desktop/))                         |
 | Linux    | `apt install docker.io` (or equivalent for your distro)                    |
 | WSL2     | Install Docker Desktop for Windows (docker entirely inside WSL2 is tricky) |
 
