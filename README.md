@@ -25,6 +25,14 @@ Sketch helps with most programming environments, but Sketch has extra goodies fo
 
 ## 📋 Quick Start
 
+### Install via Homebrew
+
+```sh
+brew install boldsoftware/tap/sketch
+```
+
+Update by running `brew upgrade boldsoftware/tap/sketch`.
+
 ### Install via GitHub Releases
 
 Grab the most recent [nightly release](https://github.com/boldsoftware/sketch/releases).
