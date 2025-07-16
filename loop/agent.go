@@ -1273,7 +1273,24 @@ func (a *Agent) Init(ini AgentInit) error {
 			}
 		}
 
-		cmd := exec.CommandContext(ctx, "git", "tag", "-f", a.SketchGitBaseRef(), "HEAD")
+		// Check if we have any commits, and if not, create an empty initial commit
+		cmd := exec.CommandContext(ctx, "git", "rev-list", "--all", "--count")
+		cmd.Dir = repoRoot
+		countOut, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git rev-list --all --count: %s: %w", countOut, err)
+		}
+		commitCount := strings.TrimSpace(string(countOut))
+		if commitCount == "0" {
+			slog.Info("No commits found, creating empty initial commit")
+			cmd = exec.CommandContext(ctx, "git", "commit", "--allow-empty", "-m", "Initial empty commit")
+			cmd.Dir = repoRoot
+			if commitOut, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("git commit --allow-empty: %s: %w", commitOut, err)
+			}
+		}
+
+		cmd = exec.CommandContext(ctx, "git", "tag", "-f", a.SketchGitBaseRef(), "HEAD")
 		cmd.Dir = repoRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git tag -f %s %s: %s: %w", a.SketchGitBaseRef(), "HEAD", out, err)

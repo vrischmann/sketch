@@ -176,11 +176,6 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	// Capture the original git origin URL before we set up the temporary git server
 	config.OriginalGitOrigin = getOriginalGitOrigin(ctx, gitRoot)
 
-	err = checkForEmptyGitRepo(ctx, config.Path)
-	if err != nil {
-		return err
-	}
-
 	imgName, err := findOrBuildDockerImage(ctx, gitRoot, config.BaseImage, config.ForceRebuild, config.Verbose)
 	if err != nil {
 		return err
@@ -214,6 +209,21 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	go func() {
 		errCh <- gitSrv.serve(ctx)
 	}()
+
+	// Check if we have any commits, and if not, create an empty initial commit
+	cmd := exec.CommandContext(ctx, "git", "rev-list", "--all", "--count")
+	countOut, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git rev-list --all --count: %s: %w", countOut, err)
+	}
+	commitCount := strings.TrimSpace(string(countOut))
+	if commitCount == "0" {
+		slog.Info("No commits found, creating empty initial commit")
+		cmd = exec.CommandContext(ctx, "git", "commit", "--allow-empty", "-m", "Initial empty commit")
+		if commitOut, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git commit --allow-empty: %s: %w", commitOut, err)
+		}
+	}
 
 	// Get the current host git commit
 	var commit string
@@ -907,17 +917,6 @@ func buildLayeredImage(ctx context.Context, imgName, baseImage, gitRoot string, 
 		return fmt.Errorf("docker build failed: %v", err)
 	}
 	fmt.Printf("built docker image %s in %s\n", imgName, time.Since(start).Round(time.Millisecond))
-	return nil
-}
-
-func checkForEmptyGitRepo(ctx context.Context, path string) error {
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "-q", "--verify", "HEAD")
-	cmd.Dir = path
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("sketch needs to run from within a git repo with at least one commit.\nRun: %s",
-			"git commit --allow-empty -m 'initial commit'")
-	}
 	return nil
 }
 
