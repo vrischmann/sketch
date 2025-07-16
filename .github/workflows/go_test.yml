@@ -1,4 +1,4 @@
-name: go_tests
+name: sketch_go_tests
 on:
   workflow_call:
     inputs:
@@ -11,7 +11,12 @@ on:
         description: "Working directory for the workflow"
         required: false
         type: string
-        default: "."
+        default: "${{ vars.SKETCH_WORKING_DIR || '.' }}"
+      include-slow-tests:
+        description: "Whether to include slow tests"
+        required: false
+        type: boolean
+        default: true
   push:
     branches-ignore:
       - "queue-main-*"
@@ -27,7 +32,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: "${{ inputs.working-directory || '.'}}/go.mod"
+          go-version-file: "${{ inputs.working-directory || vars.SKETCH_WORKING_DIR || '.'}}/go.mod"
           cache: true
 
       - name: Cache Go 1.24.5
@@ -40,7 +45,7 @@ jobs:
             ${{ runner.os }}-go1.24.5-
 
       - name: Optimize APT
-        working-directory: ${{ inputs.working-directory || '.'}}
+        working-directory: ${{ inputs.working-directory || vars.SKETCH_WORKING_DIR || '.'}}
         run: |
           pwd
           ./.github/scripts/optimize-apt.sh
@@ -68,7 +73,7 @@ jobs:
           sleep 1800
 
       - name: Go generate
-        working-directory: ${{ inputs.working-directory || '.'}}
+        working-directory: ${{ inputs.working-directory || vars.SKETCH_WORKING_DIR || '.'}}
         run: |
           go generate ./...
           # if go generate created a diff
@@ -79,7 +84,13 @@ jobs:
           fi
 
       - name: Run tests
-        working-directory: ${{ inputs.working-directory || '.'}}
+        working-directory: ${{ inputs.working-directory || vars.SKETCH_WORKING_DIR || '.'}}
         run: |
-          GOEXPERIMENT=synctest gotestsum --format testname -- ./...
-          GOEXPERIMENT=synctest gotestsum --format testname -- -race ./...
+          if [ "${{ inputs.include-slow-tests }}" = "false" ]; then
+            echo "Running tests without slow tests (short mode, no race re-run)"
+            GOEXPERIMENT=synctest gotestsum --format testname -- -short ./...
+          else
+            echo "Running full test suite including slow tests"
+            GOEXPERIMENT=synctest gotestsum --format testname -- ./...
+            GOEXPERIMENT=synctest gotestsum --format testname -- -race ./...
+          fi
