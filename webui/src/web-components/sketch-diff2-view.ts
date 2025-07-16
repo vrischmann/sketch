@@ -428,7 +428,9 @@ export class SketchDiff2View extends SketchTailwindElement {
                         ${fileCountText}
                       </div>
                       <div class="text-sm text-gray-600 mb-3">
-                        These files are not tracked by git. They will be lost if the session ends now. The agent typically does not add files to git until it is ready for feedback.
+                        These files are not tracked by git. They will be lost if
+                        the session ends now. The agent typically does not add
+                        files to git until it is ready for feedback.
                       </div>
                     </div>
                   </div>

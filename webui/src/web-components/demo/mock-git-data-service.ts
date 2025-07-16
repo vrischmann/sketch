@@ -569,7 +569,7 @@ button {
       "temp.txt",
       "debug.log",
       "config/local.json",
-      "node_modules/.cache/something"
+      "node_modules/.cache/something",
     ];
   }
 }
