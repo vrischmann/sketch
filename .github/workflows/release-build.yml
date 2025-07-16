@@ -89,6 +89,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SELFUPDATE_SIGNING_KEY: ${{ secrets.SELFUPDATE_ED25519_SIGNING_KEY }}
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
 
 
 
