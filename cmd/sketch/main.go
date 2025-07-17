@@ -447,16 +447,15 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	}
 
 	// Get credentials and connect to skaband if needed
-	var pubKey, modelURL, apiKey string
+	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath(flags.skabandAddr))
+	if err != nil {
+		return err
+	}
+	pubKey, modelURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+	if err != nil {
+		return err
+	}
 	if flags.skabandAddr != "" {
-		privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
-		if err != nil {
-			return err
-		}
-		pubKey, modelURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
-		if err != nil {
-			return err
-		}
 		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	} else {
 		// When not using skaband, get API key from environment or flag
@@ -570,10 +569,17 @@ func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) e
 // runInUnsafeMode handles execution on the host machine without Docker.
 // This mode is used when the -unsafe flag is provided.
 func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
-	// Check if we need to get the API key from environment
-	var apiKey, antURL, pubKey string
+	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath(flags.skabandAddr))
+	if err != nil {
+		return err
+	}
+	pubKey, antURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+	if err != nil {
+		return err
+	}
 
 	if flags.skabandAddr == "" {
+		// When not using skaband, get API key from environment or flag
 		envName := "ANTHROPIC_API_KEY"
 		if flags.modelName == "gemini" {
 			envName = gem.GeminiAPIKeyEnv
@@ -583,17 +589,6 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 			return fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
 		}
 	} else {
-		// Connect to skaband
-		privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath())
-		if err != nil {
-			return err
-		}
-		pubKey, antURL, apiKey, err = skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
-		if err != nil {
-			return err
-		}
-
-		// Add MCP Server for skaband
 		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	}
 

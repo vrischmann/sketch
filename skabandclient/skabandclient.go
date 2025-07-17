@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	crand "crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
@@ -198,14 +199,20 @@ func LoadOrCreatePrivateKey(path string) (ed25519.PrivateKey, error) {
 	return key, nil
 }
 
+// Login connects to skaband and authenticates the user.
+// If skabandAddr is empty, it returns the public key without contacting a server.
+// It is the caller's responsibility to set the API URL and key in this case.
 func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID, model string) (pubKey, apiURL, apiKey string, err error) {
 	sig := ed25519.Sign(privKey, []byte(sessionID))
+	pubKey = hex.EncodeToString(privKey.Public().(ed25519.PublicKey))
+	if skabandAddr == "" {
+		return pubKey, "", "", nil
+	}
 
 	req, err := http.NewRequest("POST", skabandAddr+"/authclient", nil)
 	if err != nil {
 		return "", "", "", err
 	}
-	pubKey = hex.EncodeToString(privKey.Public().(ed25519.PublicKey))
 	req.Header.Set("Public-Key", pubKey)
 	req.Header.Set("Session-ID", sessionID)
 	req.Header.Set("Session-ID-Sig", hex.EncodeToString(sig))
@@ -233,12 +240,16 @@ func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID,
 	return pubKey, apiURL, apiKey, nil
 }
 
-func DefaultKeyPath() string {
+func DefaultKeyPath(skabandAddr string) string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
 	cacheDir := filepath.Join(homeDir, ".cache", "sketch")
+	if skabandAddr != "https://sketch.dev" { // main server gets "root" cache dir, for backwards compatibility
+		h := sha256.Sum256([]byte(skabandAddr))
+		cacheDir = filepath.Join(cacheDir, hex.EncodeToString(h[:8]))
+	}
 	os.MkdirAll(cacheDir, 0o777)
 	return filepath.Join(cacheDir, "sketch.ed25519")
 }
