@@ -568,8 +568,6 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 // setupAndRunAgent handles the common logic for setting up and running the agent
 // in both container and unsafe modes.
 func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
-	var client *http.Client
-
 	// Set the public key environment variable if provided
 	// This is needed for MCP server authentication placeholder replacement
 	if pubKey != "" {
@@ -590,7 +588,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		}
 	}
 
-	llmService, err := selectLLMService(client, flags.modelName, modelURL, apiKey)
+	llmService, err := selectLLMService(nil, flags.modelName, modelURL, apiKey)
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM service: %w", err)
 	}
@@ -715,10 +713,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		flags.termUI = false
 	}
 
-	// Create a variable for terminal UI
 	var s *termui.TermUI
-
-	// Create the termui instance only if needed
 	if flags.termUI {
 		s = termui.New(agent, ps1URL)
 	}
