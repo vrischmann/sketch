@@ -442,6 +442,12 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		return fmt.Errorf("sketch: cannot determine current working directory: %v", err)
 	}
 
+	// Resolve any symlinks in the working directory path
+	cwd, err = filepath.EvalSymlinks(cwd)
+	if err != nil {
+		return fmt.Errorf("sketch: cannot resolve working directory symlinks: %v", err)
+	}
+
 	// Configure and launch the container
 	config := dockerimg.ContainerConfig{
 		SessionID:         flags.sessionID,
