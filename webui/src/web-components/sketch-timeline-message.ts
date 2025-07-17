@@ -264,19 +264,48 @@ export class SketchTimelineMessage extends SketchTailwindElement {
     padding: 2px 4px;
     overflow-x: auto;
     max-width: 100%;
-    word-break: break-all;
     box-sizing: border-box;
+    /* Reset word breaking for code blocks - they should not wrap */
+    word-break: normal;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+
+  /* Ensure proper word breaking for all markdown content EXCEPT code blocks */
+  .markdown-content {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    max-width: 100%;
+  }
+
+  /* Handle long URLs and unbreakable strings in text content */
+  .markdown-content a,
+  .markdown-content span:not(.code-language),
+  .markdown-content p {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
   }
 
   .markdown-content pre {
     padding: 8px 12px;
     margin: 0.5rem 0;
     line-height: 1.4;
+    /* Ensure code blocks don't inherit word breaking */
+    word-break: normal;
+    overflow-wrap: normal;
+    white-space: nowrap;
   }
 
   .markdown-content pre code {
     background: transparent;
     padding: 0;
+    /* Ensure inline code in pre blocks doesn't inherit word breaking */
+    word-break: normal;
+    overflow-wrap: normal;
+    white-space: pre;
   }
 
   /* User message code styling */
@@ -295,8 +324,11 @@ export class SketchTimelineMessage extends SketchTailwindElement {
     position: relative;
     margin: 8px 0;
     border-radius: 6px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     background: rgba(0, 0, 0, 0.05);
+    max-width: 100%;
+    width: 100%;
   }
 
   sketch-timeline-message .bg-blue-500 .code-block-container {
@@ -862,7 +894,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
       .join(" ");
 
     const messageContentClasses = [
-      "relative px-2.5 py-1.5 rounded-xl shadow-sm max-w-full w-fit min-w-min break-words word-break-words",
+      "relative px-2.5 py-1.5 rounded-xl shadow-sm min-w-min",
       // User message styling
       this.message?.type === "user"
         ? "bg-blue-500 text-white rounded-br-sm"
@@ -883,8 +915,17 @@ export class SketchTimelineMessage extends SketchTailwindElement {
           ></div>
 
           <!-- Message bubble -->
-          <div class="${bubbleContainerClasses}">
-            <div class="${messageContentClasses}" @click=${this.handleCodeCopy}>
+          <div
+            class="${bubbleContainerClasses}"
+            style="${this.compactPadding
+              ? ""
+              : "max-width: calc(100% - 160px);"}"
+          >
+            <div
+              class="${messageContentClasses}"
+              style="max-width: 100%; overflow: hidden; width: fit-content; min-width: 200px;"
+              @click=${this.handleCodeCopy}
+            >
               <div class="relative">
                 <div
                   class="absolute top-1 right-1 z-10 opacity-0 hover:opacity-100 transition-opacity duration-200 flex gap-1.5"
@@ -918,6 +959,8 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                 ${this.message?.content
                   ? html`
                       <div
+                        class="mb-0 font-sans py-0.5 select-text cursor-text text-sm leading-relaxed text-left box-border markdown-content"
+                        style="max-width: 100%; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; hyphens: auto;"
                         @click=${this.handleCodeCopy}
                         class="overflow-x-auto mb-0 font-sans py-0.5 select-text cursor-text text-sm leading-relaxed text-left min-w-[200px] box-border mx-auto markdown-content"
                       >
