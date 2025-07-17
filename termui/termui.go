@@ -271,7 +271,7 @@ Special commands:
 			ui.AppendSystemMessage("💰 Budget summary:")
 
 			ui.AppendSystemMessage("- Max total cost: %0.2f", originalBudget.MaxDollars)
-		case "browser", "open", "b":
+		case "browser", "open", "b", "v": // "v" is a common typo for "b"
 			if ui.httpURL != "" {
 				ui.AppendSystemMessage("🌐 Opening %s in browser", ui.httpURL)
 				go ui.agent.OpenBrowser(ui.httpURL)
