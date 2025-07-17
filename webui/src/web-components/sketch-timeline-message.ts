@@ -458,7 +458,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
     return html.replace(
       /<span class="copy-button-placeholder"><\/span>/g,
       `<button class="code-copy-button" title="Copy code">
-         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <svg class="code-copy-button" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
          </svg>
@@ -884,7 +884,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
 
           <!-- Message bubble -->
           <div class="${bubbleContainerClasses}">
-            <div class="${messageContentClasses}">
+            <div class="${messageContentClasses}" @click=${this.handleCodeCopy}>
               <div class="relative">
                 <div
                   class="absolute top-1 right-1 z-10 opacity-0 hover:opacity-100 transition-opacity duration-200 flex gap-1.5"
@@ -918,8 +918,8 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                 ${this.message?.content
                   ? html`
                       <div
-                        class="overflow-x-auto mb-0 font-sans py-0.5 select-text cursor-text text-sm leading-relaxed text-left min-w-[200px] box-border mx-auto markdown-content"
                         @click=${this.handleCodeCopy}
+                        class="overflow-x-auto mb-0 font-sans py-0.5 select-text cursor-text text-sm leading-relaxed text-left min-w-[200px] box-border mx-auto markdown-content"
                       >
                         ${unsafeHTML(
                           this.renderMarkdown(this.message?.content),
