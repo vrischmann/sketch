@@ -9,24 +9,24 @@ OUTPUT_DIR="embedded/webui-dist"
 HASH_FILE="$OUTPUT_DIR/.input_hash"
 
 calculate_input_hash() {
-    local tmp=$(mktemp)
-    (
-        export GIT_INDEX_FILE="$tmp"
-        git read-tree --empty
-        git add webui/
-        git write-tree
-    )
-    rm -f "$tmp"
+	local tmp=$(mktemp)
+	(
+		export GIT_INDEX_FILE="$tmp"
+		git read-tree --empty
+		git add webui/
+		git write-tree
+	)
+	rm -f "$tmp"
 }
 
 CURRENT_HASH=$(calculate_input_hash)
 
 if [ -f "$HASH_FILE" ] && [ -d "$OUTPUT_DIR" ]; then
-    STORED_HASH=$(cat "$HASH_FILE")
-    if [ "$CURRENT_HASH" = "$STORED_HASH" ]; then
-        echo "No changes, skipping rebuild"
-        exit 0
-    fi
+	STORED_HASH=$(cat "$HASH_FILE")
+	if [ "$CURRENT_HASH" = "$STORED_HASH" ]; then
+		echo "No changes, skipping rebuild"
+		exit 0
+	fi
 fi
 
 echo "[$(date '+%H:%M:%S')] Removing old output directory..."
