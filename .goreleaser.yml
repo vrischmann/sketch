@@ -37,7 +37,7 @@ archives:
       - README.md
       - LICENSE
   - id: releaseBinary
-    format: binary
+    formats: [binary]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 signs:
@@ -58,22 +58,22 @@ release:
   draft: false
   prerelease: false
 
-brews:
+homebrew_casks:
   - name: sketch
-    url_template: "https://github.com/boldsoftware/sketch/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    url_headers:
-      - "Accept: application/octet-stream"
-      - 'Authorization: bearer #{ENV["HOMEBREW_GITHUB_API_TOKEN"]}'
+    ids:
+      - releaseArchive
+    url:
+      template: "https://github.com/boldsoftware/sketch/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+      headers:
+        - "Accept: application/octet-stream"
+        - 'Authorization: bearer #{ENV["HOMEBREW_GITHUB_API_TOKEN"]}'
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Formula
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Casks
     homepage: "https://sketch.dev"
     description: "Sketch is an agentic coding tool. It draws the 🦉"
-    license: "Apache-2.0"
-    test: |
-      system "#{bin}/sketch -version"
     repository:
       owner: boldsoftware
       name: homebrew-tap
