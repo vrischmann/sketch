@@ -47,6 +47,36 @@ var (
 	builtBy = ""    // how this binary got built (makefile, goreleaser)
 )
 
+// VersionResponse represents the response from sketch.dev/version
+type VersionResponse struct {
+	Stdout string `json:"stdout"`
+}
+
+// doVersionCheck asks the server for version information. Best effort.
+func doVersionCheck(ch chan *VersionResponse, pubKey string) {
+	req, err := http.NewRequest("GET", "https://sketch.dev/version", nil)
+	if err != nil {
+		return
+	}
+
+	req.Header.Set("X-Client-ID", pubKey)
+	req.Header.Set("X-Client-Release", release)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+	var versionResp VersionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&versionResp); err != nil {
+		return
+	}
+	ch <- &versionResp
+}
+
 func main() {
 	err := run()
 	if err != nil {
@@ -234,6 +264,7 @@ type CLIFlags struct {
 	linkToGitHub bool
 	ignoreSig    bool
 	doUpdate     bool
+	checkVersion bool
 
 	gitUsername         string
 	gitEmail            string
@@ -289,6 +320,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
 	userFlags.BoolVar(&flags.version, "version", false, "print the version and exit")
 	userFlags.BoolVar(&flags.doUpdate, "update", false, "update to the latest version of sketch")
+	userFlags.BoolVar(&flags.checkVersion, "version-check", true, "do version upgrade check (please leave this on)")
 	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
 	// Get the default image info for help text
@@ -571,6 +603,15 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 // setupAndRunAgent handles the common logic for setting up and running the agent
 // in both container and unsafe modes.
 func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
+	// Kick off a version/upgrade check early.
+	// If the results come back quickly enough,
+	// we can show them as part of the startup UI.
+	var versionC chan *VersionResponse
+	if flags.checkVersion {
+		versionC = make(chan *VersionResponse, 1)
+		go doVersionCheck(versionC, pubKey)
+	}
+
 	// Set the public key environment variable if provided
 	// This is needed for MCP server authentication placeholder replacement
 	if pubKey != "" {
@@ -715,6 +756,19 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 	// Disable termui if the flag is explicitly set to false or if we detect no PTY is available
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		flags.termUI = false
+	}
+
+	// Last chance to print stuff to stdout before starting termui.
+	// Check for the version upgrade response.
+	select {
+	case resp := <-versionC:
+		if resp != nil && resp.Stdout != "" {
+			// Mild server paranoia: Limit message to 120 characters.
+			message := resp.Stdout[:min(len(resp.Stdout), 120)]
+			fmt.Printf("🦋 %s\n", message)
+		}
+	default:
+		// Version check hasn't responded yet, or never ran, or hit an error. Continue without it.
 	}
 
 	var s *termui.TermUI
