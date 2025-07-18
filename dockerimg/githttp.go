@@ -1,6 +1,7 @@
 package dockerimg
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	_ "embed"
@@ -13,11 +14,15 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"text/template"
 	"time"
 )
 
 //go:embed pre-receive.sh
 var preReceiveScript string
+
+//go:embed post-receive.sh
+var postReceiveScript string
 
 type gitHTTP struct {
 	gitRepoRoot string
@@ -41,7 +46,7 @@ type gitHTTP struct {
 // Note:
 //   - Error propagation from origin push to user push
 //   - Session isolation with temporary hooks directory
-func setupHooksDir(gitRepoRoot string) (string, error) {
+func setupHooksDir(upstream string) (string, error) {
 	hooksDir, err := os.MkdirTemp("", "sketch-git-hooks-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create hooks directory: %w", err)
@@ -50,6 +55,21 @@ func setupHooksDir(gitRepoRoot string) (string, error) {
 	preReceiveHook := filepath.Join(hooksDir, "pre-receive")
 	if err := os.WriteFile(preReceiveHook, []byte(preReceiveScript), 0o755); err != nil {
 		return "", fmt.Errorf("failed to write pre-receive hook: %w", err)
+	}
+
+	if upstream != "" {
+		tmpl, err := template.New("post-receive").Parse(postReceiveScript)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse post-receive template: %w", err)
+		}
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, map[string]string{"Upstream": upstream}); err != nil {
+			return "", fmt.Errorf("failed to execute post-receive template: %w", err)
+		}
+		postReceiveHook := filepath.Join(hooksDir, "post-receive")
+		if err := os.WriteFile(postReceiveHook, buf.Bytes(), 0o755); err != nil {
+			return "", fmt.Errorf("failed to write post-receive hook: %w", err)
+		}
 	}
 
 	return hooksDir, nil
@@ -151,11 +171,14 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "no-cache")
 
-	args := []string{"http-backend"}
+	var args []string
 	if g.hooksDir != "" {
-		// Use -c flag to set core.hooksPath for this git command only
-		args = []string{"-c", "core.hooksPath=" + g.hooksDir, "-c", "receive.denyCurrentBranch=refuse", "http-backend"}
+		args = append(args,
+			"-c", "core.hooksPath="+g.hooksDir,
+			"-c", "receive.denyCurrentBranch=refuse",
+		)
 	}
+	args = append(args, "http-backend")
 
 	h := &cgi.Handler{
 		Path: gitBin,

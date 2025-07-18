@@ -207,8 +207,15 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	// errCh receives errors from operations that this function calls in separate goroutines.
 	errCh := make(chan error)
 
+	var upstream string
+	if out, err := combinedOutput(ctx, "git", "branch", "--show-current"); err != nil {
+		slog.DebugContext(ctx, "git branch --show-current failed (continuing)", "error", err)
+	} else {
+		upstream = strings.TrimSpace(string(out))
+	}
+
 	// Start the git server
-	gitSrv, err := newGitServer(gitRoot, config.PassthroughUpstream)
+	gitSrv, err := newGitServer(gitRoot, config.PassthroughUpstream, upstream)
 	if err != nil {
 		return fmt.Errorf("failed to start git server: %w", err)
 	}
@@ -241,12 +248,6 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		commit = strings.TrimSpace(string(out))
 	}
 
-	var upstream string
-	if out, err := combinedOutput(ctx, "git", "branch", "--show-current"); err != nil {
-		slog.DebugContext(ctx, "git branch --show-current failed (continuing)", "error", err)
-	} else {
-		upstream = strings.TrimSpace(string(out))
-	}
 	if out, err := combinedOutput(ctx, "git", "config", "http.receivepack", "true"); err != nil {
 		return fmt.Errorf("git config http.receivepack true: %s: %w", out, err)
 	}
@@ -488,7 +489,7 @@ func (gs *gitServer) serve(ctx context.Context) error {
 	return gs.srv.Serve(gs.gitLn)
 }
 
-func newGitServer(gitRoot string, configureUpstreamPassthrough bool) (*gitServer, error) {
+func newGitServer(gitRoot string, configureUpstreamPassthrough bool, upstream string) (*gitServer, error) {
 	ret := &gitServer{
 		pass: rand.Text(),
 	}
@@ -509,7 +510,7 @@ func newGitServer(gitRoot string, configureUpstreamPassthrough bool) (*gitServer
 
 	var hooksDir string
 	if configureUpstreamPassthrough {
-		hooksDir, err = setupHooksDir(gitRoot)
+		hooksDir, err = setupHooksDir(upstream)
 		if err != nil {
 			return nil, fmt.Errorf("failed to setup hooks directory: %w", err)
 		}
