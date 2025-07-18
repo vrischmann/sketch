@@ -187,7 +187,7 @@ export class SketchPushButton extends SketchTailwindElement {
 
   private _computeBranchURL(): string {
     const selectedRemote = this._getSelectedRemote();
-    if (!selectedRemote) {
+    if (!selectedRemote || !selectedRemote.is_github) {
       return "";
     }
     return `https://github.com/${selectedRemote?.display_name}/tree/${this._branch}`;
