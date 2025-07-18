@@ -101,7 +101,7 @@ export class SketchTerminal extends SketchTailwindElement {
       }
 
       // Fetch the xterm CSS
-      const response = await fetch("/static/xterm.css");
+      const response = await fetch("./static/xterm.css");
 
       if (!response.ok) {
         console.error(
