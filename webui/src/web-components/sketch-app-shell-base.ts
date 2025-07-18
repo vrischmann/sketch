@@ -937,6 +937,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
             ?disabled=${(this.containerState?.outstanding_llm_calls || 0) ===
               0 &&
             (this.containerState?.outstanding_tool_calls || []).length === 0}
+            title="Ask the agent to pause its work, may take a moment"
           >
             <svg
               class="w-4 h-4"
@@ -956,6 +957,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
             id="endButton"
             class="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70 text-white border-none px-1.5 py-1 xl:px-2.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
             @click=${this._handleEndClick}
+            title="End the session and shut down the container, may cause data loss"
           >
             <svg
               class="w-4 h-4"

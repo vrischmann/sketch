@@ -97,6 +97,11 @@ export class SketchCallStatus extends SketchTailwindElement {
             : !this.isIdle
               ? "bg-orange-50 text-orange-600"
               : "bg-green-50 text-green-700"}"
+          title="${this.isDisconnected
+            ? "Connection lost or container shut down"
+            : !this.isIdle
+              ? "Agent is processing"
+              : "Agent is idle and ready for input"}"
         >
           ${statusText}
         </div>
