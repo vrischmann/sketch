@@ -65,12 +65,14 @@ test("handles missing remote gracefully", async ({ mount }) => {
 
   // Test with selected remote that doesn't exist
   const invalidRemoteURL = await component.evaluate((el: SketchPushButton) => {
-    (el as any)._remotes = [{
-      name: "origin",
-      url: "https://github.com/user/repo.git",
-      display_name: "user/repo",
-      is_github: true,
-    }];
+    (el as any)._remotes = [
+      {
+        name: "origin",
+        url: "https://github.com/user/repo.git",
+        display_name: "user/repo",
+        is_github: true,
+      },
+    ];
     (el as any)._selectedRemote = "nonexistent";
     (el as any)._branch = "test-branch";
     return (el as any)._computeBranchURL();
