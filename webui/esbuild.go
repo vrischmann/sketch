@@ -58,7 +58,6 @@ func ensureNodeModules(buildDir string) error {
 
 	// Check if node_modules exists
 	if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
-		fmt.Printf("[BUILD] node_modules doesn't exist, running npm ci...\n")
 		return runNpmCI(buildDir, packageLockPath, packageLockBackupPath)
 	}
 
@@ -71,12 +70,10 @@ func ensureNodeModules(buildDir string) error {
 	// Check if package-lock.json has changed by comparing with stored version
 	if storedPackageLockData, err := os.ReadFile(packageLockBackupPath); err == nil {
 		if bytes.Equal(packageLockData, storedPackageLockData) {
-			fmt.Printf("[BUILD] package-lock.json unchanged, skipping npm ci\n")
 			return nil
 		}
 	}
 
-	fmt.Printf("[BUILD] package-lock.json changed, running npm ci...\n")
 	return runNpmCI(buildDir, packageLockPath, packageLockBackupPath)
 }
 
@@ -246,11 +243,8 @@ func Build() (fs.FS, error) {
 	// TODO: try downloading "https://sketch.dev/webui/"+filepath.Base(hashZip)
 
 	// We need to do a build.
-	fmt.Printf("[BUILD] Starting webui build process...\n")
-	buildStart := time.Now()
 
 	// Clear everything out of the build directory except node_modules.
-	fmt.Printf("[BUILD] Cleaning build directory...\n")
 	if err := cleanBuildDir(buildDir); err != nil {
 		return nil, err
 	}
@@ -260,7 +254,6 @@ func Build() (fs.FS, error) {
 	}
 
 	// Unpack everything from embedded into build dir.
-	fmt.Printf("[BUILD] Unpacking embedded files...\n")
 	if err := unpackFS(buildDir, embedded); err != nil {
 		return nil, err
 	}
@@ -419,7 +412,6 @@ func Build() (fs.FS, error) {
 		return nil, fmt.Errorf("failed to compress .js/.js.map/.css files: %w", err)
 	}
 
-	fmt.Printf("[BUILD] Build completed in %v\n", time.Since(buildStart))
 	return os.DirFS(tmpHashDir), nil
 }
 
