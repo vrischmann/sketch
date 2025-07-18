@@ -83,8 +83,12 @@ export class SketchToolCardBash extends SketchTailwindElement {
     const inputData = JSON.parse(this.toolCall?.input || "{}");
     const isBackground = inputData?.background === true;
     const isSlowOk = inputData?.slow_ok === true;
-    const backgroundIcon = isBackground ? html`<span title="Running in background">🥷</span> ` : "";
-    const slowIcon = isSlowOk ? html`<span title="Extended timeouts">🐢</span> ` : "";
+    const backgroundIcon = isBackground
+      ? html`<span title="Running in background">🥷</span> `
+      : "";
+    const slowIcon = isSlowOk
+      ? html`<span title="Extended timeouts">🐢</span> `
+      : "";
 
     // Truncate the command if it's too long to display nicely
     const command = inputData?.command || "";
@@ -104,7 +108,8 @@ export class SketchToolCardBash extends SketchTailwindElement {
         <pre
           class="bg-gray-200 text-black p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-wrap-break-word w-full mb-0 rounded-t rounded-b-none box-border"
         >
-${backgroundIcon}${slowIcon}${inputData?.command}</pre>
+${backgroundIcon}${slowIcon}${inputData?.command}</pre
+        >
       </div>
     </div>`;
 
