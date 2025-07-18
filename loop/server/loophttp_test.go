@@ -3,6 +3,7 @@ package server_test
 import (
 	"bufio"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -245,6 +246,7 @@ func (m *mockAgent) OutsideHostname() string                     { return "test-
 func (m *mockAgent) OutsideWorkingDir() string                   { return "/app" }
 func (m *mockAgent) GitOrigin() string                           { return "" }
 func (m *mockAgent) GitUsername() string                         { return m.gitUsername }
+func (m *mockAgent) PassthroughUpstream() bool                   { return false }
 func (m *mockAgent) OpenBrowser(url string)                      {}
 func (m *mockAgent) CompactConversation(ctx context.Context) error {
 	// Mock implementation - just return nil
@@ -677,4 +679,131 @@ func TestStateEndpointIncludesPorts(t *testing.T) {
 	}
 
 	t.Log("State endpoint includes port information correctly")
+}
+
+// TestGitPushHandler tests the git push endpoint
+func TestGitPushHandler(t *testing.T) {
+	mockAgent := &mockAgent{
+		workingDir:   t.TempDir(),
+		branchPrefix: "sketch/",
+	}
+
+	// Create the server with the mock agent
+	server, err := server.New(mockAgent, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Create a test HTTP server
+	testServer := httptest.NewServer(server)
+	defer testServer.Close()
+
+	// Test missing required parameters
+	tests := []struct {
+		name           string
+		requestBody    string
+		expectedStatus int
+		expectedError  string
+	}{
+		{
+			name:           "missing all parameters",
+			requestBody:    `{}`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Missing required parameters: remote, branch, and commit",
+		},
+		{
+			name:           "missing commit parameter",
+			requestBody:    `{"remote": "origin", "branch": "main"}`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Missing required parameters: remote, branch, and commit",
+		},
+		{
+			name:           "missing remote parameter",
+			requestBody:    `{"branch": "main", "commit": "abc123"}`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Missing required parameters: remote, branch, and commit",
+		},
+		{
+			name:           "missing branch parameter",
+			requestBody:    `{"remote": "origin", "commit": "abc123"}`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Missing required parameters: remote, branch, and commit",
+		},
+		{
+			name:           "all parameters present",
+			requestBody:    `{"remote": "origin", "branch": "main", "commit": "abc123", "dry_run": true}`,
+			expectedStatus: http.StatusOK, // Parameters are valid, response will be JSON
+			expectedError:  "",            // No parameter validation error
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := http.Post(
+				testServer.URL+"/git/push",
+				"application/json",
+				strings.NewReader(tt.requestBody),
+			)
+			if err != nil {
+				t.Fatalf("Failed to make HTTP request: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("Expected status %d, got: %d", tt.expectedStatus, resp.StatusCode)
+			}
+
+			if tt.expectedError != "" {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("Failed to read response body: %v", err)
+				}
+				if !strings.Contains(string(body), tt.expectedError) {
+					t.Errorf("Expected error message '%s', got: %s", tt.expectedError, string(body))
+				}
+			}
+		})
+	}
+}
+
+// TestGitPushInfoHandler tests the git push info endpoint
+func TestGitPushInfoHandler(t *testing.T) {
+	mockAgent := &mockAgent{
+		workingDir:   t.TempDir(),
+		branchPrefix: "sketch/",
+	}
+
+	// Create the server with the mock agent
+	server, err := server.New(mockAgent, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Create a test HTTP server
+	testServer := httptest.NewServer(server)
+	defer testServer.Close()
+
+	// Test GET request
+	resp, err := http.Get(testServer.URL + "/git/pushinfo")
+	if err != nil {
+		t.Fatalf("Failed to make HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// We expect this to fail with 500 since there's no git repository
+	// but the endpoint should be accessible
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected status 500, got: %d", resp.StatusCode)
+	}
+
+	// Test that POST is not allowed
+	resp, err = http.Post(testServer.URL+"/git/pushinfo", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("Failed to make HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status 405, got: %d", resp.StatusCode)
+	}
 }

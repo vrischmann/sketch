@@ -38,3 +38,9 @@ To browse the copy of sketch you just started, browse to localhost:8080.
 ## Testing
 
 - Do NOT use the testify package. Write tests using the standard Go testing library only.
+
+## Frontend Guidelines
+
+- Always use relative URLs in frontend code (e.g., "./git/head" instead of "/git/head") to ensure proper routing through proxies.
+- Always use Go structs for input and output types of JSON HTTP requests and use go2ts
+  to convert them to typescript.

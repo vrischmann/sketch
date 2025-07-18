@@ -15,6 +15,7 @@ import { DefaultGitDataService } from "./git-data-service";
 import "./sketch-monaco-view";
 import "./sketch-network-status";
 import "./sketch-call-status";
+import "./sketch-push-button";
 import "./sketch-terminal";
 import "./sketch-timeline";
 import "./sketch-view-mode-select";
@@ -156,6 +157,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
     this._handleMutlipleChoiceSelected =
       this._handleMutlipleChoiceSelected.bind(this);
+    this._handlePushRebaseRequest = this._handlePushRebaseRequest.bind(this);
     this._handleStopClick = this._handleStopClick.bind(this);
     this._handleEndClick = this._handleEndClick.bind(this);
     this._handleNotificationsToggle =
@@ -202,6 +204,10 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     window.addEventListener(
       "multiple-choice-selected",
       this._handleMutlipleChoiceSelected,
+    );
+    window.addEventListener(
+      "push-rebase-request",
+      this._handlePushRebaseRequest,
     );
 
     // register event listeners
@@ -250,6 +256,10 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     window.removeEventListener(
       "multiple-choice-selected",
       this._handleMutlipleChoiceSelected,
+    );
+    window.removeEventListener(
+      "push-rebase-request",
+      this._handlePushRebaseRequest,
     );
 
     // unregister data manager event listeners
@@ -760,6 +770,25 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
         chatInput.content += "\n\n";
       }
       chatInput.content += e.detail.responseText;
+      chatInput.focus();
+      // Adjust textarea height to accommodate new content
+      requestAnimationFrame(() => {
+        if (chatInput.adjustChatSpacing) {
+          chatInput.adjustChatSpacing();
+        }
+      });
+    }
+  }
+
+  async _handlePushRebaseRequest(e: CustomEvent) {
+    const chatInput = this.querySelector(
+      "sketch-chat-input",
+    ) as SketchChatInput;
+    if (chatInput) {
+      if (chatInput.content && chatInput.content.trim() !== "") {
+        chatInput.content += "\n\n";
+      }
+      chatInput.content += e.detail.message;
       chatInput.focus();
       // Adjust textarea height to accommodate new content
       requestAnimationFrame(() => {

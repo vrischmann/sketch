@@ -10,6 +10,8 @@ import { GitLogEntry } from "../../types";
 export class MockGitDataService implements GitDataService {
   constructor() {
     console.log("MockGitDataService instance created");
+    // Setup mock push endpoints when service is created
+    setupMockPushEndpoints();
   }
 
   // Mock commit history
@@ -572,4 +574,71 @@ button {
       "node_modules/.cache/something",
     ];
   }
+}
+
+// Mock HTTP endpoints for push demo
+export function setupMockPushEndpoints() {
+  // Mock the git/pushinfo endpoint
+  const originalFetch = window.fetch;
+
+  window.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+    const urlString = typeof url === "string" ? url : url.toString();
+
+    // Mock pushinfo endpoint
+    if (urlString.includes("/git/pushinfo")) {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
+
+      return new Response(
+        JSON.stringify({
+          hash: "abc123456789",
+          subject: "Implement new file picker UI",
+          remotes: [
+            {
+              name: "origin",
+              url: "https://github.com/boldsoftware/bold.git",
+              display_name: "boldsoftware/bold",
+              is_github: true,
+            },
+            {
+              name: "upstream",
+              url: "https://github.com/anotheruser/bold.git",
+              display_name: "anotheruser/bold",
+              is_github: true,
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Mock push endpoint
+    if (urlString.includes("/git/push")) {
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate push delay
+
+      const body = init?.body ? JSON.parse(init.body as string) : {};
+      const isDryRun = body.dry_run || false;
+
+      const mockOutput = isDryRun
+        ? `To https://github.com/boldsoftware/bold.git\n   abc1234..def5678  ${body.branch || "main"} -> ${body.branch || "main"} (dry-run)`
+        : `To https://github.com/boldsoftware/bold.git\n   abc1234..def5678  ${body.branch || "main"} -> ${body.branch || "main"}\n\nCreate a pull request for '${body.branch || "main"}' on GitHub by visiting:\n  https://github.com/boldsoftware/bold/pull/new/${body.branch || "main"}`;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          output: mockOutput,
+          dry_run: isDryRun,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Fall back to original fetch for other requests
+    return originalFetch(url, init);
+  };
 }

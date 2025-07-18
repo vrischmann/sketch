@@ -262,6 +262,7 @@ type CLIFlags struct {
 	bashFastTimeout       string
 	bashSlowTimeout       string
 	bashBackgroundTimeout string
+	passthroughUpstream   bool
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -324,6 +325,7 @@ func parseCLIFlags() CLIFlags {
 	internalFlags.StringVar(&flags.outsideHTTP, "outside-http", "", "(internal) host for outside sketch")
 	internalFlags.BoolVar(&flags.linkToGitHub, "link-to-github", false, "(internal) enable GitHub branch linking in UI")
 	internalFlags.StringVar(&flags.sshConnectionString, "ssh-connection-string", "", "(internal) SSH connection string for connecting to the container")
+	internalFlags.BoolVar(&flags.passthroughUpstream, "passthrough-upstream", false, "(internal) configure upstream remote for passthrough to innie")
 
 	// Developer flags
 	internalFlags.StringVar(&flags.httprrFile, "httprr", "", "if set, record HTTP interactions to file")
@@ -473,16 +475,17 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		OneShot:           flags.oneShot,
 		Prompt:            flags.prompt,
 
-		Verbose:        flags.verbose,
-		DockerArgs:     flags.dockerArgs,
-		Mounts:         flags.mounts,
-		ExperimentFlag: flags.experimentFlag.String(),
-		TermUI:         flags.termUI,
-		MaxDollars:     flags.maxDollars,
-		BranchPrefix:   flags.branchPrefix,
-		LinkToGitHub:   flags.linkToGitHub,
-		SubtraceToken:  flags.subtraceToken,
-		MCPServers:     flags.mcpServers,
+		Verbose:             flags.verbose,
+		DockerArgs:          flags.dockerArgs,
+		Mounts:              flags.mounts,
+		ExperimentFlag:      flags.experimentFlag.String(),
+		TermUI:              flags.termUI,
+		MaxDollars:          flags.maxDollars,
+		BranchPrefix:        flags.branchPrefix,
+		LinkToGitHub:        flags.linkToGitHub,
+		SubtraceToken:       flags.subtraceToken,
+		MCPServers:          flags.mcpServers,
+		PassthroughUpstream: flags.passthroughUpstream,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -629,6 +632,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		LinkToGitHub:        flags.linkToGitHub,
 		SSHConnectionString: flags.sshConnectionString,
 		MCPServers:          flags.mcpServers,
+		PassthroughUpstream: flags.passthroughUpstream,
 	}
 
 	// Parse timeout configuration

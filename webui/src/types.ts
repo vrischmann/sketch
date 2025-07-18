@@ -115,6 +115,34 @@ export interface TodoList {
 	items: TodoItem[] | null;
 }
 
+export interface Remote {
+	name: string;
+	url: string;
+	display_name: string;
+	is_github: boolean;
+}
+
+export interface GitPushInfoResponse {
+	hash: string;
+	subject: string;
+	remotes: Remote[] | null;
+}
+
+export interface GitPushRequest {
+	remote: string;
+	branch: string;
+	commit: string;
+	dry_run: boolean;
+	force: boolean;
+}
+
+export interface GitPushResponse {
+	success: boolean;
+	output: string;
+	dry_run: boolean;
+	error?: string;
+}
+
 export interface MultipleChoiceOption {
 	caption: string;
 	responseText: string;

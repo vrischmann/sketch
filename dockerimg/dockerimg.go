@@ -136,6 +136,9 @@ type ContainerConfig struct {
 
 	// MCPServers contains MCP server configurations
 	MCPServers []string
+
+	// PassthroughUpstream configures upstream remote for passthrough to innie
+	PassthroughUpstream bool
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -176,6 +179,11 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	// Capture the original git origin URL before we set up the temporary git server
 	config.OriginalGitOrigin = getOriginalGitOrigin(ctx, gitRoot)
 
+	// If we've got an upstream, let's configure
+	if config.OriginalGitOrigin != "" {
+		config.PassthroughUpstream = true
+	}
+
 	imgName, err := findOrBuildDockerImage(ctx, gitRoot, config.BaseImage, config.ForceRebuild, config.Verbose)
 	if err != nil {
 		return err
@@ -200,7 +208,7 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 	errCh := make(chan error)
 
 	// Start the git server
-	gitSrv, err := newGitServer(gitRoot)
+	gitSrv, err := newGitServer(gitRoot, config.PassthroughUpstream)
 	if err != nil {
 		return fmt.Errorf("failed to start git server: %w", err)
 	}
@@ -480,7 +488,7 @@ func (gs *gitServer) serve(ctx context.Context) error {
 	return gs.srv.Serve(gs.gitLn)
 }
 
-func newGitServer(gitRoot string) (*gitServer, error) {
+func newGitServer(gitRoot string, configureUpstreamPassthrough bool) (*gitServer, error) {
 	ret := &gitServer{
 		pass: rand.Text(),
 	}
@@ -499,7 +507,15 @@ func newGitServer(gitRoot string) (*gitServer, error) {
 		}
 	}()
 
-	srv := http.Server{Handler: &gitHTTP{gitRepoRoot: gitRoot, pass: []byte(ret.pass), browserC: browserC}}
+	var hooksDir string
+	if configureUpstreamPassthrough {
+		hooksDir, err = setupHooksDir(gitRoot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup hooks directory: %w", err)
+		}
+	}
+
+	srv := http.Server{Handler: &gitHTTP{gitRepoRoot: gitRoot, hooksDir: hooksDir, pass: []byte(ret.pass), browserC: browserC}}
 	ret.srv = &srv
 
 	_, gitPort, err := net.SplitHostPort(gitLn.Addr().String())
@@ -624,6 +640,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	// Add MCP server configurations
 	for _, mcpServer := range config.MCPServers {
 		cmdArgs = append(cmdArgs, "-mcp", mcpServer)
+	}
+	if config.PassthroughUpstream {
+		cmdArgs = append(cmdArgs, "-passthrough-upstream")
 	}
 
 	// Add additional docker arguments if provided

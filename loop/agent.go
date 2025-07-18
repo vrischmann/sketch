@@ -136,6 +136,9 @@ type CodingAgent interface {
 	// GitUsername returns the git user name from the agent config.
 	GitUsername() string
 
+	// PassthroughUpstream returns whether passthrough upstream is enabled.
+	PassthroughUpstream() bool
+
 	// DiffStats returns the number of lines added and removed from sketch-base to HEAD
 	DiffStats() (int, int)
 	// OpenBrowser is a best-effort attempt to open a browser at url in outside sketch.
@@ -786,6 +789,11 @@ func (a *Agent) GitOrigin() string {
 	return a.config.OriginalGitOrigin
 }
 
+// PassthroughUpstream returns whether passthrough upstream is enabled.
+func (a *Agent) PassthroughUpstream() bool {
+	return a.config.PassthroughUpstream
+}
+
 // GitUsername returns the git user name from the agent config.
 func (a *Agent) GitUsername() string {
 	return a.config.GitUsername
@@ -1105,6 +1113,8 @@ type AgentConfig struct {
 	MCPServers []string
 	// Timeout configuration for bash tool
 	BashTimeouts *claudetool.Timeouts
+	// PassthroughUpstream configures upstream remote for passthrough to innie
+	PassthroughUpstream bool
 }
 
 // NewAgent creates a new Agent.
@@ -1161,14 +1171,7 @@ func (a *Agent) Init(ini AgentInit) error {
 
 	// If a remote + commit was specified, clone it.
 	if a.config.Commit != "" && a.gitState.gitRemoteAddr != "" {
-		if _, err := os.Stat("/app/.git"); err == nil {
-			// Already a repo in /app.
-			// Make sure that the remote is configured correctly.
-			// We do a fetch below.
-			if err := upsertRemoteOrigin(ctx, "/app", a.gitState.gitRemoteAddr); err != nil {
-				return err
-			}
-		} else {
+		if _, err := os.Stat("/app/.git"); err != nil {
 			slog.InfoContext(ctx, "cloning git repo", "commit", a.config.Commit)
 			// TODO: --reference-if-able instead?
 			cmd := exec.CommandContext(ctx, "git", "clone", "--reference", "/git-ref", a.gitState.gitRemoteAddr, "/app")
@@ -1186,6 +1189,9 @@ func (a *Agent) Init(ini AgentInit) error {
 	}
 
 	if !ini.NoGit {
+		if err := upsertRemoteOrigin(ctx, "/app", a.gitState.gitRemoteAddr); err != nil {
+			return err
+		}
 
 		// Configure git user settings
 		if a.config.GitEmail != "" {
@@ -1207,6 +1213,13 @@ func (a *Agent) Init(ini AgentInit) error {
 		cmd.Dir = a.workingDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git config --global http.postBuffer: %s: %v", out, err)
+		}
+
+		// Configure passthrough upstream if enabled
+		if a.config.PassthroughUpstream {
+			if err := a.configurePassthroughUpstream(ctx); err != nil {
+				return fmt.Errorf("failed to configure passthrough upstream: %w", err)
+			}
 		}
 	}
 
@@ -2306,6 +2319,8 @@ func repoRoot(ctx context.Context, dir string) (string, error) {
 
 // upsertRemoteOrigin configures the origin remote to point to the given URL.
 // If the origin remote exists, it updates the URL. If it doesn't exist, it adds it.
+//
+// NOTE: Maybe we should use an "insteadOf" setting instead of changing the URL.
 func upsertRemoteOrigin(ctx context.Context, repoDir, remoteURL string) error {
 	// Try to set the URL for existing origin remote
 	cmd := exec.CommandContext(ctx, "git", "remote", "set-url", "origin", remoteURL)
@@ -2632,6 +2647,63 @@ func updateOrCreateHook(hookPath, content, distinctiveLine string) error {
 		return fmt.Errorf("failed to append to hook: %w", err)
 	}
 
+	return nil
+}
+
+// configurePassthroughUpstream configures git remotes
+// Adds an upstream remote pointing to the same as origin
+// Sets the refspec for upstream and fetch such that both
+// fetch the upstream's things into refs/remotes/upstream/foo
+// The typical scenario is:
+//
+//	github     -   laptop   -  sketch container
+//	"upstream"    "origin"
+func (a *Agent) configurePassthroughUpstream(ctx context.Context) error {
+	// Get the origin remote URL
+	cmd := exec.CommandContext(ctx, "git", "remote", "get-url", "origin")
+	cmd.Dir = a.workingDir
+	originURLBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to get origin URL: %s: %w", originURLBytes, err)
+	}
+	originURL := strings.TrimSpace(string(originURLBytes))
+
+	// Check if upstream remote already exists
+	cmd = exec.CommandContext(ctx, "git", "remote", "get-url", "upstream")
+	cmd.Dir = a.workingDir
+	if _, err := cmd.CombinedOutput(); err != nil {
+		// upstream remote doesn't exist, create it
+		cmd = exec.CommandContext(ctx, "git", "remote", "add", "upstream", originURL)
+		cmd.Dir = a.workingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to add upstream remote: %s: %w", out, err)
+		}
+		slog.InfoContext(ctx, "added upstream remote", "url", originURL)
+	} else {
+		// upstream remote exists, update its URL
+		cmd = exec.CommandContext(ctx, "git", "remote", "set-url", "upstream", originURL)
+		cmd.Dir = a.workingDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to set upstream remote URL: %s: %w", out, err)
+		}
+		slog.InfoContext(ctx, "updated upstream remote URL", "url", originURL)
+	}
+
+	// Add the upstream refspec to the upstream remote
+	cmd = exec.CommandContext(ctx, "git", "config", "remote.upstream.fetch", "+refs/remotes/origin/*:refs/remotes/upstream/*")
+	cmd.Dir = a.workingDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set upstream fetch refspec: %s: %w", out, err)
+	}
+
+	// Add the same refspec to the origin remote
+	cmd = exec.CommandContext(ctx, "git", "config", "--add", "remote.origin.fetch", "+refs/remotes/origin/*:refs/remotes/upstream/*")
+	cmd.Dir = a.workingDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to add upstream refspec to origin: %s: %w", out, err)
+	}
+
+	slog.InfoContext(ctx, "configured passthrough upstream", "origin_url", originURL)
 	return nil
 }
 

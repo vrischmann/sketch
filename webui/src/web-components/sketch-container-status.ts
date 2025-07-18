@@ -3,6 +3,7 @@ import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { formatNumber } from "../utils";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
+import "./sketch-push-button";
 
 @customElement("sketch-container-status")
 export class SketchContainerStatus extends SketchTailwindElement {
@@ -645,6 +646,9 @@ export class SketchContainerStatus extends SketchTailwindElement {
           `;
         })()}
 
+        <!-- Push button -->
+        <sketch-push-button class="ml-2"></sketch-push-button>
+
         <!-- Info toggle button -->
         <button
           class="info-toggle ml-2 w-6 h-6 rounded-full flex items-center justify-center ${this
@@ -665,6 +669,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
           class="${this.showDetails
             ? "block"
             : "hidden"} absolute min-w-max top-full z-100 bg-white rounded-lg p-4 shadow-lg mt-1.5"
+          style="left: 50%; transform: translateX(-50%);"
         >
           <!-- Last Commit section moved to main grid -->
 

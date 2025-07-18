@@ -3,6 +3,7 @@ package dockerimg
 import (
 	"context"
 	"crypto/subtle"
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,10 +16,43 @@ import (
 	"time"
 )
 
+//go:embed pre-receive.sh
+var preReceiveScript string
+
 type gitHTTP struct {
 	gitRepoRoot string
+	hooksDir    string
 	pass        []byte
 	browserC    chan bool // browser launch requests
+}
+
+// setupHooksDir creates a temporary directory with git hooks for this session.
+//
+// This automatically forwards pushes from refs/remotes/origin/Y to origin/Y
+// when users push to remote tracking refs through the git HTTP backend.
+//
+// How it works:
+//  1. User pushes to refs/remotes/origin/feature-branch
+//  2. Pre-receive hook detects the pattern and extracts branch name
+//  3. Hook checks if it's a force push (declined if so)
+//  4. Hook runs "git push origin <commit>:feature-branch"
+//  5. If origin push fails, user's push also fails
+//
+// Note:
+//   - Error propagation from origin push to user push
+//   - Session isolation with temporary hooks directory
+func setupHooksDir(gitRepoRoot string) (string, error) {
+	hooksDir, err := os.MkdirTemp("", "sketch-git-hooks-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create hooks directory: %w", err)
+	}
+
+	preReceiveHook := filepath.Join(hooksDir, "pre-receive")
+	if err := os.WriteFile(preReceiveHook, []byte(preReceiveScript), 0o755); err != nil {
+		return "", fmt.Errorf("failed to write pre-receive hook: %w", err)
+	}
+
+	return hooksDir, nil
 }
 
 func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -116,9 +150,16 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "no-cache")
+
+	args := []string{"http-backend"}
+	if g.hooksDir != "" {
+		// Use -c flag to set core.hooksPath for this git command only
+		args = []string{"-c", "core.hooksPath=" + g.hooksDir, "http-backend"}
+	}
+
 	h := &cgi.Handler{
 		Path: gitBin,
-		Args: []string{"http-backend"},
+		Args: args,
 		Dir:  g.gitRepoRoot,
 		Env: []string{
 			"GIT_PROJECT_ROOT=" + g.gitRepoRoot,
@@ -129,6 +170,9 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"GIT_HTTP_ALLOW_REPACK=true",
 			"GIT_HTTP_ALLOW_PUSH=true",
 			"GIT_HTTP_VERBOSE=1",
+			// We need to pass through the SSH auth sock to the CGI script
+			// so that we can use the user's existing SSH key infra to authenticate.
+			"SSH_AUTH_SOCK=" + os.Getenv("SSH_AUTH_SOCK"),
 		},
 	}
 	h.ServeHTTP(w, r)

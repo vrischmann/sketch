@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -33,6 +34,60 @@ import (
 	"sketch.dev/loop"
 	"sketch.dev/loop/server/gzhandler"
 )
+
+// Remote represents a git remote with display information.
+type Remote struct {
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	DisplayName string `json:"display_name"`
+	IsGitHub    bool   `json:"is_github"`
+}
+
+// GitPushInfoResponse represents the response from /git/pushinfo
+type GitPushInfoResponse struct {
+	Hash    string   `json:"hash"`
+	Subject string   `json:"subject"`
+	Remotes []Remote `json:"remotes"`
+}
+
+// GitPushRequest represents the request body for /git/push
+type GitPushRequest struct {
+	Remote string `json:"remote"`
+	Branch string `json:"branch"`
+	Commit string `json:"commit"`
+	DryRun bool   `json:"dry_run"`
+	Force  bool   `json:"force"`
+}
+
+// GitPushResponse represents the response from /git/push
+type GitPushResponse struct {
+	Success bool   `json:"success"`
+	Output  string `json:"output"`
+	DryRun  bool   `json:"dry_run"`
+	Error   string `json:"error,omitempty"`
+}
+
+// isGitHubURL checks if a URL is a GitHub URL
+func isGitHubURL(url string) bool {
+	return strings.Contains(url, "github.com")
+}
+
+// simplifyGitHubURL simplifies GitHub URLs to "owner/repo" format
+// and also returns whether it's a github url
+func simplifyGitHubURL(url string) (string, bool) {
+	// Handle GitHub URLs in various formats
+	if strings.Contains(url, "github.com") {
+		// Extract owner/repo from URLs like:
+		// https://github.com/owner/repo.git
+		// git@github.com:owner/repo.git
+		// https://github.com/owner/repo
+		re := regexp.MustCompile(`github\.com[:/]([^/]+/[^/]+?)(?:\.git)?/?$`)
+		if matches := re.FindStringSubmatch(url); len(matches) > 1 {
+			return matches[1], true
+		}
+	}
+	return url, false
+}
 
 // terminalSession represents a terminal session with its PTY and the event channel
 type terminalSession struct {
@@ -690,6 +745,12 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"path": filename})
 	})
+
+	// Handler for /git/pushinfo - returns HEAD commit and remotes for push dialog
+	s.mux.HandleFunc("/git/pushinfo", s.handleGitPushInfo)
+
+	// Handler for /git/push - handles git push operations
+	s.mux.HandleFunc("/git/push", s.handleGitPush)
 
 	// Handler for /cancel - cancels the current inner loop in progress
 	s.mux.HandleFunc("/cancel", func(w http.ResponseWriter, r *http.Request) {
@@ -1559,4 +1620,179 @@ func (s *Server) handleGitUntracked(w http.ResponseWriter, r *http.Request) {
 		"untracked_files": untrackedFiles,
 	}
 	_ = json.NewEncoder(w).Encode(response) // can't do anything useful with errors anyway
+}
+
+// handleGitPushInfo returns the current HEAD commit info and remotes for push dialog
+func (s *Server) handleGitPushInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	repoDir := s.agent.RepoRoot()
+
+	// Get the current HEAD commit hash and subject in one command
+	cmd := exec.Command("git", "log", "-n", "1", "--format=%H%x00%s", "HEAD")
+	cmd.Dir = repoDir
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting HEAD commit: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	parts := strings.Split(strings.TrimSpace(string(output)), "\x00")
+	if len(parts) != 2 {
+		http.Error(w, "Unexpected git log output format", http.StatusInternalServerError)
+		return
+	}
+	hash := parts[0]
+	subject := parts[1]
+
+	// Get list of remote names
+	cmd = exec.Command("git", "remote")
+	cmd.Dir = repoDir
+	output, err = cmd.Output()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting remotes: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	remoteNames := strings.Fields(strings.TrimSpace(string(output)))
+
+	remotes := make([]Remote, 0, len(remoteNames))
+
+	// Get URL and display name for each remote
+	for _, remoteName := range remoteNames {
+		cmd = exec.Command("git", "remote", "get-url", remoteName)
+		cmd.Dir = repoDir
+		urlOutput, err := cmd.Output()
+		if err != nil {
+			// Skip this remote if we can't get its URL
+			continue
+		}
+		url := strings.TrimSpace(string(urlOutput))
+
+		// Set display name based on passthrough-upstream and remote name
+		var displayName string
+		var isGitHub bool
+		if s.agent.PassthroughUpstream() && remoteName == "origin" {
+			// For passthrough upstream, origin displays as "outside_hostname:outside_working_dir"
+			displayName = fmt.Sprintf("%s:%s", s.agent.OutsideHostname(), s.agent.OutsideWorkingDir())
+			isGitHub = false
+		} else if remoteName == "origin" || remoteName == "upstream" {
+			// Use git_origin value, simplified for GitHub URLs
+			displayName, isGitHub = simplifyGitHubURL(s.agent.GitOrigin())
+		} else {
+			// For other remotes, use the remote URL directly
+			displayName, isGitHub = simplifyGitHubURL(url)
+		}
+
+		remotes = append(remotes, Remote{
+			Name:        remoteName,
+			URL:         url,
+			DisplayName: displayName,
+			IsGitHub:    isGitHub,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := GitPushInfoResponse{
+		Hash:    hash,
+		Subject: subject,
+		Remotes: remotes,
+	}
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+// handleGitPush handles git push operations
+func (s *Server) handleGitPush(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var requestBody GitPushRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, fmt.Sprintf("Error parsing request body: %v", err), http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	if requestBody.Remote == "" || requestBody.Branch == "" || requestBody.Commit == "" {
+		http.Error(w, "Missing required parameters: remote, branch, and commit", http.StatusBadRequest)
+		return
+	}
+
+	repoDir := s.agent.RepoRoot()
+
+	// Build the git push command
+	args := []string{"push"}
+	if requestBody.DryRun {
+		args = append(args, "--dry-run")
+	}
+	if requestBody.Force {
+		args = append(args, "--force")
+	}
+
+	// Determine the target refspec
+	var targetRef string
+	if s.agent.PassthroughUpstream() && requestBody.Remote == "upstream" {
+		// Special case: upstream with passthrough-upstream pushes to refs/remotes/origin/<branch>
+		targetRef = fmt.Sprintf("refs/remotes/origin/%s", requestBody.Branch)
+	} else {
+		// Normal case: push to refs/heads/<branch>
+		targetRef = fmt.Sprintf("refs/heads/%s", requestBody.Branch)
+	}
+
+	args = append(args, requestBody.Remote, fmt.Sprintf("%s:%s", requestBody.Commit, targetRef))
+
+	// Log the git push command being executed
+	slog.InfoContext(r.Context(), "executing git push command",
+		"command", "git",
+		"args", args,
+		"remote", requestBody.Remote,
+		"branch", requestBody.Branch,
+		"commit", requestBody.Commit,
+		"target_ref", targetRef,
+		"dry_run", requestBody.DryRun,
+		"force", requestBody.Force,
+		"repo_dir", repoDir)
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repoDir
+	// Ideally we want to pass an extra HTTP header so that the
+	// server can know that this was likely a user initiated action
+	// and not an agent-initiated action. However, git push weirdly
+	// doesn't take a "-c" option, and the only handy env variable that
+	// because a header is the user agent, so we abuse it...
+	cmd.Env = append(os.Environ(), "GIT_HTTP_USER_AGENT=sketch-intentional-push")
+	output, err := cmd.CombinedOutput()
+
+	// Log the result of the git push command
+	if err != nil {
+		slog.WarnContext(r.Context(), "git push command failed",
+			"error", err,
+			"output", string(output),
+			"args", args)
+	} else {
+		slog.InfoContext(r.Context(), "git push command completed successfully",
+			"output", string(output),
+			"args", args)
+	}
+
+	// Prepare response
+	response := GitPushResponse{
+		Success: err == nil,
+		Output:  string(output),
+		DryRun:  requestBody.DryRun,
+	}
+
+	if err != nil {
+		response.Error = err.Error()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(response)
 }
