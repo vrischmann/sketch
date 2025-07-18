@@ -94,6 +94,7 @@ export class DemoRunner {
       "sketch-call-status",
       "sketch-chat-input",
       "sketch-container-status",
+      "sketch-diff-range-picker",
       "sketch-timeline",
       "sketch-timeline-message",
       "sketch-todo-panel",

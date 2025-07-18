@@ -1,10 +1,11 @@
 // sketch-diff-range-picker.ts
 // Component for selecting commit range for diffs
 
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { GitDataService } from "./git-data-service";
 import { GitLogEntry } from "../types";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 /**
  * Range type for diff views
@@ -15,7 +16,7 @@ export type DiffRange = { type: "range"; from: string; to: string };
  * Component for selecting commit range for diffs
  */
 @customElement("sketch-diff-range-picker")
-export class SketchDiffRangePicker extends LitElement {
+export class SketchDiffRangePicker extends SketchTailwindElement {
   @property({ type: Array })
   commits: GitLogEntry[] = [];
 
@@ -44,218 +45,30 @@ export class SketchDiffRangePicker extends LitElement {
     console.log("SketchDiffRangePicker initialized");
   }
 
-  static styles = css`
-    :host {
+  // Ensure global styles are injected when component is used
+  private ensureGlobalStyles() {
+    if (!document.querySelector("#sketch-diff-range-picker-styles")) {
+      const floatingMessageStyles = document.createElement("style");
+      floatingMessageStyles.id = "sketch-diff-range-picker-styles";
+      floatingMessageStyles.textContent = this.getGlobalStylesContent();
+      document.head.appendChild(floatingMessageStyles);
+    }
+  }
+
+  // Get the global styles content
+  private getGlobalStylesContent(): string {
+    return `
+    sketch-diff-range-picker {
       display: block;
       width: 100%;
       font-family: var(--font-family, system-ui, sans-serif);
       color: var(--text-color, #333);
-    }
-
-    .range-picker {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* Removed commits-header and commits-label styles - no longer needed */
-
-    .commit-selectors {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 12px;
-      flex: 1;
-    }
-
-    .commit-selector {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      position: relative;
-    }
-
-    /* Custom dropdown styles */
-    .custom-select {
-      position: relative;
-      width: 100%;
-      min-width: 300px;
-    }
-
-    .select-button {
-      width: 100%;
-      padding: 8px 32px 8px 12px;
-      border: 1px solid var(--border-color, #e0e0e0);
-      border-radius: 4px;
-      background-color: var(--background, #fff);
-      cursor: pointer;
-      text-align: left;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 36px;
-      font-family: inherit;
-      font-size: 14px;
-      position: relative;
-    }
-
-    .select-button:hover {
-      border-color: var(--border-hover, #ccc);
-    }
-
-    .select-button:focus {
-      outline: none;
-      border-color: var(--accent-color, #007acc);
-      box-shadow: 0 0 0 2px var(--accent-color-light, rgba(0, 122, 204, 0.2));
-    }
-
-    .select-button.default-commit {
-      border-color: var(--accent-color, #007acc);
-      background-color: var(--accent-color-light, rgba(0, 122, 204, 0.05));
-    }
-
-    .dropdown-arrow {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      transition: transform 0.2s;
-    }
-
-    .dropdown-arrow.open {
-      transform: translateY(-50%) rotate(180deg);
-    }
-
-    .dropdown-content {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background-color: var(--background, #fff);
-      border: 1px solid var(--border-color, #e0e0e0);
-      border-radius: 4px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      z-index: 1000;
-      max-height: 300px;
-      overflow-y: auto;
-      margin-top: 2px;
-    }
-
-    .dropdown-option {
-      padding: 10px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid var(--border-light, #f0f0f0);
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      font-size: 14px;
-      line-height: 1.4;
-      min-height: auto;
-    }
-
-    .dropdown-option:last-child {
-      border-bottom: none;
-    }
-
-    .dropdown-option:hover {
-      background-color: var(--background-hover, #f5f5f5);
-    }
-
-    .dropdown-option.selected {
-      background-color: var(--accent-color-light, rgba(0, 122, 204, 0.1));
-    }
-
-    .dropdown-option.default-commit {
-      background-color: var(--accent-color-light, rgba(0, 122, 204, 0.05));
-      border-left: 3px solid var(--accent-color, #007acc);
-      padding-left: 9px;
-    }
-
-    .commit-hash {
-      font-family: monospace;
-      color: var(--text-secondary, #666);
-      font-size: 13px;
-    }
-
-    .commit-subject {
-      color: var(--text-primary, #333);
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 200px; /* Ensure commit message gets priority */
-    }
-
-    .commit-refs {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-
-    .commit-refs-container {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-      flex-shrink: 0;
-    }
-
-    .commit-ref {
-      background-color: var(--tag-bg, #e1f5fe);
-      color: var(--tag-text, #0277bd);
-      padding: 2px 6px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .commit-ref.branch {
-      background-color: var(--branch-bg, #e8f5e8);
-      color: var(--branch-text, #2e7d32);
-    }
-
-    .commit-ref.tag {
-      background-color: var(--tag-bg, #fff3e0);
-      color: var(--tag-text, #f57c00);
-    }
-
-    .commit-ref.sketch-base {
-      background-color: var(--accent-color, #007acc);
-      color: white;
-      font-weight: 600;
-    }
-
-    .truncated-refs {
-      position: relative;
-      cursor: help;
-    }
-
-    label {
-      font-weight: 500;
-      font-size: 14px;
-    }
-
-    .loading {
-      font-style: italic;
-      color: var(--text-muted, #666);
-    }
-
-    .error {
-      color: var(--error-color, #dc3545);
-      font-size: 14px;
-    }
-
-    @media (max-width: 768px) {
-      .commit-selector {
-        max-width: 100%;
-      }
-    }
-  `;
+    }`;
+  }
 
   connectedCallback() {
     super.connectedCallback();
+    this.ensureGlobalStyles();
     // Wait for DOM to be fully loaded to ensure proper initialization order
     if (document.readyState === "complete") {
       this.loadCommits();
@@ -291,19 +104,23 @@ export class SketchDiffRangePicker extends LitElement {
 
   render() {
     return html`
-      <div class="range-picker">
-        ${this.loading
-          ? html`<div class="loading">Loading commits...</div>`
-          : this.error
-            ? html`<div class="error">${this.error}</div>`
-            : this.renderRangePicker()}
+      <div class="block w-full font-system text-gray-800">
+        <div class="flex flex-col gap-3 w-full">
+          ${this.loading
+            ? html`<div class="italic text-gray-500">Loading commits...</div>`
+            : this.error
+              ? html`<div class="text-red-600 text-sm">${this.error}</div>`
+              : this.renderRangePicker()}
+        </div>
       </div>
     `;
   }
 
   renderRangePicker() {
     return html`
-      <div class="commit-selectors">${this.renderRangeSelectors()}</div>
+      <div class="flex flex-row items-center gap-3 flex-1">
+        ${this.renderRangeSelectors()}
+      </div>
     `;
   }
 
@@ -316,19 +133,31 @@ export class SketchDiffRangePicker extends LitElement {
       selectedCommit && this.isSketchBaseCommit(selectedCommit);
 
     return html`
-      <div class="commit-selector">
-        <label for="fromCommit">Diff from:</label>
-        <div class="custom-select" @click=${this.toggleDropdown}>
+      <div class="flex items-center gap-2 flex-1 relative">
+        <label for="fromCommit" class="font-medium text-sm text-gray-700"
+          >Diff from:</label
+        >
+        <div
+          class="relative w-full min-w-[300px]"
+          @click=${this.toggleDropdown}
+        >
           <button
-            class="select-button ${isDefaultCommit ? "default-commit" : ""}"
+            class="w-full py-2 px-3 pr-8 border rounded text-left min-h-[36px] text-sm relative cursor-pointer bg-white ${isDefaultCommit
+              ? "border-blue-500 bg-blue-50"
+              : "border-gray-300 hover:border-gray-400"} focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             @click=${this.toggleDropdown}
             @blur=${this.handleBlur}
           >
-            ${selectedCommit
-              ? this.renderCommitButton(selectedCommit)
-              : "Select commit..."}
+            <div class="flex items-center gap-2 pr-6">
+              ${selectedCommit
+                ? this.renderCommitButton(selectedCommit)
+                : "Select commit..."}
+            </div>
             <svg
-              class="dropdown-arrow ${this.dropdownOpen ? "open" : ""}"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 transition-transform duration-200 ${this
+                .dropdownOpen
+                ? "rotate-180"
+                : ""}"
               width="12"
               height="12"
               viewBox="0 0 12 12"
@@ -338,14 +167,17 @@ export class SketchDiffRangePicker extends LitElement {
           </button>
           ${this.dropdownOpen
             ? html`
-                <div class="dropdown-content">
+                <div
+                  class="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-[300px] overflow-y-auto mt-0.5"
+                >
                   ${this.commits.map(
                     (commit) => html`
                       <div
-                        class="dropdown-option ${commit.hash === this.fromCommit
-                          ? "selected"
+                        class="px-3 py-2.5 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-start gap-2 text-sm leading-5 hover:bg-gray-50 ${commit.hash ===
+                        this.fromCommit
+                          ? "bg-blue-50"
                           : ""} ${this.isSketchBaseCommit(commit)
-                          ? "default-commit"
+                          ? "bg-blue-50 border-l-4 border-l-blue-500 pl-2"
                           : ""}"
                         @click=${() => this.selectCommit(commit.hash)}
                       >
@@ -530,10 +362,15 @@ export class SketchDiffRangePicker extends LitElement {
     }
 
     return html`
-      <span class="commit-hash">${shortHash}</span>
-      <span class="commit-subject">${subject}</span>
+      <span class="font-mono text-gray-600 text-xs">${shortHash}</span>
+      <span class="text-gray-800 text-xs truncate">${subject}</span>
       ${this.isSketchBaseCommit(commit)
-        ? html` <span class="commit-ref sketch-base">base</span> `
+        ? html`
+            <span
+              class="bg-blue-600 text-white px-1.5 py-0.5 rounded-full text-xs font-semibold"
+              >base</span
+            >
+          `
         : ""}
     `;
   }
@@ -549,10 +386,16 @@ export class SketchDiffRangePicker extends LitElement {
     }
 
     return html`
-      <span class="commit-hash">${shortHash}</span>
-      <span class="commit-subject">${subject}</span>
+      <span class="font-mono text-gray-600 text-xs">${shortHash}</span>
+      <span class="text-gray-800 text-xs flex-1 truncate min-w-[200px]"
+        >${subject}</span
+      >
       ${commit.refs && commit.refs.length > 0
-        ? html` <div class="commit-refs">${this.renderRefs(commit.refs)}</div> `
+        ? html`
+            <div class="flex gap-1 flex-wrap">
+              ${this.renderRefs(commit.refs)}
+            </div>
+          `
         : ""}
     `;
   }
@@ -562,16 +405,19 @@ export class SketchDiffRangePicker extends LitElement {
    */
   renderRefs(refs: string[]) {
     return html`
-      <div class="commit-refs-container">
+      <div class="flex gap-1 flex-wrap flex-shrink-0">
         ${refs.map((ref) => {
           const shortRef = this.getShortRefName(ref);
           const isSketchBase = ref.includes("sketch-base");
           const refClass = isSketchBase
-            ? "sketch-base"
+            ? "bg-blue-600 text-white font-semibold"
             : ref.includes("tag")
-              ? "tag"
-              : "branch";
-          return html`<span class="commit-ref ${refClass}">${shortRef}</span>`;
+              ? "bg-amber-100 text-amber-800"
+              : "bg-green-100 text-green-800";
+          return html`<span
+            class="px-1.5 py-0.5 rounded-full text-xs font-medium ${refClass}"
+            >${shortRef}</span
+          >`;
         })}
       </div>
     `;
