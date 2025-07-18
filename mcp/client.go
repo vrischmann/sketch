@@ -182,6 +182,8 @@ func (m *MCPManager) connectToServer(ctx context.Context, config ServerConfig) (
 			return nil, fmt.Errorf("command is required for stdio transport")
 		}
 		mcpClient, err = client.NewStdioMCPClient(config.Command, envVars, config.Args...)
+		// TODO: Get the transport, cast it to *transport.Stdio, and start a goroutine to pipe stderr from the subprocess
+		// to our subprocess, but with each line prefixed with the server name.
 	case "http":
 		if config.URL == "" {
 			return nil, fmt.Errorf("URL is required for HTTP transport")
@@ -293,7 +295,8 @@ func (m *MCPManager) convertMCPTools(serverName string, mcpClient *client.Client
 // executeMCPTool executes an MCP tool call
 func (m *MCPManager) executeMCPTool(ctx context.Context, mcpClient *client.Client, toolName string, input json.RawMessage) (any, error) {
 	// Add timeout for tool execution
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// TODO: Expose the timeout as a tool call argument.
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	// Parse input arguments
