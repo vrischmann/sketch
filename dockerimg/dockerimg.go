@@ -765,7 +765,18 @@ func findOrBuildDockerImage(ctx context.Context, gitRoot, baseImage string, forc
 		}
 	}
 
-	// Build the layered image
+	// Explain a bit what's happening, to help orient and de-FUD new users.
+	fmt.Println()
+	fmt.Println("┌──────────────────────────────────────────────────┐")
+	fmt.Println("│ Building Docker image (one-time)                 │")
+	fmt.Println("│                                                  │")
+	fmt.Println("│ • Built and run locally                          │")
+	fmt.Println("│ • Packages your git repo into isolated container │")
+	fmt.Println("│ • Custom images: https://sketch.dev/docs/docker  │")
+	fmt.Println("│ • Rebuild: sketch -rebuild                       │")
+	fmt.Println("└──────────────────────────────────────────────────┘")
+	fmt.Println()
+
 	if err := buildLayeredImage(ctx, imgName, baseImage, gitRoot, verbose); err != nil {
 		return "", fmt.Errorf("failed to build layered image: %w", err)
 	}
