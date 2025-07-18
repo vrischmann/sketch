@@ -1189,8 +1189,10 @@ func (a *Agent) Init(ini AgentInit) error {
 	}
 
 	if !ini.NoGit {
-		if err := upsertRemoteOrigin(ctx, "/app", a.gitState.gitRemoteAddr); err != nil {
-			return err
+		if a.gitState.gitRemoteAddr != "" {
+			if err := upsertRemoteOrigin(ctx, "/app", a.gitState.gitRemoteAddr); err != nil {
+				return err
+			}
 		}
 
 		// Configure git user settings
