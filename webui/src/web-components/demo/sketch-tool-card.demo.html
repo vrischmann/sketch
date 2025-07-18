@@ -47,6 +47,8 @@
           input: JSON.stringify({
             command:
               "docker ps -a --format '{{.ID}} {{.Image }} {{.Names}}' | grep sketch | awk '{print $1 }' | xargs -I {} docker rm {} && docker image prune -af",
+            background: true,
+            slow_ok: true,
           }),
           result_message: {
             type: "tool",
@@ -124,10 +126,22 @@ Total reclaimed space: 1.426GB`,
           name: "bash",
           input: JSON.stringify({
             command: "sleep 200",
+            slow_ok: true,
           }),
           result_message: {
             type: "tool",
             tool_error: "the user canceled this operation",
+          },
+        },
+        {
+          name: "bash",
+          input: JSON.stringify({
+            command: "npm start",
+            background: true,
+          }),
+          result_message: {
+            type: "tool",
+            tool_result: "Started server in background",
           },
         },
         {
