@@ -154,7 +154,7 @@ func (g *gitHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	args := []string{"http-backend"}
 	if g.hooksDir != "" {
 		// Use -c flag to set core.hooksPath for this git command only
-		args = []string{"-c", "core.hooksPath=" + g.hooksDir, "http-backend"}
+		args = []string{"-c", "core.hooksPath=" + g.hooksDir, "-c", "receive.denyCurrentBranch=refuse", "http-backend"}
 	}
 
 	h := &cgi.Handler{
