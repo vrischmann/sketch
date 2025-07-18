@@ -282,7 +282,7 @@ export class SketchPushButton extends SketchTailwindElement {
         <button
           @click=${this._openModal}
           class="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-          title="Push current HEAD to remote"
+          title="Open dialog box for pushing changes"
         >
           <svg
             class="w-4 h-4"
