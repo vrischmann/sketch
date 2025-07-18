@@ -100,6 +100,7 @@ export class DemoRunner {
       "sketch-todo-panel",
       "sketch-tool-calls",
       "sketch-view-mode-select",
+      "sketch-theme-toggle",
     ];
 
     // Filter to only components that actually have demo files
