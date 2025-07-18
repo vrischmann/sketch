@@ -229,7 +229,7 @@ func noSketchWipBranchChangesOnce(cmd *syntax.CallExpr) error {
 		sketchWipWarningMu.Unlock()
 
 		if !alreadyWarned {
-			return fmt.Errorf("permission denied: changing the 'sketch-wip' branch is not allowed. The outie needs this branch name to detect and push your changes to GitHub. If you want to change the external GitHub branch name, use the 'set-slug' tool instead. This warning is shown once per session - you can repeat the command if you really need to do this")
+			return fmt.Errorf("permission denied: changing the 'sketch-wip' branch is not allowed. The outie needs this branch name to detect and push your changes to GitHub. This warning is shown once per session - you can repeat the command if you really need to do this")
 		}
 	}
 	return nil
