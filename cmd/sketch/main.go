@@ -323,6 +323,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.checkVersion, "version-check", true, "do version upgrade check (please leave this on)")
 	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
+	userFlags.BoolVar(&flags.forceRebuild, "rebuild", false, "rebuild Docker container (alias for -force-rebuild-container)")
 	// Get the default image info for help text
 	defaultImageName, _, defaultTag := dockerimg.DefaultImage()
 	defaultHelpText := fmt.Sprintf("base Docker image to use (defaults to %s:%s); see https://sketch.dev/docs/docker for instructions", defaultImageName, defaultTag)
