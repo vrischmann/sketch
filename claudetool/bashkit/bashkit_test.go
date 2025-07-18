@@ -3,6 +3,8 @@ package bashkit
 import (
 	"strings"
 	"testing"
+
+	"mvdan.cc/sh/v3/syntax"
 )
 
 func TestCheck(t *testing.T) {
@@ -280,6 +282,270 @@ func TestWillRunGitCommit(t *testing.T) {
 			}
 			if gotCommit != tc.wantCommit {
 				t.Errorf("WillRunGitCommit() = %v, want %v", gotCommit, tc.wantCommit)
+			}
+		})
+	}
+}
+
+func TestSketchWipBranchProtection(t *testing.T) {
+	tests := []struct {
+		name        string
+		script      string
+		wantErr     bool
+		errMatch    string
+		resetBefore bool // if true, reset warning state before test
+	}{
+		{
+			name:        "git branch rename sketch-wip",
+			script:      "git branch -m sketch-wip new-branch",
+			wantErr:     true,
+			errMatch:    "changing the 'sketch-wip' branch is not allowed",
+			resetBefore: true,
+		},
+		{
+			name:        "git branch force rename sketch-wip",
+			script:      "git branch -M sketch-wip new-branch",
+			wantErr:     false, // second call should not error (already warned)
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git checkout to other branch",
+			script:      "git checkout main",
+			wantErr:     false, // third call should not error (already warned)
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git switch to other branch",
+			script:      "git switch main",
+			wantErr:     false, // fourth call should not error (already warned)
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git checkout file (should be allowed)",
+			script:      "git checkout -- file.txt",
+			wantErr:     false,
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git checkout path (should be allowed)",
+			script:      "git checkout -- src/main.go",
+			wantErr:     false,
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git commit (should be allowed)",
+			script:      "git commit -m 'test'",
+			wantErr:     false,
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git status (should be allowed)",
+			script:      "git status",
+			wantErr:     false,
+			errMatch:    "",
+			resetBefore: false,
+		},
+		{
+			name:        "git branch rename other branch (should be allowed)",
+			script:      "git branch -m old-branch new-branch",
+			wantErr:     false,
+			errMatch:    "",
+			resetBefore: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.resetBefore {
+				ResetSketchWipWarning()
+			}
+			err := Check(tc.script)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Check() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if tc.wantErr && err != nil && !strings.Contains(err.Error(), tc.errMatch) {
+				t.Errorf("Check() error message = %v, want containing %v", err, tc.errMatch)
+			}
+		})
+	}
+}
+
+func TestHasSketchWipBranchChanges(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  string
+		wantHas bool
+	}{
+		{
+			name:    "git branch rename sketch-wip",
+			script:  "git branch -m sketch-wip new-branch",
+			wantHas: true,
+		},
+		{
+			name:    "git branch force rename sketch-wip",
+			script:  "git branch -M sketch-wip new-branch",
+			wantHas: true,
+		},
+		{
+			name:    "git checkout to branch",
+			script:  "git checkout main",
+			wantHas: true,
+		},
+		{
+			name:    "git switch to branch",
+			script:  "git switch main",
+			wantHas: true,
+		},
+		{
+			name:    "git checkout file",
+			script:  "git checkout -- file.txt",
+			wantHas: false,
+		},
+		{
+			name:    "git checkout path",
+			script:  "git checkout src/main.go",
+			wantHas: false,
+		},
+		{
+			name:    "git checkout with .extension",
+			script:  "git checkout file.go",
+			wantHas: false,
+		},
+		{
+			name:    "git status",
+			script:  "git status",
+			wantHas: false,
+		},
+		{
+			name:    "git commit",
+			script:  "git commit -m 'test'",
+			wantHas: false,
+		},
+		{
+			name:    "git branch rename other",
+			script:  "git branch -m old-branch new-branch",
+			wantHas: false,
+		},
+		{
+			name:    "git switch with flag",
+			script:  "git switch -c new-branch",
+			wantHas: false,
+		},
+		{
+			name:    "git checkout with flag",
+			script:  "git checkout -b new-branch",
+			wantHas: false,
+		},
+		{
+			name:    "not a git command",
+			script:  "echo hello",
+			wantHas: false,
+		},
+		{
+			name:    "empty command",
+			script:  "",
+			wantHas: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := strings.NewReader(tc.script)
+			parser := syntax.NewParser()
+			file, err := parser.Parse(r, "")
+			if err != nil {
+				if tc.wantHas {
+					t.Errorf("Parse error: %v", err)
+				}
+				return
+			}
+
+			found := false
+			syntax.Walk(file, func(node syntax.Node) bool {
+				callExpr, ok := node.(*syntax.CallExpr)
+				if !ok {
+					return true
+				}
+				if hasSketchWipBranchChanges(callExpr) {
+					found = true
+					return false
+				}
+				return true
+			})
+
+			if found != tc.wantHas {
+				t.Errorf("hasSketchWipBranchChanges() = %v, want %v", found, tc.wantHas)
+			}
+		})
+	}
+}
+
+func TestEdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		script      string
+		wantErr     bool
+		resetBefore bool // if true, reset warning state before test
+	}{
+		{
+			name:        "git branch -m with current branch to sketch-wip (should be allowed)",
+			script:      "git branch -m current-branch sketch-wip",
+			wantErr:     false,
+			resetBefore: true,
+		},
+		{
+			name:        "git branch -m sketch-wip with no destination (should be blocked)",
+			script:      "git branch -m sketch-wip",
+			wantErr:     true,
+			resetBefore: true,
+		},
+		{
+			name:        "git branch -M with current branch to sketch-wip (should be allowed)",
+			script:      "git branch -M current-branch sketch-wip",
+			wantErr:     false,
+			resetBefore: true,
+		},
+		{
+			name:        "git checkout with -- flags (should be allowed)",
+			script:      "git checkout -- --weird-filename",
+			wantErr:     false,
+			resetBefore: true,
+		},
+		{
+			name:        "git switch with create flag (should be allowed)",
+			script:      "git switch --create new-branch",
+			wantErr:     false,
+			resetBefore: true,
+		},
+		{
+			name:        "complex git command with sketch-wip rename",
+			script:      "git add . && git commit -m \"test\" && git branch -m sketch-wip production",
+			wantErr:     true,
+			resetBefore: true,
+		},
+		{
+			name:        "git switch with -c short form (should be allowed)",
+			script:      "git switch -c feature-branch",
+			wantErr:     false,
+			resetBefore: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.resetBefore {
+				ResetSketchWipWarning()
+			}
+			err := Check(tc.script)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Check() error = %v, wantErr %v", err, tc.wantErr)
 			}
 		})
 	}

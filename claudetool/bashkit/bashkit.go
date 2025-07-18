@@ -3,6 +3,7 @@ package bashkit
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -10,6 +11,24 @@ import (
 var checks = []func(*syntax.CallExpr) error{
 	noGitConfigUsernameEmailChanges,
 	noBlindGitAdd,
+}
+
+// Process-level checks that track state across calls
+var processAwareChecks = []func(*syntax.CallExpr) error{
+	noSketchWipBranchChangesOnce,
+}
+
+// Track whether sketch-wip branch warning has been shown in this process
+var (
+	sketchWipWarningMu    sync.Mutex
+	sketchWipWarningShown bool
+)
+
+// ResetSketchWipWarning resets the warning state for testing purposes
+func ResetSketchWipWarning() {
+	sketchWipWarningMu.Lock()
+	sketchWipWarningShown = false
+	sketchWipWarningMu.Unlock()
 }
 
 // Check inspects bashScript and returns an error if it ought not be executed.
@@ -36,7 +55,15 @@ func Check(bashScript string) error {
 		if !ok {
 			return true
 		}
+		// Run regular checks
 		for _, check := range checks {
+			err = check(callExpr)
+			if err != nil {
+				return false
+			}
+		}
+		// Run process-aware checks
+		for _, check := range processAwareChecks {
 			err = check(callExpr)
 			if err != nil {
 				return false
@@ -182,6 +209,82 @@ func isGitCommitCommand(cmd *syntax.CallExpr) bool {
 	for i := 1; i < len(cmd.Args); i++ {
 		if cmd.Args[i].Lit() == "commit" {
 			return true
+		}
+	}
+
+	return false
+}
+
+// noSketchWipBranchChangesOnce checks for git commands that would change the sketch-wip branch.
+// It rejects commands that would rename the sketch-wip branch or switch away from it.
+// This check only shows the warning once per process.
+func noSketchWipBranchChangesOnce(cmd *syntax.CallExpr) error {
+	if hasSketchWipBranchChanges(cmd) {
+		// Check if we've already warned in this process
+		sketchWipWarningMu.Lock()
+		alreadyWarned := sketchWipWarningShown
+		if !alreadyWarned {
+			sketchWipWarningShown = true
+		}
+		sketchWipWarningMu.Unlock()
+
+		if !alreadyWarned {
+			return fmt.Errorf("permission denied: changing the 'sketch-wip' branch is not allowed. The outie needs this branch name to detect and push your changes to GitHub. If you want to change the external GitHub branch name, use the 'set-slug' tool instead. This warning is shown once per session - you can repeat the command if you really need to do this")
+		}
+	}
+	return nil
+}
+
+// hasSketchWipBranchChanges checks if a git command would change the sketch-wip branch.
+func hasSketchWipBranchChanges(cmd *syntax.CallExpr) bool {
+	if len(cmd.Args) < 2 {
+		return false
+	}
+	if cmd.Args[0].Lit() != "git" {
+		return false
+	}
+
+	// Look for subcommands that could change the sketch-wip branch
+	for i := 1; i < len(cmd.Args); i++ {
+		arg := cmd.Args[i].Lit()
+		switch arg {
+		case "branch":
+			// Check for branch rename: git branch -m sketch-wip newname or git branch -M sketch-wip newname
+			if i+2 < len(cmd.Args) {
+				// Look for -m or -M flag
+				for j := i + 1; j < len(cmd.Args)-1; j++ {
+					flag := cmd.Args[j].Lit()
+					if flag == "-m" || flag == "-M" {
+						// Check if sketch-wip is the source branch
+						if cmd.Args[j+1].Lit() == "sketch-wip" {
+							return true
+						}
+					}
+				}
+			}
+		case "checkout":
+			// Check for branch switching: git checkout otherbranch
+			// But allow git checkout files/paths
+			if i+1 < len(cmd.Args) {
+				nextArg := cmd.Args[i+1].Lit()
+				// Skip if it's a flag
+				if !strings.HasPrefix(nextArg, "-") {
+					// This might be a branch checkout - we'll be conservative and warn
+					// unless it looks like a file path
+					if !strings.Contains(nextArg, "/") && !strings.Contains(nextArg, ".") {
+						return true
+					}
+				}
+			}
+		case "switch":
+			// Check for branch switching: git switch otherbranch
+			if i+1 < len(cmd.Args) {
+				nextArg := cmd.Args[i+1].Lit()
+				// Skip if it's a flag
+				if !strings.HasPrefix(nextArg, "-") {
+					return true
+				}
+			}
 		}
 	}
 
