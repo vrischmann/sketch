@@ -177,7 +177,7 @@ export class SketchPushButton extends SketchTailwindElement {
       // Clean up URL (remove trailing punctuation)
       const cleanURL = match.replace(/[.,!?;]+$/, "");
       const trailingPunctuation = match.substring(cleanURL.length);
-      return `<a href="${cleanURL}" target="_blank" class="text-blue-600 hover:text-blue-800 underline">${cleanURL}</a>${trailingPunctuation}`;
+      return `<a href="${cleanURL}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline">${cleanURL}</a>${trailingPunctuation}`;
     });
   }
 
@@ -206,8 +206,13 @@ export class SketchPushButton extends SketchTailwindElement {
       }
       return html`
         <div class="mb-3">
-          <label class="block text-xs font-medium mb-1">Remote:</label>
-          <div class="p-2 bg-gray-50 rounded text-xs text-gray-700">
+          <label
+            class="block text-xs font-medium mb-1 text-gray-900 dark:text-gray-100"
+            >Remote:</label
+          >
+          <div
+            class="p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300"
+          >
             ${this._renderRemoteDisplay(remote)}
           </div>
         </div>
@@ -218,7 +223,10 @@ export class SketchPushButton extends SketchTailwindElement {
       // Two remotes - use radio buttons
       return html`
         <div class="mb-3">
-          <label class="block text-xs font-medium mb-1">Remote:</label>
+          <label
+            class="block text-xs font-medium mb-1 text-gray-900 dark:text-gray-100"
+            >Remote:</label
+          >
           <div class="space-y-2">
             ${this._remotes.map(
               (remote) => html`
@@ -234,9 +242,9 @@ export class SketchPushButton extends SketchTailwindElement {
                         e.target as HTMLInputElement
                       ).value;
                     }}
-                    class="text-blue-600 focus:ring-blue-500"
+                    class="text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
                   />
-                  <span class="text-xs text-gray-700"
+                  <span class="text-xs text-gray-700 dark:text-gray-300"
                     >${this._renderRemoteDisplay(remote)}</span
                   >
                 </label>
@@ -250,14 +258,17 @@ export class SketchPushButton extends SketchTailwindElement {
     // Three or more remotes - use dropdown
     return html`
       <div class="mb-3">
-        <label class="block text-xs font-medium mb-1">Remote:</label>
+        <label
+          class="block text-xs font-medium mb-1 text-gray-900 dark:text-gray-100"
+          >Remote:</label
+        >
         <select
           .value=${this._selectedRemote}
           ?disabled=${this._loading}
           @change=${(e: Event) => {
             this._selectedRemote = (e.target as HTMLSelectElement).value;
           }}
-          class="w-full p-2 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">Select a remote...</option>
           ${this._remotes.map(
@@ -300,14 +311,16 @@ export class SketchPushButton extends SketchTailwindElement {
         <div
           class="${this._modalOpen
             ? "block"
-            : "hidden"} absolute top-full z-50 bg-white rounded-lg p-4 shadow-lg mt-1.5 border border-gray-200"
+            : "hidden"} absolute top-full z-50 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg mt-1.5 border border-gray-200 dark:border-gray-600"
           style="width: 420px; left: 50%; transform: translateX(-50%);"
         >
           <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-semibold">Push to Remote</h3>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Push to Remote
+            </h3>
             <button
               @click=${this._closeModal}
-              class="text-gray-500 hover:text-gray-700 transition-colors"
+              class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             >
               <svg
                 class="w-4 h-4"
@@ -327,19 +340,22 @@ export class SketchPushButton extends SketchTailwindElement {
                   <div
                     class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"
                   ></div>
-                  <p class="mt-2 text-gray-600 text-xs">Loading...</p>
+                  <p class="mt-2 text-gray-600 dark:text-gray-400 text-xs">
+                    Loading...
+                  </p>
                 </div>
               `
             : html`
                 <!-- Current HEAD info -->
                 ${this._headCommit
                   ? html`
-                      <div class="mb-3 p-2 bg-gray-50 rounded">
+                      <div class="mb-3 p-2 bg-gray-50 dark:bg-gray-700 rounded">
                         <p class="text-xs">
-                          <span class="text-gray-600 font-mono"
+                          <span
+                            class="text-gray-600 dark:text-gray-400 font-mono"
                             >${this._headCommit.hash.substring(0, 7)}</span
                           >
-                          <span class="text-gray-800 ml-2"
+                          <span class="text-gray-800 dark:text-gray-200 ml-2"
                             >${this._headCommit.subject}</span
                           >
                         </p>
@@ -352,7 +368,10 @@ export class SketchPushButton extends SketchTailwindElement {
 
                 <!-- Branch input -->
                 <div class="mb-3">
-                  <label class="block text-xs font-medium mb-1">Branch:</label>
+                  <label
+                    class="block text-xs font-medium mb-1 text-gray-900 dark:text-gray-100"
+                    >Branch:</label
+                  >
                   <input
                     type="text"
                     .value=${this._branch}
@@ -361,7 +380,7 @@ export class SketchPushButton extends SketchTailwindElement {
                       this._branch = (e.target as HTMLInputElement).value;
                     }}
                     placeholder="Enter branch name..."
-                    class="w-full p-2 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -408,16 +427,16 @@ export class SketchPushButton extends SketchTailwindElement {
                   ? html`
                       <div
                         class="p-3 rounded ${this._pushResult.success
-                          ? "bg-green-50 border border-green-200"
-                          : "bg-red-50 border border-red-200"} relative"
+                          ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                          : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"} relative"
                       >
                         ${this._loading
                           ? html`
                               <div
-                                class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded"
+                                class="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-75 flex items-center justify-center rounded"
                               >
                                 <div
-                                  class="flex items-center text-xs text-gray-600"
+                                  class="flex items-center text-xs text-gray-600 dark:text-gray-400"
                                 >
                                   <div
                                     class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"
@@ -432,8 +451,8 @@ export class SketchPushButton extends SketchTailwindElement {
                           <p
                             class="text-xs font-medium ${this._pushResult
                               .success
-                              ? "text-green-800"
-                              : "text-red-800"}"
+                              ? "text-green-800 dark:text-green-400"
+                              : "text-red-800 dark:text-red-400"}"
                           >
                             ${this._pushResult.dry_run ? "Dry Run" : "Push"}
                             ${this._pushResult.success
@@ -449,7 +468,7 @@ export class SketchPushButton extends SketchTailwindElement {
                                       <a
                                         href="${branchURL}"
                                         target="_blank"
-                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-900 hover:bg-gray-800 text-white rounded transition-colors"
+                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white rounded transition-colors"
                                       >
                                         <svg
                                           class="w-3 h-3"
@@ -470,7 +489,7 @@ export class SketchPushButton extends SketchTailwindElement {
                         ${this._pushResult.output
                           ? html`
                               <pre
-                                class="text-xs text-gray-700 whitespace-pre-wrap font-mono mb-2 break-words"
+                                class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono mb-2 break-words"
                                 .innerHTML="${this._makeLinksClickable(
                                   this._pushResult.output,
                                 )}"
@@ -479,7 +498,9 @@ export class SketchPushButton extends SketchTailwindElement {
                           : ""}
                         ${this._pushResult.error
                           ? html`
-                              <p class="text-xs text-red-700 mb-2">
+                              <p
+                                class="text-xs text-red-700 dark:text-red-400 mb-2"
+                              >
                                 ${this._pushResult.error}
                               </p>
                             `

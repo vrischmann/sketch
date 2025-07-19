@@ -104,12 +104,16 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
 
   render() {
     return html`
-      <div class="block w-full font-system text-gray-800">
+      <div class="block w-full font-system text-gray-800 dark:text-gray-200">
         <div class="flex flex-col gap-3 w-full">
           ${this.loading
-            ? html`<div class="italic text-gray-500">Loading commits...</div>`
+            ? html`<div class="italic text-gray-500 dark:text-gray-400">
+                Loading commits...
+              </div>`
             : this.error
-              ? html`<div class="text-red-600 text-sm">${this.error}</div>`
+              ? html`<div class="text-red-600 dark:text-red-400 text-sm">
+                  ${this.error}
+                </div>`
               : this.renderRangePicker()}
         </div>
       </div>
@@ -134,7 +138,9 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
 
     return html`
       <div class="flex items-center gap-2 flex-1 relative">
-        <label for="fromCommit" class="font-medium text-sm text-gray-700"
+        <label
+          for="fromCommit"
+          class="font-medium text-sm text-gray-700 dark:text-gray-300"
           >Diff from:</label
         >
         <div
@@ -142,9 +148,9 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
           @click=${this.toggleDropdown}
         >
           <button
-            class="w-full py-2 px-3 pr-8 border rounded text-left min-h-[36px] text-sm relative cursor-pointer bg-white ${isDefaultCommit
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-300 hover:border-gray-400"} focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            class="w-full py-2 px-3 pr-8 border rounded text-left min-h-[36px] text-sm relative cursor-pointer bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${isDefaultCommit
+              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+              : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"} focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
             @click=${this.toggleDropdown}
             @blur=${this.handleBlur}
           >
@@ -168,16 +174,16 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
           ${this.dropdownOpen
             ? html`
                 <div
-                  class="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-[300px] overflow-y-auto mt-0.5"
+                  class="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg z-50 max-h-[300px] overflow-y-auto mt-0.5"
                 >
                   ${this.commits.map(
                     (commit) => html`
                       <div
-                        class="px-3 py-2.5 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-start gap-2 text-sm leading-5 hover:bg-gray-50 ${commit.hash ===
+                        class="px-3 py-2.5 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 flex items-start gap-2 text-sm leading-5 hover:bg-gray-50 dark:hover:bg-gray-700 ${commit.hash ===
                         this.fromCommit
-                          ? "bg-blue-50"
+                          ? "bg-blue-50 dark:bg-blue-900/30"
                           : ""} ${this.isSketchBaseCommit(commit)
-                          ? "bg-blue-50 border-l-4 border-l-blue-500 pl-2"
+                          ? "bg-blue-50 dark:bg-blue-900/30 border-l-4 border-l-blue-500 pl-2"
                           : ""}"
                         @click=${() => this.selectCommit(commit.hash)}
                       >
@@ -362,8 +368,12 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
     }
 
     return html`
-      <span class="font-mono text-gray-600 text-xs">${shortHash}</span>
-      <span class="text-gray-800 text-xs truncate">${subject}</span>
+      <span class="font-mono text-gray-600 dark:text-gray-400 text-xs"
+        >${shortHash}</span
+      >
+      <span class="text-gray-800 dark:text-gray-200 text-xs truncate"
+        >${subject}</span
+      >
       ${this.isSketchBaseCommit(commit)
         ? html`
             <span
@@ -386,8 +396,11 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
     }
 
     return html`
-      <span class="font-mono text-gray-600 text-xs">${shortHash}</span>
-      <span class="text-gray-800 text-xs flex-1 truncate min-w-[200px]"
+      <span class="font-mono text-gray-600 dark:text-gray-400 text-xs"
+        >${shortHash}</span
+      >
+      <span
+        class="text-gray-800 dark:text-gray-200 text-xs flex-1 truncate min-w-[200px]"
         >${subject}</span
       >
       ${commit.refs && commit.refs.length > 0
@@ -412,8 +425,8 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
           const refClass = isSketchBase
             ? "bg-blue-600 text-white font-semibold"
             : ref.includes("tag")
-              ? "bg-amber-100 text-amber-800"
-              : "bg-green-100 text-green-800";
+              ? "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
+              : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200";
           return html`<span
             class="px-1.5 py-0.5 rounded-full text-xs font-medium ${refClass}"
             >${shortRef}</span

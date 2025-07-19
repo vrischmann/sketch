@@ -56,12 +56,14 @@ export class SketchTodoPanel extends SketchTailwindElement {
 
     return html`
       <div
-        class="flex items-start p-2 mb-1.5 rounded bg-white border border-gray-300 gap-2 min-h-6 border-l-[3px] border-l-gray-300"
+        class="flex items-start p-2 mb-1.5 rounded bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 gap-2 min-h-6 border-l-[3px] border-l-gray-300 dark:border-l-gray-600"
       >
         <div class="text-sm mt-0.5 flex-shrink-0">${statusIcon}</div>
         <div class="flex items-start justify-between w-full min-h-5">
           <div class="flex-1 min-w-0 pr-2">
-            <div class="text-xs leading-snug text-gray-800 break-words">
+            <div
+              class="text-xs leading-snug text-gray-800 dark:text-gray-200 break-words"
+            >
               ${item.task}
             </div>
           </div>
@@ -69,7 +71,7 @@ export class SketchTodoPanel extends SketchTailwindElement {
             ${showCommentButton
               ? html`
                   <button
-                    class="bg-transparent border-none cursor-pointer text-sm p-0.5 text-gray-500 opacity-70 transition-opacity duration-200 w-5 h-5 flex items-center justify-center hover:opacity-100 hover:bg-black/5 hover:bg-opacity-5 hover:rounded-sm"
+                    class="bg-transparent border-none cursor-pointer text-sm p-0.5 text-gray-500 dark:text-gray-400 opacity-70 transition-opacity duration-200 w-5 h-5 flex items-center justify-center hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 hover:bg-opacity-5 hover:rounded-sm"
                     @click="${() => this.openCommentBox(item)}"
                     title="Add comment about this TODO item"
                   >
@@ -90,7 +92,7 @@ export class SketchTodoPanel extends SketchTailwindElement {
 
     const todoIcon = html`
       <svg
-        class="w-3.5 h-3.5 text-gray-500"
+        class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         fill="none"
@@ -108,10 +110,10 @@ export class SketchTodoPanel extends SketchTailwindElement {
     if (this.loading) {
       contentElement = html`
         <div
-          class="flex-1 overflow-y-auto p-2 pb-5 text-xs leading-relaxed min-h-0 flex items-center justify-center text-gray-500"
+          class="flex-1 overflow-y-auto p-2 pb-5 text-xs leading-relaxed min-h-0 flex items-center justify-center text-gray-500 dark:text-gray-400"
         >
           <div
-            class="w-5 h-5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin mr-2"
+            class="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin mr-2"
           ></div>
           Loading todos...
         </div>
@@ -119,7 +121,7 @@ export class SketchTodoPanel extends SketchTailwindElement {
     } else if (this.error) {
       contentElement = html`
         <div
-          class="flex-1 overflow-y-auto p-2 pb-5 text-xs leading-relaxed min-h-0 text-red-600 flex items-center justify-center"
+          class="flex-1 overflow-y-auto p-2 pb-5 text-xs leading-relaxed min-h-0 text-red-600 dark:text-red-400 flex items-center justify-center"
         >
           Error: ${this.error}
         </div>
@@ -131,7 +133,7 @@ export class SketchTodoPanel extends SketchTailwindElement {
     ) {
       contentElement = html`
         <div
-          class="flex-1 overflow-y-auto p-2 pb-5 text-xs leading-relaxed min-h-0 text-gray-400 italic flex items-center justify-center"
+          class="flex-1 overflow-y-auto p-2 pb-5 text-xs leading-relaxed min-h-0 text-gray-400 dark:text-gray-500 italic flex items-center justify-center"
         >
           No todos available
         </div>
@@ -147,13 +149,13 @@ export class SketchTodoPanel extends SketchTailwindElement {
 
       contentElement = html`
         <div
-          class="py-2 px-3 border-b border-gray-300 bg-gray-100 font-semibold text-xs text-gray-800 flex items-center gap-1.5"
+          class="py-2 px-3 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 font-semibold text-xs text-gray-800 dark:text-gray-200 flex items-center gap-1.5"
         >
           <div class="flex items-center gap-1.5">
             ${todoIcon}
             <span>Sketching...</span>
             <span
-              class="bg-gray-300 text-gray-500 px-1.5 py-0.5 rounded-full text-xs font-normal"
+              class="bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded-full text-xs font-normal"
               >${completedCount}/${totalCount}</span
             >
           </div>
@@ -199,17 +201,21 @@ export class SketchTodoPanel extends SketchTailwindElement {
         }
       </style>
       <div
-        class="fixed inset-0 bg-black/30 z-[10000] flex items-center justify-center animate-fade-in"
+        class="fixed inset-0 bg-black/30 dark:bg-black/50 z-[10000] flex items-center justify-center animate-fade-in"
         @click="${this.handleOverlayClick}"
       >
         <div
-          class="bg-white border border-gray-300 rounded-md shadow-lg p-4 w-96 max-w-[90vw] max-h-[80vh] overflow-y-auto"
+          class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-4 w-96 max-w-[90vw] max-h-[80vh] overflow-y-auto"
           @click="${this.stopPropagation}"
         >
           <div class="flex justify-between items-center mb-3">
-            <h3 class="m-0 text-sm font-medium">Comment on TODO Item</h3>
+            <h3
+              class="m-0 text-sm font-medium text-gray-900 dark:text-gray-100"
+            >
+              Comment on TODO Item
+            </h3>
             <button
-              class="bg-transparent border-none cursor-pointer text-lg text-gray-500 px-1.5 py-0.5 hover:text-gray-800"
+              class="bg-transparent border-none cursor-pointer text-lg text-gray-500 dark:text-gray-400 px-1.5 py-0.5 hover:text-gray-800 dark:hover:text-gray-200"
               @click="${this.closeCommentBox}"
             >
               ×
@@ -217,16 +223,18 @@ export class SketchTodoPanel extends SketchTailwindElement {
           </div>
 
           <div
-            class="bg-gray-50 border border-gray-200 rounded p-2 mb-3 text-xs"
+            class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-2 mb-3 text-xs"
           >
-            <div class="font-medium text-gray-500 mb-1">
+            <div class="font-medium text-gray-500 dark:text-gray-400 mb-1">
               Status: ${statusText}
             </div>
-            <div class="text-gray-800">${this.commentingItem.task}</div>
+            <div class="text-gray-800 dark:text-gray-200">
+              ${this.commentingItem.task}
+            </div>
           </div>
 
           <textarea
-            class="w-full min-h-20 p-2 border border-gray-300 rounded resize-y text-xs mb-3 box-border"
+            class="w-full min-h-20 p-2 border border-gray-300 dark:border-gray-600 rounded resize-y text-xs mb-3 box-border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             placeholder="Type your comment about this TODO item..."
             .value="${this.commentText}"
             @input="${this.handleCommentInput}"
@@ -234,7 +242,7 @@ export class SketchTodoPanel extends SketchTailwindElement {
 
           <div class="flex justify-end gap-2">
             <button
-              class="px-3 py-1.5 rounded cursor-pointer text-xs bg-transparent border border-gray-300 text-gray-500 hover:bg-gray-100"
+              class="px-3 py-1.5 rounded cursor-pointer text-xs bg-transparent border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
               @click="${this.closeCommentBox}"
             >
               Cancel

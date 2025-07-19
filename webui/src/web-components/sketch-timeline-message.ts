@@ -403,6 +403,40 @@ export class SketchTimelineMessage extends SketchTailwindElement {
     text-align: center;
   }
 
+  /* Dark mode styles */
+  .dark .markdown-content pre,
+  .dark .markdown-content code {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+  }
+
+  .dark .markdown-content blockquote {
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .dark .markdown-content hr {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .code-block-container {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .code-block-header {
+    background: rgba(255, 255, 255, 0.15);
+    color: #e5e7eb;
+  }
+
+  .dark .code-copy-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .mermaid-container {
+    background-color: #374151;
+    border: 1px solid #4b5563;
+  }
+
   /* Print styles */
   @media print {
     .floating-message,
@@ -899,7 +933,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
       this.message?.type === "user"
         ? "bg-blue-500 text-white rounded-br-sm"
         : // Agent/tool/error message styling
-          "bg-gray-100 text-black rounded-bl-sm",
+          "bg-gray-100 dark:bg-gray-800 text-black dark:text-gray-100 rounded-bl-sm",
     ]
       .filter(Boolean)
       .join(" ");
@@ -911,7 +945,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
           <div
             class="${this.compactPadding
               ? "hidden"
-              : "flex-none w-20 px-1 py-0.5 text-right text-xs text-gray-500 self-start"}"
+              : "flex-none w-20 px-1 py-0.5 text-right text-xs text-gray-500 dark:text-gray-400 self-start"}"
           ></div>
 
           <!-- Message bubble -->
@@ -935,7 +969,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                     class="bg-transparent border-none ${this.message?.type ===
                     "user"
                       ? "text-white/80 hover:bg-white/15"
-                      : "text-black/60 hover:bg-black/8"} cursor-pointer p-0.5 rounded-full flex items-center justify-center w-6 h-6 transition-all duration-150"
+                      : "text-black/60 dark:text-gray-400 hover:bg-black/8 dark:hover:bg-white/10"} cursor-pointer p-0.5 rounded-full flex items-center justify-center w-6 h-6 transition-all duration-150"
                     title="Show message details"
                     @click=${this._toggleInfo}
                   >
@@ -977,7 +1011,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                       <div
                         class="block text-xs ${this.message?.type === "user"
                           ? "text-white/70"
-                          : "text-gray-500"} py-0.5 mt-2 text-right italic"
+                          : "text-gray-500 dark:text-gray-400"} py-0.5 mt-2 text-right italic"
                       >
                         end of turn
                         (${this._formatDuration(this.message?.elapsed)})
@@ -991,7 +1025,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                       <div
                         class="mt-2 p-2 ${this.message?.type === "user"
                           ? "bg-white/15 border-l-2 border-white/20"
-                          : "bg-black/5 border-l-2 border-black/10"} rounded-md text-xs transition-all duration-200"
+                          : "bg-black/5 dark:bg-white/5 border-l-2 border-black/10 dark:border-white/20"} rounded-md text-xs transition-all duration-200"
                       >
                         <div class="mb-1 flex">
                           <span class="font-bold mr-1 min-w-[60px]">Type:</span>
@@ -1116,7 +1150,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                       ${this.message.commits.map((commit) => {
                         return html`
                           <div
-                            class="text-sm bg-gray-100 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 flex items-center gap-2"
+                            class="text-sm bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 flex items-center gap-2"
                           >
                             <span
                               class="text-blue-600 font-bold font-mono cursor-pointer no-underline bg-blue-600/10 py-0.5 px-1 rounded hover:bg-blue-600/20"
@@ -1187,7 +1221,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                                               href="${githubLink}"
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              class="text-gray-600 no-underline flex items-center transition-colors duration-200 hover:text-blue-600"
+                                              class="text-gray-600 dark:text-gray-400 no-underline flex items-center transition-colors duration-200 hover:text-blue-600 dark:hover:text-blue-400"
                                               title="Open ${commit.pushed_branch} on GitHub"
                                               @click=${(e) =>
                                                 e.stopPropagation()}
@@ -1211,7 +1245,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                                 })()
                               : ``}
                             <span
-                              class="text-sm text-gray-700 flex-grow truncate"
+                              class="text-sm text-gray-700 dark:text-gray-300 flex-grow truncate"
                             >
                               ${commit.subject}
                             </span>
@@ -1234,7 +1268,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
           <div
             class="${this.compactPadding
               ? "hidden"
-              : "flex-none w-20 px-1 py-0.5 text-left text-xs text-gray-500 self-start"}"
+              : "flex-none w-20 px-1 py-0.5 text-left text-xs text-gray-500 dark:text-gray-400 self-start"}"
           ></div>
         </div>
 
@@ -1246,7 +1280,9 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                   ? ""
                   : "pr-20"}"
               >
-                <div class="text-xs text-gray-600 italic text-right">
+                <div
+                  class="text-xs text-gray-600 dark:text-gray-400 italic text-right"
+                >
                   ${this.state?.link_to_github
                     ? html`@<a
                           class="no-underline hover:underline"

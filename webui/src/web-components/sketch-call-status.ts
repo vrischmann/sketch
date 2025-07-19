@@ -70,8 +70,8 @@ export class SketchCallStatus extends SketchTailwindElement {
           <div
             class="llm-indicator flex justify-center items-center w-8 h-8 rounded transition-all duration-200 relative ${this
               .llmCalls > 0
-              ? "bg-yellow-100 text-amber-500 animate-gentle-pulse active"
-              : "bg-transparent text-gray-400"}"
+              ? "bg-yellow-100 dark:bg-yellow-900 text-amber-500 dark:text-amber-400 animate-gentle-pulse active"
+              : "bg-transparent text-gray-400 dark:text-gray-500"}"
             title="${this.llmCalls > 0
               ? `${this.llmCalls} LLM ${this.llmCalls === 1 ? "call" : "calls"} in progress`
               : "No LLM calls in progress"}${agentState}"
@@ -81,8 +81,8 @@ export class SketchCallStatus extends SketchTailwindElement {
           <div
             class="tool-indicator flex justify-center items-center w-8 h-8 rounded transition-all duration-200 relative ${this
               .toolCalls.length > 0
-              ? "bg-blue-100 text-blue-500 animate-gentle-pulse active"
-              : "bg-transparent text-gray-400"}"
+              ? "bg-blue-100 dark:bg-blue-900 text-blue-500 dark:text-blue-400 animate-gentle-pulse active"
+              : "bg-transparent text-gray-400 dark:text-gray-500"}"
             title="${this.toolCalls.length > 0
               ? `${this.toolCalls.length} tool ${this.toolCalls.length === 1 ? "call" : "calls"} in progress: ${this.toolCalls.join(", ")}`
               : "No tool calls in progress"}${agentState}"
@@ -93,10 +93,10 @@ export class SketchCallStatus extends SketchTailwindElement {
         <div
           class="status-banner absolute py-0.5 px-1.5 rounded text-xs font-bold text-center tracking-wider w-26 left-1/2 transform -translate-x-1/2 top-3/5 z-10 opacity-90 ${statusClass} ${this
             .isDisconnected
-            ? "bg-red-50 text-red-600"
+            ? "bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-400"
             : !this.isIdle
-              ? "bg-orange-50 text-orange-600"
-              : "bg-green-50 text-green-700"}"
+              ? "bg-orange-50 dark:bg-orange-900 text-orange-600 dark:text-orange-400"
+              : "bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-400"}"
           title="${this.isDisconnected
             ? "Connection lost or container shut down"
             : !this.isIdle

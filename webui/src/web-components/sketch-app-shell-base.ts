@@ -5,6 +5,7 @@ import { ConnectionStatus, DataManager } from "../data";
 import { AgentMessage, State, Usage } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
+import { ThemeService } from "./theme-service";
 
 import "./sketch-chat-input";
 import "./sketch-container-status";
@@ -179,6 +180,9 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
   // See https://lit.dev/docs/components/lifecycle/
   connectedCallback() {
     super.connectedCallback();
+
+    // Initialize theme system
+    ThemeService.getInstance().initializeTheme();
 
     // Get reference to the container status element
     setTimeout(() => {
@@ -880,7 +884,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       <!-- Top banner: flex row, space between, border bottom, shadow -->
       <div
         id="top-banner"
-        class="flex self-stretch justify-between items-center px-5 pr-8 mb-0 border-b border-gray-200 gap-5 bg-white shadow-md w-full h-12"
+        class="flex self-stretch justify-between items-center px-5 pr-8 mb-0 border-b border-gray-200 dark:border-gray-700 gap-5 bg-white dark:bg-gray-800 shadow-md w-full h-12"
       >
         <!-- Title container -->
         <div
@@ -906,7 +910,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
               : html`sketch`}
           </h1>
           <h2
-            class="m-0 p-0 text-gray-600 text-sm font-normal italic whitespace-nowrap overflow-hidden text-ellipsis"
+            class="m-0 p-0 text-gray-600 dark:text-gray-400 text-sm font-normal italic whitespace-nowrap overflow-hidden text-ellipsis"
           >
             ${this.slug}
           </h2>
@@ -1059,8 +1063,8 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       <div
         class="${this._todoPanelVisible && this.viewMode === "chat"
           ? "block"
-          : "hidden"} fixed top-12 right-4 max-lg:hidden xl:w-[350px] lg:w-[300px] z-[100] transition-[bottom] duration-200 ease-in-out"
-        style="bottom: var(--chat-input-height, 90px); background: linear-gradient(to bottom, #fafafa 0%, #fafafa 90%, rgba(250, 250, 250, 0.5) 95%, rgba(250, 250, 250, 0.2) 100%); border-left: 1px solid #e0e0e0;"
+          : "hidden"} fixed top-12 right-4 max-lg:hidden xl:w-[350px] lg:w-[300px] z-[100] transition-[bottom] duration-200 ease-in-out bg-gradient-to-b from-gray-50 to-gray-50/20 dark:from-gray-800 dark:to-gray-800/20 border-l border-gray-300 dark:border-gray-600"
+        style="bottom: var(--chat-input-height, 90px);"
       >
         <sketch-todo-panel
           .visible=${this._todoPanelVisible && this.viewMode === "chat"}

@@ -9,7 +9,7 @@ export class SketchAppShell extends SketchAppShellBase {
     return html`
       <!-- Main container: flex column, full height, system font, hidden overflow-x -->
       <div
-        class="block font-sans text-gray-800 leading-relaxed h-screen w-full relative overflow-x-hidden flex flex-col"
+        class="block font-sans text-gray-800 dark:text-gray-200 leading-relaxed h-screen w-full relative overflow-x-hidden flex flex-col bg-white dark:bg-gray-900"
       >
         ${this.renderTopBanner()}
 

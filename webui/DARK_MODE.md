@@ -23,8 +23,8 @@ Sketch's web UI currently uses:
 ```javascript
 // tailwind.config.js
 export default {
-  content: ["./src/**/*.{js,ts,jsx,tsx,html}"],
-  darkMode: "class", // Enable class-based dark mode
+  content: ["./src/**/*.{js,ts,jsx,tsx,html}", "./src/test-theme.html"],
+  darkMode: "selector", // Enable selector-based dark mode
   plugins: ["@tailwindcss/container-queries"],
   theme: {
     extend: {
@@ -60,12 +60,16 @@ export default {
 };
 ```
 
-#### 2. Create Theme Management Service
+#### 2. Theme Management Service (Already Implemented)
 
 ```typescript
 // src/web-components/theme-service.ts
+export type ThemeMode = "light" | "dark" | "system";
+
 export class ThemeService {
   private static instance: ThemeService;
+  private systemPrefersDark = false;
+  private systemMediaQuery: MediaQueryList;
 
   static getInstance(): ThemeService {
     if (!this.instance) {
@@ -74,67 +78,94 @@ export class ThemeService {
     return this.instance;
   }
 
+  /**
+   * Cycle through theme modes: light -> dark -> system -> light
+   */
   toggleTheme(): void {
-    const isDark = document.documentElement.classList.contains("dark");
-    this.setTheme(isDark ? "light" : "dark");
+    const currentTheme = this.getTheme();
+    let nextTheme: ThemeMode;
+
+    switch (currentTheme) {
+      case "light":
+        nextTheme = "dark";
+        break;
+      case "dark":
+        nextTheme = "system";
+        break;
+      case "system":
+        nextTheme = "light";
+        break;
+      default:
+        nextTheme = "light";
+    }
+
+    this.setTheme(nextTheme);
   }
 
-  setTheme(theme: "light" | "dark"): void {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
+  setTheme(theme: ThemeMode): void {
+    // Store the theme preference
+    if (theme === "system") {
+      localStorage.removeItem("theme");
+    } else {
+      localStorage.setItem("theme", theme);
+    }
+
+    // Apply the theme
+    this.applyTheme();
 
     // Dispatch event for components that need to react
     document.dispatchEvent(
       new CustomEvent("theme-changed", {
-        detail: { theme },
+        detail: {
+          theme,
+          effectiveTheme: this.getEffectiveTheme(),
+          systemPrefersDark: this.systemPrefersDark,
+        },
       }),
     );
   }
 
-  getTheme(): "light" | "dark" {
-    return document.documentElement.classList.contains("dark")
-      ? "dark"
-      : "light";
+  getTheme(): ThemeMode {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") {
+      return saved;
+    }
+    return "system";
+  }
+
+  getEffectiveTheme(): "light" | "dark" {
+    const theme = this.getTheme();
+    if (theme === "system") {
+      return this.systemPrefersDark ? "dark" : "light";
+    }
+    return theme;
   }
 
   initializeTheme(): void {
-    const saved = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    const theme = saved || (prefersDark ? "dark" : "light");
-    this.setTheme(theme as "light" | "dark");
-
-    // Listen for system theme changes
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", (e) => {
-        if (!localStorage.getItem("theme")) {
-          this.setTheme(e.matches ? "dark" : "light");
-        }
-      });
+    this.applyTheme();
   }
 }
 ```
 
-#### 3. Theme Toggle Component
+#### 3. Theme Toggle Component (Already Implemented)
 
 ```typescript
-// src/web-components/theme-toggle.ts
+// src/web-components/sketch-theme-toggle.ts
 import { html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { SketchTailwindElement } from "./sketch-tailwind-element.js";
-import { ThemeService } from "./theme-service.js";
+import { ThemeService, ThemeMode } from "./theme-service.js";
 
-@customElement("theme-toggle")
-export class ThemeToggle extends SketchTailwindElement {
-  @state() private isDark = false;
+@customElement("sketch-theme-toggle")
+export class SketchThemeToggle extends SketchTailwindElement {
+  @state() private currentTheme: ThemeMode = "system";
+  @state() private effectiveTheme: "light" | "dark" = "light";
 
   private themeService = ThemeService.getInstance();
 
   connectedCallback() {
     super.connectedCallback();
-    this.isDark = document.documentElement.classList.contains("dark");
+    this.updateThemeState();
 
     // Listen for theme changes from other sources
     document.addEventListener("theme-changed", this.handleThemeChange);
@@ -146,25 +177,39 @@ export class ThemeToggle extends SketchTailwindElement {
   }
 
   private handleThemeChange = (e: CustomEvent) => {
-    this.isDark = e.detail.theme === "dark";
+    this.currentTheme = e.detail.theme;
+    this.effectiveTheme = e.detail.effectiveTheme;
   };
 
   private toggleTheme() {
     this.themeService.toggleTheme();
   }
 
+  private getThemeIcon(): string {
+    switch (this.currentTheme) {
+      case "light":
+        return "☀️"; // Sun
+      case "dark":
+        return "🌙"; // Moon
+      case "system":
+        return "💻"; // Computer/Laptop
+      default:
+        return "💻";
+    }
+  }
+
   render() {
     return html`
       <button
         @click=${this.toggleTheme}
-        class="p-2 rounded-md border border-gray-300 dark:border-gray-600 
+        class="p-2 rounded-md border border-gray-300 dark:border-gray-600
                bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
                hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
                focus:outline-none focus:ring-2 focus:ring-blue-500"
-        title="Toggle theme"
-        aria-label="Toggle between light and dark mode"
+        title="${this.currentTheme} theme - Click to cycle themes"
+        aria-label="Cycle between light, dark, and system theme"
       >
-        ${this.isDark ? "☀️" : "🌙"}
+        ${this.getThemeIcon()}
       </button>
     `;
   }
@@ -172,17 +217,17 @@ export class ThemeToggle extends SketchTailwindElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "theme-toggle": ThemeToggle;
+    "sketch-theme-toggle": SketchThemeToggle;
   }
 }
 ```
 
 #### 4. Initialize Theme in App Shell
 
-Add theme initialization to the main app shell component:
+Add theme initialization to the main app shell component. This needs to be implemented:
 
 ```typescript
-// In sketch-app-shell.ts or similar
+// In sketch-app-shell.ts or sketch-app-shell-base.ts
 import { ThemeService } from "./theme-service.js";
 
 connectedCallback() {
@@ -190,6 +235,8 @@ connectedCallback() {
   ThemeService.getInstance().initializeTheme();
 }
 ```
+
+**Note**: This initialization is not yet implemented in the app shell components.
 
 ### Phase 2: Component Updates
 
@@ -269,10 +316,10 @@ ring-gray-300 -> ring-gray-600
 
 ```
 src/web-components/
-├── theme-service.ts          # Theme management service
-├── theme-toggle.ts           # Theme toggle component
-├── sketch-tailwind-element.ts # Base class (existing)
-└── [other components].ts     # Updated with dark mode variants
+├── theme-service.ts              # Theme management service (✅ implemented)
+├── sketch-theme-toggle.ts        # Theme toggle component (✅ implemented)
+├── sketch-tailwind-element.ts    # Base class (✅ existing)
+└── [other components].ts         # Need dark mode variants added
 ```
 
 ## Benefits of This Approach
@@ -284,17 +331,38 @@ src/web-components/
 - **Accessible**: Respects system preferences by default
 - **Consistent**: Follows Sketch's existing component patterns
 
-## Implementation Timeline
+## Current Implementation Status
 
-1. **Week 1**: Phase 1 - Foundation (config, service, toggle)
-2. **Week 2**: Phase 2 - Core component updates
-3. **Week 3**: Phase 2 - Secondary component updates
-4. **Week 4**: Phase 3 - Polish, testing, and accessibility
+### ✅ Completed:
+
+- Tailwind configuration with dark mode enabled
+- Theme management service with light/dark/system modes
+- Theme toggle component with cycling behavior
+- Base `SketchTailwindElement` class
+
+### 🚧 Partially Complete:
+
+- Some components may have dark mode classes
+
+### ❌ Still Needed:
+
+- Theme initialization in app shell components
+- Systematic audit and update of all components for dark mode
+- Testing and accessibility verification
+
+## Next Steps Timeline
+
+1. Phase 1 - Add theme initialization to app shell
+2. Phase 2 - Core component updates (systematic audit)
+3. Phase 2 - Secondary component updates
+4. Phase 3 - Polish, testing, and accessibility
 
 ## Notes
 
-- Components extend `SketchTailwindElement` (not `LitElement`)
-- No Shadow DOM usage allows for global Tailwind classes
-- Theme service uses singleton pattern for consistency
-- Event system allows components to react to theme changes
-- LocalStorage preserves user preference across sessions
+- Components extend `SketchTailwindElement` (not `LitElement`) ✅
+- No Shadow DOM usage allows for global Tailwind classes ✅
+- Theme service uses singleton pattern for consistency ✅
+- Theme service supports three modes: light, dark, and system ✅
+- Event system allows components to react to theme changes ✅
+- LocalStorage preserves user preference across sessions ✅
+- Theme toggle cycles through all three modes ✅
