@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createRef, ref } from "lit/directives/ref.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 @customElement("mobile-chat-input")
-export class MobileChatInput extends LitElement {
+export class MobileChatInput extends SketchTailwindElement {
   @property({ type: Boolean })
   disabled = false;
 
@@ -18,131 +19,6 @@ export class MobileChatInput extends LitElement {
   private showUploadProgress = false;
 
   private textareaRef = createRef<HTMLTextAreaElement>();
-
-  static styles = css`
-    :host {
-      display: block;
-      background-color: #ffffff;
-      border-top: 1px solid #e9ecef;
-      padding: 12px 16px;
-      /* Enhanced iOS safe area support */
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
-      padding-left: max(16px, env(safe-area-inset-left));
-      padding-right: max(16px, env(safe-area-inset-right));
-      /* Prevent iOS Safari from covering the input */
-      position: relative;
-      z-index: 1000;
-    }
-
-    .input-container {
-      display: flex;
-      align-items: flex-end;
-      gap: 12px;
-      max-width: 100%;
-    }
-
-    .input-wrapper {
-      flex: 1;
-      position: relative;
-      min-width: 0;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 40px;
-      max-height: 120px;
-      padding: 12px 16px;
-      border: 1px solid #ddd;
-      border-radius: 20px;
-      font-size: 16px;
-      font-family: inherit;
-      line-height: 1.4;
-      resize: none;
-      outline: none;
-      background-color: #f8f9fa;
-      transition:
-        border-color 0.2s,
-        background-color 0.2s;
-      box-sizing: border-box;
-    }
-
-    textarea:focus {
-      border-color: #007bff;
-      background-color: #ffffff;
-    }
-
-    textarea:disabled {
-      background-color: #e9ecef;
-      color: #6c757d;
-      cursor: not-allowed;
-    }
-
-    textarea::placeholder {
-      color: #6c757d;
-    }
-
-    .send-button {
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
-      border: none;
-      border-radius: 50%;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      transition:
-        background-color 0.2s,
-        transform 0.1s;
-      outline: none;
-    }
-
-    .send-button:hover:not(:disabled) {
-      background-color: #0056b3;
-    }
-
-    .send-button:active:not(:disabled) {
-      transform: scale(0.95);
-    }
-
-    .send-button:disabled {
-      background-color: #6c757d;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    .send-icon {
-      width: 16px;
-      height: 16px;
-      fill: currentColor;
-    }
-
-    /* iOS specific adjustments */
-    @supports (-webkit-touch-callout: none) {
-      textarea {
-        font-size: 16px; /* Prevent zoom on iOS */
-      }
-    }
-
-    /* Upload progress indicator */
-    .upload-progress {
-      position: absolute;
-      top: -30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #fff9c4;
-      color: #856404;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      white-space: nowrap;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      z-index: 1000;
-    }
-  `;
 
   private handleInput = (e: Event) => {
     const target = e.target as HTMLTextAreaElement;
@@ -294,42 +170,51 @@ export class MobileChatInput extends LitElement {
       this.uploadsInProgress === 0;
 
     return html`
-      <div class="input-container">
-        <div class="input-wrapper">
-          <textarea
-            ${ref(this.textareaRef)}
-            .value=${this.inputValue}
-            @input=${this.handleInput}
-            @keydown=${this.handleKeyDown}
-            placeholder="Message Sketch..."
-            ?disabled=${this.disabled || this.uploadsInProgress > 0}
-            rows="1"
-          ></textarea>
+      <div
+        class="block bg-white border-t border-gray-200 p-3 relative z-[1000]"
+        style="padding-bottom: max(12px, env(safe-area-inset-bottom)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));"
+      >
+        <div class="flex items-end gap-3 max-w-full">
+          <div class="flex-1 relative min-w-0">
+            <textarea
+              ${ref(this.textareaRef)}
+              .value=${this.inputValue}
+              @input=${this.handleInput}
+              @keydown=${this.handleKeyDown}
+              placeholder="Message Sketch..."
+              ?disabled=${this.disabled || this.uploadsInProgress > 0}
+              rows="1"
+              class="w-full min-h-[40px] max-h-[120px] p-3 border border-gray-300 rounded-[20px] text-base font-inherit leading-relaxed resize-none outline-none bg-gray-50 transition-colors duration-200 box-border focus:border-blue-500 focus:bg-white disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed placeholder:text-gray-500"
+              style="font-size: 16px;"
+            ></textarea>
 
-          ${this.showUploadProgress
-            ? html`
-                <div class="upload-progress">
-                  Uploading ${this.uploadsInProgress}
-                  file${this.uploadsInProgress > 1 ? "s" : ""}...
-                </div>
-              `
-            : ""}
+            ${this.showUploadProgress
+              ? html`
+                  <div
+                    class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-yellow-50 text-yellow-800 px-2 py-1 rounded text-xs whitespace-nowrap shadow-sm z-[1000]"
+                  >
+                    Uploading ${this.uploadsInProgress}
+                    file${this.uploadsInProgress > 1 ? "s" : ""}...
+                  </div>
+                `
+              : ""}
+          </div>
+
+          <button
+            class="flex-shrink-0 w-10 h-10 border-none rounded-full bg-blue-500 text-white cursor-pointer flex items-center justify-center text-lg transition-all duration-200 outline-none hover:bg-blue-600 active:scale-95 disabled:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+            @click=${this.sendMessage}
+            ?disabled=${!canSend}
+            title=${this.uploadsInProgress > 0
+              ? "Please wait for upload to complete"
+              : "Send message"}
+          >
+            ${this.uploadsInProgress > 0
+              ? html`<span class="text-xs">⏳</span>`
+              : html`<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                </svg>`}
+          </button>
         </div>
-
-        <button
-          class="send-button"
-          @click=${this.sendMessage}
-          ?disabled=${!canSend}
-          title=${this.uploadsInProgress > 0
-            ? "Please wait for upload to complete"
-            : "Send message"}
-        >
-          ${this.uploadsInProgress > 0
-            ? html`<span style="font-size: 12px;">⏳</span>`
-            : html`<svg class="send-icon" viewBox="0 0 24 24">
-                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
-              </svg>`}
-        </button>
       </div>
     `;
   }

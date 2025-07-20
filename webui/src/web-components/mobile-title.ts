@@ -1,9 +1,10 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ConnectionStatus } from "../data";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 @customElement("mobile-title")
-export class MobileTitle extends LitElement {
+export class MobileTitle extends SketchTailwindElement {
   @property({ type: String })
   connectionStatus: ConnectionStatus = "disconnected";
 
@@ -19,161 +20,30 @@ export class MobileTitle extends LitElement {
   @property({ type: String })
   slug: string = "";
 
-  static styles = css`
-    :host {
-      display: block;
-      background-color: #f8f9fa;
-      border-bottom: 1px solid #e9ecef;
-      padding: 12px 16px;
+  connectedCallback() {
+    super.connectedCallback();
+    // Add animation styles to document head if not already present
+    if (!document.getElementById("mobile-title-animations")) {
+      const style = document.createElement("style");
+      style.id = "mobile-title-animations";
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes thinking {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+        .pulse-animation { animation: pulse 1.5s ease-in-out infinite; }
+        .thinking-animation { animation: thinking 1.4s ease-in-out infinite both; }
+        .thinking-animation:nth-child(1) { animation-delay: -0.32s; }
+        .thinking-animation:nth-child(2) { animation-delay: -0.16s; }
+        .thinking-animation:nth-child(3) { animation-delay: 0; }
+      `;
+      document.head.appendChild(style);
     }
-
-    .title-container {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
-
-    .title-section {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .right-section {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .view-selector {
-      background: none;
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      color: #495057;
-      min-width: 60px;
-    }
-
-    .view-selector:hover {
-      background-color: #f8f9fa;
-      border-color: #dee2e6;
-    }
-
-    .view-selector:focus {
-      outline: none;
-      border-color: #007acc;
-      box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
-    }
-
-    .title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #212529;
-      margin: 0;
-    }
-
-    .title a {
-      color: inherit;
-      text-decoration: none;
-      transition: opacity 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .title a:hover {
-      opacity: 0.8;
-      text-decoration: underline;
-    }
-
-    .title img {
-      width: 18px;
-      height: 18px;
-      border-radius: 3px;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .status-dot.connected {
-      background-color: #28a745;
-    }
-
-    .status-dot.connecting {
-      background-color: #ffc107;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    .status-dot.disconnected {
-      background-color: #dc3545;
-    }
-
-    .thinking-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #6c757d;
-      font-size: 13px;
-    }
-
-    .thinking-dots {
-      display: flex;
-      gap: 2px;
-    }
-
-    .thinking-dot {
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background-color: #6c757d;
-      animation: thinking 1.4s ease-in-out infinite both;
-    }
-
-    .thinking-dot:nth-child(1) {
-      animation-delay: -0.32s;
-    }
-    .thinking-dot:nth-child(2) {
-      animation-delay: -0.16s;
-    }
-    .thinking-dot:nth-child(3) {
-      animation-delay: 0;
-    }
-
-    @keyframes pulse {
-      0%,
-      100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    @keyframes thinking {
-      0%,
-      80%,
-      100% {
-        transform: scale(0);
-      }
-      40% {
-        transform: scale(1);
-      }
-    }
-  `;
+  }
 
   private getStatusText() {
     switch (this.connectionStatus) {
@@ -202,45 +72,67 @@ export class MobileTitle extends LitElement {
   }
 
   render() {
+    const statusDotClass =
+      {
+        connected: "bg-green-500",
+        connecting: "bg-yellow-500 pulse-animation",
+        disconnected: "bg-red-500",
+      }[this.connectionStatus] || "bg-gray-500";
+
     return html`
-      <div class="title-container">
-        <div class="title-section">
-          <h1 class="title">
-            ${this.skabandAddr
-              ? html`<a
-                  href="${this.skabandAddr}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <img src="${this.skabandAddr}/sketch.dev.png" alt="sketch" />
-                  ${this.slug || "Sketch"}
-                </a>`
-              : html`${this.slug || "Sketch"}`}
-          </h1>
-        </div>
+      <div class="block bg-gray-50 border-b border-gray-200 p-3">
+        <div class="flex items-start justify-between">
+          <div class="flex-1 min-w-0">
+            <h1 class="text-lg font-semibold text-gray-900 m-0">
+              ${this.skabandAddr
+                ? html`<a
+                    href="${this.skabandAddr}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-inherit no-underline transition-opacity duration-200 flex items-center gap-2 hover:opacity-80 hover:underline"
+                  >
+                    <img
+                      src="${this.skabandAddr}/sketch.dev.png"
+                      alt="sketch"
+                      class="w-[18px] h-[18px] rounded"
+                    />
+                    ${this.slug || "Sketch"}
+                  </a>`
+                : html`${this.slug || "Sketch"}`}
+            </h1>
+          </div>
 
-        <div class="right-section">
-          <select
-            class="view-selector"
-            .value=${this.currentView}
-            @change=${this.handleViewChange}
-          >
-            <option value="chat">Chat</option>
-            <option value="diff">Diff</option>
-          </select>
+          <div class="flex items-center gap-3">
+            <select
+              class="bg-transparent border border-gray-200 rounded px-2 py-1.5 text-sm font-medium cursor-pointer transition-all duration-200 text-gray-700 min-w-[60px] hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:border-blue-500 focus:shadow-sm focus:ring-2 focus:ring-blue-200"
+              .value=${this.currentView}
+              @change=${this.handleViewChange}
+            >
+              <option value="chat">Chat</option>
+              <option value="diff">Diff</option>
+            </select>
 
-          ${this.isThinking
-            ? html`
-                <div class="thinking-indicator">
-                  <span>thinking</span>
-                  <div class="thinking-dots">
-                    <div class="thinking-dot"></div>
-                    <div class="thinking-dot"></div>
-                    <div class="thinking-dot"></div>
+            ${this.isThinking
+              ? html`
+                  <div class="flex items-center gap-1.5 text-gray-500 text-xs">
+                    <span>thinking</span>
+                    <div class="flex gap-0.5">
+                      <div
+                        class="w-1 h-1 rounded-full bg-gray-500 thinking-animation"
+                      ></div>
+                      <div
+                        class="w-1 h-1 rounded-full bg-gray-500 thinking-animation"
+                      ></div>
+                      <div
+                        class="w-1 h-1 rounded-full bg-gray-500 thinking-animation"
+                      ></div>
+                    </div>
                   </div>
-                </div>
-              `
-            : html` <span class="status-dot ${this.connectionStatus}"></span> `}
+                `
+              : html`<span
+                  class="w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass}"
+                ></span>`}
+          </div>
         </div>
       </div>
     `;

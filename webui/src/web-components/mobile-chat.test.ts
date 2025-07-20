@@ -68,17 +68,10 @@ test("renders error messages with red styling", async ({ mount }) => {
   const errorBubble = component.locator(".message.error .message-bubble");
   await expect(errorBubble).toBeVisible();
 
-  // Verify the background color and text color
-  const bgColor = await errorBubble.evaluate((el) => {
-    return window.getComputedStyle(el).backgroundColor;
-  });
-  const textColor = await errorBubble.evaluate((el) => {
-    return window.getComputedStyle(el).color;
-  });
-
-  // Check that we have red-ish colors (these will be RGB values)
-  expect(bgColor).toMatch(/rgb\(255, 235, 238\)/); // #ffebee
-  expect(textColor).toMatch(/rgb\(211, 47, 47\)/); // #d32f2f
+  // Verify the element has the correct CSS classes for red styling
+  const errorBubbleClasses = await errorBubble.getAttribute("class");
+  expect(errorBubbleClasses).toContain("bg-red-50");
+  expect(errorBubbleClasses).toContain("text-red-700");
 });
 
 test("filters messages correctly", async ({ mount }) => {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import {
   GitDiffFile,
@@ -7,9 +7,10 @@ import {
   DefaultGitDataService,
 } from "./git-data-service";
 import "./sketch-monaco-view";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 @customElement("mobile-diff")
-export class MobileDiff extends LitElement {
+export class MobileDiff extends SketchTailwindElement {
   private gitService: GitDataService = new DefaultGitDataService();
 
   @state()
@@ -30,114 +31,6 @@ export class MobileDiff extends LitElement {
 
   @state()
   private fileExpandStates: Map<string, boolean> = new Map();
-
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-      overflow: hidden;
-      background-color: #ffffff;
-    }
-
-    .diff-container {
-      flex: 1;
-      overflow: auto;
-      min-height: 0;
-      /* Ensure proper scrolling behavior */
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .loading,
-    .error,
-    .empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      font-size: 16px;
-      color: #6c757d;
-      text-align: center;
-      padding: 20px;
-    }
-
-    .error {
-      color: #dc3545;
-    }
-
-    .file-diff {
-      margin-bottom: 16px;
-    }
-
-    .file-diff:last-child {
-      margin-bottom: 0;
-    }
-
-    .file-header {
-      background-color: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-bottom: none;
-      padding: 12px 16px;
-      font-family: monospace;
-      font-size: 14px;
-      font-weight: 500;
-      color: #495057;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .file-status {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 12px;
-      font-weight: bold;
-      margin-right: 8px;
-      font-family: sans-serif;
-    }
-
-    .file-status.added {
-      background-color: #d4edda;
-      color: #155724;
-    }
-
-    .file-status.modified {
-      background-color: #fff3cd;
-      color: #856404;
-    }
-
-    .file-status.deleted {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
-
-    .file-status.renamed {
-      background-color: #d1ecf1;
-      color: #0c5460;
-    }
-
-    .file-changes {
-      margin-left: 8px;
-      font-size: 12px;
-      color: #6c757d;
-    }
-
-    .monaco-container {
-      border: 1px solid #e9ecef;
-      border-top: none;
-      min-height: 200px;
-      /* Prevent artifacts */
-      overflow: hidden;
-      background-color: #ffffff;
-    }
-
-    sketch-monaco-view {
-      width: 100%;
-      min-height: 200px;
-    }
-  `;
 
   connectedCallback() {
     super.connectedCallback();
@@ -244,6 +137,23 @@ export class MobileDiff extends LitElement {
           return "renamed";
         }
         return "modified";
+    }
+  }
+
+  private getFileStatusTailwindClass(status: string): string {
+    switch (status.toUpperCase()) {
+      case "A":
+        return "bg-green-100 text-green-800";
+      case "M":
+        return "bg-yellow-100 text-yellow-800";
+      case "D":
+        return "bg-red-100 text-red-800";
+      case "R":
+      default:
+        if (status.toUpperCase().startsWith("R")) {
+          return "bg-blue-100 text-blue-800";
+        }
+        return "bg-yellow-100 text-yellow-800";
     }
   }
 
@@ -357,46 +267,64 @@ export class MobileDiff extends LitElement {
 
     if (!content) {
       return html`
-        <div class="file-diff">
-          <div class="file-header">
-            <div class="file-header-left">
-              <span class="file-status ${this.getFileStatusClass(file.status)}">
+        <div class="mb-4 last:mb-0">
+          <div
+            class="bg-gray-50 border border-gray-200 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 sticky top-0 z-10 flex items-center justify-between"
+          >
+            <div class="flex items-center">
+              <span
+                class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 font-sans ${this.getFileStatusTailwindClass(
+                  file.status,
+                )}"
+              >
                 ${this.getFileStatusText(file.status)}
               </span>
               ${this.getPathInfo(file)}
               ${this.getChangesInfo(file)
-                ? html`<span class="file-changes"
+                ? html`<span class="ml-2 text-xs text-gray-500"
                     >${this.getChangesInfo(file)}</span
                   >`
                 : ""}
             </div>
-            <button class="file-expand-button" disabled>
+            <button class="text-gray-400" disabled>
               ${this.renderExpandAllIcon()}
             </button>
           </div>
-          <div class="monaco-container">
-            <div class="loading">Loading ${file.path}...</div>
+          <div
+            class="border border-gray-200 border-t-0 min-h-[200px] overflow-hidden bg-white"
+          >
+            <div
+              class="flex items-center justify-center h-full text-base text-gray-500 text-center p-5"
+            >
+              Loading ${file.path}...
+            </div>
           </div>
         </div>
       `;
     }
 
     return html`
-      <div class="file-diff">
-        <div class="file-header">
-          <div class="file-header-left">
-            <span class="file-status ${this.getFileStatusClass(file.status)}">
+      <div class="mb-4 last:mb-0">
+        <div
+          class="bg-gray-50 border border-gray-200 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 sticky top-0 z-10 flex items-center justify-between"
+        >
+          <div class="flex items-center">
+            <span
+              class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 font-sans ${this.getFileStatusTailwindClass(
+                file.status,
+              )}"
+            >
               ${this.getFileStatusText(file.status)}
             </span>
             ${this.getPathInfo(file)}
             ${this.getChangesInfo(file)
-              ? html`<span class="file-changes"
+              ? html`<span class="ml-2 text-xs text-gray-500"
                   >${this.getChangesInfo(file)}</span
                 >`
               : ""}
           </div>
           <button
-            class="file-expand-button"
+            class="text-gray-600 hover:text-gray-800 p-1 rounded"
             @click="${() => this.toggleFileExpansion(file.path)}"
             title="${isExpanded
               ? "Collapse: Hide unchanged regions to focus on changes"
@@ -407,8 +335,11 @@ export class MobileDiff extends LitElement {
               : this.renderExpandAllIcon()}
           </button>
         </div>
-        <div class="monaco-container">
+        <div
+          class="border border-gray-200 border-t-0 min-h-[200px] overflow-hidden bg-white"
+        >
           <sketch-monaco-view
+            class="w-full min-h-[200px]"
             .originalCode="${content.original}"
             .modifiedCode="${content.modified}"
             .originalFilename="${file.path}"
@@ -424,14 +355,31 @@ export class MobileDiff extends LitElement {
 
   render() {
     return html`
-      <div class="diff-container">
-        ${this.loading
-          ? html`<div class="loading">Loading diff...</div>`
-          : this.error
-            ? html`<div class="error">${this.error}</div>`
-            : !this.files || this.files.length === 0
-              ? html`<div class="empty">No changes to show</div>`
-              : this.files.map((file) => this.renderFileDiff(file))}
+      <div class="flex flex-col h-full min-h-0 overflow-hidden bg-white">
+        <div
+          class="flex-1 overflow-auto min-h-0"
+          style="-webkit-overflow-scrolling: touch;"
+        >
+          ${this.loading
+            ? html`<div
+                class="flex items-center justify-center h-full text-base text-gray-500 text-center p-5"
+              >
+                Loading diff...
+              </div>`
+            : this.error
+              ? html`<div
+                  class="flex items-center justify-center h-full text-base text-red-600 text-center p-5"
+                >
+                  ${this.error}
+                </div>`
+              : !this.files || this.files.length === 0
+                ? html`<div
+                    class="flex items-center justify-center h-full text-base text-gray-500 text-center p-5"
+                  >
+                    No changes to show
+                  </div>`
+                : this.files.map((file) => this.renderFileDiff(file))}
+        </div>
       </div>
     `;
   }

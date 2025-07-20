@@ -1,8 +1,9 @@
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ConnectionStatus, DataManager } from "../data";
 import { AgentMessage, State } from "../types";
 import { aggregateAgentMessages } from "./aggregateAgentMessages";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 import "./mobile-title";
 import "./mobile-chat";
@@ -10,7 +11,7 @@ import "./mobile-chat-input";
 import "./mobile-diff";
 
 @customElement("mobile-shell")
-export class MobileShell extends LitElement {
+export class MobileShell extends SketchTailwindElement {
   private dataManager = new DataManager();
 
   @state()
@@ -24,55 +25,6 @@ export class MobileShell extends LitElement {
 
   @state()
   currentView: "chat" | "diff" = "chat";
-
-  static styles = css`
-    :host {
-      display: flex;
-      flex-direction: column;
-      /* Use dynamic viewport height for better iOS support */
-      height: 100dvh;
-      /* Fallback for browsers that don't support dvh */
-      height: 100vh;
-      /* iOS Safari custom property fallback */
-      height: calc(var(--vh, 1vh) * 100);
-      /* Additional iOS Safari fix */
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-      width: 100vw;
-      background-color: #ffffff;
-      font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
-    }
-
-    .mobile-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    mobile-title {
-      flex-shrink: 0;
-    }
-
-    mobile-chat {
-      flex: 1;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    mobile-diff {
-      flex: 1;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    mobile-chat-input {
-      flex-shrink: 0;
-      /* Ensure proper height calculation */
-      min-height: 64px;
-    }
-  `;
 
   connectedCallback() {
     super.connectedCallback();
@@ -166,8 +118,12 @@ export class MobileShell extends LitElement {
       (this.state?.outstanding_tool_calls?.length ?? 0) > 0;
 
     return html`
-      <div class="mobile-container">
+      <div
+        class="flex flex-col bg-white font-sans w-screen overflow-hidden"
+        style="height: 100dvh; height: 100vh; height: calc(var(--vh, 1vh) * 100); min-height: 100vh; min-height: -webkit-fill-available;"
+      >
         <mobile-title
+          class="flex-shrink-0"
           .connectionStatus=${this.connectionStatus}
           .isThinking=${isThinking}
           .skabandAddr=${this.state?.skaband_addr}
@@ -179,13 +135,17 @@ export class MobileShell extends LitElement {
         ${this.currentView === "chat"
           ? html`
               <mobile-chat
+                class="flex-1 overflow-hidden min-h-0"
                 .messages=${this.messages}
                 .isThinking=${isThinking}
               ></mobile-chat>
             `
-          : html` <mobile-diff></mobile-diff> `}
+          : html`<mobile-diff
+              class="flex-1 overflow-hidden min-h-0"
+            ></mobile-diff>`}
 
         <mobile-chat-input
+          class="flex-shrink-0 min-h-[64px]"
           .disabled=${this.connectionStatus !== "connected"}
           @send-message=${this.handleSendMessage}
         ></mobile-chat-input>

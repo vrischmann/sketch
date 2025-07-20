@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { AgentMessage } from "../types";
 import { createRef, ref } from "lit/directives/ref.js";
 import { marked, MarkedOptions, Renderer } from "marked";
 import DOMPurify from "dompurify";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 @customElement("mobile-chat")
-export class MobileChat extends LitElement {
+export class MobileChat extends SketchTailwindElement {
   @property({ type: Array })
   messages: AgentMessage[] = [];
 
@@ -20,318 +21,33 @@ export class MobileChat extends LitElement {
   @state()
   private showJumpToBottom = false;
 
-  static styles = css`
-    :host {
-      display: block;
-      height: 100%;
-      overflow: hidden;
+  connectedCallback() {
+    super.connectedCallback();
+    // Add animation styles to document head if not already present
+    if (!document.getElementById("mobile-chat-animations")) {
+      const style = document.createElement("style");
+      style.id = "mobile-chat-animations";
+      style.textContent = `
+        @keyframes thinking {
+          0%, 80%, 100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+          }
+          40% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .thinking-dot {
+          animation: thinking 1.4s ease-in-out infinite both;
+        }
+        .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+        .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+        .thinking-dot:nth-child(3) { animation-delay: 0; }
+      `;
+      document.head.appendChild(style);
     }
-
-    .chat-container {
-      height: 100%;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .message {
-      display: flex;
-      flex-direction: column;
-      max-width: 85%;
-      word-wrap: break-word;
-    }
-
-    .message.user {
-      align-self: flex-end;
-      align-items: flex-end;
-    }
-
-    .message.assistant {
-      align-self: flex-start;
-      align-items: flex-start;
-    }
-
-    .message-bubble {
-      padding: 8px 12px;
-      border-radius: 18px;
-      font-size: 16px;
-      line-height: 1.4;
-    }
-
-    .message.user .message-bubble {
-      background-color: #007bff;
-      color: white;
-      border-bottom-right-radius: 6px;
-    }
-
-    .message.assistant .message-bubble {
-      background-color: #f1f3f4;
-      color: #333;
-      border-bottom-left-radius: 6px;
-    }
-
-    .message.error .message-bubble {
-      background-color: #ffebee;
-      color: #d32f2f;
-      border-radius: 18px;
-    }
-
-    .thinking-message {
-      align-self: flex-start;
-      align-items: flex-start;
-      max-width: 85%;
-    }
-
-    .thinking-bubble {
-      background-color: #f1f3f4;
-      padding: 16px;
-      border-radius: 18px;
-      border-bottom-left-radius: 6px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .thinking-text {
-      color: #6c757d;
-      font-style: italic;
-    }
-
-    .thinking-dots {
-      display: flex;
-      gap: 3px;
-    }
-
-    .thinking-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: #6c757d;
-      animation: thinking 1.4s ease-in-out infinite both;
-    }
-
-    .thinking-dot:nth-child(1) {
-      animation-delay: -0.32s;
-    }
-    .thinking-dot:nth-child(2) {
-      animation-delay: -0.16s;
-    }
-    .thinking-dot:nth-child(3) {
-      animation-delay: 0;
-    }
-
-    @keyframes thinking {
-      0%,
-      80%,
-      100% {
-        transform: scale(0.8);
-        opacity: 0.5;
-      }
-      40% {
-        transform: scale(1);
-        opacity: 1;
-      }
-    }
-
-    .empty-state {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #6c757d;
-      font-style: italic;
-      text-align: center;
-      padding: 32px;
-    }
-
-    /* Markdown content styling for mobile */
-    .markdown-content {
-      line-height: 1.5;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-
-    .markdown-content p {
-      margin: 0.3em 0;
-    }
-
-    .markdown-content p:first-child {
-      margin-top: 0;
-    }
-
-    .markdown-content p:last-child {
-      margin-bottom: 0;
-    }
-
-    .markdown-content h1,
-    .markdown-content h2,
-    .markdown-content h3,
-    .markdown-content h4,
-    .markdown-content h5,
-    .markdown-content h6 {
-      margin: 0.5em 0 0.3em 0;
-      font-weight: bold;
-    }
-
-    .markdown-content h1 {
-      font-size: 1.2em;
-    }
-    .markdown-content h2 {
-      font-size: 1.15em;
-    }
-    .markdown-content h3 {
-      font-size: 1.1em;
-    }
-    .markdown-content h4,
-    .markdown-content h5,
-    .markdown-content h6 {
-      font-size: 1.05em;
-    }
-
-    .markdown-content code {
-      background-color: rgba(0, 0, 0, 0.08);
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-      font-size: 0.9em;
-    }
-
-    .markdown-content pre {
-      background-color: rgba(0, 0, 0, 0.08);
-      padding: 8px;
-      border-radius: 6px;
-      margin: 0.5em 0;
-      overflow-x: auto;
-      font-size: 0.9em;
-    }
-
-    .markdown-content pre code {
-      background: none;
-      padding: 0;
-    }
-
-    .markdown-content ul,
-    .markdown-content ol {
-      margin: 0.5em 0;
-      padding-left: 1.2em;
-    }
-
-    .markdown-content li {
-      margin: 0.2em 0;
-    }
-
-    .markdown-content blockquote {
-      border-left: 3px solid rgba(0, 0, 0, 0.2);
-      margin: 0.5em 0;
-      padding-left: 0.8em;
-      font-style: italic;
-    }
-
-    .markdown-content a {
-      color: inherit;
-      text-decoration: underline;
-    }
-
-    .markdown-content strong,
-    .markdown-content b {
-      font-weight: bold;
-    }
-
-    .markdown-content em,
-    .markdown-content i {
-      font-style: italic;
-    }
-
-    /* Tool calls styling for mobile */
-    .tool-calls {
-      margin-top: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .tool-call-item {
-      background-color: rgba(0, 0, 0, 0.04);
-      border-radius: 8px;
-      padding: 6px 8px;
-      font-size: 12px;
-      font-family: monospace;
-      line-height: 1.3;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tool-status-icon {
-      flex-shrink: 0;
-      font-size: 14px;
-    }
-
-    .tool-name {
-      font-weight: bold;
-      color: #333;
-      flex-shrink: 0;
-      margin-right: 2px;
-    }
-
-    .tool-summary {
-      color: #555;
-      flex-grow: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .tool-duration {
-      font-size: 10px;
-      color: #888;
-      flex-shrink: 0;
-      margin-left: 4px;
-    }
-
-    .jump-to-bottom {
-      position: fixed;
-      bottom: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0, 0, 0, 0.6);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 400;
-      cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-      z-index: 1100;
-      transition: all 0.15s ease;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      opacity: 0.8;
-    }
-
-    .jump-to-bottom:hover {
-      background-color: rgba(0, 0, 0, 0.8);
-      transform: translateX(-50%) translateY(-1px);
-      opacity: 1;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    }
-
-    .jump-to-bottom:active {
-      transform: translateX(-50%) translateY(0);
-    }
-
-    .jump-to-bottom.hidden {
-      opacity: 0;
-      pointer-events: none;
-      transform: translateX(-50%) translateY(10px);
-    }
-  `;
+  }
 
   updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
@@ -478,14 +194,21 @@ export class MobileChat extends LitElement {
     }
 
     return html`
-      <div class="tool-calls">
+      <div class="mt-3 flex flex-col gap-1.5">
         ${message.tool_calls.map((toolCall) => {
           const summary = this.getToolSummary(toolCall);
 
           return html`
-            <div class="tool-call-item ${toolCall.name}">
-              <span class="tool-name">${toolCall.name}</span>
-              <span class="tool-summary">${summary}</span>
+            <div
+              class="bg-black/[0.04] rounded-lg px-2 py-1.5 text-xs font-mono leading-snug flex items-center gap-1.5 ${toolCall.name}"
+            >
+              <span class="font-bold text-gray-800 flex-shrink-0 mr-0.5"
+                >${toolCall.name}</span
+              >
+              <span
+                class="text-gray-600 flex-grow overflow-hidden text-ellipsis whitespace-nowrap"
+                >${summary}</span
+              >
             </div>
           `;
         })}
@@ -598,49 +321,165 @@ export class MobileChat extends LitElement {
     );
 
     return html`
-      <div class="chat-container" ${ref(this.scrollContainer)}>
-        ${displayMessages.length === 0
-          ? html`
-              <div class="empty-state">Start a conversation with Sketch...</div>
-            `
-          : displayMessages.map((message) => {
-              const role = this.getMessageRole(message);
-              const text = this.getMessageText(message);
-              // const timestamp = message.timestamp; // Unused for mobile layout
+      <div class="block h-full overflow-hidden">
+        <div
+          class="h-full overflow-y-auto p-4 flex flex-col gap-4 scroll-smooth"
+          style="-webkit-overflow-scrolling: touch;"
+          ${ref(this.scrollContainer)}
+        >
+          ${displayMessages.length === 0
+            ? html`
+                <div
+                  class="empty-state flex-1 flex items-center justify-center text-gray-500 italic text-center p-8"
+                >
+                  Start a conversation with Sketch...
+                </div>
+              `
+            : displayMessages.map((message) => {
+                const role = this.getMessageRole(message);
+                const text = this.getMessageText(message);
+                // const timestamp = message.timestamp; // Unused for mobile layout
 
-              return html`
-                <div class="message ${role}">
-                  <div class="message-bubble">
-                    ${role === "assistant"
-                      ? html`<div class="markdown-content">
-                          ${unsafeHTML(this.renderMarkdown(text))}
-                        </div>`
-                      : text}
-                    ${this.renderToolCalls(message)}
+                return html`
+                  <div
+                    class="message ${role} flex flex-col max-w-[85%] break-words ${role ===
+                    "user"
+                      ? "self-end items-end"
+                      : "self-start items-start"}"
+                  >
+                    <div
+                      class="message-bubble px-3 py-2 rounded-[18px] text-base leading-relaxed ${role ===
+                      "user"
+                        ? "bg-blue-500 text-white rounded-br-[6px]"
+                        : role === "error"
+                          ? "bg-red-50 text-red-700"
+                          : "bg-gray-100 text-gray-800 rounded-bl-[6px]"}"
+                    >
+                      ${role === "assistant"
+                        ? html`<div class="leading-6 break-words">
+                            <style>
+                              .markdown-content p {
+                                margin: 0.3em 0;
+                              }
+                              .markdown-content p:first-child {
+                                margin-top: 0;
+                              }
+                              .markdown-content p:last-child {
+                                margin-bottom: 0;
+                              }
+                              .markdown-content h1,
+                              .markdown-content h2,
+                              .markdown-content h3,
+                              .markdown-content h4,
+                              .markdown-content h5,
+                              .markdown-content h6 {
+                                margin: 0.5em 0 0.3em 0;
+                                font-weight: bold;
+                              }
+                              .markdown-content h1 {
+                                font-size: 1.2em;
+                              }
+                              .markdown-content h2 {
+                                font-size: 1.15em;
+                              }
+                              .markdown-content h3 {
+                                font-size: 1.1em;
+                              }
+                              .markdown-content h4,
+                              .markdown-content h5,
+                              .markdown-content h6 {
+                                font-size: 1.05em;
+                              }
+                              .markdown-content code {
+                                background-color: rgba(0, 0, 0, 0.08);
+                                padding: 2px 4px;
+                                border-radius: 3px;
+                                font-family:
+                                  Monaco, Menlo, "Ubuntu Mono", monospace;
+                                font-size: 0.9em;
+                              }
+                              .markdown-content pre {
+                                background-color: rgba(0, 0, 0, 0.08);
+                                padding: 8px;
+                                border-radius: 6px;
+                                margin: 0.5em 0;
+                                overflow-x: auto;
+                                font-size: 0.9em;
+                              }
+                              .markdown-content pre code {
+                                background: none;
+                                padding: 0;
+                              }
+                              .markdown-content ul,
+                              .markdown-content ol {
+                                margin: 0.5em 0;
+                                padding-left: 1.2em;
+                              }
+                              .markdown-content li {
+                                margin: 0.2em 0;
+                              }
+                              .markdown-content blockquote {
+                                border-left: 3px solid rgba(0, 0, 0, 0.2);
+                                margin: 0.5em 0;
+                                padding-left: 0.8em;
+                                font-style: italic;
+                              }
+                              .markdown-content a {
+                                color: inherit;
+                                text-decoration: underline;
+                              }
+                              .markdown-content strong,
+                              .markdown-content b {
+                                font-weight: bold;
+                              }
+                              .markdown-content em,
+                              .markdown-content i {
+                                font-style: italic;
+                              }
+                            </style>
+                            <div class="markdown-content">
+                              ${unsafeHTML(this.renderMarkdown(text))}
+                            </div>
+                          </div>`
+                        : text}
+                      ${this.renderToolCalls(message)}
+                    </div>
+                  </div>
+                `;
+              })}
+          ${this.isThinking
+            ? html`
+                <div
+                  class="thinking-message flex flex-col max-w-[85%] break-words self-start items-start"
+                >
+                  <div
+                    class="bg-gray-100 p-4 rounded-[18px] rounded-bl-[6px] flex items-center gap-2"
+                  >
+                    <span class="thinking-text text-gray-500 italic"
+                      >Sketch is thinking</span
+                    >
+                    <div class="thinking-dots flex gap-1">
+                      <div
+                        class="w-1.5 h-1.5 rounded-full bg-gray-500 thinking-dot"
+                      ></div>
+                      <div
+                        class="w-1.5 h-1.5 rounded-full bg-gray-500 thinking-dot"
+                      ></div>
+                      <div
+                        class="w-1.5 h-1.5 rounded-full bg-gray-500 thinking-dot"
+                      ></div>
+                    </div>
                   </div>
                 </div>
-              `;
-            })}
-        ${this.isThinking
-          ? html`
-              <div class="thinking-message">
-                <div class="thinking-bubble">
-                  <span class="thinking-text">Sketch is thinking</span>
-                  <div class="thinking-dots">
-                    <div class="thinking-dot"></div>
-                    <div class="thinking-dot"></div>
-                    <div class="thinking-dot"></div>
-                  </div>
-                </div>
-              </div>
-            `
-          : ""}
+              `
+            : ""}
+        </div>
       </div>
 
       ${this.showJumpToBottom
         ? html`
             <button
-              class="jump-to-bottom"
+              class="fixed bottom-[70px] left-1/2 transform -translate-x-1/2 bg-black/60 text-white border-none rounded-xl px-2 py-1 text-xs font-normal cursor-pointer shadow-sm z-[1100] transition-all duration-150 flex items-center gap-1 opacity-80 hover:bg-black/80 hover:-translate-y-px hover:opacity-100 hover:shadow-md active:translate-y-0"
               @click=${this.jumpToBottom}
               aria-label="Jump to bottom"
             >
