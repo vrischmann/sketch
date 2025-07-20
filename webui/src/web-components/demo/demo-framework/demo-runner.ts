@@ -101,6 +101,13 @@ export class DemoRunner {
       "sketch-tool-calls",
       "sketch-view-mode-select",
       "sketch-theme-toggle",
+      "mobile-chat",
+      "sketch-diff2-view",
+      "sketch-monaco-view",
+      "sketch-network-status",
+      "sketch-timeline-viewport",
+      "sketch-tool-card",
+      "status-indicators",
     ];
 
     // Filter to only components that actually have demo files

@@ -1,16 +1,13 @@
-import { html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { MockGitDataService } from "./mock-git-data-service.js";
 import "../sketch-push-button.js";
+import { SketchTailwindElement } from "../sketch-tailwind-element.js";
 
 @customElement("sketch-push-button-demo")
-export class SketchPushButtonDemo extends LitElement {
+export class SketchPushButtonDemo extends SketchTailwindElement {
   @state()
   private _gitDataService = new MockGitDataService();
-
-  protected createRenderRoot() {
-    return this;
-  }
 
   render() {
     return html`
