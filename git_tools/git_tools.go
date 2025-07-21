@@ -258,7 +258,7 @@ func getGitLog(repoDir string, fromCommit string) ([]GitLogEntry, error) {
 	}
 
 	// Use the determined range with the specified format for easy parsing
-	cmd := exec.Command("git", "-C", repoDir, "log", "-n", "1000", "--oneline", "--decorate", "--pretty=%H%x00%s%x00%d", fromRange)
+	cmd := exec.Command("git", "-C", repoDir, "log", "--boundary", "-n", "1000", "--oneline", "--decorate", "--pretty=%H%x00%s%x00%d", fromRange)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error executing git log: %w - %s", err, string(out))

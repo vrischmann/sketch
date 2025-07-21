@@ -284,11 +284,11 @@ func TestGitRecentLog(t *testing.T) {
 	}
 
 	// No need to check specific entries in order
-	// Just validate we can find the second and third commits we created
+	// Just validate we can find all commits (including boundary commit)
 
 	// Verify that we have the correct behavior with the fromCommit parameter:
-	// 1. We should find the second and third commits
-	// 2. We should NOT find the initial commit (it should be excluded)
+	// With --boundary flag, we should find all commits including the boundary (initial) commit
+	// 1. We should find the initial, second and third commits
 	foundThird := false
 	foundSecond := false
 	foundInitial := false
@@ -309,8 +309,8 @@ func TestGitRecentLog(t *testing.T) {
 	if !foundSecond {
 		t.Errorf("Expected to find 'Second commit' in log entries")
 	}
-	if foundInitial {
-		t.Errorf("Should NOT have found 'Initial commit' in log entries (fromCommit parameter should exclude it)")
+	if !foundInitial {
+		t.Errorf("Expected to find 'Initial commit' in log entries (--boundary flag should include it)")
 	}
 }
 
