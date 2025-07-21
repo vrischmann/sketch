@@ -31,10 +31,9 @@ export class DataManager {
   private eventSource: EventSource | null = null;
   private reconnectTimer: number | null = null;
   private reconnectAttempt: number = 0;
-  // Reconnection timeout delays in milliseconds (runs from 1s to 60s)
+  // Reconnection timeout delays in milliseconds (runs from 100ms to ~15s). Fibonacci-ish.
   private readonly reconnectDelaysMs: number[] = [
-    1000, 1500, 2250, 3375, 5062.5, 7593.75, 11390.625, 17085.9375,
-    25628.90625, 38443.359375, 57665.0390625, 60000, 60000
+    100, 100, 200, 300, 500, 800, 1300, 2100, 3400, 5500, 8900, 14400,
   ];
 
   // Initial load completion tracking
@@ -174,8 +173,13 @@ export class DataManager {
       this.reconnectTimer = null;
     }
 
-    const delayIndex = Math.min(this.reconnectAttempt, this.reconnectDelaysMs.length - 1);
-    const delay = this.reconnectDelaysMs[delayIndex];
+    const delayIndex = Math.min(
+      this.reconnectAttempt,
+      this.reconnectDelaysMs.length - 1,
+    );
+    let delay = this.reconnectDelaysMs[delayIndex];
+    // Add jitter: +/- 10% of the delay
+    delay *= 0.9 + Math.random() * 0.2;
 
     console.log(
       `Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempt + 1})`,

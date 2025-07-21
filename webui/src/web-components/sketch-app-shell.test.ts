@@ -297,19 +297,19 @@ test("correctly determines idle state ignoring system messages", async ({
   // Wait for initial data to load
   await page.waitForTimeout(1000);
 
-  // Simulate connection established by setting the connection status property
+  // Simulate connection established by disabling DataManager connection changes
   await component.evaluate(async () => {
     const appShell = document.querySelector("sketch-app-shell") as any;
-    if (appShell) {
+    if (appShell && appShell.dataManager) {
+      // Prevent DataManager from changing connection status during tests
+      appShell.dataManager.scheduleReconnect = () => {};
+      appShell.dataManager.updateConnectionStatus = () => {};
+      // Set connected status
       appShell.connectionStatus = "connected";
       appShell.requestUpdate();
-      // Force an update cycle to complete
       await appShell.updateComplete;
     }
   });
-
-  // Wait a bit more for the status to update and for any async operations
-  await page.waitForTimeout(1000);
 
   // Check that the call status component shows IDLE
   // The last user/agent message (agent with end_of_turn: true) should make it idle
@@ -397,9 +397,15 @@ test("correctly determines working state with non-end-of-turn agent message", as
   expect(isIdleResult.expectedWorking).toBe(true);
 
   // Now test the full component interaction
-  await component.evaluate(() => {
+  await component.evaluate(async () => {
     const appShell = document.querySelector("sketch-app-shell") as any;
     if (appShell) {
+      // Disable DataManager connection status changes that interfere with tests
+      if (appShell.dataManager) {
+        appShell.dataManager.scheduleReconnect = () => {};
+        appShell.dataManager.updateConnectionStatus = () => {};
+      }
+      
       // Set connection status to connected
       appShell.connectionStatus = "connected";
 
@@ -413,6 +419,7 @@ test("correctly determines working state with non-end-of-turn agent message", as
       // The messages are already set from the previous test
       // Force a re-render
       appShell.requestUpdate();
+      await appShell.updateComplete;
     }
   });
 
