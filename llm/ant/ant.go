@@ -11,6 +11,8 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -207,7 +209,27 @@ type request struct {
 	TokenEfficientToolUse bool `json:"-"` // DO NOT USE, broken on Anthropic's side as of 2025-02-28
 }
 
-const dumpText = false // debugging toggle to see raw communications with Claude
+const dumpText = false // debugging toggle to dump raw communications with Claude using dumpToFile
+
+// dumpToFile writes the content to a timestamped file in ~/.cache/sketch/, with typ in the filename.
+func dumpToFile(typ string, content []byte) error {
+	if !dumpText {
+		return nil
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	cacheDir := filepath.Join(homeDir, ".cache", "sketch")
+	err = os.MkdirAll(cacheDir, 0o700)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	filename := fmt.Sprintf("%d_%s.txt", now.UnixMilli(), typ)
+	filePath := filepath.Join(cacheDir, filename)
+	return os.WriteFile(filePath, content, 0o600)
+}
 
 func mapped[Slice ~[]E, E, T any](s Slice, f func(E) T) []T {
 	out := make([]T, len(s))
@@ -454,8 +476,8 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			slog.WarnContext(ctx, "anthropic request sleep before retry", "sleep", sleep, "attempts", attempts)
 			time.Sleep(sleep)
 		}
-		if dumpText {
-			fmt.Printf("RAW REQUEST:\n%s\n\n", payload)
+		if err := dumpToFile("request", payload); err != nil {
+			slog.WarnContext(ctx, "failed to dump request to file", "error", err)
 		}
 		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
 		if err != nil {
@@ -496,8 +518,8 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 		switch {
 		case resp.StatusCode == http.StatusOK:
-			if dumpText {
-				fmt.Printf("RAW RESPONSE:\n%s\n\n", buf)
+			if err := dumpToFile("response", buf); err != nil {
+				slog.WarnContext(ctx, "failed to dump response to file", "error", err)
 			}
 			var response response
 			err = json.NewDecoder(bytes.NewReader(buf)).Decode(&response)
