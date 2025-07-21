@@ -294,6 +294,8 @@ type CLIFlags struct {
 	bashSlowTimeout       string
 	bashBackgroundTimeout string
 	passthroughUpstream   bool
+	// Claude debugging
+	dumpAntCalls bool
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -369,6 +371,7 @@ func parseCLIFlags() CLIFlags {
 	// Internal flags for development/debugging
 	internalFlags.StringVar(&flags.dumpDist, "dump-dist", "", "(internal) dump embedded /dist/ filesystem to specified directory and exit")
 	internalFlags.StringVar(&flags.subtraceToken, "subtrace-token", "", "(development) run sketch under subtrace.dev with the provided token")
+	internalFlags.BoolVar(&flags.dumpAntCalls, "dump-ant-calls", false, "(debugging) dump raw communications with Claude to files in ~/.cache/sketch/")
 
 	// Custom usage function that shows only user-visible flags by default
 	userFlags.Usage = func() {
@@ -518,6 +521,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		SubtraceToken:       flags.subtraceToken,
 		MCPServers:          flags.mcpServers,
 		PassthroughUpstream: flags.passthroughUpstream,
+		DumpAntCalls:        flags.dumpAntCalls,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -628,7 +632,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		}
 	}
 
-	llmService, err := selectLLMService(nil, flags.modelName, modelURL, apiKey)
+	llmService, err := selectLLMService(nil, flags, modelURL, apiKey)
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM service: %w", err)
 	}
@@ -895,19 +899,20 @@ func defaultGitEmail() string {
 // If modelName is "gemini", it uses the Gemini service.
 // Otherwise, it tries to use the OpenAI service with the specified model.
 // Returns an error if the model name is not recognized or if required configuration is missing.
-func selectLLMService(client *http.Client, modelName string, modelURL, apiKey string) (llm.Service, error) {
-	if modelName == "" || modelName == "claude" {
+func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey string) (llm.Service, error) {
+	if flags.modelName == "" || flags.modelName == "claude" {
 		if apiKey == "" {
 			return nil, fmt.Errorf("missing ANTHROPIC_API_KEY")
 		}
 		return &ant.Service{
-			HTTPC:  client,
-			URL:    modelURL,
-			APIKey: apiKey,
+			HTTPC:        client,
+			URL:          modelURL,
+			APIKey:       apiKey,
+			DumpAntCalls: flags.dumpAntCalls,
 		}, nil
 	}
 
-	if modelName == "gemini" {
+	if flags.modelName == "gemini" {
 		if apiKey == "" {
 			return nil, fmt.Errorf("missing %s", gem.GeminiAPIKeyEnv)
 		}
@@ -919,9 +924,9 @@ func selectLLMService(client *http.Client, modelName string, modelURL, apiKey st
 		}, nil
 	}
 
-	model := oai.ModelByUserName(modelName)
+	model := oai.ModelByUserName(flags.modelName)
 	if model == nil {
-		return nil, fmt.Errorf("unknown model '%s', use -list-models to see available models", modelName)
+		return nil, fmt.Errorf("unknown model '%s', use -list-models to see available models", flags.modelName)
 	}
 
 	// Verify we have an API key, if necessary.

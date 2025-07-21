@@ -59,11 +59,12 @@ func (s *Service) TokenContextWindow() int {
 // Service provides Claude completions.
 // Fields should not be altered concurrently with calling any method on Service.
 type Service struct {
-	HTTPC     *http.Client // defaults to http.DefaultClient if nil
-	URL       string       // defaults to DefaultURL if empty
-	APIKey    string       // must be non-empty
-	Model     string       // defaults to DefaultModel if empty
-	MaxTokens int          // defaults to DefaultMaxTokens if zero
+	HTTPC        *http.Client // defaults to http.DefaultClient if nil
+	URL          string       // defaults to DefaultURL if empty
+	APIKey       string       // must be non-empty
+	Model        string       // defaults to DefaultModel if empty
+	MaxTokens    int          // defaults to DefaultMaxTokens if zero
+	DumpAntCalls bool         // whether to dump request/response text to files for debugging; defaults to false
 }
 
 var _ llm.Service = (*Service)(nil)
@@ -209,13 +210,8 @@ type request struct {
 	TokenEfficientToolUse bool `json:"-"` // DO NOT USE, broken on Anthropic's side as of 2025-02-28
 }
 
-const dumpText = false // debugging toggle to dump raw communications with Claude using dumpToFile
-
 // dumpToFile writes the content to a timestamped file in ~/.cache/sketch/, with typ in the filename.
 func dumpToFile(typ string, content []byte) error {
-	if !dumpText {
-		return nil
-	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -444,7 +440,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 	var payload []byte
 	var err error
-	if dumpText || testing.Testing() {
+	if s.DumpAntCalls || testing.Testing() {
 		payload, err = json.MarshalIndent(request, "", " ")
 	} else {
 		payload, err = json.Marshal(request)
@@ -476,8 +472,10 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			slog.WarnContext(ctx, "anthropic request sleep before retry", "sleep", sleep, "attempts", attempts)
 			time.Sleep(sleep)
 		}
-		if err := dumpToFile("request", payload); err != nil {
-			slog.WarnContext(ctx, "failed to dump request to file", "error", err)
+		if s.DumpAntCalls {
+			if err := dumpToFile("request", payload); err != nil {
+				slog.WarnContext(ctx, "failed to dump request to file", "error", err)
+			}
 		}
 		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
 		if err != nil {
@@ -518,8 +516,10 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 		switch {
 		case resp.StatusCode == http.StatusOK:
-			if err := dumpToFile("response", buf); err != nil {
-				slog.WarnContext(ctx, "failed to dump response to file", "error", err)
+			if s.DumpAntCalls {
+				if err := dumpToFile("response", buf); err != nil {
+					slog.WarnContext(ctx, "failed to dump response to file", "error", err)
+				}
 			}
 			var response response
 			err = json.NewDecoder(bytes.NewReader(buf)).Decode(&response)
