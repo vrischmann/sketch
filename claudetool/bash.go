@@ -141,22 +141,22 @@ func (i *bashInput) timeout(t *Timeouts) time.Duration {
 	}
 }
 
-func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BashTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var req bashInput
 	if err := json.Unmarshal(m, &req); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal bash command input: %w", err)
+		return llm.ErrorfToolOut("failed to unmarshal bash command input: %w", err)
 	}
 
 	// do a quick permissions check (NOT a security barrier)
 	err := bashkit.Check(req.Command)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Custom permission callback if set
 	if b.CheckPermission != nil {
 		if err := b.CheckPermission(req.Command); err != nil {
-			return nil, err
+			return llm.ErrorToolOut(err)
 		}
 	}
 
@@ -174,23 +174,23 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, e
 	if req.Background {
 		result, err := executeBackgroundBash(ctx, req, timeout)
 		if err != nil {
-			return nil, err
+			return llm.ErrorToolOut(err)
 		}
 		// Marshal the result to JSON
 		// TODO: emit XML(-ish) instead?
 		output, err := json.Marshal(result)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal background result: %w", err)
+			return llm.ErrorfToolOut("failed to marshal background result: %w", err)
 		}
-		return llm.TextContent(string(output)), nil
+		return llm.ToolOut{LLMContent: llm.TextContent(string(output))}
 	}
 
 	// For foreground commands, use executeBash
 	out, execErr := executeBash(ctx, req, timeout)
 	if execErr != nil {
-		return nil, execErr
+		return llm.ErrorToolOut(execErr)
 	}
-	return llm.TextContent(out), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(out)}
 }
 
 const maxBashOutputLength = 131072
@@ -435,7 +435,7 @@ func (b *BashTool) installTools(ctx context.Context, missing []string) error {
   },
   "required": ["results"]
 }`),
-		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
 			type InstallResult struct {
 				CommandName string `json:"command_name"`
 				Installed   bool   `json:"installed"`
@@ -452,7 +452,7 @@ func (b *BashTool) installTools(ctx context.Context, missing []string) error {
 				slog.InfoContext(ctx, "auto-tool installation complete", "results", results)
 			}
 			done = true
-			return llm.TextContent(""), nil
+			return llm.ToolOut{LLMContent: llm.TextContent("")}
 		},
 	}
 

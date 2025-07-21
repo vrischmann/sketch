@@ -48,14 +48,14 @@ func (r *CodeReviewer) Tool() *llm.Tool {
 	return spec
 }
 
-func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	// Parse input to get timeout
 	var input struct {
 		Timeout string `json:"timeout"`
 	}
 	if len(m) > 0 {
 		if err := json.Unmarshal(m, &input); err != nil {
-			return nil, fmt.Errorf("failed to parse input: %w", err)
+			return llm.ErrorfToolOut("failed to parse input: %w", err)
 		}
 	}
 	if input.Timeout == "" {
@@ -65,7 +65,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	// Parse timeout duration
 	timeout, err := time.ParseDuration(input.Timeout)
 	if err != nil {
-		return nil, fmt.Errorf("invalid timeout duration %q: %w", input.Timeout, err)
+		return llm.ErrorfToolOut("invalid timeout duration %q: %w", input.Timeout, err)
 	}
 
 	// Create timeout context
@@ -76,22 +76,22 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	// webui/src/web-components/sketch-tool-card.ts (SketchToolCardCodeReview.getStatusIcon)
 	if err := r.RequireNormalGitState(timeoutCtx); err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check for normal git state", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 	if err := r.RequireNoUncommittedChanges(timeoutCtx); err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check for uncommitted changes", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Check that the current commit is not the initial commit
 	currentCommit, err := r.CurrentCommit(timeoutCtx)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get current commit", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 	if r.IsInitialCommit(currentCommit) {
 		slog.DebugContext(ctx, "CodeReviewer.Run: current commit is initial commit, nothing to review")
-		return nil, fmt.Errorf("no new commits have been added, nothing to review")
+		return llm.ErrorToolOut(fmt.Errorf("no new commits have been added, nothing to review"))
 	}
 
 	// No matter what failures happen from here out, we will declare this to have been reviewed.
@@ -101,7 +101,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	changedFiles, err := r.changedFiles(timeoutCtx, r.sketchBaseRef, currentCommit)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get changed files", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Prepare to analyze before/after for the impacted files.
@@ -113,7 +113,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	if err != nil {
 		// TODO: log and skip to stuff that doesn't require packages
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to get packages for files", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 	allPkgList := slices.Collect(maps.Keys(allPkgs))
 
@@ -152,7 +152,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	testMsg, err := r.checkTests(timeoutCtx, allPkgList)
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check tests", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 	if testMsg != "" {
 		errorMessages = append(errorMessages, testMsg)
@@ -161,7 +161,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	goplsMsg, err := r.checkGopls(timeoutCtx, changedFiles) // includes vet checks
 	if err != nil {
 		slog.DebugContext(ctx, "CodeReviewer.Run: failed to check gopls", "err", err)
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 	if goplsMsg != "" {
 		errorMessages = append(errorMessages, goplsMsg)
@@ -183,7 +183,7 @@ func (r *CodeReviewer) Run(ctx context.Context, m json.RawMessage) ([]llm.Conten
 	if buf.Len() == 0 {
 		buf.WriteString("OK")
 	}
-	return llm.TextContent(buf.String()), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(buf.String())}
 }
 
 func (r *CodeReviewer) initializeInitialCommitWorktree(ctx context.Context) error {

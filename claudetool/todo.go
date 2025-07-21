@@ -109,19 +109,19 @@ func todoFilePathForContext(ctx context.Context) string {
 	return TodoFilePath(SessionID(ctx))
 }
 
-func todoReadRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func todoReadRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	todoPath := todoFilePathForContext(ctx)
 	content, err := os.ReadFile(todoPath)
 	if os.IsNotExist(err) {
-		return llm.TextContent("No todo list found. Use todo_write to create one."), nil
+		return llm.ToolOut{LLMContent: llm.TextContent("No todo list found. Use todo_write to create one.")}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read todo file: %w", err)
+		return llm.ErrorfToolOut("failed to read todo file: %w", err)
 	}
 
 	var todoList TodoList
 	if err := json.Unmarshal(content, &todoList); err != nil {
-		return nil, fmt.Errorf("failed to parse todo file: %w", err)
+		return llm.ErrorfToolOut("failed to parse todo file: %w", err)
 	}
 
 	result := fmt.Sprintf(`<todo_list count="%d">%s`, len(todoList.Items), "\n")
@@ -130,13 +130,13 @@ func todoReadRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) 
 	}
 	result += "</todo_list>"
 
-	return llm.TextContent(result), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(result)}
 }
 
-func todoWriteRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func todoWriteRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input TodoWriteInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	// Validate that only one task is in-progress
@@ -148,7 +148,7 @@ func todoWriteRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error)
 	}
 	switch {
 	case inProgressCount > 1:
-		return nil, fmt.Errorf("only one task can be 'in-progress' at a time, found %d", inProgressCount)
+		return llm.ErrorfToolOut("only one task can be 'in-progress' at a time, found %d", inProgressCount)
 	}
 
 	todoList := TodoList{
@@ -158,19 +158,19 @@ func todoWriteRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error)
 	todoPath := todoFilePathForContext(ctx)
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(todoPath), 0o700); err != nil {
-		return nil, fmt.Errorf("failed to create todo directory: %w", err)
+		return llm.ErrorfToolOut("failed to create todo directory: %w", err)
 	}
 
 	content, err := json.Marshal(todoList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal todo list: %w", err)
+		return llm.ErrorfToolOut("failed to marshal todo list: %w", err)
 	}
 
 	if err := os.WriteFile(todoPath, content, 0o600); err != nil {
-		return nil, fmt.Errorf("failed to write todo file: %w", err)
+		return llm.ErrorfToolOut("failed to write todo file: %w", err)
 	}
 
 	result := fmt.Sprintf("Updated todo list with %d items.", len(input.Tasks))
 
-	return llm.TextContent(result), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(result)}
 }

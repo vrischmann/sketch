@@ -177,10 +177,11 @@ func TestNavigateTool(t *testing.T) {
 	inputJSON, _ := json.Marshal(input)
 
 	// Call the tool
-	result, err := navTool.Run(ctx, json.RawMessage(inputJSON))
-	if err != nil {
-		t.Fatalf("Error running navigate tool: %v", err)
+	toolOut := navTool.Run(ctx, json.RawMessage(inputJSON))
+	if toolOut.Error != nil {
+		t.Fatalf("Error running navigate tool: %v", toolOut.Error)
 	}
+	result := toolOut.LLMContent
 
 	// Verify the response is successful
 	resultText := result[0].Text
@@ -288,10 +289,11 @@ func TestReadImageTool(t *testing.T) {
 	input := fmt.Sprintf(`{"path": "%s"}`, testImagePath)
 
 	// Run the tool
-	result, err := readImageTool.Run(ctx, json.RawMessage(input))
-	if err != nil {
-		t.Fatalf("Read image tool failed: %v", err)
+	toolOut := readImageTool.Run(ctx, json.RawMessage(input))
+	if toolOut.Error != nil {
+		t.Fatalf("Read image tool failed: %v", toolOut.Error)
 	}
+	result := toolOut.LLMContent
 
 	// In the updated code, result is already a []llm.Content
 	contents := result
@@ -338,20 +340,22 @@ func TestDefaultViewportSize(t *testing.T) {
 
 	// Navigate to a simple page to ensure the browser is ready
 	navInput := json.RawMessage(`{"url": "about:blank"}`)
-	content, err := tools.NewNavigateTool().Run(ctx, navInput)
-	if err != nil {
-		t.Fatalf("Navigation error: %v", err)
+	toolOut := tools.NewNavigateTool().Run(ctx, navInput)
+	if toolOut.Error != nil {
+		t.Fatalf("Navigation error: %v", toolOut.Error)
 	}
+	content := toolOut.LLMContent
 	if !strings.Contains(content[0].Text, "done") {
 		t.Fatalf("Expected done in navigation response, got: %s", content[0].Text)
 	}
 
 	// Check default viewport dimensions via JavaScript
 	evalInput := json.RawMessage(`{"expression": "({width: window.innerWidth, height: window.innerHeight})"}`)
-	content, err = tools.NewEvalTool().Run(ctx, evalInput)
-	if err != nil {
-		t.Fatalf("Evaluation error: %v", err)
+	toolOut = tools.NewEvalTool().Run(ctx, evalInput)
+	if toolOut.Error != nil {
+		t.Fatalf("Evaluation error: %v", toolOut.Error)
 	}
+	content = toolOut.LLMContent
 
 	// Parse the result to verify dimensions
 	var response struct {
@@ -398,30 +402,33 @@ func TestResizeTool(t *testing.T) {
 		// Resize to mobile dimensions
 		resizeTool := tools.NewResizeTool()
 		input := json.RawMessage(`{"width": 375, "height": 667}`)
-		content, err := resizeTool.Run(ctx, input)
-		if err != nil {
-			t.Fatalf("Error: %v", err)
+		toolOut := resizeTool.Run(ctx, input)
+		if toolOut.Error != nil {
+			t.Fatalf("Error: %v", toolOut.Error)
 		}
+		content := toolOut.LLMContent
 		if !strings.Contains(content[0].Text, "done") {
 			t.Fatalf("Expected done in response, got: %s", content[0].Text)
 		}
 
 		// Navigate to a test page and verify using JavaScript to get window dimensions
 		navInput := json.RawMessage(`{"url": "https://example.com"}`)
-		content, err = tools.NewNavigateTool().Run(ctx, navInput)
-		if err != nil {
-			t.Fatalf("Error: %v", err)
+		toolOut = tools.NewNavigateTool().Run(ctx, navInput)
+		if toolOut.Error != nil {
+			t.Fatalf("Error: %v", toolOut.Error)
 		}
+		content = toolOut.LLMContent
 		if !strings.Contains(content[0].Text, "done") {
 			t.Fatalf("Expected done in response, got: %s", content[0].Text)
 		}
 
 		// Check dimensions via JavaScript
 		evalInput := json.RawMessage(`{"expression": "({width: window.innerWidth, height: window.innerHeight})"}`)
-		content, err = tools.NewEvalTool().Run(ctx, evalInput)
-		if err != nil {
-			t.Fatalf("Error: %v", err)
+		toolOut = tools.NewEvalTool().Run(ctx, evalInput)
+		if toolOut.Error != nil {
+			t.Fatalf("Error: %v", toolOut.Error)
 		}
+		content = toolOut.LLMContent
 
 		// The dimensions might not be exactly what we set (browser chrome, etc.)
 		// but they should be close

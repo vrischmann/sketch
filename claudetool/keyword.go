@@ -83,10 +83,10 @@ func FindRepoRoot(wd string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func keywordRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input keywordInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 	wd := WorkingDir(ctx)
 	root, err := FindRepoRoot(wd)
@@ -100,7 +100,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	for _, term := range input.SearchTerms {
 		out, err := ripgrep(ctx, wd, []string{term})
 		if err != nil {
-			return nil, err
+			return llm.ErrorToolOut(err)
 		}
 		if len(out) > 64*1024 {
 			slog.InfoContext(ctx, "keyword search result too large", "term", term, "bytes", len(out))
@@ -110,7 +110,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 	}
 
 	if len(keep) == 0 {
-		return llm.TextContent("each of those search terms yielded too many results"), nil
+		return llm.ToolOut{LLMContent: llm.TextContent("each of those search terms yielded too many results")}
 	}
 
 	// peel off keywords until we get a result that fits in the query window
@@ -119,7 +119,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 		var err error
 		out, err = ripgrep(ctx, wd, keep)
 		if err != nil {
-			return nil, err
+			return llm.ErrorToolOut(err)
 		}
 		if len(out) < 128*1024 {
 			break
@@ -143,10 +143,10 @@ func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 
 	resp, err := convo.SendMessage(initialMessage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send relevance filtering message: %w", err)
+		return llm.ErrorfToolOut("failed to send relevance filtering message: %w", err)
 	}
 	if len(resp.Content) != 1 {
-		return nil, fmt.Errorf("unexpected number of messages in relevance filtering response: %d", len(resp.Content))
+		return llm.ErrorfToolOut("unexpected number of messages in relevance filtering response: %d", len(resp.Content))
 	}
 
 	filtered := resp.Content[0].Text
@@ -159,7 +159,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
 		"filtered", filtered,
 	)
 
-	return llm.TextContent(resp.Content[0].Text), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(resp.Content[0].Text)}
 }
 
 func ripgrep(ctx context.Context, wd string, terms []string) (string, error) {

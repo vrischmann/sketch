@@ -275,14 +275,14 @@ func (m *MCPManager) convertMCPTools(serverName string, mcpClient *client.Client
 			Name:        fmt.Sprintf("%s_%s", serverName, mcpTool.Name),
 			Description: mcpTool.Description,
 			InputSchema: json.RawMessage(schemaBytes),
-			Run: func(toolName string, client *client.Client) func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
-				return func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+			Run: func(toolName string, client *client.Client) func(ctx context.Context, input json.RawMessage) llm.ToolOut {
+				return func(ctx context.Context, input json.RawMessage) llm.ToolOut {
 					result, err := m.executeMCPTool(ctx, client, toolName, input)
 					if err != nil {
-						return nil, err
+						return llm.ErrorToolOut(err)
 					}
 					// Convert result to llm.Content
-					return []llm.Content{llm.StringContent(fmt.Sprintf("%v", result))}, nil
+					return llm.ToolOut{LLMContent: []llm.Content{llm.StringContent(fmt.Sprintf("%v", result))}}
 				}
 			}(mcpTool.Name, mcpClient),
 		}

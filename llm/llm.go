@@ -90,7 +90,18 @@ type Tool struct {
 	// The outputs from Run will be sent back to Claude.
 	// If you do not want to respond to the tool call request from Claude, return ErrDoNotRespond.
 	// ctx contains extra (rarely used) tool call information; retrieve it with ToolCallInfoFromContext.
-	Run func(ctx context.Context, input json.RawMessage) ([]Content, error) `json:"-"`
+	Run func(ctx context.Context, input json.RawMessage) ToolOut `json:"-"`
+}
+
+// ToolOut represents the output of a tool run.
+type ToolOut struct {
+	// LLMContent is the output of the tool to be sent back to the LLM.
+	// May be nil on error.
+	LLMContent []Content
+	// Error is the error (if any) that occurred during the tool run.
+	// The text contents of the error will be sent back to the LLM.
+	// If non-nil, LLMContent will be ignored.
+	Error error
 }
 
 type Content struct {
@@ -269,4 +280,17 @@ func TextContent(text string) []Content {
 		Type: ContentTypeText,
 		Text: text,
 	}}
+}
+
+func ErrorToolOut(err error) ToolOut {
+	if err == nil {
+		panic("ErrorToolOut called with nil error")
+	}
+	return ToolOut{
+		Error: err,
+	}
+}
+
+func ErrorfToolOut(format string, args ...any) ToolOut {
+	return ErrorToolOut(fmt.Errorf(format, args...))
 }

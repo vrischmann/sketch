@@ -16,10 +16,11 @@ func TestTodoReadEmpty(t *testing.T) {
 	todoPath := todoFilePathForContext(ctx)
 	os.Remove(todoPath)
 
-	result, err := todoReadRun(ctx, []byte("{}"))
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	toolOut := todoReadRun(ctx, []byte("{}"))
+	if toolOut.Error != nil {
+		t.Fatalf("expected no error, got %v", toolOut.Error)
 	}
+	result := toolOut.LLMContent
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 content item, got %d", len(result))
@@ -49,10 +50,11 @@ func TestTodoWriteAndRead(t *testing.T) {
 	writeInput := TodoWriteInput{Tasks: todos}
 	writeInputJSON, _ := json.Marshal(writeInput)
 
-	result, err := todoWriteRun(ctx, writeInputJSON)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	toolOut := todoWriteRun(ctx, writeInputJSON)
+	if toolOut.Error != nil {
+		t.Fatalf("expected no error, got %v", toolOut.Error)
 	}
+	result := toolOut.LLMContent
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 content item, got %d", len(result))
@@ -64,10 +66,11 @@ func TestTodoWriteAndRead(t *testing.T) {
 	}
 
 	// Read the todos back
-	result, err = todoReadRun(ctx, []byte("{}"))
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	toolOut = todoReadRun(ctx, []byte("{}"))
+	if toolOut.Error != nil {
+		t.Fatalf("expected no error, got %v", toolOut.Error)
 	}
+	result = toolOut.LLMContent
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 content item, got %d", len(result))
@@ -107,14 +110,14 @@ func TestTodoWriteMultipleInProgress(t *testing.T) {
 	writeInput := TodoWriteInput{Tasks: todos}
 	writeInputJSON, _ := json.Marshal(writeInput)
 
-	_, err := todoWriteRun(ctx, writeInputJSON)
-	if err == nil {
+	toolOut := todoWriteRun(ctx, writeInputJSON)
+	if toolOut.Error == nil {
 		t.Fatal("expected error for multiple in_progress tasks, got none")
 	}
 
 	expected := "only one task can be 'in-progress' at a time, found 2"
-	if err.Error() != expected {
-		t.Errorf("expected error %q, got %q", expected, err.Error())
+	if toolOut.Error.Error() != expected {
+		t.Errorf("expected error %q, got %q", expected, toolOut.Error.Error())
 	}
 }
 

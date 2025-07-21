@@ -484,8 +484,8 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]l
 			defer cancel()
 			// TODO: move this into newToolUseContext?
 			toolUseCtx = context.WithValue(toolUseCtx, toolCallInfoKey, ToolCallInfo{ToolUseID: part.ID, Convo: c})
-			toolResult, err := tool.Run(toolUseCtx, part.ToolInput)
-			if errors.Is(err, ErrDoNotRespond) {
+			toolOut := tool.Run(toolUseCtx, part.ToolInput)
+			if errors.Is(toolOut.Error, ErrDoNotRespond) {
 				return
 			}
 			if toolUseCtx.Err() != nil {
@@ -493,11 +493,11 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]l
 				return
 			}
 
-			if err != nil {
-				sendErr(err)
+			if toolOut.Error != nil {
+				sendErr(toolOut.Error)
 				return
 			}
-			sendRes(toolResult)
+			sendRes(toolOut.LLMContent)
 		}()
 	}
 	wg.Wait()

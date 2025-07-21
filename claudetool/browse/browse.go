@@ -182,19 +182,19 @@ func (b *BrowseTools) NewNavigateTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input navigateInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	if isPort80(input.URL) {
-		return nil, fmt.Errorf("port 80 is not the port you're looking for--port 80 is the main sketch server")
+		return llm.ErrorToolOut(fmt.Errorf("port 80 is not the port you're looking for--port 80 is the main sketch server"))
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -206,10 +206,10 @@ func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) ([]llm
 		chromedp.WaitReady("body"),
 	)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
-	return llm.TextContent("done"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
 // ClickTool definition
@@ -246,15 +246,15 @@ func (b *BrowseTools) NewClickTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) clickRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) clickRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input clickInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -273,10 +273,10 @@ func (b *BrowseTools) clickRun(ctx context.Context, m json.RawMessage) ([]llm.Co
 
 	err = chromedp.Run(timeoutCtx, actions...)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
-	return llm.TextContent("done"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
 // TypeTool definition
@@ -318,15 +318,15 @@ func (b *BrowseTools) NewTypeTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input typeInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -346,10 +346,10 @@ func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 
 	err = chromedp.Run(timeoutCtx, actions...)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
-	return llm.TextContent("done"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
 // WaitForTool definition
@@ -381,15 +381,15 @@ func (b *BrowseTools) NewWaitForTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) waitForRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) waitForRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input waitForInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
@@ -397,10 +397,10 @@ func (b *BrowseTools) waitForRun(ctx context.Context, m json.RawMessage) ([]llm.
 
 	err = chromedp.Run(timeoutCtx, chromedp.WaitReady(input.Selector))
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
-	return llm.TextContent("done"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
 // GetTextTool definition
@@ -432,15 +432,15 @@ func (b *BrowseTools) NewGetTextTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) getTextRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) getTextRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input getTextInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -453,10 +453,10 @@ func (b *BrowseTools) getTextRun(ctx context.Context, m json.RawMessage) ([]llm.
 		chromedp.Text(input.Selector, &text),
 	)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
-	return llm.TextContent("<innerText>" + text + "</innerText>"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("<innerText>" + text + "</innerText>")}
 }
 
 // EvalTool definition
@@ -488,15 +488,15 @@ func (b *BrowseTools) NewEvalTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input evalInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -506,16 +506,16 @@ func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) ([]llm.Con
 	var result any
 	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(input.Expression, &result))
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Return the result as JSON
 	response, err := json.Marshal(result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal response: %w", err)
+		return llm.ErrorfToolOut("failed to marshal response: %w", err)
 	}
 
-	return llm.TextContent("<javascript_result>" + string(response) + "</javascript_result>"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("<javascript_result>" + string(response) + "</javascript_result>")}
 }
 
 // ScreenshotTool definition
@@ -552,15 +552,15 @@ func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input screenshotInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -583,13 +583,13 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 
 	err = chromedp.Run(timeoutCtx, actions...)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Save the screenshot and get its ID for potential future reference
 	id := b.SaveScreenshot(buf)
 	if id == "" {
-		return nil, fmt.Errorf("failed to save screenshot")
+		return llm.ErrorToolOut(fmt.Errorf("failed to save screenshot"))
 	}
 
 	// Get the full path to the screenshot
@@ -599,7 +599,7 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 	base64Data := base64.StdEncoding.EncodeToString(buf)
 
 	// Return the screenshot directly to the LLM
-	return []llm.Content{
+	return llm.ToolOut{LLMContent: []llm.Content{
 		{
 			Type: llm.ContentTypeText,
 			Text: fmt.Sprintf("Screenshot taken (saved as %s)", screenshotPath),
@@ -609,7 +609,7 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) ([]l
 			MediaType: "image/png",
 			Data:      base64Data,
 		},
-	}, nil
+	}}
 }
 
 // ScrollIntoViewTool definition
@@ -641,15 +641,15 @@ func (b *BrowseTools) NewScrollIntoViewTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input scrollIntoViewInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -671,14 +671,14 @@ func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) 
 		chromedp.Evaluate(script, &result),
 	)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	if !result {
-		return nil, fmt.Errorf("element not found: %s", input.Selector)
+		return llm.ErrorToolOut(fmt.Errorf("element not found: %s", input.Selector))
 	}
 
-	return llm.TextContent("done"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
 // ResizeTool definition
@@ -715,15 +715,15 @@ func (b *BrowseTools) NewResizeTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) resizeRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) resizeRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input resizeInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	browserCtx, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Create a timeout context for this operation
@@ -732,7 +732,7 @@ func (b *BrowseTools) resizeRun(ctx context.Context, m json.RawMessage) ([]llm.C
 
 	// Validate dimensions
 	if input.Width <= 0 || input.Height <= 0 {
-		return nil, fmt.Errorf("invalid dimensions: width and height must be positive")
+		return llm.ErrorToolOut(fmt.Errorf("invalid dimensions: width and height must be positive"))
 	}
 
 	// Resize the browser window
@@ -740,10 +740,10 @@ func (b *BrowseTools) resizeRun(ctx context.Context, m json.RawMessage) ([]llm.C
 		chromedp.EmulateViewport(int64(input.Width), int64(input.Height)),
 	)
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
-	return llm.TextContent("done"), nil
+	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
 // GetTools returns browser tools, optionally filtering out screenshot-related tools
@@ -824,34 +824,34 @@ func (b *BrowseTools) NewReadImageTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) readImageRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) readImageRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input readImageInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	// Check if the path exists
 	if _, err := os.Stat(input.Path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("image file not found: %s", input.Path)
+		return llm.ErrorfToolOut("image file not found: %s", input.Path)
 	}
 
 	// Read the file
 	imageData, err := os.ReadFile(input.Path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read image file: %w", err)
+		return llm.ErrorfToolOut("failed to read image file: %w", err)
 	}
 
 	// Detect the image type
 	imageType := http.DetectContentType(imageData)
 	if !strings.HasPrefix(imageType, "image/") {
-		return nil, fmt.Errorf("file is not an image: %s", imageType)
+		return llm.ErrorfToolOut("file is not an image: %s", imageType)
 	}
 
 	// Encode the image as base64
 	base64Data := base64.StdEncoding.EncodeToString(imageData)
 
 	// Create a Content object that includes both text and the image
-	return []llm.Content{
+	return llm.ToolOut{LLMContent: []llm.Content{
 		{
 			Type: llm.ContentTypeText,
 			Text: fmt.Sprintf("Image from %s (type: %s)", input.Path, imageType),
@@ -861,7 +861,7 @@ func (b *BrowseTools) readImageRun(ctx context.Context, m json.RawMessage) ([]ll
 			MediaType: imageType,
 			Data:      base64Data,
 		},
-	}, nil
+	}}
 }
 
 // parseTimeout parses a timeout string and returns a time.Duration
@@ -916,16 +916,16 @@ func (b *BrowseTools) NewRecentConsoleLogsTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) recentConsoleLogsRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) recentConsoleLogsRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input recentConsoleLogsInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	// Ensure browser is initialized
 	_, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Apply limit (default to 100 if not specified)
@@ -947,7 +947,7 @@ func (b *BrowseTools) recentConsoleLogsRun(ctx context.Context, m json.RawMessag
 	// Format the logs as JSON
 	logData, err := json.MarshalIndent(logs, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("failed to serialize logs: %w", err)
+		return llm.ErrorfToolOut("failed to serialize logs: %w", err)
 	}
 
 	// Format the logs
@@ -961,7 +961,7 @@ func (b *BrowseTools) recentConsoleLogsRun(ctx context.Context, m json.RawMessag
 		sb.WriteString(string(logData))
 	}
 
-	return llm.TextContent(sb.String()), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(sb.String())}
 }
 
 // ClearConsoleLogsTool definition
@@ -977,16 +977,16 @@ func (b *BrowseTools) NewClearConsoleLogsTool() *llm.Tool {
 	}
 }
 
-func (b *BrowseTools) clearConsoleLogsRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func (b *BrowseTools) clearConsoleLogsRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	var input clearConsoleLogsInput
 	if err := json.Unmarshal(m, &input); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+		return llm.ErrorfToolOut("invalid input: %w", err)
 	}
 
 	// Ensure browser is initialized
 	_, err := b.GetBrowserContext()
 	if err != nil {
-		return nil, err
+		return llm.ErrorToolOut(err)
 	}
 
 	// Clear console logs with mutex protection
@@ -995,5 +995,5 @@ func (b *BrowseTools) clearConsoleLogsRun(ctx context.Context, m json.RawMessage
 	b.consoleLogs = make([]*runtime.EventConsoleAPICalled, 0)
 	b.consoleLogsMutex.Unlock()
 
-	return llm.TextContent(fmt.Sprintf("Cleared %d console log entries.", logCount)), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(fmt.Sprintf("Cleared %d console log entries.", logCount))}
 }

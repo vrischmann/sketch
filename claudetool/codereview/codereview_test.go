@@ -234,10 +234,11 @@ func makeGitCommit(dir, message string, files map[string]bool) (string, error) {
 // runDifferentialTest runs the code review tool on the repository and returns the result.
 func runDifferentialTest(reviewer *CodeReviewer) (string, error) {
 	ctx := context.Background()
-	result, err := reviewer.Run(ctx, nil)
-	if err != nil {
-		return "", fmt.Errorf("error running code review: %w", err)
+	toolOut := reviewer.Run(ctx, nil)
+	if toolOut.Error != nil {
+		return "", fmt.Errorf("error running code review: %w", toolOut.Error)
 	}
+	result := toolOut.LLMContent
 
 	// Normalize paths in the result
 	resultStr := ""

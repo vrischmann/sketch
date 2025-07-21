@@ -17,10 +17,11 @@ func TestBashSlowOk(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo 'slow test'","slow_ok":true}`)
 
 		bashTool := (&BashTool{}).Tool()
-		result, err := bashTool.Run(context.Background(), input)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := bashTool.Run(context.Background(), input)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		expected := "slow test\n"
 		if len(result) == 0 || result[0].Text != expected {
@@ -33,10 +34,11 @@ func TestBashSlowOk(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo 'slow background test'","slow_ok":true,"background":true}`)
 
 		bashTool := (&BashTool{}).Tool()
-		result, err := bashTool.Run(context.Background(), input)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := bashTool.Run(context.Background(), input)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		// Should return background result JSON
 		var bgResult BackgroundResult
@@ -64,10 +66,11 @@ func TestBashTool(t *testing.T) {
 	t.Run("Basic Command", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo 'Hello, world!'"}`)
 
-		result, err := tool.Run(context.Background(), input)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := tool.Run(context.Background(), input)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		expected := "Hello, world!\n"
 		if len(result) == 0 || result[0].Text != expected {
@@ -79,10 +82,11 @@ func TestBashTool(t *testing.T) {
 	t.Run("Command With Arguments", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"echo -n foo && echo -n bar"}`)
 
-		result, err := tool.Run(context.Background(), input)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := tool.Run(context.Background(), input)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		expected := "foobar"
 		if len(result) == 0 || result[0].Text != expected {
@@ -104,10 +108,11 @@ func TestBashTool(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := tool.Run(context.Background(), inputJSON)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := tool.Run(context.Background(), inputJSON)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		expected := "Completed\n"
 		if len(result) == 0 || result[0].Text != expected {
@@ -130,11 +135,11 @@ func TestBashTool(t *testing.T) {
 
 		input := json.RawMessage(`{"command":"sleep 0.5 && echo 'Should not see this'"}`)
 
-		_, err := tool.Run(context.Background(), input)
-		if err == nil {
+		toolOut := tool.Run(context.Background(), input)
+		if toolOut.Error == nil {
 			t.Errorf("Expected timeout error, got none")
-		} else if !strings.Contains(err.Error(), "timed out") {
-			t.Errorf("Expected timeout error, got: %v", err)
+		} else if !strings.Contains(toolOut.Error.Error(), "timed out") {
+			t.Errorf("Expected timeout error, got: %v", toolOut.Error)
 		}
 	})
 
@@ -142,8 +147,8 @@ func TestBashTool(t *testing.T) {
 	t.Run("Failed Command", func(t *testing.T) {
 		input := json.RawMessage(`{"command":"exit 1"}`)
 
-		_, err := tool.Run(context.Background(), input)
-		if err == nil {
+		toolOut := tool.Run(context.Background(), input)
+		if toolOut.Error == nil {
 			t.Errorf("Expected error for failed command, got none")
 		}
 	})
@@ -152,8 +157,8 @@ func TestBashTool(t *testing.T) {
 	t.Run("Invalid JSON Input", func(t *testing.T) {
 		input := json.RawMessage(`{"command":123}`) // Invalid JSON (command must be string)
 
-		_, err := tool.Run(context.Background(), input)
-		if err == nil {
+		toolOut := tool.Run(context.Background(), input)
+		if toolOut.Error == nil {
 			t.Errorf("Expected error for invalid input, got none")
 		}
 	})
@@ -268,10 +273,11 @@ func TestBackgroundBash(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := tool.Run(context.Background(), inputJSON)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := tool.Run(context.Background(), inputJSON)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
@@ -326,10 +332,11 @@ func TestBackgroundBash(t *testing.T) {
 			t.Fatalf("Failed to marshal input: %v", err)
 		}
 
-		result, err := tool.Run(context.Background(), inputJSON)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := tool.Run(context.Background(), inputJSON)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult
@@ -384,10 +391,11 @@ func TestBackgroundBash(t *testing.T) {
 		}
 
 		// Start the command in the background
-		result, err := tool.Run(context.Background(), inputJSON)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
+		toolOut := tool.Run(context.Background(), inputJSON)
+		if toolOut.Error != nil {
+			t.Fatalf("Unexpected error: %v", toolOut.Error)
 		}
+		result := toolOut.LLMContent
 
 		// Parse the returned JSON
 		var bgResult BackgroundResult

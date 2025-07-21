@@ -1483,13 +1483,13 @@ var multipleChoiceTool = &llm.Tool{
   },
   "required": ["question", "responseOptions"]
 }`),
-	Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+	Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
 		// The Run logic for "multiplechoice" tool is a no-op on the server.
 		// The UI will present a list of options for the user to select from,
 		// and that's it as far as "executing" the tool_use goes.
 		// When the user *does* select one of the presented options, that
 		// responseText gets sent as a chat message on behalf of the user.
-		return llm.TextContent("end your turn and wait for the user to respond"), nil
+		return llm.ToolOut{LLMContent: llm.TextContent("end your turn and wait for the user to respond")}
 	},
 }
 
@@ -1533,32 +1533,32 @@ func (a *Agent) setSlugTool() *llm.Tool {
 	},
 	"required": ["slug"]
 }`),
-		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
 			var params struct {
 				Slug string `json:"slug"`
 			}
 			if err := json.Unmarshal(input, &params); err != nil {
-				return nil, err
+				return llm.ErrorToolOut(err)
 			}
 			// Prevent slug changes if there have been git changes
 			// This lets the agent change its mind about a good slug,
 			// while ensuring that once a branch has been pushed, it remains stable.
 			if s := a.Slug(); s != "" && s != params.Slug && a.gitState.HasSeenCommits() {
-				return nil, fmt.Errorf("slug already set to %q", s)
+				return llm.ErrorfToolOut("slug already set to %q", s)
 			}
 			if params.Slug == "" {
-				return nil, fmt.Errorf("slug parameter cannot be empty")
+				return llm.ErrorToolOut(fmt.Errorf("slug parameter cannot be empty"))
 			}
 			slug := cleanSlugName(params.Slug)
 			if slug == "" {
-				return nil, fmt.Errorf("slug parameter could not be converted to a valid slug")
+				return llm.ErrorToolOut(fmt.Errorf("slug parameter could not be converted to a valid slug"))
 			}
 			a.SetSlug(slug)
 			// TODO: do this by a call to outie, rather than semi-guessing from innie
 			if branchExists(a.workingDir, a.BranchName()) {
-				return nil, fmt.Errorf("slug %q already exists; please choose a different slug", slug)
+				return llm.ErrorfToolOut("slug %q already exists; please choose a different slug", slug)
 			}
-			return llm.TextContent("OK"), nil
+			return llm.ToolOut{LLMContent: llm.TextContent("OK")}
 		},
 	}
 }
@@ -1569,12 +1569,12 @@ func (a *Agent) commitMessageStyleTool() *llm.Tool {
 		Name:        "commit-message-style",
 		Description: description,
 		InputSchema: llm.EmptySchema(),
-		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
 			styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
 			if err != nil {
 				slog.DebugContext(ctx, "failed to get commit message style hint", "err", err)
 			}
-			return llm.TextContent(styleHint), nil
+			return llm.ToolOut{LLMContent: llm.TextContent(styleHint)}
 		},
 	}
 	return preCommit
@@ -1582,11 +1582,11 @@ func (a *Agent) commitMessageStyleTool() *llm.Tool {
 
 // patchCallback is the agent's patch tool callback.
 // It warms the codereview cache in the background.
-func (a *Agent) patchCallback(input claudetool.PatchInput, result []llm.Content, err error) ([]llm.Content, error) {
+func (a *Agent) patchCallback(input claudetool.PatchInput, output llm.ToolOut) llm.ToolOut {
 	if a.codereview != nil {
 		a.codereview.WarmTestCache(input.Path)
 	}
-	return result, err
+	return output
 }
 
 func (a *Agent) Ready() <-chan struct{} {

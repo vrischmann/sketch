@@ -3,7 +3,6 @@ package loop
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"sketch.dev/claudetool/codereview"
 	"sketch.dev/llm"
@@ -19,23 +18,23 @@ func makeDoneTool(codereview *codereview.CodeReviewer) *llm.Tool {
 		Name:        "done",
 		Description: doneDescription,
 		InputSchema: json.RawMessage(doneChecklistJSONSchema),
-		Run: func(ctx context.Context, input json.RawMessage) ([]llm.Content, error) {
+		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
 			// Cannot be done with a messy git.
 			if err := codereview.RequireNormalGitState(ctx); err != nil {
-				return nil, err
+				return llm.ErrorToolOut(err)
 			}
 			if err := codereview.RequireNoUncommittedChanges(ctx); err != nil {
-				return nil, err
+				return llm.ErrorToolOut(err)
 			}
 			// Ensure that the current commit has been reviewed.
 			head, err := codereview.CurrentCommit(ctx)
 			if err == nil {
 				needsReview := !codereview.IsInitialCommit(head) && !codereview.HasReviewed(head)
 				if needsReview {
-					return nil, fmt.Errorf("codereview tool has not been run for commit %v", head)
+					return llm.ErrorfToolOut("codereview tool has not been run for commit %v", head)
 				}
 			}
-			return llm.TextContent("Please ask the user to review your work. Be concise - users are more likely to read shorter comments."), nil
+			return llm.ToolOut{LLMContent: llm.TextContent("Please ask the user to review your work. Be concise - users are more likely to read shorter comments.")}
 		},
 	}
 }

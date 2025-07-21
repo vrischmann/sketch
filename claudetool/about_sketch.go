@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 	"text/template"
@@ -43,7 +42,7 @@ var aboutSketch string
 
 var aboutSketchTemplate = template.Must(template.New("sketch").Parse(aboutSketch))
 
-func aboutSketchRun(ctx context.Context, m json.RawMessage) ([]llm.Content, error) {
+func aboutSketchRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 	slog.InfoContext(ctx, "about_sketch called")
 
 	info := conversation.ToolCallInfoFromContext(ctx)
@@ -58,7 +57,7 @@ func aboutSketchRun(ctx context.Context, m json.RawMessage) ([]llm.Content, erro
 	}
 	buf := new(strings.Builder)
 	if err := aboutSketchTemplate.Execute(buf, dot); err != nil {
-		return nil, fmt.Errorf("template execution error: %w", err)
+		return llm.ErrorfToolOut("template execution error: %w", err)
 	}
-	return llm.TextContent(buf.String()), nil
+	return llm.ToolOut{LLMContent: llm.TextContent(buf.String())}
 }
