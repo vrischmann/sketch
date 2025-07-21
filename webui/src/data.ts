@@ -31,8 +31,11 @@ export class DataManager {
   private eventSource: EventSource | null = null;
   private reconnectTimer: number | null = null;
   private reconnectAttempt: number = 0;
-  private maxReconnectDelayMs: number = 60000; // Max delay of 60 seconds
-  private baseReconnectDelayMs: number = 1000; // Start with 1 second
+  // Reconnection timeout delays in milliseconds (runs from 1s to 60s)
+  private readonly reconnectDelaysMs: number[] = [
+    1000, 1500, 2250, 3375, 5062.5, 7593.75, 11390.625, 17085.9375,
+    25628.90625, 38443.359375, 57665.0390625, 60000, 60000
+  ];
 
   // Initial load completion tracking
   private expectedMessageCount: number | null = null;
@@ -171,11 +174,8 @@ export class DataManager {
       this.reconnectTimer = null;
     }
 
-    // Calculate backoff delay with exponential increase and maximum limit
-    const delay = Math.min(
-      this.baseReconnectDelayMs * Math.pow(1.5, this.reconnectAttempt),
-      this.maxReconnectDelayMs,
-    );
+    const delayIndex = Math.min(this.reconnectAttempt, this.reconnectDelaysMs.length - 1);
+    const delay = this.reconnectDelaysMs[delayIndex];
 
     console.log(
       `Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempt + 1})`,
