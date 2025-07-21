@@ -229,7 +229,7 @@ func noSketchWipBranchChangesOnce(cmd *syntax.CallExpr) error {
 		sketchWipWarningMu.Unlock()
 
 		if !alreadyWarned {
-			return fmt.Errorf("permission denied: changing the 'sketch-wip' branch is not allowed. The outie needs this branch name to detect and push your changes to GitHub. This warning is shown once per session - you can repeat the command if you really need to do this")
+			return fmt.Errorf("permission denied: cannot leave 'sketch-wip' branch. This branch is designated for change detection and auto-push; work on other branches may be lost. Warning shown once per session. Repeat command if needed for temporary operations (rebase, bisect, etc.) but return to sketch-wip afterward. Note: users can push to any branch via the Push button in the UI")
 		}
 	}
 	return nil

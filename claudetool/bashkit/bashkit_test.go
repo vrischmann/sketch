@@ -299,7 +299,7 @@ func TestSketchWipBranchProtection(t *testing.T) {
 			name:        "git branch rename sketch-wip",
 			script:      "git branch -m sketch-wip new-branch",
 			wantErr:     true,
-			errMatch:    "changing the 'sketch-wip' branch is not allowed",
+			errMatch:    "cannot leave 'sketch-wip' branch",
 			resetBefore: true,
 		},
 		{
