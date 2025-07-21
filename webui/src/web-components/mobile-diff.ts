@@ -208,7 +208,7 @@ export class MobileDiff extends SketchTailwindElement {
     this.fileExpandStates.set(filePath, newState);
 
     // Apply to the specific Monaco view component for this file
-    const monacoView = this.shadowRoot?.querySelector(
+    const monacoView = this.querySelector(
       `sketch-monaco-view[data-file-path="${filePath}"]`,
     );
     if (monacoView) {

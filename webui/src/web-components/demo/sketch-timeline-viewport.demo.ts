@@ -100,14 +100,11 @@ const demo: DemoModule = {
 
     // Helper functions
     const setupScrollContainer = () => {
-      if (timeline.shadowRoot) {
-        const scrollContainer =
-          timeline.shadowRoot.querySelector("#scroll-container");
-        if (scrollContainer) {
-          timeline.scrollContainer = { value: scrollContainer };
-          console.log("Scroll container set up:", scrollContainer);
-          return true;
-        }
+      const scrollContainer = timeline.querySelector("#scroll-container");
+      if (scrollContainer) {
+        timeline.scrollContainer = { value: scrollContainer };
+        console.log("Scroll container set up:", scrollContainer);
+        return true;
       }
       return false;
     };
@@ -118,12 +115,10 @@ const demo: DemoModule = {
       }
 
       const observer = new MutationObserver(() => {
-        if (timeline.shadowRoot) {
-          observer.disconnect();
-          timeline.updateComplete.then(() => {
-            setupScrollContainer();
-          });
-        }
+        observer.disconnect();
+        timeline.updateComplete.then(() => {
+          setupScrollContainer();
+        });
       });
 
       observer.observe(timeline, { childList: true, subtree: true });

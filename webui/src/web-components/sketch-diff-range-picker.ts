@@ -335,7 +335,7 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
   handleBlur(_event: FocusEvent) {
     // Small delay to allow click events to process
     setTimeout(() => {
-      if (!this.shadowRoot?.activeElement?.closest(".custom-select")) {
+      if (!this.closest(".custom-select")) {
         this.dropdownOpen = false;
       }
     }, 150);

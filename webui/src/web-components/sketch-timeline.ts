@@ -731,7 +731,7 @@ export class SketchTimeline extends SketchTailwindElement {
     );
 
     // Set up scroll listener if container is available
-    if (this.scrollContainer.value) {
+    if (this.scrollContainer?.value) {
       this.addScrollListener(this.scrollContainer.value);
     }
 

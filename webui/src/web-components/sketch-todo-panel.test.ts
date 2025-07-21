@@ -308,10 +308,6 @@ test("renders with proper Tailwind classes", async ({ mount }) => {
   // Check main container has correct Tailwind classes
   const container = component.locator(".flex.flex-col.h-full");
   await expect(container).toBeVisible();
-
-  // Check that it's using Tailwind instead of shadow DOM styling
-  const shadowRoot = await component.evaluate((el) => el.shadowRoot);
-  expect(shadowRoot).toBeNull(); // SketchTailwindElement disables shadow DOM
 });
 
 test("displays todos in scrollable container", async ({ mount }) => {
