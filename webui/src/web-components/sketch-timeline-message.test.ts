@@ -3,7 +3,6 @@ import { test, expect } from "@sand4rt/experimental-ct-web";
 // NOTE: Most tests in this file are currently skipped due to TypeScript decorator
 // configuration issues in the test environment. The git username attribution
 // functionality has been tested manually and works correctly in runtime.
-// The core logic is tested in messages-viewer.test.ts
 import { SketchTimelineMessage } from "./sketch-timeline-message";
 import {
   AgentMessage,
