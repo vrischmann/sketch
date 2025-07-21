@@ -119,6 +119,7 @@ func (m *MCPManager) ConnectToServerConfigs(ctx context.Context, serverConfigs [
 	errors := make([]error, 0, len(existingErrors))
 	errors = append(errors, existingErrors...)
 
+NextServer:
 	for range len(serverConfigs) {
 		select {
 		case res := <-results:
@@ -136,7 +137,7 @@ func (m *MCPManager) ConnectToServerConfigs(ctx context.Context, serverConfigs [
 			}
 		case <-ctxWithTimeout.Done():
 			errors = append(errors, fmt.Errorf("timeout connecting to MCP servers"))
-			break
+			break NextServer
 		}
 	}
 
