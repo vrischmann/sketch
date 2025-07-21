@@ -14,7 +14,6 @@ import "./sketch-diff2-view";
 import { SketchDiff2View } from "./sketch-diff2-view";
 import { DefaultGitDataService } from "./git-data-service";
 import "./sketch-monaco-view";
-import "./sketch-network-status";
 import "./sketch-call-status";
 import "./sketch-push-button";
 import "./sketch-terminal";
@@ -1023,11 +1022,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
             })()}
             .isDisconnected=${this.connectionStatus === "disconnected"}
           ></sketch-call-status>
-
-          <sketch-network-status
-            connection=${this.connectionStatus}
-            error=${this.connectionErrorMessage}
-          ></sketch-network-status>
         </div>
       </div>
     `;

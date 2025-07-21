@@ -104,7 +104,6 @@ export class DemoRunner {
       "mobile-chat",
       "sketch-diff2-view",
       "sketch-monaco-view",
-      "sketch-network-status",
       "sketch-timeline-viewport",
       "sketch-tool-card",
       "status-indicators",

@@ -6,7 +6,7 @@ const demo: DemoModule = {
   title: "Status Indicators Demo",
   description:
     "Status indicators showing connected, working, and disconnected states without the green connection dot",
-  imports: ["../sketch-call-status.ts", "../sketch-network-status.ts"],
+  imports: ["../sketch-call-status.ts"],
 
   customStyles: `
     .demo-container {
