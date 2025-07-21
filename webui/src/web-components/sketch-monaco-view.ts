@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-async-promise-executor, @typescript-eslint/ban-ts-comment */
-import { css, html, LitElement } from "lit";
+import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createRef, Ref, ref } from "lit/directives/ref.js";
+import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 
 // See https://rodydavis.com/posts/lit-monaco-editor for some ideas.
 
@@ -74,24 +75,24 @@ function loadMonaco(): Promise<typeof monaco> {
 const monacoStyles = `
   /* Import Monaco editor styles */
   @import url('./static/monaco/min/vs/editor/editor.main.css');
-  
+
   /* Codicon font is now defined globally in sketch-app-shell.css */
-  
+
   /* Custom Monaco styles */
   .monaco-editor {
     width: 100%;
     height: 100%;
   }
-  
+
   /* Ensure light theme colors */
   .monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
     background-color: var(--monaco-editor-bg, #ffffff) !important;
   }
-  
+
   .monaco-editor .margin {
     background-color: var(--monaco-editor-margin, #f5f5f5) !important;
   }
-  
+
   /* Glyph decoration styles - only show on hover */
   .comment-glyph-decoration {
     width: 16px !important;
@@ -100,7 +101,7 @@ const monacoStyles = `
     opacity: 0;
     transition: opacity 0.2s ease;
   }
-  
+
   .comment-glyph-decoration:before {
     content: '💬';
     font-size: 12px;
@@ -110,7 +111,7 @@ const monacoStyles = `
     display: block;
     text-align: center;
   }
-  
+
   .comment-glyph-decoration.hover-visible {
     opacity: 1;
   }
@@ -138,7 +139,7 @@ self.MonacoEnvironment = {
 };
 
 @customElement("sketch-monaco-view")
-export class CodeDiffEditor extends LitElement {
+export class CodeDiffEditor extends SketchTailwindElement {
   // Editable state
   @property({ type: Boolean, attribute: "editable-right" })
   editableRight?: boolean;
@@ -275,192 +276,56 @@ export class CodeDiffEditor extends LitElement {
     });
   }
 
-  static styles = css`
-    /* Save indicator styles */
-    .save-indicator {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      padding: 3px 8px;
-      border-radius: 3px;
-      font-size: 12px;
-      font-family: system-ui, sans-serif;
-      color: white;
-      z-index: 100;
-      opacity: 0.9;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .save-indicator.idle {
-      background-color: #6c757d;
-    }
-
-    .save-indicator.modified {
-      background-color: #f0ad4e;
-    }
-
-    .save-indicator.saving {
-      background-color: #5bc0de;
-    }
-
-    .save-indicator.saved {
-      background-color: #5cb85c;
-    }
-
-    /* Editor host styles */
-    :host {
+  render() {
+    // Set host element styles for layout (equivalent to :host styles)
+    this.style.cssText = `
       --editor-width: 100%;
       --editor-height: 100%;
       display: flex;
-      flex: none; /* Don't grow/shrink - size is determined by content */
-      min-height: 0; /* Critical for flex layout */
-      position: relative; /* Establish positioning context */
-      width: 100%; /* Take full width */
-      /* Height will be set dynamically by setupAutoSizing */
-    }
-    main {
-      width: 100%;
-      height: 100%; /* Fill the host element completely */
-      border: 1px solid #e0e0e0;
-      flex: none; /* Size determined by parent */
-      min-height: 200px; /* Ensure a minimum height for the editor */
-      /* Remove absolute positioning - use normal block layout */
+      flex: none;
+      min-height: 0;
       position: relative;
-      display: block;
-      box-sizing: border-box; /* Include border in width calculation */
-    }
-
-    /* Comment box styles */
-    .comment-box {
-      position: fixed;
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-      padding: 12px;
-      z-index: 10001;
-      width: 600px;
-      animation: fadeIn 0.2s ease-in-out;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    .comment-box-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .comment-box-header h3 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .close-button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 16px;
-      color: #666;
-      padding: 2px 6px;
-    }
-
-    .close-button:hover {
-      color: #333;
-    }
-
-    .selected-text-preview {
-      background-color: #f5f5f5;
-      border: 1px solid #eee;
-      border-radius: 3px;
-      padding: 8px;
-      margin-bottom: 10px;
-      font-family: monospace;
-      font-size: 12px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-      line-height: 1.4;
-    }
-
-    .selected-text-preview.small-selection {
-      /* For selections of 10 lines or fewer, ensure all content is visible */
-      max-height: none;
-    }
-
-    .selected-text-preview.large-selection {
-      /* For selections larger than 10 lines, limit height with scroll */
-      max-height: 280px; /* Approximately 10 lines at 12px font with 1.4 line-height */
-    }
-
-    .comment-textarea {
       width: 100%;
-      min-height: 80px;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      resize: vertical;
-      font-family: inherit;
-      margin-bottom: 10px;
-      box-sizing: border-box;
-    }
+    `;
 
-    .comment-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-
-    .comment-actions button {
-      padding: 6px 12px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .cancel-button {
-      background-color: transparent;
-      border: 1px solid #ddd;
-    }
-
-    .cancel-button:hover {
-      background-color: #f5f5f5;
-    }
-
-    .submit-button {
-      background-color: #4285f4;
-      color: white;
-      border: none;
-    }
-
-    .submit-button:hover {
-      background-color: #3367d6;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-  `;
-
-  render() {
     return html`
       <style>
         ${monacoStyles}
+
+        /* Custom animation for comment box fade-in */
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.2s ease-in-out;
+        }
       </style>
-      <main ${ref(this.container)}></main>
+
+      <main
+        ${ref(this.container)}
+        class="w-full h-full border border-gray-300 flex-none min-h-[200px] relative block box-border"
+      ></main>
 
       <!-- Save indicator - shown when editing -->
       ${this.editableRight
         ? html`
-            <div class="save-indicator ${this.saveState}">
+            <div
+              class="absolute top-1 right-1 px-2 py-0.5 rounded text-xs font-sans text-white z-[100] opacity-90 pointer-events-none transition-opacity duration-300 ${this
+                .saveState === "idle"
+                ? "bg-gray-500"
+                : this.saveState === "modified"
+                  ? "bg-yellow-500"
+                  : this.saveState === "saving"
+                    ? "bg-blue-400"
+                    : this.saveState === "saved"
+                      ? "bg-green-500"
+                      : "bg-gray-500"}"
+            >
               ${this.saveState === "idle"
                 ? "Editable"
                 : this.saveState === "modified"
@@ -478,36 +343,48 @@ export class CodeDiffEditor extends LitElement {
       ${this.showCommentBox
         ? html`
             <div
-              class="comment-box"
+              class="fixed bg-white border border-gray-300 rounded shadow-lg p-3 z-[10001] w-[600px] animate-fade-in max-h-[80vh] overflow-y-auto"
               style="top: ${this.commentBoxPosition.top}px; left: ${this
                 .commentBoxPosition.left}px;"
             >
-              <div class="comment-box-header">
-                <h3>Add comment</h3>
-                <button class="close-button" @click="${this.closeCommentBox}">
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="m-0 text-sm font-medium">Add comment</h3>
+                <button
+                  class="bg-none border-none cursor-pointer text-base text-gray-600 px-1.5 py-0.5 hover:text-gray-800"
+                  @click="${this.closeCommentBox}"
+                >
                   ×
                 </button>
               </div>
               ${this.selectedLines
                 ? html`
                     <div
-                      class="selected-text-preview ${this.getPreviewCssClass()}"
+                      class="bg-gray-100 border border-gray-200 rounded p-2 mb-2.5 font-mono text-xs overflow-y-auto whitespace-pre-wrap break-all leading-relaxed ${this.getPreviewCssClass() ===
+                      "small-selection"
+                        ? ""
+                        : "max-h-[280px]"}"
                     >
                       ${this.selectedLines.text}
                     </div>
                   `
                 : ""}
               <textarea
-                class="comment-textarea"
+                class="w-full min-h-[80px] p-2 border border-gray-300 rounded resize-y font-inherit mb-2.5 box-border"
                 placeholder="Type your comment here..."
                 .value="${this.commentText}"
                 @input="${this.handleCommentInput}"
               ></textarea>
-              <div class="comment-actions">
-                <button class="cancel-button" @click="${this.closeCommentBox}">
+              <div class="flex justify-end gap-2">
+                <button
+                  class="px-3 py-1.5 rounded cursor-pointer text-xs bg-transparent border border-gray-300 hover:bg-gray-100"
+                  @click="${this.closeCommentBox}"
+                >
                   Cancel
                 </button>
-                <button class="submit-button" @click="${this.submitComment}">
+                <button
+                  class="px-3 py-1.5 rounded cursor-pointer text-xs bg-blue-600 text-white border-none hover:bg-blue-700"
+                  @click="${this.submitComment}"
+                >
                   Add
                 </button>
               </div>
