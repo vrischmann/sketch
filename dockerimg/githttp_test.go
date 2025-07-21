@@ -51,7 +51,7 @@ func TestSetupHooksDir(t *testing.T) {
 	// Check for key elements in the script
 	contentStr := string(content)
 	if !containsAll(contentStr, []string{
-		"#!/bin/bash",
+		"#!/usr/bin/env bash",
 		"refs/remotes/origin/",
 		"git push origin",
 		"Force pushes are not allowed",
@@ -110,7 +110,7 @@ func TestPreReceiveHookScript(t *testing.T) {
 
 	// Verify the script contains the expected bash shebang
 	scriptContent := string(script)
-	if !contains(scriptContent, "#!/bin/bash") {
+	if !contains(scriptContent, "#!/usr/bin/env bash") {
 		t.Errorf("pre-receive hook missing bash shebang")
 	}
 
