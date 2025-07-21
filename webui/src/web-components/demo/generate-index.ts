@@ -68,7 +68,7 @@ function formatComponentName(name: string): string {
 function generateIndexHTML(demos: DemoInfo[]): string {
   const demoLinks = demos
     .map((demo) => {
-      const href = `demo-runner.html#${demo.name}`;
+      const href = `demo.html#${demo.name}`;
       const description = demo.description ? ` - ${demo.description}` : "";
 
       return `      <li>
@@ -94,18 +94,18 @@ function generateIndexHTML(demos: DemoInfo[]): string {
         padding: 20px;
         line-height: 1.6;
       }
-      
+
       h1 {
         color: #24292f;
         border-bottom: 1px solid #d1d9e0;
         padding-bottom: 10px;
       }
-      
+
       .demo-list {
         list-style: none;
         padding: 0;
       }
-      
+
       .demo-list li {
         margin: 15px 0;
         padding: 15px;
@@ -114,27 +114,27 @@ function generateIndexHTML(demos: DemoInfo[]): string {
         background: #f6f8fa;
         transition: background-color 0.2s;
       }
-      
+
       .demo-list li:hover {
         background: #ffffff;
       }
-      
+
       .demo-list a {
         text-decoration: none;
         color: #0969da;
         display: block;
       }
-      
+
       .demo-list a:hover {
         text-decoration: underline;
       }
-      
+
       .demo-list strong {
         font-size: 16px;
         display: block;
         margin-bottom: 5px;
       }
-      
+
       .stats {
         background: #fff8dc;
         padding: 15px;
@@ -142,7 +142,7 @@ function generateIndexHTML(demos: DemoInfo[]): string {
         margin: 20px 0;
         border-left: 4px solid #f9c23c;
       }
-      
+
       .runner-link {
         display: inline-block;
         padding: 10px 20px;
@@ -152,7 +152,7 @@ function generateIndexHTML(demos: DemoInfo[]): string {
         border-radius: 6px;
         margin-top: 20px;
       }
-      
+
       .runner-link:hover {
         background: #0860ca;
       }
@@ -160,27 +160,27 @@ function generateIndexHTML(demos: DemoInfo[]): string {
   </head>
   <body>
     <h1>Sketch Web Components Demo Index</h1>
-    
+
     <div class="stats">
       <strong>Auto-generated index</strong><br>
       Found ${demos.length} demo component${demos.length === 1 ? "" : "s"} • Last updated: ${new Date().toLocaleString()}
     </div>
-    
+
     <p>
       This page provides an overview of all available component demos.
       Click on any component below to view its interactive demo.
     </p>
-    
-    <a href="demo-runner.html" class="runner-link">🚀 Launch Demo Runner</a>
-    
+
+    <a href="demo.html" class="runner-link">🚀 Launch Demo Runner</a>
+
     <h2>Available Component Demos</h2>
-    
+
     <ul class="demo-list">
 ${demoLinks}
     </ul>
-    
+
     <hr style="margin: 40px 0; border: none; border-top: 1px solid #d1d9e0;">
-    
+
     <p>
       <em>This index is automatically generated from available <code>*.demo.ts</code> files.</em><br>
       To add a new demo, create a <code>component-name.demo.ts</code> file in this directory.

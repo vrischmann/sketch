@@ -9,7 +9,7 @@ The demo system consists of:
 - **TypeScript Demo Modules** (`*.demo.ts`) - Component-specific demo configurations
 - **Demo Framework** (`demo-framework/`) - Shared infrastructure for loading and running demos
 - **Shared Fixtures** (`demo-fixtures/`) - Common fake data and utilities
-- **Demo Runner** (`demo-runner.html`) - Interactive demo browser
+- **Demo Runner** (`demo.html`) - Interactive demo browser
 - **Auto-generated Index** - Automatically maintained list of available demos
 
 ## Quick Start
@@ -21,7 +21,7 @@ The demo system consists of:
 npm run demo
 
 # Visit the demo runner
-open http://localhost:5173/src/web-components/demo/demo-runner.html
+open http://localhost:5173/src/web-components/demo/demo.html
 
 # Or view the auto-generated index
 open http://localhost:5173/src/web-components/demo/index-generated.html
@@ -181,14 +181,14 @@ To convert an existing HTML demo:
 demo/
 ├── demo-framework/
 │   ├── types.ts           # TypeScript interfaces
-│   └── demo-runner.ts     # Demo loading and execution
+│   └── demo.ts     # Demo loading and execution
 ├── demo-fixtures/
 │   ├── tool-calls.ts      # Tool call sample data
 │   ├── timeline-messages.ts # Message sample data
 │   ├── container-status.ts  # Status sample data
 │   └── index.ts           # Centralized exports
 ├── generate-index.ts      # Index generation script
-├── demo-runner.html       # Interactive demo browser
+├── demo.html       # Interactive demo browser
 ├── index-generated.html   # Auto-generated index
 ├── *.demo.ts             # Individual demo modules
 └── readme.md             # This file

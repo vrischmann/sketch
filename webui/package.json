@@ -14,7 +14,7 @@
   "scripts": {
     "playwright-install": "playwright install",
     "check": "tsc --noEmit",
-    "demo": "vite --open src/web-components/demo/demo-runner.html",
+    "demo": "vite --open src/web-components/demo/demo.html",
     "dev": "vite --port 5173 --strictPort --host 127.0.0.1",
     "format": "prettier ./src --write",
     "gentypes": "go run ../cmd/go2ts -o src/types.ts",

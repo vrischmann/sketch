@@ -65,8 +65,8 @@ export class SketchToolCardExample extends SketchTailwindElement {
 
 ### Running the demo server:
 
-- Use the `npm run demo:runner` command to start the demo server. It will render your component changes, populated with fake example data.
-- The server runs at http://localhost:5173/src/web-components/demo/demo-runner.html
+- Use the `npm run demo` command to start the demo server. It will render your component changes, populated with fake example data.
+- The server runs at http://localhost:5173/src/web-components/demo/demo.html
 - If you need to write or update the demo definition for an element, do so in demo files like ./demo/some-component-name.demo.ts
 - If you need to add new example data objects for demoing components, do so in ./demo/fixtures
 
