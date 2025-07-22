@@ -546,6 +546,9 @@ export class SketchDiff2View extends SketchTailwindElement {
       this.fileExpandStates.clear();
     } finally {
       this.loading = false;
+      // Request a re-render.
+      // Empirically, without this line, diffs are visibly slow to load.
+      this.requestUpdate();
     }
   }
 
