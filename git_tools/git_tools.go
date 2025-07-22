@@ -451,8 +451,8 @@ func AutoCommitDiffViewChanges(ctx context.Context, repoDir, filePath string) er
 	}
 	cmd.Dir = repoDir
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error committing changes: %w", err)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error committing changes: %w - git output: %s", err, string(output))
 	}
 
 	return nil
