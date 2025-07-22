@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 
@@ -228,6 +229,13 @@ func TestPortMonitor_FindRemovedPorts(t *testing.T) {
 
 // TestPortMonitor_ShouldIgnoreProcess tests the shouldIgnoreProcess function.
 func TestPortMonitor_ShouldIgnoreProcess(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		// The implementation of shouldIgnoreProcess is specific to Linux (it uses /proc).
+		// On macOS, ignoring SKETCH_IGNORE_PORTS simply won't work, because macOS doesn't expose other processes' environment variables.
+		// This is OK (enough) because our primary operating environment is a Linux container.
+		t.Skip("skipping test on non-Linux OS")
+	}
+
 	agent := createTestAgent(t)
 	pm := NewPortMonitor(agent, 100*time.Millisecond)
 
