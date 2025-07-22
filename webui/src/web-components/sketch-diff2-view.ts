@@ -114,9 +114,9 @@ export class SketchDiff2View extends SketchTailwindElement {
         console.log(`File saved: ${path}`);
         (monacoView as any).notifySaveComplete(true);
       } catch (error) {
-        console.error(
-          `Error saving file: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        alert(`Failed to save changes to ${path}:\n\n${errorMessage}`);
         (monacoView as any).notifySaveComplete(false);
       }
     } catch (error) {
