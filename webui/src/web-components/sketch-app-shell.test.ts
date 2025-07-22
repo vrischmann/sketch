@@ -405,7 +405,7 @@ test("correctly determines working state with non-end-of-turn agent message", as
         appShell.dataManager.scheduleReconnect = () => {};
         appShell.dataManager.updateConnectionStatus = () => {};
       }
-      
+
       // Set connection status to connected
       appShell.connectionStatus = "connected";
 
