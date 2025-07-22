@@ -268,29 +268,6 @@ export class SketchToolCardThink extends SketchTailwindElement {
   }
 }
 
-@customElement("sketch-tool-card-set-slug")
-export class SketchToolCardSetSlug extends SketchTailwindElement {
-  @property() toolCall: ToolCall;
-  @property() open: boolean;
-
-  render() {
-    const inputData = JSON.parse(this.toolCall?.input || "{}");
-
-    const summaryContent = html`<span class="italic">
-      Slug: "${inputData.slug}"
-    </span>`;
-
-    const inputContent = html`<div>Set slug to: <b>${inputData.slug}</b></div>`;
-
-    return html`<sketch-tool-card-base
-      .open=${this.open}
-      .toolCall=${this.toolCall}
-      .summaryContent=${summaryContent}
-      .inputContent=${inputContent}
-    ></sketch-tool-card-base>`;
-  }
-}
-
 @customElement("sketch-tool-card-commit-message-style")
 export class SketchToolCardCommitMessageStyle extends SketchTailwindElement {
   @property()
@@ -567,7 +544,6 @@ declare global {
     "sketch-tool-card-done": SketchToolCardDone;
     "sketch-tool-card-patch": SketchToolCardPatch;
     "sketch-tool-card-think": SketchToolCardThink;
-    "sketch-tool-card-set-slug": SketchToolCardSetSlug;
     "sketch-tool-card-commit-message-style": SketchToolCardCommitMessageStyle;
     "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
     "sketch-tool-card-todo-write": SketchToolCardTodoWrite;

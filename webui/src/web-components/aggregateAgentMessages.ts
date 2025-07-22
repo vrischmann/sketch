@@ -14,6 +14,10 @@ export function aggregateAgentMessages(
         toolCallResults.set(msg.tool_call_id, msg);
         return false;
       }
+      // Suppress internal message types that shouldn't be displayed
+      if (msg.type == "slug" || msg.type == "compact") {
+        return false;
+      }
       if (seenIds.has(msg.idx)) {
         return false; // Skip if idx is already seen
       }

@@ -48,6 +48,8 @@ func TS() *go2ts.Go2TS {
 			loop.CommitMessageType,
 			loop.AutoMessageType,
 			loop.PortMessageType,
+			loop.CompactMessageType,
+			loop.SlugMessageType,
 		},
 	)
 

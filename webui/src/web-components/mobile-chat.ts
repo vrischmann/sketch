@@ -272,9 +272,6 @@ export class MobileChat extends SketchTailwindElement {
         case "todo_read":
           return "Read todo list";
 
-        case "set-slug":
-          return `Slug: "${input.slug || ""}"`;
-
         case "multiplechoice":
           const question = input.question || "Multiple choice question";
           const options = input.responseOptions || [];

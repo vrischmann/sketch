@@ -171,6 +171,6 @@ export interface GitLogEntry {
 	subject: string;
 }
 
-export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto' | 'port';
+export type CodingAgentMessageType = 'user' | 'agent' | 'error' | 'budget' | 'tool' | 'commit' | 'auto' | 'port' | 'compact' | 'slug';
 
 export type Duration = number;

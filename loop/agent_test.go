@@ -91,7 +91,10 @@ func TestAgentLoop(t *testing.T) {
 	}
 
 	// Setup a test message that will trigger a simple, predictable response
-	userMessage := "What tools are available to you? Please just list them briefly. (Do not call the set-slug tool.)"
+	userMessage := "What tools are available to you? Please just list them briefly."
+
+	// Set a slug so that the agent doesn't have to.
+	agent.SetSlug("list-available-tools")
 
 	// Send the message to the agent
 	agent.UserMessage(ctx, userMessage)
@@ -239,16 +242,20 @@ func TestAgentProcessTurnWithNilResponse(t *testing.T) {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	// There should be exactly one message
-	if len(agent.history) != 1 {
-		t.Errorf("Expected exactly one message, got %d", len(agent.history))
+	// There should be exactly two messages: slug + error
+	if len(agent.history) != 2 {
+		t.Errorf("Expected exactly two messages (slug + error), got %d", len(agent.history))
 	} else {
-		msg := agent.history[0]
-		if msg.Type != ErrorMessageType {
-			t.Errorf("Expected error message, got message type: %s", msg.Type)
+		slugMsg := agent.history[0]
+		if slugMsg.Type != SlugMessageType {
+			t.Errorf("Expected first message to be slug, got message type: %s", slugMsg.Type)
 		}
-		if !strings.Contains(msg.Content, "simulating nil response") {
-			t.Errorf("Expected error message to contain 'simulating nil response', got: %s", msg.Content)
+		errorMsg := agent.history[1]
+		if errorMsg.Type != ErrorMessageType {
+			t.Errorf("Expected second message to be error, got message type: %s", errorMsg.Type)
+		}
+		if !strings.Contains(errorMsg.Content, "simulating nil response") {
+			t.Errorf("Expected error message to contain 'simulating nil response', got: %s", errorMsg.Content)
 		}
 	}
 }
@@ -395,16 +402,20 @@ func TestAgentProcessTurnWithNilResponseNilError(t *testing.T) {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	// There should be exactly one message
-	if len(agent.history) != 1 {
-		t.Errorf("Expected exactly one message, got %d", len(agent.history))
+	// There should be exactly two messages: slug + error
+	if len(agent.history) != 2 {
+		t.Errorf("Expected exactly two messages (slug + error), got %d", len(agent.history))
 	} else {
-		msg := agent.history[0]
-		if msg.Type != ErrorMessageType {
-			t.Errorf("Expected error message type, got: %s", msg.Type)
+		slugMsg := agent.history[0]
+		if slugMsg.Type != SlugMessageType {
+			t.Errorf("Expected first message to be slug, got message type: %s", slugMsg.Type)
 		}
-		if !strings.Contains(msg.Content, "unexpected nil response") {
-			t.Errorf("Expected error about nil response, got: %s", msg.Content)
+		errorMsg := agent.history[1]
+		if errorMsg.Type != ErrorMessageType {
+			t.Errorf("Expected second message to be error, got message type: %s", errorMsg.Type)
+		}
+		if !strings.Contains(errorMsg.Content, "unexpected nil response") {
+			t.Errorf("Expected error about nil response, got: %s", errorMsg.Content)
 		}
 	}
 }
@@ -743,5 +754,135 @@ func TestPushToOutbox(t *testing.T) {
 	expected := "test resultnested result"
 	if received.Content != expected {
 		t.Errorf("Expected Content to be %q, got %q", expected, received.Content)
+	}
+}
+
+// TestCleanSlugName tests the slug cleaning function
+func TestCleanSlugName(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"simple lowercase", "fix-bug", "fix-bug"},
+		{"uppercase to lowercase", "FIX-BUG", "fix-bug"},
+		{"spaces to hyphens", "fix login bug", "fix-login-bug"},
+		{"mixed case and spaces", "Fix Login Bug", "fix-login-bug"},
+		{"special characters removed", "fix_bug@home!", "fixbughome"},
+		{"multiple hyphens preserved", "fix--bug---here", "fix--bug---here"},
+		{"leading/trailing hyphens preserved", "-fix-bug-", "-fix-bug-"},
+		{"numbers preserved", "fix-bug-v2", "fix-bug-v2"},
+		{"empty string", "", ""},
+		{"only special chars", "@#$%", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cleanSlugName(tt.input)
+			if got != tt.want {
+				t.Errorf("cleanSlugName(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAutoGenerateSlugInputValidation tests input validation for auto slug generation
+func TestAutoGenerateSlugInputValidation(t *testing.T) {
+	// Test soleText with empty input
+	emptyContents := []llm.Content{}
+	_, err := soleText(emptyContents)
+	if err == nil {
+		t.Errorf("Expected error for empty contents, got nil")
+	}
+
+	// Test with non-text content only
+	nonTextContents := []llm.Content{
+		{Type: llm.ContentTypeToolUse, ToolName: "bash"},
+	}
+	_, err = soleText(nonTextContents)
+	if err == nil {
+		t.Errorf("Expected error for non-text contents, got nil")
+	}
+
+	// Test slug formatting
+	testInputs := []string{
+		"Fix the login bug",
+		"Add user authentication system",
+		"Refactor API endpoints",
+		"Update documentation",
+	}
+
+	for _, input := range testInputs {
+		slug := cleanSlugName(strings.ToLower(strings.ReplaceAll(input, " ", "-")))
+		if slug == "" {
+			t.Errorf("cleanSlugName produced empty result for input %q", input)
+		}
+		if !strings.Contains(slug, "-") {
+			// We expect most multi-word inputs to contain hyphens after processing
+			t.Logf("Input %q produced slug %q (no hyphen found, might be single word)", input, slug)
+		}
+	}
+}
+
+// TestSoleText tests the soleText helper function
+func TestSoleText(t *testing.T) {
+	tests := []struct {
+		name     string
+		contents []llm.Content
+		wantText string
+		wantErr  bool
+	}{
+		{
+			name: "single text content",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "  Hello world  "},
+			},
+			wantText: "Hello world",
+			wantErr:  false,
+		},
+		{
+			name:     "empty slice",
+			contents: []llm.Content{},
+			wantText: "",
+			wantErr:  true,
+		},
+		{
+			name: "multiple contents",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: "First"},
+				{Type: llm.ContentTypeText, Text: "Second"},
+			},
+			wantText: "",
+			wantErr:  true,
+		},
+		{
+			name: "non-text content",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeToolUse, ToolName: "bash"},
+			},
+			wantText: "",
+			wantErr:  true,
+		},
+		{
+			name: "empty text content",
+			contents: []llm.Content{
+				{Type: llm.ContentTypeText, Text: ""},
+			},
+			wantText: "",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotText, err := soleText(tt.contents)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("soleText() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotText != tt.wantText {
+				t.Errorf("soleText() gotText = %v, want %v", gotText, tt.wantText)
+			}
+		})
 	}
 }

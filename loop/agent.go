@@ -21,7 +21,6 @@ import (
 
 	"sketch.dev/browser"
 	"sketch.dev/claudetool"
-	"sketch.dev/claudetool/bashkit"
 	"sketch.dev/claudetool/browse"
 	"sketch.dev/claudetool/codereview"
 	"sketch.dev/claudetool/onstart"
@@ -179,6 +178,7 @@ const (
 	AutoMessageType    CodingAgentMessageType = "auto"    // for automated notifications like autoformatting
 	CompactMessageType CodingAgentMessageType = "compact" // for conversation compaction notifications
 	PortMessageType    CodingAgentMessageType = "port"    // for port monitoring events
+	SlugMessageType    CodingAgentMessageType = "slug"    // for slug updates
 
 	cancelToolUseMessage = "Stop responding to my previous message. Wait for me to ask you something else before attempting to use any more tools."
 )
@@ -1350,23 +1350,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	convo.SystemPrompt = a.renderSystemPrompt()
 	convo.ExtraData = map[string]any{"session_id": a.config.SessionID}
 
-	// Define a permission callback for the bash tool to check if the branch name is set before allowing git commits
-	bashPermissionCheck := func(command string) error {
-		if a.gitState.Slug() != "" {
-			return nil // branch is set up
-		}
-		willCommit, err := bashkit.WillRunGitCommit(command)
-		if err != nil {
-			return nil // fail open
-		}
-		if willCommit {
-			return fmt.Errorf("you must use the set-slug tool before making git commits")
-		}
-		return nil
-	}
-
 	bashTool := &claudetool.BashTool{
-		CheckPermission:  bashPermissionCheck,
 		EnableJITInstall: claudetool.EnableBashToolJITInstall,
 		Timeouts:         a.config.BashTimeouts,
 	}
@@ -1390,7 +1374,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 
 	convo.Tools = []*llm.Tool{
 		bashTool.Tool(), claudetool.Keyword, claudetool.Patch(a.patchCallback),
-		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.setSlugTool(), a.commitMessageStyleTool(), makeDoneTool(a.codereview),
+		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.commitMessageStyleTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
 
@@ -1519,47 +1503,102 @@ func branchExists(dir, branchName string) bool {
 	return false
 }
 
-func (a *Agent) setSlugTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "set-slug",
-		Description: `Set a short slug as an identifier for this conversation.`,
-		InputSchema: json.RawMessage(`{
-	"type": "object",
-	"properties": {
-		"slug": {
-			"type": "string",
-			"description": "A 2-3 word alphanumeric hyphenated slug, imperative tense"
+func soleText(contents []llm.Content) (string, error) {
+	if len(contents) != 1 {
+		return "", fmt.Errorf("multiple contents %v", contents)
+	}
+	content := contents[0]
+	if content.Type != llm.ContentTypeText || content.Text == "" {
+		return "", fmt.Errorf("bad content %v", content)
+	}
+	return strings.TrimSpace(content.Text), nil
+}
+
+// autoGenerateSlug automatically generates a slug based on the first user input
+func (a *Agent) autoGenerateSlug(ctx context.Context, userContents []llm.Content) error {
+	userText, err := soleText(userContents)
+	if err != nil {
+		return err
+	}
+	if userText == "" {
+		return fmt.Errorf("set-slug: empty text content")
+	}
+
+	// Create a subconversation without history for slug generation
+	convo, ok := a.convo.(*conversation.Convo)
+	if !ok {
+		// In test environments, the conversation might be a mock interface
+		// Skip slug generation in this case
+		return fmt.Errorf("set-slug: can't make a subconvo (mock convo?)")
+	}
+
+	// Loop until we find an acceptable slug
+	var unavailableSlugs []string
+	for {
+		if len(unavailableSlugs) > 10 {
+			// sanity check to prevent infinite loops
+			return fmt.Errorf("set-slug: failed to construct a new slug after %d attempts", len(unavailableSlugs))
 		}
-	},
-	"required": ["slug"]
-}`),
-		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
-			var params struct {
-				Slug string `json:"slug"`
-			}
-			if err := json.Unmarshal(input, &params); err != nil {
-				return llm.ErrorToolOut(err)
-			}
-			// Prevent slug changes if there have been git changes
-			// This lets the agent change its mind about a good slug,
-			// while ensuring that once a branch has been pushed, it remains stable.
-			if s := a.Slug(); s != "" && s != params.Slug && a.gitState.HasSeenCommits() {
-				return llm.ErrorfToolOut("slug already set to %q", s)
-			}
-			if params.Slug == "" {
-				return llm.ErrorToolOut(fmt.Errorf("slug parameter cannot be empty"))
-			}
-			slug := cleanSlugName(params.Slug)
-			if slug == "" {
-				return llm.ErrorToolOut(fmt.Errorf("slug parameter could not be converted to a valid slug"))
-			}
-			a.SetSlug(slug)
-			// TODO: do this by a call to outie, rather than semi-guessing from innie
-			if branchExists(a.workingDir, a.BranchName()) {
-				return llm.ErrorfToolOut("slug %q already exists; please choose a different slug", slug)
-			}
-			return llm.ToolOut{LLMContent: llm.TextContent("OK")}
-		},
+		subConvo := convo.SubConvo()
+		subConvo.Hidden = true
+
+		// Prompt for slug generation
+		prompt := `You are a slug generator for Sketch, an agentic coding environment.
+The user's prompt will be in <user-prompt> tags. Any unavailable slugs will be listed in <unavailable-slug> tags.
+Generate a 2-3 word alphanumeric hyphenated slug in imperative tense that captures the essence of their coding task.
+Respond with only the slug.`
+
+		buf := new(strings.Builder)
+		buf.WriteString("<slug-request>")
+		if len(unavailableSlugs) > 0 {
+			buf.WriteString("<unavailable-slugs>")
+		}
+		for _, x := range unavailableSlugs {
+			buf.WriteString("<unavailable-slug>")
+			buf.WriteString(x)
+			buf.WriteString("</unavailable-slug>")
+		}
+		if len(unavailableSlugs) > 0 {
+			buf.WriteString("</unavailable-slugs>")
+		}
+		buf.WriteString("<user-prompt>")
+		buf.WriteString(userText)
+		buf.WriteString("</user-prompt>")
+		buf.WriteString("</slug-request>")
+
+		fullPrompt := prompt + "\n" + buf.String()
+		userMessage := llm.UserStringMessage(fullPrompt)
+
+		resp, err := subConvo.SendMessage(userMessage)
+		if err != nil {
+			return fmt.Errorf("failed to generate slug: %w", err)
+		}
+
+		// Extract the slug from the response
+		slugText, err := soleText(resp.Content)
+		if err != nil {
+			return err
+		}
+		if slugText == "" {
+			return fmt.Errorf("empty slug generated")
+		}
+
+		// Clean and validate the slug
+		slug := cleanSlugName(slugText)
+		if slug == "" {
+			return fmt.Errorf("slug could not be cleaned: %q", slugText)
+		}
+
+		// Check if branch already exists using the same logic as the original set-slug tool
+		a.SetSlug(slug) // Set slug first so BranchName() works correctly
+		if branchExists(a.workingDir, a.BranchName()) {
+			// try again
+			unavailableSlugs = append(unavailableSlugs, slug)
+			continue
+		}
+
+		// Success! Slug is available and already set
+		return nil
 	}
 }
 
@@ -1800,6 +1839,23 @@ func (a *Agent) processUserMessage(ctx context.Context) (*llm.Response, error) {
 	if err != nil { // e.g. the context was canceled while blocking in GatherMessages
 		a.stateMachine.Transition(ctx, StateError, "Error gathering messages: "+err.Error())
 		return nil, err
+	}
+
+	// Auto-generate slug if this is the first user input and no slug is set
+	if a.Slug() == "" {
+		if err := a.autoGenerateSlug(ctx, msgs); err != nil {
+			// NB: it is possible that autoGenerateSlug set the slug during the process
+			// of trying to generate a slug.
+			// The fact that it returned an error means that we cannot use that slug.
+			slog.WarnContext(ctx, "Failed to auto-generate slug", "error", err)
+			// use the session id instead. ugly, but we need a slug, and this will be unique.
+			a.SetSlug(a.SessionID())
+		}
+		// Notify termui of the final slug (only emitted once, after slug is determined)
+		a.pushToOutbox(ctx, AgentMessage{
+			Type:    SlugMessageType,
+			Content: a.Slug(),
+		})
 	}
 
 	userMessage := llm.Message{

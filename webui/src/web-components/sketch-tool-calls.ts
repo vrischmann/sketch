@@ -68,11 +68,6 @@ export class SketchToolCalls extends SketchTailwindElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-think>`;
-      case "set-slug":
-        return html`<sketch-tool-card-set-slug
-          .open=${open}
-          .toolCall=${toolCall}
-        ></sketch-tool-card-set-slug>`;
       case "commit-message-style":
         return html`<sketch-tool-card-commit-message-style
           .open=${open}

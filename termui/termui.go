@@ -45,8 +45,6 @@ var (
  ⌨️  {{.input.path -}}
 {{else if eq .msg.ToolName "done" -}}
 {{/* nothing to show here, the agent will write more in its next message */}}
-{{else if eq .msg.ToolName "set-slug" -}}
-🐌 {{.input.slug}}
 {{else if eq .msg.ToolName "commit-message-style" -}}
 🌱 learn git commit message style
 {{else if eq .msg.ToolName "about_sketch" -}}
@@ -172,12 +170,6 @@ func (ui *TermUI) HandleToolUse(resp *loop.AgentMessage) {
 		return
 	}
 	ui.AppendSystemMessage("%s\n", buf.String())
-
-	if resp.ToolName == "set-slug" {
-		if slug, ok := inputData["slug"].(string); ok {
-			ui.updateTitleWithSlug(slug)
-		}
-	}
 }
 
 func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
@@ -235,6 +227,10 @@ func (ui *TermUI) receiveMessagesLoop(ctx context.Context) {
 			}
 		case loop.PortMessageType:
 			ui.AppendSystemMessage("🔌 %s", resp.Content)
+		case loop.SlugMessageType:
+			ui.updateTitleWithSlug(resp.Content)
+		case loop.CompactMessageType:
+			// TODO: print something for compaction?
 		default:
 			ui.AppendSystemMessage("❌ Unexpected Message Type %s %v", resp.Type, resp)
 		}
