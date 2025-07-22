@@ -49,7 +49,7 @@ const demo: DemoModule = {
     statusDisplay.style.cssText = `
       padding: 12px;
       margin: 16px 0;
-      background: #f8f9fa;
+      background: var(--demo-fixture-section-bg);
       border-radius: 6px;
       border: 1px solid #e9ecef;
       font-family: monospace;
@@ -88,7 +88,7 @@ const demo: DemoModule = {
     instructionsDiv.style.cssText = `
       margin: 20px 0;
       padding: 16px;
-      background: #e3f2fd;
+      background: var(--demo-instruction-bg);
       border-radius: 6px;
       border-left: 4px solid #2196f3;
     `;

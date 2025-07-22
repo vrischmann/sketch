@@ -65,7 +65,7 @@ export class SketchToolCardTakeScreenshot extends SketchTailwindElement {
       Screenshot of ${selector}
     </span>`;
     const inputContent = html`<div
-      class="px-2 py-1 bg-gray-100 rounded font-mono my-1.5 inline-block"
+      class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded font-mono my-1.5 inline-block"
     >
       ${selector !== "(full page)"
         ? `Taking screenshot of element: ${selector}`
@@ -75,24 +75,26 @@ export class SketchToolCardTakeScreenshot extends SketchTailwindElement {
       ? html`
           <div class="my-2.5 flex flex-col items-center">
             ${!this.imageLoaded && !this.loadError
-              ? html`<div class="m-5 text-gray-600 italic">
+              ? html`<div class="m-5 text-gray-600 dark:text-gray-400 italic">
                   Loading screenshot...
                 </div>`
               : ""}
             ${this.loadError
-              ? html`<div class="text-red-700 italic my-2.5">
+              ? html`<div class="text-red-700 dark:text-red-400 italic my-2.5">
                   Failed to load screenshot
                 </div>`
               : html`
                   <img
-                    class="max-w-full max-h-[500px] rounded shadow-md border border-gray-300"
+                    class="max-w-full max-h-[500px] rounded shadow-md border border-gray-300 dark:border-gray-600"
                     src="${screenshotUrl}"
                     @load=${() => (this.imageLoaded = true)}
                     @error=${() => (this.loadError = true)}
                     ?hidden=${!this.imageLoaded}
                   />
                   ${this.imageLoaded
-                    ? html`<div class="mt-2 text-xs text-gray-600">
+                    ? html`<div
+                        class="mt-2 text-xs text-gray-600 dark:text-gray-400"
+                      >
                         Screenshot saved and displayed
                       </div>`
                     : ""}

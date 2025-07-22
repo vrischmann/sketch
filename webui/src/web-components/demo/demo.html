@@ -11,6 +11,34 @@
         --demo-secondary: #656d76;
         --demo-background: #f6f8fa;
         --demo-border: #d1d9e0;
+        --demo-text-primary: #24292f;
+        --demo-hover-bg: #ffffff;
+        --demo-container-bg: #ffffff;
+        --demo-error-bg: #ffeaea;
+        --demo-error-border: #ffcccc;
+        --demo-error-text: #d73a49;
+      }
+
+      .dark {
+        --demo-primary: #4493f8;
+        --demo-secondary: #8b949e;
+        --demo-background: #21262d;
+        --demo-border: #30363d;
+        --demo-text-primary: #e6edf3;
+        --demo-hover-bg: #30363d;
+        --demo-container-bg: #0d1117;
+        --demo-error-bg: #3c1e1e;
+        --demo-error-border: #6a2c2c;
+        --demo-error-text: #f85149;
+      }
+
+      body {
+        background: var(--demo-container-bg);
+        color: var(--demo-text-primary);
+        transition:
+          background-color 0.2s,
+          color 0.2s;
+        margin: 0;
       }
 
       .demo-runner {
@@ -27,12 +55,17 @@
         border-right: 1px solid var(--demo-border);
         padding: 20px;
         overflow-y: auto;
+        transition:
+          background-color 0.2s,
+          border-color 0.2s;
       }
 
       .demo-content {
         flex: 1;
         padding: 20px;
         overflow-y: auto;
+        background: var(--demo-container-bg);
+        transition: background-color 0.2s;
       }
 
       .demo-nav {
@@ -59,7 +92,7 @@
       }
 
       .demo-nav button:hover {
-        background: #ffffff;
+        background: var(--demo-hover-bg);
         border-color: var(--demo-border);
         color: var(--demo-primary);
       }
@@ -79,7 +112,7 @@
         font-size: 24px;
         font-weight: 600;
         margin: 0 0 8px 0;
-        color: #24292f;
+        color: var(--demo-text-primary);
       }
 
       .demo-description {
@@ -89,7 +122,7 @@
       }
 
       .demo-container {
-        background: white;
+        background: var(--demo-container-bg);
         border: 1px solid var(--demo-border);
         border-radius: 8px;
         min-height: 400px;
@@ -112,7 +145,7 @@
 
       .demo-welcome h2 {
         margin-bottom: 10px;
-        color: #24292f;
+        color: var(--demo-text-primary);
       }
 
       .search-box {
@@ -122,6 +155,16 @@
         border: 1px solid var(--demo-border);
         border-radius: 6px;
         font-size: 14px;
+        background: var(--demo-container-bg);
+        color: var(--demo-text-primary);
+        transition:
+          background-color 0.2s,
+          border-color 0.2s,
+          color 0.2s;
+      }
+
+      .search-box::placeholder {
+        color: var(--demo-secondary);
       }
 
       .search-box:focus {
@@ -131,19 +174,39 @@
 
       .demo-error {
         padding: 20px;
-        background: #ffeaea;
-        border: 1px solid #ffcccc;
+        background: var(--demo-error-bg);
+        border: 1px solid var(--demo-error-border);
         border-radius: 6px;
-        color: #d73a49;
+        color: var(--demo-error-text);
       }
     </style>
   </head>
   <body>
     <div class="demo-runner">
       <nav class="demo-sidebar">
-        <h1 style="font-size: 18px; margin: 0 0 20px 0; color: #24292f">
+        <h1
+          style="
+            font-size: 18px;
+            margin: 0 0 20px 0;
+            color: var(--demo-text-primary);
+          "
+        >
           Component Demos
         </h1>
+
+        <div
+          style="
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          "
+        >
+          <span style="font-size: 12px; color: var(--demo-secondary)"
+            >Theme:</span
+          >
+          <sketch-theme-toggle></sketch-theme-toggle>
+        </div>
 
         <input
           type="text"
@@ -174,6 +237,8 @@
 
     <script type="module">
       import { DemoRunner } from "./demo-framework/demo-runner.ts";
+      import "../sketch-theme-toggle.ts";
+      import "../theme-service.ts";
 
       class DemoRunnerApp {
         constructor() {
@@ -191,7 +256,18 @@
           this.currentComponent = null;
           this.availableComponents = [];
 
+          // Initialize theme service
+          this.initTheme();
+
           this.init();
+        }
+
+        initTheme() {
+          // Import and initialize the theme service
+          import("../theme-service.ts").then(({ ThemeService }) => {
+            const themeService = ThemeService.getInstance();
+            themeService.initializeTheme();
+          });
         }
 
         async init() {

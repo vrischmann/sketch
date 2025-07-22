@@ -13,13 +13,15 @@ export class SketchToolCardBrowserClearConsoleLogs extends SketchTailwindElement
   open: boolean;
 
   render() {
-    const summaryContent = html`<span class="font-mono text-gray-700 break-all">
+    const summaryContent = html`<span
+      class="font-mono text-gray-700 dark:text-gray-300 break-all"
+    >
       🧹 Clear console logs
     </span>`;
     const inputContent = html`<div>Clear all console logs</div>`;
     const resultContent = this.toolCall?.result_message?.tool_result
       ? html`<pre
-          class="bg-gray-200 text-black p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
+          class="bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
         >
 ${this.toolCall.result_message.tool_result}</pre
         >`

@@ -26,28 +26,30 @@ export class SketchToolCardBrowserType extends SketchTailwindElement {
       console.error("Error parsing type input:", e);
     }
 
-    const summaryContent = html`<span class="font-mono text-gray-700 break-all">
+    const summaryContent = html`<span
+      class="font-mono text-gray-700 dark:text-gray-300 break-all"
+    >
       ⌨️ ${selector}: "${text}"
     </span>`;
     const inputContent = html`<div>
       <div>
         Type into:
         <span
-          class="font-mono bg-black/[0.05] px-2 py-1 rounded inline-block break-all"
+          class="font-mono bg-black/[0.05] dark:bg-white/[0.1] px-2 py-1 rounded inline-block break-all"
           >${selector}</span
         >
       </div>
       <div>
         Text:
         <span
-          class="font-mono bg-green-50 px-2 py-1 rounded inline-block break-all"
+          class="font-mono bg-green-50 dark:bg-green-900 px-2 py-1 rounded inline-block break-all"
           >${text}</span
         >
       </div>
     </div>`;
     const resultContent = this.toolCall?.result_message?.tool_result
       ? html`<pre
-          class="bg-gray-200 text-black p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
+          class="bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
         >
 ${this.toolCall.result_message.tool_result}</pre
         >`

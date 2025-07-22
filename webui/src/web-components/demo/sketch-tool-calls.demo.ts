@@ -78,7 +78,8 @@ const demo: DemoModule = {
     multipleToolCallGroups.forEach((group, index) => {
       const groupHeader = document.createElement("h4");
       groupHeader.textContent = `Group ${index + 1}`;
-      groupHeader.style.cssText = "margin: 20px 0 10px 0; color: #24292f;";
+      groupHeader.style.cssText =
+        "margin: 20px 0 10px 0; color: var(--demo-label-color);";
 
       const groupToolCalls = document.createElement("sketch-tool-calls") as any;
       groupToolCalls.toolCalls = group;

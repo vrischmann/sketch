@@ -811,31 +811,39 @@ export class SketchTimeline extends SketchTailwindElement {
             class="overflow-y-auto overflow-x-hidden pl-4 max-w-full w-full h-full ${compactClass} scroll-container print:h-auto print:max-h-none print:overflow-visible"
           >
             <div
-              class="my-8 mx-auto max-w-[90%] w-[90%] p-8 border-2 border-gray-300 rounded-lg shadow-sm bg-white text-center print:break-inside-avoid"
+              class="my-8 mx-auto max-w-[90%] w-[90%] p-8 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-center print:break-inside-avoid"
               data-testid="welcome-box"
             >
               <h2
-                class="text-2xl font-semibold mb-6 text-center text-gray-800"
+                class="text-2xl font-semibold mb-6 text-center text-gray-800 dark:text-gray-100"
                 data-testid="welcome-box-title"
               >
                 How to use Sketch
               </h2>
-              <p class="text-gray-600 leading-relaxed text-base text-left">
+              <p
+                class="text-gray-600 dark:text-gray-300 leading-relaxed text-base text-left"
+              >
                 Sketch is an agentic coding assistant.
               </p>
 
-              <p class="text-gray-600 leading-relaxed text-base text-left">
+              <p
+                class="text-gray-600 dark:text-gray-300 leading-relaxed text-base text-left"
+              >
                 Sketch has created a container with your repo.
               </p>
 
-              <p class="text-gray-600 leading-relaxed text-base text-left">
+              <p
+                class="text-gray-600 dark:text-gray-300 leading-relaxed text-base text-left"
+              >
                 Ask it to implement a task or answer a question in the chat box
                 below. It can edit and run your code, all in the container.
                 Sketch will create commits in a newly created git branch, which
                 you can look at and comment on in the Diff tab. Once you're
                 done, you'll find that branch available in your (original) repo.
               </p>
-              <p class="text-gray-600 leading-relaxed text-base text-left">
+              <p
+                class="text-gray-600 dark:text-gray-300 leading-relaxed text-base text-left"
+              >
                 Because Sketch operates a container per session, you can run
                 Sketch in parallel to work on multiple ideas or even the same
                 idea with different approaches.
@@ -871,11 +879,11 @@ export class SketchTimeline extends SketchTailwindElement {
             ${!this.isInitialLoadComplete
               ? html`
                   <div
-                    class="flex items-center justify-center p-5 text-gray-600 text-sm gap-2.5 opacity-100 print:hidden"
+                    class="flex items-center justify-center p-5 text-gray-600 dark:text-gray-400 text-sm gap-2.5 opacity-100 print:hidden"
                     data-testid="loading-indicator"
                   >
                     <div
-                      class="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full loading-spinner"
+                      class="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full loading-spinner"
                       data-testid="loading-spinner"
                     ></div>
                     <span>Loading conversation...</span>
@@ -885,11 +893,11 @@ export class SketchTimeline extends SketchTailwindElement {
             ${this.isLoadingOlderMessages
               ? html`
                   <div
-                    class="flex items-center justify-center p-5 text-gray-600 text-sm gap-2.5 opacity-100 print:hidden"
+                    class="flex items-center justify-center p-5 text-gray-600 dark:text-gray-400 text-sm gap-2.5 opacity-100 print:hidden"
                     data-testid="loading-indicator"
                   >
                     <div
-                      class="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full loading-spinner"
+                      class="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full loading-spinner"
                       data-testid="loading-spinner"
                     ></div>
                     <span>Loading older messages...</span>
@@ -930,7 +938,7 @@ export class SketchTimeline extends SketchTailwindElement {
                     style="display: flex; padding-left: 85px; margin-top: 6px; margin-bottom: 16px;"
                   >
                     <div
-                      class="bg-gray-100 rounded-2xl px-4 py-2.5 max-w-20 text-black relative rounded-bl-[5px]"
+                      class="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-2.5 max-w-20 text-black dark:text-white relative rounded-bl-[5px]"
                       data-testid="thinking-bubble"
                     >
                       <div
@@ -938,15 +946,15 @@ export class SketchTimeline extends SketchTailwindElement {
                         data-testid="thinking-dots"
                       >
                         <div
-                          class="w-1.5 h-1.5 bg-gray-500 rounded-full opacity-60 thinking-dot-1"
+                          class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-300 rounded-full opacity-60 thinking-dot-1"
                           data-testid="thinking-dot"
                         ></div>
                         <div
-                          class="w-1.5 h-1.5 bg-gray-500 rounded-full opacity-60 thinking-dot-2"
+                          class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-300 rounded-full opacity-60 thinking-dot-2"
                           data-testid="thinking-dot"
                         ></div>
                         <div
-                          class="w-1.5 h-1.5 bg-gray-500 rounded-full opacity-60 thinking-dot-3"
+                          class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-300 rounded-full opacity-60 thinking-dot-3"
                           data-testid="thinking-dot"
                         ></div>
                       </div>
@@ -960,7 +968,7 @@ export class SketchTimeline extends SketchTailwindElement {
           id="jump-to-latest"
           class="${this.scrollingState === "floating"
             ? "block floating"
-            : "hidden"} fixed bottom-20 left-1/2 -translate-x-1/2 bg-black/60 text-white border-none rounded-xl px-2 py-1 text-xs font-normal cursor-pointer shadow-md z-[1000] transition-all duration-150 ease-out whitespace-nowrap opacity-80 hover:bg-black/80 hover:-translate-y-0.5 hover:opacity-100 hover:shadow-lg active:translate-y-0 print:hidden"
+            : "hidden"} fixed bottom-20 left-1/2 -translate-x-1/2 bg-black/60 dark:bg-gray-700/80 text-white border-none rounded-xl px-2 py-1 text-xs font-normal cursor-pointer shadow-md z-[1000] transition-all duration-150 ease-out whitespace-nowrap opacity-80 hover:bg-black/80 dark:hover:bg-gray-600/90 hover:-translate-y-0.5 hover:opacity-100 hover:shadow-lg active:translate-y-0 print:hidden"
           @click=${this.scrollToBottomWithRetry}
         >
           ↓ Jump to bottom

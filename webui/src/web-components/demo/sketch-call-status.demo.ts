@@ -46,7 +46,7 @@ const demo: DemoModule = {
       const labelEl = document.createElement("h4");
       labelEl.textContent = label;
       labelEl.style.cssText =
-        "margin: 0 0 10px 0; color: #24292f; font-size: 14px; font-weight: 600;";
+        "margin: 0 0 10px 0; color: var(--demo-label-color); font-size: 14px; font-weight: 600;";
 
       const statusComponent = document.createElement(
         "sketch-call-status",

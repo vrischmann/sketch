@@ -45,7 +45,8 @@ const demo: DemoModule = {
 
     const lightLabel = document.createElement("h4");
     lightLabel.textContent = "Light Usage";
-    lightLabel.style.cssText = "margin: 20px 0 10px 0; color: #24292f;";
+    lightLabel.style.cssText =
+      "margin: 20px 0 10px 0; color: var(--demo-label-color);";
 
     // Heavy usage status
     const heavyStatus = document.createElement(
@@ -59,7 +60,8 @@ const demo: DemoModule = {
     };
     const heavyLabel = document.createElement("h4");
     heavyLabel.textContent = "Heavy Usage";
-    heavyLabel.style.cssText = "margin: 20px 0 10px 0; color: #24292f;";
+    heavyLabel.style.cssText =
+      "margin: 20px 0 10px 0; color: var(--demo-label-color);";
 
     // Control buttons for interaction
     const controlsDiv = document.createElement("div");

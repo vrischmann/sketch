@@ -39,7 +39,7 @@ const demo: DemoModule = {
     const controlPanel = document.createElement("div");
     controlPanel.style.marginBottom = "2rem";
     controlPanel.style.padding = "1rem";
-    controlPanel.style.backgroundColor = "#f0f0f0";
+    controlPanel.style.backgroundColor = "var(--demo-control-bg);";
     controlPanel.style.borderRadius = "4px";
 
     const buttonsContainer = document.createElement("div");

@@ -42,6 +42,49 @@ export {
 } from "./call-status";
 export type { CallStatusState } from "./call-status";
 
+// Ensure dark mode CSS variables are available
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById("demo-fixtures-dark-mode-styles")
+) {
+  const style = document.createElement("style");
+  style.id = "demo-fixtures-dark-mode-styles";
+  style.textContent = `
+    :root {
+      --demo-fixture-section-border: #e1e5e9;
+      --demo-fixture-section-bg: #f8f9fa;
+      --demo-fixture-header-color: #24292f;
+      --demo-fixture-text-color: #656d76;
+      --demo-fixture-button-bg: #0969da;
+      --demo-fixture-button-hover-bg: #0860ca;
+      --demo-label-color: #24292f;
+      --demo-secondary-text: #666;
+      --demo-light-bg: #f6f8fa;
+      --demo-card-bg: #ffffff;
+      --demo-border: #d1d9e0;
+      --demo-instruction-bg: #e3f2fd;
+      --demo-control-bg: #f0f0f0;
+    }
+    
+    .dark {
+      --demo-fixture-section-border: #30363d;
+      --demo-fixture-section-bg: #21262d;
+      --demo-fixture-header-color: #e6edf3;
+      --demo-fixture-text-color: #8b949e;
+      --demo-fixture-button-bg: #4493f8;
+      --demo-fixture-button-hover-bg: #539bf5;
+      --demo-label-color: #e6edf3;
+      --demo-secondary-text: #8b949e;
+      --demo-light-bg: #21262d;
+      --demo-card-bg: #0d1117;
+      --demo-border: #30363d;
+      --demo-instruction-bg: #1c2128;
+      --demo-control-bg: #21262d;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // Common demo utilities
 export const demoStyles = {
   container: `
@@ -54,16 +97,18 @@ export const demoStyles = {
   demoSection: `
     margin: 20px 0;
     padding: 15px;
-    border: 1px solid #e1e5e9;
+    border: 1px solid var(--demo-fixture-section-border);
     border-radius: 8px;
-    background: #f8f9fa;
+    background: var(--demo-fixture-section-bg);
+    transition: background-color 0.2s, border-color 0.2s;
   `,
 
   demoHeader: `
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 10px;
-    color: #24292f;
+    color: var(--demo-fixture-header-color);
+    transition: color 0.2s;
   `,
 };
 
@@ -86,7 +131,8 @@ export const demoUtils = {
     if (description) {
       const desc = document.createElement("p");
       desc.textContent = description;
-      desc.style.cssText = "color: #656d76; margin-bottom: 15px;";
+      desc.style.cssText =
+        "color: var(--demo-fixture-text-color); margin-bottom: 15px; transition: color 0.2s;";
       section.appendChild(desc);
     }
 
@@ -109,13 +155,20 @@ export const demoUtils = {
     button.style.cssText = `
       padding: 8px 16px;
       margin: 5px;
-      background: #0969da;
+      background: var(--demo-fixture-button-bg);
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
+      transition: background-color 0.2s;
     `;
+    button.addEventListener("mouseenter", () => {
+      button.style.background = "var(--demo-fixture-button-hover-bg)";
+    });
+    button.addEventListener("mouseleave", () => {
+      button.style.background = "var(--demo-fixture-button-bg)";
+    });
     button.addEventListener("click", onClick);
     return button;
   },

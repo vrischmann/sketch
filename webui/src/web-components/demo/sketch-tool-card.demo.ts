@@ -5,7 +5,22 @@ const demo: DemoModule = {
   title: "Sketch Tool Card Demo",
   description:
     "Demonstration of different tool card components for various tool types",
-  imports: ["../sketch-tool-card.ts"],
+  imports: [
+    "../sketch-tool-card.ts",
+    "../sketch-tool-card-about-sketch.ts",
+    "../sketch-tool-card-browser-clear-console-logs.ts",
+    "../sketch-tool-card-browser-click.ts",
+    "../sketch-tool-card-browser-eval.ts",
+    "../sketch-tool-card-browser-get-text.ts",
+    "../sketch-tool-card-browser-navigate.ts",
+    "../sketch-tool-card-browser-recent-console-logs.ts",
+    "../sketch-tool-card-browser-resize.ts",
+    "../sketch-tool-card-browser-scroll-into-view.ts",
+    "../sketch-tool-card-browser-type.ts",
+    "../sketch-tool-card-browser-wait-for.ts",
+    "../sketch-tool-card-read-image.ts",
+    "../sketch-tool-card-take-screenshot.ts",
+  ],
 
   setup: async (container: HTMLElement) => {
     const section = demoUtils.createDemoSection(
@@ -162,6 +177,153 @@ Total reclaimed space: 1.426GB`,
           tool_call_id: "toolu_01HPgWQJF1aF9LUqkdDKWeES",
         },
       },
+      // About Sketch tool
+      {
+        name: "about_sketch",
+        input: "{}",
+        tool_call_id: "toolu_about_sketch",
+        result_message: {
+          type: "tool",
+          tool_result:
+            "# Welcome to Sketch\n\nSketch is an AI-powered coding assistant that helps you implement features, debug issues, and understand codebases.\n\n## Key Features\n\n- **Autonomous coding**: I can read, write, and modify code files\n- **Command execution**: I can run shell commands and scripts\n- **Testing**: I can run tests and interpret results\n- **Code review**: I can analyze code quality and suggest improvements\n\n## Getting Started\n\n1. Describe what you want to build or fix\n2. I'll analyze your codebase and create a plan\n3. I'll implement the changes step by step\n4. You can review and provide feedback at any time",
+          tool_call_id: "toolu_about_sketch",
+        },
+      },
+      // Browser navigation
+      {
+        name: "browser_navigate",
+        input: JSON.stringify({ url: "https://example.com" }),
+        tool_call_id: "toolu_navigate",
+        result_message: {
+          type: "tool",
+          tool_result: "Navigated to https://example.com",
+          tool_call_id: "toolu_navigate",
+        },
+      },
+      // Browser click
+      {
+        name: "browser_click",
+        input: JSON.stringify({ selector: ".login-button" }),
+        tool_call_id: "toolu_click",
+        result_message: {
+          type: "tool",
+          tool_result: "Clicked element: .login-button",
+          tool_call_id: "toolu_click",
+        },
+      },
+      // Browser type
+      {
+        name: "browser_type",
+        input: JSON.stringify({ selector: "#username", text: "testuser" }),
+        tool_call_id: "toolu_type",
+        result_message: {
+          type: "tool",
+          tool_result: "Typed 'testuser' into #username",
+          tool_call_id: "toolu_type",
+        },
+      },
+      // Browser get text
+      {
+        name: "browser_get_text",
+        input: JSON.stringify({ selector: ".welcome-message" }),
+        tool_call_id: "toolu_get_text",
+        result_message: {
+          type: "tool",
+          tool_result: "Welcome to our application! Please log in to continue.",
+          tool_call_id: "toolu_get_text",
+        },
+      },
+      // Browser eval
+      {
+        name: "browser_eval",
+        input: JSON.stringify({ expression: "document.title" }),
+        tool_call_id: "toolu_eval",
+        result_message: {
+          type: "tool",
+          tool_result: "Example Domain",
+          tool_call_id: "toolu_eval",
+        },
+      },
+      // Browser wait for
+      {
+        name: "browser_wait_for",
+        input: JSON.stringify({ selector: ".loading-complete" }),
+        tool_call_id: "toolu_wait",
+        result_message: {
+          type: "tool",
+          tool_result: "Element .loading-complete is now present",
+          tool_call_id: "toolu_wait",
+        },
+      },
+      // Browser resize
+      {
+        name: "browser_resize",
+        input: JSON.stringify({ width: 1024, height: 768 }),
+        tool_call_id: "toolu_resize",
+        result_message: {
+          type: "tool",
+          tool_result: "Browser resized to 1024x768",
+          tool_call_id: "toolu_resize",
+        },
+      },
+      // Browser scroll into view
+      {
+        name: "browser_scroll_into_view",
+        input: JSON.stringify({ selector: "#bottom-section" }),
+        tool_call_id: "toolu_scroll",
+        result_message: {
+          type: "tool",
+          tool_result: "Scrolled element #bottom-section into view",
+          tool_call_id: "toolu_scroll",
+        },
+      },
+      // Browser clear console logs
+      {
+        name: "browser_clear_console_logs",
+        input: "{}",
+        tool_call_id: "toolu_clear_logs",
+        result_message: {
+          type: "tool",
+          tool_result: "Console logs cleared",
+          tool_call_id: "toolu_clear_logs",
+        },
+      },
+      // Browser recent console logs
+      {
+        name: "browser_recent_console_logs",
+        input: "{}",
+        tool_call_id: "toolu_recent_logs",
+        result_message: {
+          type: "tool",
+          tool_result:
+            "[INFO] Page loaded successfully\n[WARN] Deprecated API usage detected\n[ERROR] Failed to load resource: net::ERR_FAILED",
+          tool_call_id: "toolu_recent_logs",
+        },
+      },
+      // Read image
+      {
+        name: "read_image",
+        input: JSON.stringify({ path: "/tmp/screenshot.png" }),
+        tool_call_id: "toolu_read_image",
+        result_message: {
+          type: "tool",
+          tool_result:
+            "Image read successfully: /tmp/screenshot.png (1024x768, 245KB)",
+          tool_call_id: "toolu_read_image",
+        },
+      },
+      // Take screenshot
+      {
+        name: "browser_take_screenshot",
+        input: JSON.stringify({ selector: ".main-content" }),
+        tool_call_id: "toolu_screenshot",
+        result_message: {
+          type: "tool",
+          tool_result:
+            "Screenshot taken (saved as /tmp/sketch-screenshots/demo-123.png)",
+          tool_call_id: "toolu_screenshot",
+        },
+      },
     ];
 
     // Create tool cards for each tool call
@@ -203,6 +365,61 @@ Total reclaimed space: 1.426GB`,
         case "multiple-choice":
           toolCardEl = document.createElement(
             "sketch-tool-card-multiple-choice",
+          );
+          break;
+        case "about_sketch":
+          toolCardEl = document.createElement("sketch-tool-card-about-sketch");
+          break;
+        case "browser_navigate":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-navigate",
+          );
+          break;
+        case "browser_click":
+          toolCardEl = document.createElement("sketch-tool-card-browser-click");
+          break;
+        case "browser_type":
+          toolCardEl = document.createElement("sketch-tool-card-browser-type");
+          break;
+        case "browser_get_text":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-get-text",
+          );
+          break;
+        case "browser_eval":
+          toolCardEl = document.createElement("sketch-tool-card-browser-eval");
+          break;
+        case "browser_wait_for":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-wait-for",
+          );
+          break;
+        case "browser_resize":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-resize",
+          );
+          break;
+        case "browser_scroll_into_view":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-scroll-into-view",
+          );
+          break;
+        case "browser_clear_console_logs":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-clear-console-logs",
+          );
+          break;
+        case "browser_recent_console_logs":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-recent-console-logs",
+          );
+          break;
+        case "read_image":
+          toolCardEl = document.createElement("sketch-tool-card-read-image");
+          break;
+        case "browser_take_screenshot":
+          toolCardEl = document.createElement(
+            "sketch-tool-card-take-screenshot",
           );
           break;
         default:

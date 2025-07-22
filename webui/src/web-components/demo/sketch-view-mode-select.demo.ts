@@ -96,12 +96,13 @@ const demo: DemoModule = {
 
       const scenarioTitle = document.createElement("h4");
       scenarioTitle.textContent = scenario.name;
-      scenarioTitle.style.cssText = "margin: 0 0 5px 0; color: #24292f;";
+      scenarioTitle.style.cssText =
+        "margin: 0 0 5px 0; color: var(--demo-label-color);";
 
       const scenarioDesc = document.createElement("p");
       scenarioDesc.textContent = scenario.description;
       scenarioDesc.style.cssText =
-        "margin: 0 0 10px 0; color: #656d76; font-size: 14px;";
+        "margin: 0 0 10px 0; color: var(--demo-fixture-text-color); font-size: 14px;";
 
       const scenarioWrapper = document.createElement("div");
       scenarioWrapper.className = "@container";
@@ -223,7 +224,8 @@ const demo: DemoModule = {
 
     // Create explanation text
     const explanation = document.createElement("p");
-    explanation.style.cssText = "margin: 10px 0; color: #666; font-size: 14px;";
+    explanation.style.cssText =
+      "margin: 10px 0; color: var(--demo-secondary-text); font-size: 14px;";
     explanation.innerHTML = `
       <strong>Container Queries:</strong> The component now uses Tailwind <code>@container</code> queries instead of viewport media queries.<br>
       This allows different sized containers to show different responsive behaviors simultaneously.
@@ -269,8 +271,8 @@ const demo: DemoModule = {
       const header = document.createElement("div");
       header.style.cssText = "margin-bottom: 10px;";
       header.innerHTML = `
-        <h4 style="margin: 0 0 5px 0; font-weight: 600; color: #333;">${example.title}</h4>
-        <p style="margin: 0; font-size: 14px; color: #666;">${example.description}</p>
+        <h4 style="margin: 0 0 5px 0; font-weight: 600; color: var(--demo-label-color);">${example.title}</h4>
+        <p style="margin: 0; font-size: 14px; color: var(--demo-secondary-text);">${example.description}</p>
       `;
       wrapper.appendChild(header);
 
@@ -311,7 +313,7 @@ const demo: DemoModule = {
     interactiveDesc.textContent =
       "Use the buttons below to change the container size and see the responsive behavior in real-time.";
     interactiveDesc.style.cssText =
-      "margin: 0 0 15px 0; color: #666; font-size: 14px;";
+      "margin: 0 0 15px 0; color: var(--demo-secondary-text); font-size: 14px;";
 
     // Create interactive container
     const interactiveContainer = document.createElement("div");
@@ -334,7 +336,7 @@ const demo: DemoModule = {
     // Size info display
     const sizeInfo = document.createElement("div");
     sizeInfo.style.cssText =
-      "margin-bottom: 10px; font-family: monospace; font-size: 12px; color: #333;";
+      "margin-bottom: 10px; font-family: monospace; font-size: 12px; color: var(--demo-label-color);";
     sizeInfo.textContent = "Current container width: 700px";
 
     interactiveContainer.appendChild(sizeInfo);

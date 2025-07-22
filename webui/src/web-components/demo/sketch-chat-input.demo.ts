@@ -34,7 +34,7 @@ const demo: DemoModule = {
       border-radius: 6px;
       padding: 10px;
       margin-bottom: 10px;
-      background: #f6f8fa;
+      background: var(--demo-light-bg);
     `;
 
     // Create chat input
@@ -48,7 +48,7 @@ const demo: DemoModule = {
         padding: 8px 12px;
         margin: 4px 0;
         border-radius: 6px;
-        background: ${isUser ? "#0969da" : "#f1f3f4"};
+        background: ${isUser ? "var(--demo-fixture-button-bg)" : "var(--demo-light-bg)"};
         color: ${isUser ? "white" : "#24292f"};
         max-width: 80%;
         margin-left: ${isUser ? "auto" : "0"};

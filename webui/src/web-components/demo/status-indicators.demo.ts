@@ -18,7 +18,7 @@ const demo: DemoModule = {
       padding: 20px;
       border: 1px solid #ccc;
       border-radius: 5px;
-      background-color: #f9f9f9;
+      background-color: var(--demo-fixture-section-bg);
     }
     .label {
       font-weight: bold;
@@ -43,7 +43,7 @@ const demo: DemoModule = {
     }
     .description {
       margin-top: 10px;
-      color: #666;
+      color: var(--demo-secondary-text);
       font-size: 14px;
     }
   `,

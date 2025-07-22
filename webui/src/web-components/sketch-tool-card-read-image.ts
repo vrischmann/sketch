@@ -27,19 +27,21 @@ export class SketchToolCardReadImage extends SketchTailwindElement {
     // Show just the filename in summary
     const filename = path.split("/").pop() || path;
 
-    const summaryContent = html`<span class="font-mono text-gray-700 break-all">
+    const summaryContent = html`<span
+      class="font-mono text-gray-700 dark:text-gray-300 break-all"
+    >
       🖼️ ${filename}
     </span>`;
     const inputContent = html`<div>
       Read image:
       <span
-        class="font-mono bg-black/[0.05] px-2 py-1 rounded inline-block break-all"
+        class="font-mono bg-black/[0.05] dark:bg-white/[0.1] px-2 py-1 rounded inline-block break-all"
         >${path}</span
       >
     </div>`;
     const resultContent = this.toolCall?.result_message?.tool_result
       ? html`<pre
-          class="bg-gray-200 text-black p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
+          class="bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
         >
 ${this.toolCall.result_message.tool_result}</pre
         >`

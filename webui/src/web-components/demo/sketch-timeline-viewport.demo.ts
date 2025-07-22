@@ -21,8 +21,8 @@ const demo: DemoModule = {
     }
     .demo-header {
       padding: 20px;
-      border-bottom: 1px solid #eee;
-      background: #f8f9fa;
+      border-bottom: 1px solid var(--demo-border);
+      background: var(--demo-fixture-section-bg);
       border-radius: 8px 8px 0 0;
     }
     .demo-timeline {
@@ -31,8 +31,8 @@ const demo: DemoModule = {
     }
     .controls {
       padding: 10px 20px;
-      border-top: 1px solid #eee;
-      background: #f8f9fa;
+      border-top: 1px solid var(--demo-border);
+      background: var(--demo-fixture-section-bg);
       display: flex;
       gap: 10px;
       align-items: center;
@@ -50,7 +50,7 @@ const demo: DemoModule = {
     }
     .info {
       font-size: 12px;
-      color: #666;
+      color: var(--demo-secondary-text);
       margin-left: auto;
     }
   `,

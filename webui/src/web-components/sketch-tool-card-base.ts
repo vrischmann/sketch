@@ -48,11 +48,11 @@ export class SketchToolCardBase extends SketchTailwindElement {
     if (this.toolCall?.result_message) {
       statusIcon = this.toolCall?.result_message.tool_error
         ? html`<span
-            class="flex items-center justify-center text-sm text-gray-500"
+            class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400"
             >〰️</span
           >`
         : html`<span
-            class="flex items-center justify-center text-sm text-green-600"
+            class="flex items-center justify-center text-sm text-green-600 dark:text-green-400"
             >✓</span
           >`;
     }
@@ -77,11 +77,11 @@ export class SketchToolCardBase extends SketchTailwindElement {
     // Elapsed time display
     const elapsed = this.toolCall?.result_message?.elapsed
       ? html`<span
-          class="text-xs text-gray-600 whitespace-nowrap min-w-[40px] text-right"
+          class="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[40px] text-right"
           >${(this.toolCall?.result_message?.elapsed / 1e9).toFixed(1)}s</span
         >`
       : html`<span
-          class="text-xs text-gray-600 whitespace-nowrap min-w-[40px] text-right"
+          class="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[40px] text-right"
         ></span>`;
 
     // Initialize details visibility based on open property
@@ -92,15 +92,15 @@ export class SketchToolCardBase extends SketchTailwindElement {
     return html`<div class="block max-w-full w-full box-border overflow-hidden">
       <div class="flex flex-col w-full">
         <div
-          class="flex w-full box-border py-1.5 px-2 pl-3 items-center gap-2 cursor-pointer rounded relative overflow-hidden flex-wrap hover:bg-black/[0.02]"
+          class="flex w-full box-border py-1.5 px-2 pl-3 items-center gap-2 cursor-pointer rounded relative overflow-hidden flex-wrap hover:bg-black/[0.02] dark:hover:bg-white/[0.05]"
           @click=${this._toggleDetails}
         >
           <span
-            class="font-mono font-medium text-gray-700 bg-black/[0.05] rounded px-1.5 py-0.5 flex-shrink-0 min-w-[45px] text-xs text-center whitespace-nowrap"
+            class="font-mono font-medium text-gray-700 dark:text-gray-300 bg-black/[0.05] dark:bg-white/[0.1] rounded px-1.5 py-0.5 flex-shrink-0 min-w-[45px] text-xs text-center whitespace-nowrap"
             >${this.toolCall?.name}</span
           >
           <span
-            class="whitespace-normal break-words flex-grow flex-shrink text-gray-700 font-mono text-xs px-1 min-w-[50px] max-w-[calc(100%-150px)] inline-block"
+            class="whitespace-normal break-words flex-grow flex-shrink text-gray-700 dark:text-gray-300 font-mono text-xs px-1 min-w-[50px] max-w-[calc(100%-150px)] inline-block"
             >${this.summaryContent}</span
           >
           <div
@@ -112,7 +112,7 @@ export class SketchToolCardBase extends SketchTailwindElement {
         <div
           class="${this.detailsVisible
             ? "block"
-            : "hidden"} p-2 bg-black/[0.02] mt-px border-t border-black/[0.05] font-mono text-xs text-gray-800 rounded-b max-w-full w-full box-border overflow-hidden"
+            : "hidden"} p-2 bg-black/[0.02] dark:bg-white/[0.05] mt-px border-t border-black/[0.05] dark:border-white/[0.1] font-mono text-xs text-gray-800 dark:text-gray-200 rounded-b max-w-full w-full box-border overflow-hidden"
         >
           ${this.inputContent
             ? html`<div class="mb-2">${this.inputContent}</div>`

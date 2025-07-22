@@ -110,7 +110,7 @@ const demo: DemoModule = {
     const loadingLabel = document.createElement("h4");
     loadingLabel.textContent = "Loading State (No messages)";
     loadingLabel.style.cssText =
-      "margin: 0 0 10px 0; color: #24292f; font-size: 14px; font-weight: 600;";
+      "margin: 0 0 10px 0; color: var(--demo-label-color); font-size: 14px; font-weight: 600;";
 
     loadingWrapper.appendChild(loadingLabel);
     loadingWrapper.appendChild(loadingTimeline);
@@ -138,7 +138,7 @@ const demo: DemoModule = {
     const thinkingLabel = document.createElement("h4");
     thinkingLabel.textContent = "Thinking State (Agent is active)";
     thinkingLabel.style.cssText =
-      "margin: 0 0 10px 0; color: #24292f; font-size: 14px; font-weight: 600;";
+      "margin: 0 0 10px 0; color: var(--demo-label-color); font-size: 14px; font-weight: 600;";
 
     const thinkingScrollContainer = document.createElement("div");
     thinkingScrollContainer.style.cssText = "height: 300px; overflow-y: auto;";
