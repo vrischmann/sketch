@@ -1,10 +1,7 @@
 import { html } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
-import {
-  ToolCall,
-  State,
-} from "../types";
+import { ToolCall, State } from "../types";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
@@ -296,7 +293,6 @@ export class SketchToolCardCommitMessageStyle extends SketchTailwindElement {
     ></sketch-tool-card-base>`;
   }
 }
-
 
 @customElement("sketch-tool-card-todo-write")
 export class SketchToolCardTodoWrite extends SketchTailwindElement {

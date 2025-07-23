@@ -754,7 +754,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     }
   }
 
-
   async _handlePushRebaseRequest(e: CustomEvent) {
     const chatInput = this.querySelector(
       "sketch-chat-input",
