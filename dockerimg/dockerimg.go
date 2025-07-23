@@ -25,7 +25,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"sketch.dev/browser"
 	"sketch.dev/embedded"
-	"sketch.dev/llm/ant"
 	"sketch.dev/loop/server"
 	"sketch.dev/skribe"
 )
@@ -636,12 +635,7 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.OneShot {
 		cmdArgs = append(cmdArgs, "-one-shot")
 	}
-	if config.ModelURL == "" {
-		// Forward ANTHROPIC_API_KEY for direct use.
-		// TODO: have outtie run an http proxy?
-		// TODO: select and forward the relevant API key based on the model
-		cmdArgs = append(cmdArgs, "-llm-api-key="+os.Getenv(ant.APIKeyEnv))
-	}
+	cmdArgs = append(cmdArgs, "-llm-api-key="+config.ModelAPIKey)
 	// Add MCP server configurations
 	for _, mcpServer := range config.MCPServers {
 		cmdArgs = append(cmdArgs, "-mcp", mcpServer)
