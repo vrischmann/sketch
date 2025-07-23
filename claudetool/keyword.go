@@ -146,7 +146,7 @@ func keywordRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
 		return llm.ErrorfToolOut("failed to send relevance filtering message: %w", err)
 	}
 	if len(resp.Content) != 1 {
-		return llm.ErrorfToolOut("unexpected number of messages in relevance filtering response: %d", len(resp.Content))
+		return llm.ErrorfToolOut("unexpected number of messages (%d) in relevance filtering response: %v", len(resp.Content), resp.Content)
 	}
 
 	filtered := resp.Content[0].Text
