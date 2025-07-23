@@ -159,6 +159,9 @@ type State struct {
 	DiffLinesRemoved     int                           `json:"diff_lines_removed"`              // Lines removed from sketch-base to HEAD
 	OpenPorts            []Port                        `json:"open_ports,omitempty"`            // Currently open TCP ports
 	TokenContextWindow   int                           `json:"token_context_window,omitempty"`
+	SessionEnded         bool                          `json:"session_ended,omitempty"`
+	CanSendMessages      bool                          `json:"can_send_messages,omitempty"`
+	EndedAt              time.Time                     `json:"ended_at,omitempty"`
 }
 
 // Port represents an open TCP port

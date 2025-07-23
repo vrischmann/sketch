@@ -7,7 +7,8 @@ import { AgentMessage, State } from "./types";
 export type DataManagerEventType =
   | "dataChanged"
   | "connectionStatusChanged"
-  | "initialLoadComplete";
+  | "initialLoadComplete"
+  | "sessionEnded";
 
 /**
  * Connection status types
@@ -46,11 +47,16 @@ export class DataManager {
     Array<(...args: any[]) => void>
   > = new Map();
 
+  // Session state tracking
+  private isSessionEnded: boolean = false;
+  private userCanSendMessages: boolean = true; // User permission to send messages
+
   constructor() {
     // Initialize empty arrays for each event type
     this.eventListeners.set("dataChanged", []);
     this.eventListeners.set("connectionStatusChanged", []);
     this.eventListeners.set("initialLoadComplete", []);
+    this.eventListeners.set("sessionEnded", []);
 
     // Check connection status periodically
     setInterval(() => this.checkConnectionStatus(), 5000);
@@ -122,6 +128,18 @@ export class DataManager {
       const state = JSON.parse(event.data) as State;
       this.timelineState = state;
 
+      // Check session state and user permissions from server
+      const stateData = state;
+      if (stateData.session_ended === true) {
+        this.isSessionEnded = true;
+        this.userCanSendMessages = false;
+        console.log("Detected ended session from state event");
+      } else if (stateData.can_send_messages === false) {
+        // Session is active but user has read-only access
+        this.userCanSendMessages = false;
+        console.log("Detected read-only access to active session");
+      }
+
       // Store expected message count for initial load detection
       if (this.expectedMessageCount === null) {
         this.expectedMessageCount = state.message_count;
@@ -140,6 +158,11 @@ export class DataManager {
         }
       }
 
+      // Update connection status when we receive state
+      if (this.connectionStatus !== "connected" && !this.isSessionEnded) {
+        this.updateConnectionStatus("connected");
+      }
+
       this.checkInitialLoadComplete();
       this.emitEvent("dataChanged", { state, newMessages: [] });
     });
@@ -151,6 +174,40 @@ export class DataManager {
       if (this.connectionStatus !== "connected") {
         this.updateConnectionStatus("connected");
       }
+    });
+
+    // Handle session ended events for inactive sessions
+    this.eventSource.addEventListener("session_ended", (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Session ended:", data.message);
+
+      this.isSessionEnded = true;
+      this.userCanSendMessages = false;
+      this.isInitialLoadComplete = true;
+
+      // Close the connection since no more data will come
+      this.closeEventSource();
+
+      // Clear any pending reconnection attempts
+      if (this.reconnectTimer !== null) {
+        window.clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      this.reconnectAttempt = 0;
+
+      // Update status to indicate session has ended
+      this.updateConnectionStatus("disabled", "Session ended");
+
+      // Notify listeners about the state change
+      this.emitEvent("sessionEnded", data);
+      this.emitEvent("dataChanged", {
+        state: this.timelineState,
+        newMessages: [],
+      });
+      this.emitEvent("initialLoadComplete", {
+        messageCount: this.messages.length,
+        expectedCount: this.messages.length,
+      });
     });
   }
 
@@ -168,6 +225,12 @@ export class DataManager {
    * Schedule a reconnection attempt with exponential backoff
    */
   private scheduleReconnect(): void {
+    // Don't schedule reconnections for ended sessions
+    if (this.isSessionEnded) {
+      console.log("Skipping reconnection attempt - session has ended");
+      return;
+    }
+
     if (this.reconnectTimer !== null) {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -199,8 +262,8 @@ export class DataManager {
    * Check heartbeat status to determine if connection is still active
    */
   private checkConnectionStatus(): void {
-    if (this.connectionStatus !== "connected") {
-      return; // Only check if we think we're connected
+    if (this.connectionStatus !== "connected" || this.isSessionEnded) {
+      return; // Only check if we think we're connected and session hasn't ended
     }
 
     const timeSinceLastHeartbeat = Date.now() - this.lastHeartbeatTime;
@@ -491,5 +554,27 @@ export class DataManager {
       console.error("Error getting commit description:", error);
       return null;
     }
+  }
+
+  /**
+   * Check if this session has ended (no more updates will come)
+   */
+  public get sessionEnded(): boolean {
+    return this.isSessionEnded;
+  }
+
+  /**
+   * Check if the current user can send messages (write access)
+   */
+  public get canSendMessages(): boolean {
+    return this.userCanSendMessages;
+  }
+
+  /**
+   * Check if this is effectively read-only (either ended or no write permission)
+   * @deprecated Use sessionEnded and canSendMessages instead for more precise control
+   */
+  public get readOnlyMode(): boolean {
+    return !this.userCanSendMessages;
   }
 }
