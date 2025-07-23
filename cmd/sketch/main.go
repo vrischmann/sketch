@@ -123,8 +123,10 @@ func run() error {
 
 	if flagArgs.listModels {
 		fmt.Println("Available models:")
-		fmt.Println("- claude (default, uses Anthropic service)")
-		fmt.Println("- gemini (uses Google Gemini 2.5 Pro service)")
+		fmt.Println("- claude (default, Claude 4 Sonnet)")
+		fmt.Println("- opus (Claude 4 Opus)")
+		fmt.Println("- sonnet (Claude 4 Sonnet)")
+		fmt.Println("- gemini (Google Gemini 2.5 Pro)")
 		for _, name := range oai.ListModels() {
 			note := ""
 			if name != "gpt4.1" {
@@ -141,9 +143,9 @@ func run() error {
 
 	// Claude and Gemini are supported in container mode
 	// TODO: finish support--thread through API keys, add server support
-	isContainerSupported := flagArgs.modelName == "claude" || flagArgs.modelName == "" || flagArgs.modelName == "gemini"
+	isContainerSupported := ant.IsClaudeModel(flagArgs.modelName) || flagArgs.modelName == "gemini"
 	if !isContainerSupported && (!flagArgs.unsafe || flagArgs.skabandAddr != "") {
-		return fmt.Errorf("only -model=claude is supported in safe mode right now, use -unsafe -skaband-addr=''")
+		return fmt.Errorf("only claude and gemini are supported in safe mode right now, use -unsafe -skaband-addr=''")
 	}
 
 	if err := flagArgs.experimentFlag.Process(); err != nil {
@@ -316,7 +318,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.oneShot, "one-shot", false, "exit after the first turn without termui")
 	userFlags.StringVar(&flags.prompt, "prompt", "", "prompt to send to sketch")
 	userFlags.StringVar(&flags.prompt, "p", "", "prompt to send to sketch (alias for -prompt)")
-	userFlags.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, gpt4.1)")
+	userFlags.StringVar(&flags.modelName, "model", "claude", "model to use (e.g. claude, opus, gemini, gpt4.1)")
 	userFlags.StringVar(&flags.llmAPIKey, "llm-api-key", "", "API key for the LLM provider; if not set, will be read from an env var")
 	userFlags.BoolVar(&flags.listModels, "list-models", false, "list all available models and exit")
 	userFlags.BoolVar(&flags.verbose, "verbose", false, "enable verbose output")
@@ -895,12 +897,12 @@ func defaultGitEmail() string {
 }
 
 // selectLLMService creates an LLM service based on the specified model name.
-// If modelName is empty or "claude", it uses the Anthropic service.
+// If modelName corresponds to a Claude model, it uses the Anthropic service.
 // If modelName is "gemini", it uses the Gemini service.
 // Otherwise, it tries to use the OpenAI service with the specified model.
 // Returns an error if the model name is not recognized or if required configuration is missing.
 func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey string) (llm.Service, error) {
-	if flags.modelName == "" || flags.modelName == "claude" {
+	if ant.IsClaudeModel(flags.modelName) {
 		if apiKey == "" {
 			return nil, fmt.Errorf("missing ANTHROPIC_API_KEY")
 		}
@@ -909,6 +911,7 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 			URL:     modelURL,
 			APIKey:  apiKey,
 			DumpLLM: flags.dumpLLM,
+			Model:   ant.ClaudeModelName(flags.modelName),
 		}, nil
 	}
 

@@ -35,6 +35,25 @@ const (
 	Claude4Opus    = "claude-opus-4-20250514"
 )
 
+// IsClaudeModel reports whether userName is a user-friendly Claude model.
+// It uses ClaudeModelName under the hood.
+func IsClaudeModel(userName string) bool {
+	return ClaudeModelName(userName) != ""
+}
+
+// ClaudeModelName returns the Anthropic Claude model name for userName.
+// It returns an empty string if userName is not a recognized Claude model.
+func ClaudeModelName(userName string) string {
+	switch userName {
+	case "claude", "sonnet":
+		return Claude4Sonnet
+	case "opus":
+		return Claude4Opus
+	default:
+		return ""
+	}
+}
+
 // TokenContextWindow returns the maximum token context window size for this service
 func (s *Service) TokenContextWindow() int {
 	model := s.Model
