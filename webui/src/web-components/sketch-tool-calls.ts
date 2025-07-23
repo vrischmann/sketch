@@ -53,11 +53,6 @@ export class SketchToolCalls extends SketchTailwindElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-done>`;
-      case "multiplechoice":
-        return html`<sketch-tool-card-multiple-choice
-          .open=${open}
-          .toolCall=${toolCall}
-        ></sketch-tool-card-multiple-choice>`;
       case "patch":
         return html`<sketch-tool-card-patch
           .open=${open}

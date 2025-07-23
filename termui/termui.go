@@ -51,11 +51,6 @@ var (
 📚 About Sketch
 {{else if eq .msg.ToolName "codereview" -}}
  🐛  Running automated code review, may be slow
-{{else if eq .msg.ToolName "multiplechoice" -}}
- 📝 {{.input.question}}
-{{ range .input.responseOptions -}}
-  - {{ .caption}}: {{.responseText}}
-{{end -}}
 {{else if eq .msg.ToolName "browser_navigate" -}}
  🌐 {{.input.url -}}
 {{else if eq .msg.ToolName "browser_click" -}}

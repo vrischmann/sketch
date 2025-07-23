@@ -155,8 +155,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     this._handleViewModeSelect = this._handleViewModeSelect.bind(this);
     this._handlePopState = this._handlePopState.bind(this);
     this._handleShowCommitDiff = this._handleShowCommitDiff.bind(this);
-    this._handleMutlipleChoiceSelected =
-      this._handleMutlipleChoiceSelected.bind(this);
     this._handlePushRebaseRequest = this._handlePushRebaseRequest.bind(this);
     this._handleStopClick = this._handleStopClick.bind(this);
     this._handleEndClick = this._handleEndClick.bind(this);
@@ -205,10 +203,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     window.addEventListener("focus", this._handleWindowFocus);
     window.addEventListener("blur", this._handleWindowBlur);
     window.addEventListener(
-      "multiple-choice-selected",
-      this._handleMutlipleChoiceSelected,
-    );
-    window.addEventListener(
       "push-rebase-request",
       this._handlePushRebaseRequest,
     );
@@ -256,10 +250,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     window.removeEventListener("show-commit-diff", this._handleShowCommitDiff);
     window.removeEventListener("focus", this._handleWindowFocus);
     window.removeEventListener("blur", this._handleWindowBlur);
-    window.removeEventListener(
-      "multiple-choice-selected",
-      this._handleMutlipleChoiceSelected,
-    );
     window.removeEventListener(
       "push-rebase-request",
       this._handlePushRebaseRequest,
@@ -764,24 +754,6 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
     }
   }
 
-  async _handleMutlipleChoiceSelected(e: CustomEvent) {
-    const chatInput = this.querySelector(
-      "sketch-chat-input",
-    ) as SketchChatInput;
-    if (chatInput) {
-      if (chatInput.content && chatInput.content.trim() !== "") {
-        chatInput.content += "\n\n";
-      }
-      chatInput.content += e.detail.responseText;
-      chatInput.focus();
-      // Adjust textarea height to accommodate new content
-      requestAnimationFrame(() => {
-        if (chatInput.adjustChatSpacing) {
-          chatInput.adjustChatSpacing();
-        }
-      });
-    }
-  }
 
   async _handlePushRebaseRequest(e: CustomEvent) {
     const chatInput = this.querySelector(

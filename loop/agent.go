@@ -1377,12 +1377,6 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.commitMessageStyleTool(), makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
-
-	// One-shot mode is non-interactive, multiple choice requires human response
-	if !a.config.OneShot {
-		convo.Tools = append(convo.Tools, multipleChoiceTool)
-	}
-
 	convo.Tools = append(convo.Tools, browserTools...)
 
 	// Add MCP tools if configured
@@ -1432,59 +1426,6 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 
 	convo.Listener = a
 	return convo
-}
-
-var multipleChoiceTool = &llm.Tool{
-	Name:        "multiplechoice",
-	Description: "Present the user with an quick way to answer to your question using one of a short list of possible answers you would expect from the user.",
-	EndsTurn:    true,
-	InputSchema: json.RawMessage(`{
-  "type": "object",
-  "description": "The question and a list of answers you would expect the user to choose from.",
-  "properties": {
-    "question": {
-      "type": "string",
-      "description": "The text of the multiple-choice question you would like the user, e.g. 'What kinds of test cases would you like me to add?'"
-    },
-    "responseOptions": {
-      "type": "array",
-      "description": "The set of possible answers to let the user quickly choose from, e.g. ['Basic unit test coverage', 'Error return values', 'Malformed input'].",
-      "items": {
-        "type": "object",
-        "properties": {
-          "caption": {
-            "type": "string",
-            "description": "The caption, e.g. 'Basic coverage', 'Error return values', or 'Malformed input' for the response button. Do NOT include options for responses that would end the conversation like 'Ok', 'No thank you', 'This looks good'"
-          },
-          "responseText": {
-            "type": "string",
-            "description": "The full text of the response, e.g. 'Add unit tests for basic test coverage', 'Add unit tests for error return values', or 'Add unit tests for malformed input'"
-          }
-        },
-        "required": ["caption", "responseText"]
-      }
-    }
-  },
-  "required": ["question", "responseOptions"]
-}`),
-	Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
-		// The Run logic for "multiplechoice" tool is a no-op on the server.
-		// The UI will present a list of options for the user to select from,
-		// and that's it as far as "executing" the tool_use goes.
-		// When the user *does* select one of the presented options, that
-		// responseText gets sent as a chat message on behalf of the user.
-		return llm.ToolOut{LLMContent: llm.TextContent("end your turn and wait for the user to respond")}
-	},
-}
-
-type MultipleChoiceOption struct {
-	Caption      string `json:"caption"`
-	ResponseText string `json:"responseText"`
-}
-
-type MultipleChoiceParams struct {
-	Question        string                 `json:"question"`
-	ResponseOptions []MultipleChoiceOption `json:"responseOptions"`
 }
 
 // branchExists reports whether branchName exists, either locally or in well-known remotes.

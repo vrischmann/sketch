@@ -3,8 +3,6 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
 import {
   ToolCall,
-  MultipleChoiceOption,
-  MultipleChoiceParams,
   State,
 } from "../types";
 import { marked } from "marked";
@@ -299,100 +297,6 @@ export class SketchToolCardCommitMessageStyle extends SketchTailwindElement {
   }
 }
 
-@customElement("sketch-tool-card-multiple-choice")
-export class SketchToolCardMultipleChoice extends SketchTailwindElement {
-  @property() toolCall: ToolCall;
-  @property() open: boolean;
-  @property() selectedOption: MultipleChoiceOption = null;
-
-  connectedCallback() {
-    super.connectedCallback();
-    this.updateSelectedOption();
-  }
-
-  updated(changedProps) {
-    if (changedProps.has("toolCall")) {
-      this.updateSelectedOption();
-    }
-  }
-
-  updateSelectedOption() {
-    if (this.toolCall?.result_message?.tool_result) {
-      try {
-        this.selectedOption = JSON.parse(
-          this.toolCall.result_message.tool_result,
-        ).selected;
-      } catch (e) {
-        console.error("Error parsing result:", e);
-      }
-    } else {
-      this.selectedOption = null;
-    }
-  }
-
-  async handleOptionClick(choice) {
-    this.selectedOption = this.selectedOption === choice ? null : choice;
-
-    const event = new CustomEvent("multiple-choice-selected", {
-      detail: {
-        responseText: this.selectedOption.responseText,
-        toolCall: this.toolCall,
-      },
-      bubbles: true,
-      composed: true,
-    });
-    this.dispatchEvent(event);
-  }
-
-  render() {
-    let choices = [];
-    let question = "";
-    try {
-      const inputData = JSON.parse(
-        this.toolCall?.input || "{}",
-      ) as MultipleChoiceParams;
-      choices = inputData.responseOptions || [];
-      question = inputData.question || "Please select an option:";
-    } catch (e) {
-      console.error("Error parsing multiple-choice input:", e);
-    }
-
-    const summaryContent =
-      this.selectedOption !== null
-        ? html`<span class="italic p-2">
-            ${question}:
-            <strong class="not-italic text-blue-600 font-semibold"
-              >${this.selectedOption.caption}</strong
-            >
-          </span>`
-        : html`<span class="italic p-2">${question}</span>`;
-
-    const inputContent = html`<div class="flex flex-row flex-wrap gap-2 my-2">
-      ${choices.map((choice) => {
-        const isSelected =
-          this.selectedOption !== null && this.selectedOption === choice;
-        return html`
-          <div
-            class="inline-flex items-center px-3 py-2 rounded cursor-pointer transition-all duration-200 border select-none ${isSelected
-              ? "bg-blue-50 border-blue-500"
-              : "bg-gray-100 border-transparent hover:bg-gray-200 hover:border-gray-400 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:shadow-sm active:bg-gray-300"}"
-            @click=${() => this.handleOptionClick(choice)}
-            title="${choice.responseText}"
-          >
-            <span class="option-label">${choice.caption}</span>
-            ${isSelected
-              ? html`<span class="ml-1.5 text-blue-600">✓</span>`
-              : ""}
-          </div>
-        `;
-      })}
-    </div>`;
-
-    return html`<div class="multiple-choice-card">
-      ${summaryContent} ${inputContent}
-    </div>`;
-  }
-}
 
 @customElement("sketch-tool-card-todo-write")
 export class SketchToolCardTodoWrite extends SketchTailwindElement {
@@ -545,7 +449,6 @@ declare global {
     "sketch-tool-card-patch": SketchToolCardPatch;
     "sketch-tool-card-think": SketchToolCardThink;
     "sketch-tool-card-commit-message-style": SketchToolCardCommitMessageStyle;
-    "sketch-tool-card-multiple-choice": SketchToolCardMultipleChoice;
     "sketch-tool-card-todo-write": SketchToolCardTodoWrite;
     "sketch-tool-card-todo-read": SketchToolCardTodoRead;
     "sketch-tool-card-keyword-search": SketchToolCardKeywordSearch;

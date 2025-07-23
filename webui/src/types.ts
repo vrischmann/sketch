@@ -146,16 +146,6 @@ export interface GitPushResponse {
 	error?: string;
 }
 
-export interface MultipleChoiceOption {
-	caption: string;
-	responseText: string;
-}
-
-export interface MultipleChoiceParams {
-	question: string;
-	responseOptions: MultipleChoiceOption[] | null;
-}
-
 export interface DiffFile {
 	path: string;
 	old_path: string;

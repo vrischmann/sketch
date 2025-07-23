@@ -66,8 +66,6 @@ func TS() *go2ts.Go2TS {
 		server.GitPushInfoResponse{},
 		server.GitPushRequest{},
 		server.GitPushResponse{},
-		loop.MultipleChoiceOption{},
-		loop.MultipleChoiceParams{},
 		git_tools.DiffFile{},
 		git_tools.GitLogEntry{},
 	)

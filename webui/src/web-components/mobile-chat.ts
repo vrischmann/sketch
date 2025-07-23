@@ -272,15 +272,6 @@ export class MobileChat extends SketchTailwindElement {
         case "todo_read":
           return "Read todo list";
 
-        case "multiplechoice":
-          const question = input.question || "Multiple choice question";
-          const options = input.responseOptions || [];
-          if (options.length > 0) {
-            const optionsList = options.map((opt) => opt.caption).join(", ");
-            return `${question} [${optionsList}]`;
-          }
-          return question;
-
         case "done":
           return "Task completion checklist";
 
