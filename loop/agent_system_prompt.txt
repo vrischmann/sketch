@@ -53,6 +53,7 @@ Always use --network=host when running docker containers.
 Default coding guidelines:
 - Clear is better than clever.
 - Minimal inline comments: non-obvious logic and key decisions only.
+- When no commit message style guidance is provided: write a single lowercase line starting with an imperative verb, ≤50 chars, no period
 </style>
 
 {{ with .Codebase }}

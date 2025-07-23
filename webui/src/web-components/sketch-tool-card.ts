@@ -1,7 +1,7 @@
 import { html } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
-import { State, ToolCall } from "../types";
+import { ToolCall } from "../types";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
@@ -301,37 +301,6 @@ export class SketchToolCardThink extends SketchTailwindElement {
   }
 }
 
-@customElement("sketch-tool-card-commit-message-style")
-export class SketchToolCardCommitMessageStyle extends SketchTailwindElement {
-  @property()
-  toolCall: ToolCall;
-
-  @property()
-  open: boolean;
-
-  @property()
-  state: State;
-
-  constructor() {
-    super();
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-  }
-
-  render() {
-    return html`<sketch-tool-card-base
-      .open=${this.open}
-      .toolCall=${this.toolCall}
-    ></sketch-tool-card-base>`;
-  }
-}
-
 @customElement("sketch-tool-card-todo-write")
 export class SketchToolCardTodoWrite extends SketchTailwindElement {
   @property() toolCall: ToolCall;
@@ -482,7 +451,6 @@ declare global {
     "sketch-tool-card-done": SketchToolCardDone;
     "sketch-tool-card-patch": SketchToolCardPatch;
     "sketch-tool-card-think": SketchToolCardThink;
-    "sketch-tool-card-commit-message-style": SketchToolCardCommitMessageStyle;
     "sketch-tool-card-todo-write": SketchToolCardTodoWrite;
     "sketch-tool-card-todo-read": SketchToolCardTodoRead;
     "sketch-tool-card-keyword-search": SketchToolCardKeywordSearch;

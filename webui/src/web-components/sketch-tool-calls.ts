@@ -63,12 +63,6 @@ export class SketchToolCalls extends SketchTailwindElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-think>`;
-      case "commit-message-style":
-        return html`<sketch-tool-card-commit-message-style
-          .open=${open}
-          .toolCall=${toolCall}
-          .state=${this.state}
-        ></sketch-tool-card-commit-message-style>`;
       case "browser_take_screenshot":
         return html`<sketch-tool-card-take-screenshot
           .open=${open}

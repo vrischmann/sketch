@@ -1378,7 +1378,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 
 	convo.Tools = []*llm.Tool{
 		bashTool.Tool(), claudetool.Keyword, claudetool.Patch(a.patchCallback),
-		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, a.commitMessageStyleTool(), makeDoneTool(a.codereview),
+		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, makeDoneTool(a.codereview),
 		a.codereview.Tool(), claudetool.AboutSketch,
 	}
 	convo.Tools = append(convo.Tools, browserTools...)
@@ -1545,23 +1545,6 @@ Respond with only the slug.`
 		// Success! Slug is available and already set
 		return nil
 	}
-}
-
-func (a *Agent) commitMessageStyleTool() *llm.Tool {
-	description := `Provides git commit message style guidance. MANDATORY: You must use this tool before making any git commits.`
-	preCommit := &llm.Tool{
-		Name:        "commit-message-style",
-		Description: description,
-		InputSchema: llm.EmptySchema(),
-		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
-			styleHint, err := claudetool.CommitMessageStyleHint(ctx, a.repoRoot)
-			if err != nil {
-				slog.DebugContext(ctx, "failed to get commit message style hint", "err", err)
-			}
-			return llm.ToolOut{LLMContent: llm.TextContent(styleHint)}
-		},
-	}
-	return preCommit
 }
 
 // patchCallback is the agent's patch tool callback.
