@@ -435,6 +435,28 @@ func parseCLIFlags() CLIFlags {
 	return flags
 }
 
+func skabandMcpConfiguration(flags CLIFlags) string {
+	skabandaddr, err := skabandclient.LocalhostToDockerInternal(flags.skabandAddr)
+	if err != nil {
+		skabandaddr = flags.skabandAddr
+	}
+	config := mcp.ServerConfig{
+		Name: "sketchdev",
+		Type: "http",
+		URL:  skabandaddr + "/api/mcp",
+		Headers: map[string]string{
+			"Session-Id":     flags.sessionID,
+			"Public-Key":     "env:SKETCH_PUB_KEY",
+			"Session-Secret": "env:SKETCH_MODEL_API_KEY",
+		},
+	}
+	out, err := json.Marshal(&config)
+	if err != nil {
+		panic("programming error" + err.Error())
+	}
+	return string(out)
+}
+
 // runInHostMode handles execution on the host machine, which typically involves
 // checking host requirements and launching a Docker container.
 func runInHostMode(ctx context.Context, flags CLIFlags) error {
@@ -532,28 +554,6 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	}
 
 	return nil
-}
-
-func skabandMcpConfiguration(flags CLIFlags) string {
-	skabandaddr, err := skabandclient.LocalhostToDockerInternal(flags.skabandAddr)
-	if err != nil {
-		skabandaddr = flags.skabandAddr
-	}
-	config := mcp.ServerConfig{
-		Name: "sketchdev",
-		Type: "http",
-		URL:  skabandaddr + "/api/mcp",
-		Headers: map[string]string{
-			"Session-Id":     flags.sessionID,
-			"Public-Key":     "env:SKETCH_PUB_KEY",
-			"Session-Secret": "env:SKETCH_MODEL_API_KEY",
-		},
-	}
-	out, err := json.Marshal(&config)
-	if err != nil {
-		panic("programming error" + err.Error())
-	}
-	return string(out)
 }
 
 // runInContainerMode handles execution inside the Docker container.
