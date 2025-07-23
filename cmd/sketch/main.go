@@ -141,11 +141,10 @@ func run() error {
 		return dumpDistFilesystem(flagArgs.dumpDist)
 	}
 
-	// Claude and Gemini are supported in container mode
-	// TODO: finish support--thread through API keys, add server support
-	isContainerSupported := ant.IsClaudeModel(flagArgs.modelName) || flagArgs.modelName == "gemini"
-	if !isContainerSupported && (!flagArgs.unsafe || flagArgs.skabandAddr != "") {
-		return fmt.Errorf("only claude and gemini are supported in safe mode right now, use -unsafe -skaband-addr=''")
+	// Only Claude and Gemini have skaband support, for now.
+	hasSkabandSupport := flagArgs.modelName == "gemini" || ant.IsClaudeModel(flagArgs.modelName)
+	if !hasSkabandSupport && flagArgs.skabandAddr != "" {
+		return fmt.Errorf("only claude and gemini are supported by skaband, use -skaband-addr='' for other models")
 	}
 
 	if err := flagArgs.experimentFlag.Process(); err != nil {
