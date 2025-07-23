@@ -218,6 +218,7 @@ type Service struct {
 	Model     Model        // defaults to DefaultModel if zero value
 	MaxTokens int          // defaults to DefaultMaxTokens if zero
 	Org       string       // optional - organization ID
+	DumpLLM   bool         // whether to dump request/response text to files for debugging; defaults to false
 }
 
 var _ llm.Service = (*Service)(nil)
@@ -661,11 +662,17 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 	} else {
 		req.MaxTokens = cmp.Or(s.MaxTokens, DefaultMaxTokens)
 	}
-	// fmt.Printf("Sending request to OpenAI\n")
-	// enc := json.NewEncoder(os.Stdout)
-	// enc.SetIndent("", "  ")
-	// enc.Encode(req)
-	// fmt.Printf("\n")
+	// Dump request if enabled
+	if s.DumpLLM {
+		if reqJSON, err := json.MarshalIndent(req, "", "  "); err == nil {
+			// Construct the chat completions URL
+			baseURL := cmp.Or(model.URL, OpenAIURL)
+			url := baseURL + "/chat/completions"
+			if err := llm.DumpToFile("request", url, reqJSON); err != nil {
+				slog.WarnContext(ctx, "failed to dump openai request to file", "error", err)
+			}
+		}
+	}
 
 	// Retry mechanism
 	backoff := []time.Duration{1 * time.Second, 2 * time.Second, 5 * time.Second, 10 * time.Second, 15 * time.Second}
@@ -686,6 +693,14 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 		// Handle successful response
 		if err == nil {
+			// Dump response if enabled
+			if s.DumpLLM {
+				if respJSON, jsonErr := json.MarshalIndent(resp, "", "  "); jsonErr == nil {
+					if dumpErr := llm.DumpToFile("response", "", respJSON); dumpErr != nil {
+						slog.WarnContext(ctx, "failed to dump openai response to file", "error", dumpErr)
+					}
+				}
+			}
 			return s.toLLMResponse(&resp), nil
 		}
 

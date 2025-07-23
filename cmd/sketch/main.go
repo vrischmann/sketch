@@ -294,8 +294,8 @@ type CLIFlags struct {
 	bashSlowTimeout       string
 	bashBackgroundTimeout string
 	passthroughUpstream   bool
-	// Claude debugging
-	dumpAntCalls bool
+	// LLM debugging
+	dumpLLM bool
 }
 
 // parseCLIFlags parses all command-line flags and returns a CLIFlags struct
@@ -371,7 +371,7 @@ func parseCLIFlags() CLIFlags {
 	// Internal flags for development/debugging
 	internalFlags.StringVar(&flags.dumpDist, "dump-dist", "", "(internal) dump embedded /dist/ filesystem to specified directory and exit")
 	internalFlags.StringVar(&flags.subtraceToken, "subtrace-token", "", "(development) run sketch under subtrace.dev with the provided token")
-	internalFlags.BoolVar(&flags.dumpAntCalls, "dump-ant-calls", false, "(debugging) dump raw communications with Claude to files in ~/.cache/sketch/")
+	internalFlags.BoolVar(&flags.dumpLLM, "dump-llm", false, "(debugging) dump raw communications with LLM services to files in ~/.cache/sketch/")
 
 	// Custom usage function that shows only user-visible flags by default
 	userFlags.Usage = func() {
@@ -521,7 +521,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		SubtraceToken:       flags.subtraceToken,
 		MCPServers:          flags.mcpServers,
 		PassthroughUpstream: flags.passthroughUpstream,
-		DumpAntCalls:        flags.dumpAntCalls,
+		DumpLLM:             flags.dumpLLM,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -905,10 +905,10 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 			return nil, fmt.Errorf("missing ANTHROPIC_API_KEY")
 		}
 		return &ant.Service{
-			HTTPC:        client,
-			URL:          modelURL,
-			APIKey:       apiKey,
-			DumpAntCalls: flags.dumpAntCalls,
+			HTTPC:   client,
+			URL:     modelURL,
+			APIKey:  apiKey,
+			DumpLLM: flags.dumpLLM,
 		}, nil
 	}
 
@@ -917,10 +917,11 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 			return nil, fmt.Errorf("missing %s", gem.GeminiAPIKeyEnv)
 		}
 		return &gem.Service{
-			HTTPC:  client,
-			URL:    modelURL,
-			Model:  gem.DefaultModel,
-			APIKey: apiKey,
+			HTTPC:   client,
+			URL:     modelURL,
+			Model:   gem.DefaultModel,
+			APIKey:  apiKey,
+			DumpLLM: flags.dumpLLM,
 		}, nil
 	}
 
@@ -936,9 +937,10 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 	}
 
 	return &oai.Service{
-		HTTPC:  client,
-		Model:  *model,
-		APIKey: apiKey,
+		HTTPC:   client,
+		Model:   *model,
+		APIKey:  apiKey,
+		DumpLLM: flags.dumpLLM,
 	}, nil
 }
 

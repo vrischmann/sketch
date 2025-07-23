@@ -11,8 +11,6 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -59,12 +57,12 @@ func (s *Service) TokenContextWindow() int {
 // Service provides Claude completions.
 // Fields should not be altered concurrently with calling any method on Service.
 type Service struct {
-	HTTPC        *http.Client // defaults to http.DefaultClient if nil
-	URL          string       // defaults to DefaultURL if empty
-	APIKey       string       // must be non-empty
-	Model        string       // defaults to DefaultModel if empty
-	MaxTokens    int          // defaults to DefaultMaxTokens if zero
-	DumpAntCalls bool         // whether to dump request/response text to files for debugging; defaults to false
+	HTTPC     *http.Client // defaults to http.DefaultClient if nil
+	URL       string       // defaults to DefaultURL if empty
+	APIKey    string       // must be non-empty
+	Model     string       // defaults to DefaultModel if empty
+	MaxTokens int          // defaults to DefaultMaxTokens if zero
+	DumpLLM   bool         // whether to dump request/response text to files for debugging; defaults to false
 }
 
 var _ llm.Service = (*Service)(nil)
@@ -208,23 +206,6 @@ type request struct {
 	StopSequences []string        `json:"stop_sequences,omitempty"`
 
 	TokenEfficientToolUse bool `json:"-"` // DO NOT USE, broken on Anthropic's side as of 2025-02-28
-}
-
-// dumpToFile writes the content to a timestamped file in ~/.cache/sketch/, with typ in the filename.
-func dumpToFile(typ string, content []byte) error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	cacheDir := filepath.Join(homeDir, ".cache", "sketch")
-	err = os.MkdirAll(cacheDir, 0o700)
-	if err != nil {
-		return err
-	}
-	now := time.Now()
-	filename := fmt.Sprintf("%d_%s.txt", now.UnixMilli(), typ)
-	filePath := filepath.Join(cacheDir, filename)
-	return os.WriteFile(filePath, content, 0o600)
 }
 
 func mapped[Slice ~[]E, E, T any](s Slice, f func(E) T) []T {
@@ -440,7 +421,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 	var payload []byte
 	var err error
-	if s.DumpAntCalls || testing.Testing() {
+	if s.DumpLLM || testing.Testing() {
 		payload, err = json.MarshalIndent(request, "", " ")
 	} else {
 		payload, err = json.Marshal(request)
@@ -472,8 +453,8 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			slog.WarnContext(ctx, "anthropic request sleep before retry", "sleep", sleep, "attempts", attempts)
 			time.Sleep(sleep)
 		}
-		if s.DumpAntCalls {
-			if err := dumpToFile("request", payload); err != nil {
+		if s.DumpLLM {
+			if err := llm.DumpToFile("request", url, payload); err != nil {
 				slog.WarnContext(ctx, "failed to dump request to file", "error", err)
 			}
 		}
@@ -516,8 +497,8 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 		switch {
 		case resp.StatusCode == http.StatusOK:
-			if s.DumpAntCalls {
-				if err := dumpToFile("response", buf); err != nil {
+			if s.DumpLLM {
+				if err := llm.DumpToFile("response", "", buf); err != nil {
 					slog.WarnContext(ctx, "failed to dump response to file", "error", err)
 				}
 			}

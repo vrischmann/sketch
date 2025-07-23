@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -293,4 +295,31 @@ func ErrorToolOut(err error) ToolOut {
 
 func ErrorfToolOut(format string, args ...any) ToolOut {
 	return ErrorToolOut(fmt.Errorf(format, args...))
+}
+
+// DumpToFile writes LLM communication content to a timestamped file in ~/.cache/sketch/.
+// For requests, it includes the URL followed by the content. For responses, it only includes the content.
+// The typ parameter is used as a prefix in the filename ("request", "response").
+func DumpToFile(typ string, url string, content []byte) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	cacheDir := filepath.Join(homeDir, ".cache", "sketch")
+	err = os.MkdirAll(cacheDir, 0o700)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	filename := fmt.Sprintf("%s_%d.txt", typ, now.UnixMilli())
+	filePath := filepath.Join(cacheDir, filename)
+
+	// For requests, start with the URL; for responses, just write the content
+	data := []byte(url)
+	if url != "" {
+		data = append(data, "\n\n"...)
+	}
+	data = append(data, content...)
+
+	return os.WriteFile(filePath, data, 0o600)
 }

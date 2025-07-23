@@ -140,8 +140,8 @@ type ContainerConfig struct {
 	// PassthroughUpstream configures upstream remote for passthrough to innie
 	PassthroughUpstream bool
 
-	// DumpAntCalls enables dumping raw communications with Claude to files
-	DumpAntCalls bool
+	// DumpLLM requests dumping of raw communications with LLM services to files
+	DumpLLM bool
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -648,8 +648,8 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	if config.PassthroughUpstream {
 		cmdArgs = append(cmdArgs, "-passthrough-upstream")
 	}
-	if config.DumpAntCalls {
-		cmdArgs = append(cmdArgs, "-dump-ant-calls")
+	if config.DumpLLM {
+		cmdArgs = append(cmdArgs, "-dump-llm")
 	}
 
 	// Add additional docker arguments if provided
