@@ -262,13 +262,17 @@ func ListModels() []string {
 
 // ModelByUserName returns a model by its user-friendly name.
 // Returns nil if no model with the given name is found.
-func ModelByUserName(name string) *Model {
+func ModelByUserName(name string) Model {
 	for _, model := range ModelsRegistry {
 		if model.UserName == name {
-			return &model
+			return model
 		}
 	}
-	return nil
+	return Model{}
+}
+
+func (m Model) IsZero() bool {
+	return m == Model{}
 }
 
 var (

@@ -926,7 +926,7 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 	}
 
 	model := oai.ModelByUserName(flags.modelName)
-	if model == nil {
+	if model.IsZero() {
 		return nil, fmt.Errorf("unknown model '%s', use -list-models to see available models", flags.modelName)
 	}
 
@@ -938,7 +938,7 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 
 	return &oai.Service{
 		HTTPC:   client,
-		Model:   *model,
+		Model:   model,
 		APIKey:  apiKey,
 		DumpLLM: flags.dumpLLM,
 	}, nil
