@@ -474,27 +474,9 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		return err
 	}
 
-	// Get credentials and connect to skaband if needed
-	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath(flags.skabandAddr))
+	spec, pubKey, err := resolveModel(flags)
 	if err != nil {
 		return err
-	}
-	pubKey, modelURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
-	if err != nil {
-		return err
-	}
-	if flags.skabandAddr != "" {
-		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
-	} else {
-		// When not using skaband, get API key from environment or flag
-		envName := ant.APIKeyEnv
-		if flags.modelName == "gemini" {
-			envName = gem.GeminiAPIKeyEnv
-		}
-		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)
-		if apiKey == "" {
-			return fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
-		}
 	}
 
 	// Get current working directory
@@ -515,8 +497,8 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		LocalAddr:         flags.addr,
 		SkabandAddr:       flags.skabandAddr,
 		Model:             flags.modelName,
-		ModelURL:          modelURL,
-		ModelAPIKey:       apiKey,
+		ModelURL:          spec.modelURL,
+		ModelAPIKey:       spec.apiKey,
 		Path:              cwd,
 		GitUsername:       flags.gitUsername,
 		GitEmail:          flags.gitEmail,
@@ -576,13 +558,27 @@ func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) e
 // runInUnsafeMode handles execution on the host machine without Docker.
 // This mode is used when the -unsafe flag is provided.
 func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
-	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath(flags.skabandAddr))
+	spec, pubKey, err := resolveModel(flags)
 	if err != nil {
 		return err
 	}
-	pubKey, antURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+	return setupAndRunAgent(ctx, flags, spec.modelURL, spec.apiKey, pubKey, false, logFile)
+}
+
+type modelSpec struct {
+	modelURL string
+	apiKey   string
+}
+
+// resolveModel logs in to skaband (as appropriate) and resolves the flags to a model URL and API key.
+func resolveModel(flags CLIFlags) (spec modelSpec, pubKey string, err error) {
+	privKey, err := skabandclient.LoadOrCreatePrivateKey(skabandclient.DefaultKeyPath(flags.skabandAddr))
 	if err != nil {
-		return err
+		return modelSpec{}, "", err
+	}
+	pubKey, modelURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+	if err != nil {
+		return modelSpec{}, "", err
 	}
 
 	if flags.skabandAddr == "" {
@@ -593,13 +589,13 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 		}
 		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)
 		if apiKey == "" {
-			return fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
+			return modelSpec{}, "", fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
 		}
 	} else {
 		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	}
 
-	return setupAndRunAgent(ctx, flags, antURL, apiKey, pubKey, false, logFile)
+	return modelSpec{modelURL: modelURL, apiKey: apiKey}, pubKey, nil
 }
 
 // setupAndRunAgent handles the common logic for setting up and running the agent
