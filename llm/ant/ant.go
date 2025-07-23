@@ -23,6 +23,7 @@ const (
 	// See https://docs.anthropic.com/en/docs/about-claude/models/all-models for
 	// current maximums. There's currently a flag to enable 128k output (output-128k-2025-02-19)
 	DefaultMaxTokens = 8192
+	APIKeyEnv        = "ANTHROPIC_API_KEY"
 	DefaultURL       = "https://api.anthropic.com/v1/messages"
 )
 

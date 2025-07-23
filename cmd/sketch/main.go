@@ -485,7 +485,7 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	} else {
 		// When not using skaband, get API key from environment or flag
-		envName := "ANTHROPIC_API_KEY"
+		envName := ant.APIKeyEnv
 		if flags.modelName == "gemini" {
 			envName = gem.GeminiAPIKeyEnv
 		}
@@ -585,7 +585,7 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 
 	if flags.skabandAddr == "" {
 		// When not using skaband, get API key from environment or flag
-		envName := "ANTHROPIC_API_KEY"
+		envName := ant.APIKeyEnv
 		if flags.modelName == "gemini" {
 			envName = gem.GeminiAPIKeyEnv
 		}
