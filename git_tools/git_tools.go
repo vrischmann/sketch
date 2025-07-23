@@ -437,8 +437,8 @@ func AutoCommitDiffViewChanges(ctx context.Context, repoDir, filePath string) er
 	// Add the file to git
 	cmd = exec.CommandContext(ctx, "git", "add", filePath)
 	cmd.Dir = repoDir
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error adding file to git: %w", err)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error adding file to git: %w - git output: %s", err, string(out))
 	}
 
 	// Commit the changes
