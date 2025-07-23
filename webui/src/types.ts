@@ -47,6 +47,7 @@ export interface AgentMessage {
 	turnDuration?: Duration | null;
 	hide_output?: boolean;
 	todo_content?: string | null;
+	display?: any;
 	idx: number;
 }
 

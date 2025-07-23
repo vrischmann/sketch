@@ -459,15 +459,16 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]l
 				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, nil, err)
 				toolResultC <- content
 			}
-			sendRes := func(toolResult []llm.Content) {
+			sendRes := func(toolOut llm.ToolOut) {
 				// Record end time
 				endTime := time.Now()
 				content.ToolUseEndTime = &endTime
 
-				content.ToolResult = toolResult
+				content.ToolResult = toolOut.LLMContent
+				content.Display = toolOut.Display
 				var firstText string
-				if len(toolResult) > 0 {
-					firstText = toolResult[0].Text
+				if len(toolOut.LLMContent) > 0 {
+					firstText = toolOut.LLMContent[0].Text
 				}
 				c.Listener.OnToolResult(ctx, c, part.ID, part.ToolName, part.ToolInput, content, &firstText, nil)
 				toolResultC <- content
@@ -497,7 +498,7 @@ func (c *Convo) ToolResultContents(ctx context.Context, resp *llm.Response) ([]l
 				sendErr(toolOut.Error)
 				return
 			}
-			sendRes(toolOut.LLMContent)
+			sendRes(toolOut)
 		}()
 	}
 	wg.Wait()

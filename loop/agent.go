@@ -224,6 +224,9 @@ type AgentMessage struct {
 	// TodoContent contains the agent's todo file content when it has changed
 	TodoContent *string `json:"todo_content,omitempty"`
 
+	// Display contains content to be displayed to the user, set by tools
+	Display any `json:"display,omitempty"`
+
 	Idx int `json:"idx"`
 }
 
@@ -905,6 +908,7 @@ func (a *Agent) OnToolResult(ctx context.Context, convo *conversation.Convo, too
 		ToolCallId: content.ToolUseID,
 		StartTime:  content.ToolUseStartTime,
 		EndTime:    content.ToolUseEndTime,
+		Display:    content.Display,
 	}
 
 	// Calculate the elapsed time if both start and end times are set

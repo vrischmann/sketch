@@ -100,6 +100,10 @@ type ToolOut struct {
 	// LLMContent is the output of the tool to be sent back to the LLM.
 	// May be nil on error.
 	LLMContent []Content
+	// Display is content to be displayed to the user.
+	// The type of content is set by the tool and coordinated with the UIs.
+	// It should be JSON-serializable.
+	Display any
 	// Error is the error (if any) that occurred during the tool run.
 	// The text contents of the error will be sent back to the LLM.
 	// If non-nil, LLMContent will be ignored.
@@ -131,6 +135,9 @@ type Content struct {
 	// timing information for tool_result; added externally; not sent to the LLM
 	ToolUseStartTime *time.Time
 	ToolUseEndTime   *time.Time
+
+	// Display is content to be displayed to the user, copied from ToolOut
+	Display any
 
 	Cache bool
 }

@@ -1,7 +1,7 @@
 import { html } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, property } from "lit/decorators.js";
-import { ToolCall, State } from "../types";
+import { State, ToolCall } from "../types";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
@@ -199,6 +199,37 @@ export class SketchToolCardPatch extends SketchTailwindElement {
   @property() toolCall: ToolCall;
   @property() open: boolean;
 
+  // Render a diff with syntax highlighting
+  renderDiff(diff: string) {
+    // Remove ---/+++ header lines and trim leading/trailing blank lines
+    const lines = diff
+      .split("\n")
+      .filter((line) => !line.startsWith("---") && !line.startsWith("+++"))
+      .join("\n")
+      .trim()
+      .split("\n");
+
+    const coloredLines = lines.map((line) => {
+      if (line.startsWith("+")) {
+        return html`<div class="text-green-600 bg-green-50">${line}</div>`;
+      } else if (line.startsWith("-")) {
+        return html`<div class="text-red-600 bg-red-50">${line}</div>`;
+      } else if (line.startsWith("@@")) {
+        // prettier-ignore
+        return html`<div class="text-cyan-600 bg-cyan-50 font-semibold">${line}</div>`;
+      } else {
+        return html`<div class="text-gray-800">${line}</div>`;
+      }
+    });
+
+    return html`<pre
+      class="bg-gray-100 text-xs p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-x-auto font-mono"
+    >
+      ${coloredLines}
+    </pre
+    >`;
+  }
+
   render() {
     const patchInput = JSON.parse(this.toolCall?.input);
 
@@ -209,18 +240,25 @@ export class SketchToolCardPatch extends SketchTailwindElement {
       edit${patchInput.patches.length > 1 ? "s" : ""}
     </span>`;
 
-    const inputContent = html`<div>
-      ${patchInput.patches.map((patch) => {
-        return html`<div class="mb-2">
-          Patch operation: <b>${patch.operation}</b>
-          ${createPreElement(patch.newText)}
-        </div>`;
-      })}
-    </div>`;
+    const inputContent = html``;
 
-    const resultContent = this.toolCall?.result_message?.tool_result
-      ? createPreElement(this.toolCall.result_message.tool_result)
-      : "";
+    // Show diff if available, otherwise show the regular result
+    let resultContent;
+    if (
+      this.toolCall?.result_message?.display &&
+      typeof this.toolCall.result_message.display === "string"
+    ) {
+      // Render the diff with syntax highlighting
+      resultContent = html`<div class="w-full relative">
+        ${this.renderDiff(this.toolCall.result_message.display)}
+      </div>`;
+    } else if (this.toolCall?.result_message?.tool_result) {
+      resultContent = createPreElement(
+        this.toolCall.result_message.tool_result,
+      );
+    } else {
+      resultContent = "";
+    }
 
     return html`<sketch-tool-card-base
       .open=${this.open}

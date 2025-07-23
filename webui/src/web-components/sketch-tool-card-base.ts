@@ -118,7 +118,9 @@ export class SketchToolCardBase extends SketchTailwindElement {
             ? html`<div class="mb-2">${this.inputContent}</div>`
             : ""}
           ${this.resultContent
-            ? html`<div class="mt-2">${this.resultContent}</div>`
+            ? html`<div class="${this.inputContent ? "mt-2" : ""}">
+                ${this.resultContent}
+              </div>`
             : ""}
         </div>
       </div>

@@ -142,6 +142,8 @@ Total reclaimed space: 1.426GB`,
         result_message: {
           type: "tool",
           tool_result: "- Applied all patches\n",
+          display:
+            "@@ -1,3 +1,3 @@\n # Web Components\n \n-This directory contains the old components.\n+This directory contains custom web components...",
           tool_call_id: "toolu_01TNhLX2AWkZwsu2KCLKrpju",
         },
       },

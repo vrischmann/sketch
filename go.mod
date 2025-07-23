@@ -19,6 +19,7 @@ require (
 	github.com/pkg/sftp v1.13.9
 	github.com/richardlehane/crock32 v1.0.1
 	github.com/sashabaranov/go-openai v1.38.2
+	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	go.skia.org/infra v0.0.0-20250421160028-59e18403fd4a
 	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.39.0
@@ -39,6 +40,7 @@ require (
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/pkg/diff v0.0.0-20241224192749-4e6772a4315c // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go4.org/mem v0.0.0-20240501181205-ae6ca9944745 // indirect
