@@ -7,7 +7,8 @@ export type DataManagerEventType =
   | "dataChanged"
   | "connectionStatusChanged"
   | "initialLoadComplete"
-  | "sessionEnded";
+  | "sessionEnded"
+  | "sessionDataReady";
 
 /**
  * Connection status types
@@ -56,6 +57,7 @@ export class DataManager {
     this.eventListeners.set("connectionStatusChanged", []);
     this.eventListeners.set("initialLoadComplete", []);
     this.eventListeners.set("sessionEnded", []);
+    this.eventListeners.set("sessionDataReady", []);
 
     // Check connection status periodically
     setInterval(() => this.checkConnectionStatus(), 5000);
@@ -73,6 +75,7 @@ export class DataManager {
    * Connect to the SSE stream
    */
   private connect(): void {
+    // Don't attempt to connect if the session has ended
     if (this.isSessionEnded) {
       console.log("Skipping connection attempt - session has ended");
       return;
@@ -208,9 +211,12 @@ export class DataManager {
         state: this.timelineState,
         newMessages: [],
       });
-      this.emitEvent("initialLoadComplete", {
+      // Emit sessionDataReady for components that need to know the ended session data is ready
+      // (like newsessions), but don't emit initialLoadComplete as that's for live session loads
+      this.emitEvent("sessionDataReady", {
         messageCount: this.messages.length,
         expectedCount: this.messages.length,
+        isEndedSession: true,
       });
     });
   }
