@@ -208,6 +208,13 @@ var (
 		URL:       MistralURL,
 		APIKeyEnv: MistralAPIKeyEnv,
 	}
+
+	Qwen3CoderFireworks = Model{
+		UserName:  "qwen3-coder-fireworks",
+		ModelName: "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct",
+		URL:       FireworksURL,
+		APIKeyEnv: FireworksAPIKeyEnv,
+	}
 )
 
 // Service provides chat completions.
@@ -247,6 +254,7 @@ var ModelsRegistry = []Model{
 	FireworksLlama4Maverick,
 	MistralMedium,
 	DevstralSmall,
+	Qwen3CoderFireworks,
 }
 
 // ListModels returns a list of all available models with their user-friendly names.
@@ -600,6 +608,8 @@ func toStopReason(reason string) llm.StopReason {
 
 // TokenContextWindow returns the maximum token context window size for this service
 func (s *Service) TokenContextWindow() int {
+	// TODO: move TokenContextWindow information to Model struct
+
 	model := cmp.Or(s.Model, DefaultModel)
 
 	// OpenAI models generally have 128k context windows
@@ -611,6 +621,8 @@ func (s *Service) TokenContextWindow() int {
 		return 128000 // 128k for GPT-4o models
 	case "o3-2025-04-16", "o3-mini-2025-04-16":
 		return 200000 // 200k for O3 models
+	case "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct":
+		return 256000 // 256k native context for Qwen3-Coder
 	default:
 		// Default for unknown models
 		return 128000
