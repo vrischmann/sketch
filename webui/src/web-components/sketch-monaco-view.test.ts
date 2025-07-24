@@ -62,22 +62,24 @@ test("has improved auto-sizing behavior to prevent jumping", async ({
 });
 
 // Test keyboard shortcut functionality for comment submission
-test("Command+Enter and Ctrl+Enter keyboard shortcuts submit comments", async ({ mount }) => {
+test("Command+Enter and Ctrl+Enter keyboard shortcuts submit comments", async ({
+  mount,
+}) => {
   const component = await mount(CodeDiffEditor, {
     props: {
       originalCode: 'console.log("original");',
       modifiedCode: 'console.log("modified");',
     },
-  });  
+  });
 
   await expect(component).toBeVisible();
 
   // Test that the keyboard shortcut handler exists
   const hasKeyboardHandler = await component.evaluate((node) => {
     const monacoView = node as any;
-    
+
     // Check if the handleCommentKeydown method exists
-    return typeof monacoView.handleCommentKeydown === 'function';
+    return typeof monacoView.handleCommentKeydown === "function";
   });
 
   expect(hasKeyboardHandler).toBe(true);

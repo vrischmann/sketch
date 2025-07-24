@@ -408,7 +408,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
    */
   private handleCommentKeydown(e: KeyboardEvent) {
     // Check for Command+Enter (Mac) or Ctrl+Enter (other platforms)
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       this.submitComment();
     }
