@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -31,6 +33,8 @@ type BashTool struct {
 	EnableJITInstall bool
 	// Timeouts holds the configurable timeout values (uses defaults if nil)
 	Timeouts *Timeouts
+	// Pwd is the working directory for the tool
+	Pwd string
 }
 
 const (
@@ -77,7 +81,7 @@ func (t *Timeouts) background() time.Duration {
 func (b *BashTool) Tool() *llm.Tool {
 	return &llm.Tool{
 		Name:        bashName,
-		Description: strings.TrimSpace(bashDescription),
+		Description: fmt.Sprintf(strings.TrimSpace(bashDescription), b.Pwd),
 		InputSchema: llm.MustSchema(bashInputSchema),
 		Run:         b.Run,
 	}
@@ -87,13 +91,15 @@ const (
 	bashName        = "bash"
 	bashDescription = `
 Executes shell commands via bash -c, returning combined stdout/stderr.
+Bash state changes (working dir, variables, aliases) don't persist between calls.
 
-With background=true, returns immediately while process continues running
-with output redirected to files. Kill process group when done.
+With background=true, returns immediately, with output redirected to a file.
 Use background for servers/demos that need to stay running.
 
 MUST set slow_ok=true for potentially slow commands: builds, downloads,
 installs, tests, or any other substantive operation.
+
+<pwd>%s</pwd>
 `
 	// If you modify this, update the termui template for prettier rendering.
 	bashInputSchema = `
@@ -125,9 +131,13 @@ type bashInput struct {
 }
 
 type BackgroundResult struct {
-	PID        int    `json:"pid"`
-	StdoutFile string `json:"stdout_file"`
-	StderrFile string `json:"stderr_file"`
+	PID     int
+	OutFile string
+}
+
+func (r *BackgroundResult) XMLish() string {
+	return fmt.Sprintf("<pid>%d</pid>\n<output_file>%s</output_file>\n<reminder>To stop the process: `kill -9 -%d`</reminder>\n",
+		r.PID, r.OutFile, r.PID)
 }
 
 func (i *bashInput) timeout(t *Timeouts) time.Duration {
@@ -172,21 +182,15 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
 
 	// If Background is set to true, use executeBackgroundBash
 	if req.Background {
-		result, err := executeBackgroundBash(ctx, req, timeout)
+		result, err := b.executeBackgroundBash(ctx, req, timeout)
 		if err != nil {
 			return llm.ErrorToolOut(err)
 		}
-		// Marshal the result to JSON
-		// TODO: emit XML(-ish) instead?
-		output, err := json.Marshal(result)
-		if err != nil {
-			return llm.ErrorfToolOut("failed to marshal background result: %w", err)
-		}
-		return llm.ToolOut{LLMContent: llm.TextContent(string(output))}
+		return llm.ToolOut{LLMContent: llm.TextContent(result.XMLish())}
 	}
 
 	// For foreground commands, use executeBash
-	out, execErr := executeBash(ctx, req, timeout)
+	out, execErr := b.executeBash(ctx, req, timeout)
 	if execErr != nil {
 		return llm.ErrorToolOut(execErr)
 	}
@@ -195,70 +199,92 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
 
 const maxBashOutputLength = 131072
 
-func executeBash(ctx context.Context, req bashInput, timeout time.Duration) (string, error) {
+func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.Writer) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+	cmd.Dir = b.Pwd
+	cmd.Stdin = nil
+	cmd.Stdout = out
+	cmd.Stderr = out
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // set up for killing the process group
+	cmd.Cancel = func() error {
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) // kill entire process group
+	}
+	// Remove SKETCH_MODEL_URL, SKETCH_PUB_KEY, SKETCH_MODEL_API_KEY,
+	// and any other future SKETCH_ goodies from the environment.
+	// ...except for SKETCH_PROXY_ID, which is intentionally available.
+	env := slices.DeleteFunc(os.Environ(), func(s string) bool {
+		return strings.HasPrefix(s, "SKETCH_") && s != "SKETCH_PROXY_ID"
+	})
+	env = append(env, "SKETCH=1")          // signal that this has been run by Sketch, sometimes useful for scripts
+	env = append(env, "EDITOR=/bin/false") // interactive editors won't work
+	cmd.Env = env
+	return cmd
+}
+
+// processGroupHasProcesses reports whether process group pgid contains any processes.
+func processGroupHasProcesses(pgid int) bool {
+	return syscall.Kill(-pgid, 0) == nil
+}
+
+func cmdWait(cmd *exec.Cmd) error {
+	pgid := cmd.Process.Pid
+	err := cmd.Wait()
+	// After Wait, if there were misbehaved children,
+	// and the process group is still around,
+	// (if the process died via some means other than context cancellation),
+	// we need to (re-)kill the process group, not just the process.
+	// Tiny logical race here--we could snipe some other process--but
+	// it is extremely unlikely in practice, because our process just died,
+	// so it almost certainly hasn't had its PID recycled yet.
+	if processGroupHasProcesses(pgid) {
+		_ = syscall.Kill(-pgid, syscall.SIGKILL)
+	}
+
+	// Clean up any zombie processes that may have been left behind.
+	reapZombies(pgid)
+
+	return err
+}
+
+func (b *BashTool) executeBash(ctx context.Context, req bashInput, timeout time.Duration) (string, error) {
 	execCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Can't do the simple thing and call CombinedOutput because of the need to kill the process group.
-	cmd := exec.CommandContext(execCtx, "bash", "-c", req.Command)
-	cmd.Dir = WorkingDir(ctx)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Set environment with SKETCH=1
-	cmd.Env = append(os.Environ(), "SKETCH=1")
-
-	var output bytes.Buffer
-	cmd.Stdin = nil
-	cmd.Stdout = &output
-	cmd.Stderr = &output
+	output := new(bytes.Buffer)
+	cmd := b.makeBashCommand(execCtx, req.Command, output)
+	// TODO: maybe detect simple interactive git rebase commands and auto-background them?
+	// Would need to hint to the agent what is happening.
+	// We might also be able to do this for other simple interactive commands that use EDITOR.
+	cmd.Env = append(cmd.Env, `GIT_SEQUENCE_EDITOR=echo "To do an interactive rebase, run it as a background task and check the output file." && exit 1`)
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("command failed: %w", err)
 	}
-	proc := cmd.Process
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-execCtx.Done():
-			if execCtx.Err() == context.DeadlineExceeded && proc != nil {
-				// Kill the entire process group.
-				syscall.Kill(-proc.Pid, syscall.SIGKILL)
-			}
-		case <-done:
-		}
-	}()
 
-	err := cmd.Wait()
-	close(done)
+	err := cmdWait(cmd)
 
-	longOutput := output.Len() > maxBashOutputLength
-	var outstr string
-	if longOutput {
-		outstr = fmt.Sprintf("output too long: got %v, max is %v\ninitial bytes of output:\n%s",
-			humanizeBytes(output.Len()), humanizeBytes(maxBashOutputLength),
-			output.Bytes()[:1024],
-		)
-	} else {
-		outstr = output.String()
-	}
+	out := output.String()
+	out = formatForegroundBashOutput(out)
 
 	if execCtx.Err() == context.DeadlineExceeded {
-		// Get the partial output that was captured before the timeout
-		partialOutput := output.String()
-		// Truncate if the output is too large
-		if len(partialOutput) > maxBashOutputLength {
-			partialOutput = partialOutput[:maxBashOutputLength] + "\n[output truncated due to size]\n"
-		}
-		return "", fmt.Errorf("command timed out after %s\nCommand output (until it timed out):\n%s", timeout, outstr)
+		return "", fmt.Errorf("[command timed out after %s, showing output until timeout]\n%s", timeout, out)
 	}
 	if err != nil {
-		return "", fmt.Errorf("command failed: %w\n%s", err, outstr)
+		return "", fmt.Errorf("[command failed: %w]\n%s", err, out)
 	}
 
-	if longOutput {
-		return "", fmt.Errorf("%s", outstr)
-	}
+	return out, nil
+}
 
-	return output.String(), nil
+// formatForegroundBashOutput formats the output of a foreground bash command for display to the agent.
+func formatForegroundBashOutput(out string) string {
+	if len(out) > maxBashOutputLength {
+		const snipSize = 4096
+		out = fmt.Sprintf("[output truncated in middle: got %v, max is %v]\n%s\n\n[snip]\n\n%s",
+			humanizeBytes(len(out)), humanizeBytes(maxBashOutputLength),
+			out[:snipSize], out[len(out)-snipSize:],
+		)
+	}
+	return out
 }
 
 func humanizeBytes(bytes int) string {
@@ -276,80 +302,48 @@ func humanizeBytes(bytes int) string {
 }
 
 // executeBackgroundBash executes a command in the background and returns the pid and output file locations
-func executeBackgroundBash(ctx context.Context, req bashInput, timeout time.Duration) (*BackgroundResult, error) {
-	// Create temporary directory for output files
+func (b *BashTool) executeBackgroundBash(ctx context.Context, req bashInput, timeout time.Duration) (*BackgroundResult, error) {
+	// Create temp output files
 	tmpDir, err := os.MkdirTemp("", "sketch-bg-")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
+	// We can't really clean up tempDir, because we have no idea
+	// how far into the future the agent might want to read the output.
 
-	// Create temp files for stdout and stderr
-	stdoutFile := filepath.Join(tmpDir, "stdout")
-	stderrFile := filepath.Join(tmpDir, "stderr")
-
-	// Prepare the command
-	cmd := exec.Command("bash", "-c", req.Command)
-	cmd.Dir = WorkingDir(ctx)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Set environment with SKETCH=1
-	cmd.Env = append(os.Environ(), "SKETCH=1")
-
-	// Open output files
-	stdout, err := os.Create(stdoutFile)
+	outFile := filepath.Join(tmpDir, "output")
+	out, err := os.Create(outFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create stdout file: %w", err)
+		return nil, fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer stdout.Close()
 
-	stderr, err := os.Create(stderrFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create stderr file: %w", err)
-	}
-	defer stderr.Close()
+	execCtx, cancel := context.WithTimeout(context.Background(), timeout) // detach from tool use context
+	cmd := b.makeBashCommand(execCtx, req.Command, out)
+	cmd.Env = append(cmd.Env, `GIT_SEQUENCE_EDITOR=python3 -c "import os, sys, signal, threading; print(f\"Send USR1 to pid {os.getpid()} after editing {sys.argv[1]}\", flush=True); signal.signal(signal.SIGUSR1, lambda *_: sys.exit(0)); threading.Event().wait()"`)
 
-	// Configure command to use the files
-	cmd.Stdin = nil
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	// Start the command
 	if err := cmd.Start(); err != nil {
+		cancel()
+		out.Close()
+		os.RemoveAll(tmpDir) // clean up temp dir -- didn't start means we don't need the output
 		return nil, fmt.Errorf("failed to start background command: %w", err)
 	}
 
-	// Start a goroutine to reap the process when it finishes
+	// Wait for completion in the background, then do cleanup.
 	go func() {
-		cmd.Wait()
-		// Process has been reaped
+		err := cmdWait(cmd)
+		// Leave a note to the agent so that it knows that the process has finished.
+		if err != nil {
+			fmt.Fprintf(out, "\n\n[background process failed: %v]\n", err)
+		} else {
+			fmt.Fprintf(out, "\n\n[background process completed]\n")
+		}
+		out.Close()
+		cancel()
 	}()
 
-	// Set up timeout handling if a timeout was specified
-	pid := cmd.Process.Pid
-	if timeout > 0 {
-		// Launch a goroutine that will kill the process after the timeout
-		go func() {
-			// TODO(josh): this should use a context instead of a sleep, like executeBash above,
-			// to avoid goroutine leaks. Possibly should be partially unified with executeBash.
-			// Sleep for the timeout duration
-			time.Sleep(timeout)
-
-			// TODO(philip): Should we do SIGQUIT and then SIGKILL in 5s?
-
-			// Try to kill the process group
-			killErr := syscall.Kill(-pid, syscall.SIGKILL)
-			if killErr != nil {
-				// If killing the process group fails, try to kill just the process
-				syscall.Kill(pid, syscall.SIGKILL)
-			}
-		}()
-	}
-
-	// Return the process ID and file paths
 	return &BackgroundResult{
-		PID:        cmd.Process.Pid,
-		StdoutFile: stdoutFile,
-		StderrFile: stderrFile,
+		PID:     cmd.Process.Pid,
+		OutFile: outFile,
 	}, nil
 }
 
@@ -380,11 +374,11 @@ func (b *BashTool) checkAndInstallMissingTools(ctx context.Context, command stri
 		return nil
 	}
 
-	err = b.installTools(ctx, missing)
-	if err != nil {
-		return err
-	}
 	for _, cmd := range missing {
+		err := b.installTool(ctx, cmd)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to install tool", "tool", cmd, "error", err)
+		}
 		doNotAttemptToolInstall[cmd] = true // either it's installed or it's not--either way, we're done with it
 	}
 	return nil
@@ -396,123 +390,143 @@ var (
 	doNotAttemptToolInstall = make(map[string]bool) // set to true if the tool should not be auto-installed
 )
 
-// installTools installs missing tools.
-func (b *BashTool) installTools(ctx context.Context, missing []string) error {
-	slog.InfoContext(ctx, "installTools subconvo", "tools", missing)
+// autodetectPackageManager returns the first package‑manager binary
+// found in PATH, or an empty string if none are present.
+func autodetectPackageManager() string {
+	// TODO: cache this result with a sync.OnceValue
 
+	managers := []string{
+		"apt", "apt-get", // Debian/Ubuntu
+		"brew", "port", // macOS (Homebrew / MacPorts)
+		"apk",        // Alpine
+		"yum", "dnf", // RHEL/Fedora
+		"pacman",          // Arch
+		"zypper",          // openSUSE
+		"xbps-install",    // Void
+		"emerge",          // Gentoo
+		"nix-env", "guix", // NixOS / Guix
+		"pkg",      // FreeBSD
+		"slackpkg", // Slackware
+	}
+
+	for _, m := range managers {
+		if _, err := exec.LookPath(m); err == nil {
+			return m
+		}
+	}
+	return ""
+}
+
+// installTool attempts to install a single missing tool using LLM validation and system package manager.
+func (b *BashTool) installTool(ctx context.Context, cmd string) error {
+	slog.InfoContext(ctx, "attempting to install tool", "tool", cmd)
+
+	packageManager := autodetectPackageManager()
+	if packageManager == "" {
+		return fmt.Errorf("no known package manager found in PATH")
+	}
 	info := conversation.ToolCallInfoFromContext(ctx)
 	if info.Convo == nil {
 		return fmt.Errorf("no conversation context available for tool installation")
 	}
 	subConvo := info.Convo.SubConvo()
 	subConvo.Hidden = true
-	subBash := &BashTool{EnableJITInstall: NoBashToolJITInstall}
+	subConvo.SystemPrompt = "You are an expert in software developer tools."
 
-	done := false
-	doneTool := &llm.Tool{
-		Name:        "done",
-		Description: "Call this tool once when finished processing all commands, providing the installation status for each.",
-		InputSchema: json.RawMessage(`{
-  "type": "object",
-  "properties": {
-    "results": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "command_name": {
-            "type": "string",
-            "description": "The name of the command"
-          },
-          "installed": {
-            "type": "boolean",
-            "description": "Whether the command was installed"
-          }
-        },
-        "required": ["command_name", "installed"]
-      }
-    }
-  },
-  "required": ["results"]
-}`),
-		Run: func(ctx context.Context, input json.RawMessage) llm.ToolOut {
-			type InstallResult struct {
-				CommandName string `json:"command_name"`
-				Installed   bool   `json:"installed"`
-			}
-			type DoneInput struct {
-				Results []InstallResult `json:"results"`
-			}
-			var doneInput DoneInput
-			err := json.Unmarshal(input, &doneInput)
-			results := doneInput.Results
-			if err != nil {
-				slog.WarnContext(ctx, "failed to parse install results", "raw", string(input), "error", err)
-			} else {
-				slog.InfoContext(ctx, "auto-tool installation complete", "results", results)
-			}
-			done = true
-			return llm.ToolOut{LLMContent: llm.TextContent("")}
-		},
-	}
+	query := fmt.Sprintf(`Do you know this command/package/tool? Is it legitimate, clearly non-harmful, and commonly used? Can it be installed with package manager %s?
 
-	subConvo.Tools = []*llm.Tool{
-		subBash.Tool(),
-		doneTool,
-	}
+Command: %s
 
-	const autoinstallSystemPrompt = `The assistant powers an entirely automated auto-installer tool.
+- YES: Respond ONLY with the package name used to install it
+- NO or UNSURE: Respond ONLY with the word NO`, packageManager, cmd)
 
-The user will provide a list of commands that were not found on the system.
-
-The assistant's task:
-
-First, decide whether each command is mainstream and safe for automatic installation in a development environment. Skip any commands that could cause security issues, legal problems, or consume excessive resources.
-
-For each appropriate command:
-
-1. Detect the system's package manager and install the command using standard repositories only (no source builds, no curl|bash installs).
-2. Make a minimal verification attempt (package manager success is sufficient).
-3. If installation fails after reasonable attempts, mark as failed and move on.
-
-Once all commands have been processed, call the "done" tool with the status of each command.
-`
-
-	subConvo.SystemPrompt = autoinstallSystemPrompt
-
-	cmds := new(strings.Builder)
-	cmds.WriteString("<commands>\n")
-	for _, cmd := range missing {
-		cmds.WriteString("<command>")
-		cmds.WriteString(cmd)
-		cmds.WriteString("</command>\n")
-	}
-	cmds.WriteString("</commands>\n")
-
-	resp, err := subConvo.SendUserTextMessage(cmds.String())
+	resp, err := subConvo.SendUserTextMessage(query)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to validate tool with LLM: %w", err)
 	}
 
-	for !done {
-		if resp.StopReason != llm.StopReasonToolUse {
-			return fmt.Errorf("subagent finished without calling tool")
-		}
+	if len(resp.Content) == 0 {
+		return fmt.Errorf("empty response from LLM for tool validation")
+	}
 
-		ctxWithWorkDir := WithWorkingDir(ctx, WorkingDir(ctx))
-		results, _, err := subConvo.ToolResultContents(ctxWithWorkDir, resp)
-		if err != nil {
-			return err
-		}
+	response := strings.TrimSpace(resp.Content[0].Text)
+	if response == "NO" || response == "UNSURE" {
+		slog.InfoContext(ctx, "tool installation declined by LLM", "tool", cmd, "response", response)
+		return fmt.Errorf("tool %s not approved for installation", cmd)
+	}
 
-		resp, err = subConvo.SendMessage(llm.Message{
-			Role:    llm.MessageRoleUser,
-			Content: results,
-		})
+	packageName := strings.TrimSpace(response)
+	if packageName == "" {
+		return fmt.Errorf("no package name provided for tool %s", cmd)
+	}
+
+	// Install the package (with update command first if needed)
+	// TODO: these invocations create zombies when we are PID 1.
+	// We should give them the same zombie-reaping treatment as above,
+	// if/when we care enough to put in the effort. Not today.
+	var updateCmd, installCmd string
+	switch packageManager {
+	case "apt", "apt-get":
+		updateCmd = fmt.Sprintf("sudo %s update", packageManager)
+		installCmd = fmt.Sprintf("sudo %s install -y %s", packageManager, packageName)
+	case "brew":
+		// brew handles updates automatically, no explicit update needed
+		installCmd = fmt.Sprintf("brew install %s", packageName)
+	case "apk":
+		updateCmd = "sudo apk update"
+		installCmd = fmt.Sprintf("sudo apk add %s", packageName)
+	case "yum", "dnf":
+		// For yum/dnf, we don't need a separate update command as the package cache is usually fresh enough
+		// and install will fetch the latest available packages
+		installCmd = fmt.Sprintf("sudo %s install -y %s", packageManager, packageName)
+	case "pacman":
+		updateCmd = "sudo pacman -Sy"
+		installCmd = fmt.Sprintf("sudo pacman -S --noconfirm %s", packageName)
+	case "zypper":
+		updateCmd = "sudo zypper refresh"
+		installCmd = fmt.Sprintf("sudo zypper install -y %s", packageName)
+	case "xbps-install":
+		updateCmd = "sudo xbps-install -S"
+		installCmd = fmt.Sprintf("sudo xbps-install -y %s", packageName)
+	case "emerge":
+		// Note: emerge --sync is expensive, so we skip it for JIT installs
+		// Users should manually sync if needed
+		installCmd = fmt.Sprintf("sudo emerge %s", packageName)
+	case "nix-env":
+		// nix-env doesn't require explicit updates for JIT installs
+		installCmd = fmt.Sprintf("nix-env -i %s", packageName)
+	case "guix":
+		// guix doesn't require explicit updates for JIT installs
+		installCmd = fmt.Sprintf("guix install %s", packageName)
+	case "pkg":
+		updateCmd = "sudo pkg update"
+		installCmd = fmt.Sprintf("sudo pkg install -y %s", packageName)
+	case "slackpkg":
+		updateCmd = "sudo slackpkg update"
+		installCmd = fmt.Sprintf("sudo slackpkg install %s", packageName)
+	default:
+		return fmt.Errorf("unsupported package manager: %s", packageManager)
+	}
+
+	slog.InfoContext(ctx, "installing tool", "tool", cmd, "package", packageName, "update_command", updateCmd, "install_command", installCmd)
+
+	// Execute the update command first if needed
+	if updateCmd != "" {
+		slog.InfoContext(ctx, "updating package cache", "command", updateCmd)
+		updateCmdExec := exec.CommandContext(ctx, "sh", "-c", updateCmd)
+		updateOutput, err := updateCmdExec.CombinedOutput()
 		if err != nil {
-			return err
+			slog.WarnContext(ctx, "package cache update failed, proceeding with install anyway", "error", err, "output", string(updateOutput))
 		}
 	}
 
+	// Execute the install command
+	cmdExec := exec.CommandContext(ctx, "sh", "-c", installCmd)
+	output, err := cmdExec.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to install %s: %w\nOutput: %s", packageName, err, string(output))
+	}
+
+	slog.InfoContext(ctx, "tool installation successful", "tool", cmd, "package", packageName)
 	return nil
 }

@@ -1371,6 +1371,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	bashTool := &claudetool.BashTool{
 		EnableJITInstall: claudetool.EnableBashToolJITInstall,
 		Timeouts:         a.config.BashTimeouts,
+		Pwd:              a.workingDir,
 	}
 
 	// Register all tools with the conversation
