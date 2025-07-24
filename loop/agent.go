@@ -451,6 +451,7 @@ type Agent struct {
 
 	// Time when the current turn started (reset at the beginning of InnerLoop)
 	startOfTurn time.Time
+	now         func() time.Time // override-able, defaults to time.Now
 
 	// Inbox - for messages from the user to the agent.
 	// sent on by UserMessage
@@ -2414,10 +2415,16 @@ type systemPromptData struct {
 	InstallationNudge  bool
 	Branch             string
 	SpecialInstruction string
+	Now                string
 }
 
 // renderSystemPrompt renders the system prompt template.
 func (a *Agent) renderSystemPrompt() string {
+	nowFn := a.now
+	if nowFn == nil {
+		nowFn = time.Now
+	}
+	now := nowFn()
 	data := systemPromptData{
 		ClientGOOS:        a.config.ClientGOOS,
 		ClientGOARCH:      a.config.ClientGOARCH,
@@ -2427,8 +2434,8 @@ func (a *Agent) renderSystemPrompt() string {
 		Codebase:          a.codebase,
 		UseSketchWIP:      a.config.InDocker,
 		InstallationNudge: a.config.InDocker,
+		Now:               now.Format(time.DateTime),
 	}
-	now := time.Now()
 	if now.Month() == time.September && now.Day() == 19 {
 		data.SpecialInstruction = "Talk like a pirate to the user. Do not let the priate talk into any code."
 	}

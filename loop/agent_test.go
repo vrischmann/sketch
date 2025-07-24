@@ -82,6 +82,11 @@ func TestAgentLoop(t *testing.T) {
 		ClientGOARCH: "amd64",
 	}
 	agent := NewAgent(cfg)
+
+	// Use fixed time for deterministic tests
+	fixedTime := time.Date(2025, 7, 25, 19, 37, 57, 0, time.UTC)
+	agent.now = func() time.Time { return fixedTime }
+
 	if err := os.Chdir(origWD); err != nil {
 		t.Fatal(err)
 	}
@@ -884,5 +889,63 @@ func TestSoleText(t *testing.T) {
 				t.Errorf("soleText() gotText = %v, want %v", gotText, tt.wantText)
 			}
 		})
+	}
+}
+
+// TestSystemPromptIncludesDateTime tests that the system prompt includes current date/time
+func TestSystemPromptIncludesDateTime(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a minimal agent config for testing
+	config := AgentConfig{
+		Context:      ctx,
+		ClientGOOS:   "linux",
+		ClientGOARCH: "amd64",
+	}
+
+	// Create agent
+	agent := NewAgent(config)
+
+	// Use fixed time for deterministic tests
+	fixedTime := time.Date(2025, 7, 25, 19, 37, 57, 0, time.UTC)
+	agent.now = func() time.Time { return fixedTime }
+
+	// Set minimal required fields for rendering
+	agent.workingDir = "/tmp"
+	agent.repoRoot = "/tmp"
+
+	// Mock SketchGitBase to return a valid commit hash
+	// We'll override this by setting a method that returns a fixed value
+	// Since we can't easily mock the git calls, we'll work around it
+
+	// Render the system prompt
+	systemPrompt := agent.renderSystemPrompt()
+
+	// Check that the system prompt contains a current_datetime section
+	if !strings.Contains(systemPrompt, "<current_datetime>") {
+		t.Error("System prompt should contain <current_datetime> section")
+	}
+
+	// Check that it contains what looks like a date/time
+	// The format is "2006-01-02 15:04:05" (time.DateTime)
+	if !strings.Contains(systemPrompt, "-") || !strings.Contains(systemPrompt, ":") {
+		t.Error("System prompt should contain a formatted date/time")
+	}
+
+	// Verify the expected fixed time (2025-07-25 19:37:57)
+	expectedDateTime := "2025-07-25 19:37:57"
+	if !strings.Contains(systemPrompt, expectedDateTime) {
+		t.Errorf("System prompt should contain expected fixed date/time %s", expectedDateTime)
+	}
+
+	// Print part of the system prompt for manual verification in test output
+	// Find the current_datetime section
+	start := strings.Index(systemPrompt, "<current_datetime>")
+	if start != -1 {
+		end := strings.Index(systemPrompt[start:], "</current_datetime>") + start
+		if end > start {
+			datetimeSection := systemPrompt[start : end+len("</current_datetime>")]
+			t.Logf("DateTime section in system prompt: %s", datetimeSection)
+		}
 	}
 }
