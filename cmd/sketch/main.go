@@ -582,9 +582,9 @@ func resolveModel(flags CLIFlags) (spec modelSpec, pubKey string, err error) {
 
 	if flags.skabandAddr == "" {
 		// When not using skaband, get API key from environment or flag
-		envName := ant.APIKeyEnv
-		if flags.modelName == "gemini" {
-			envName = gem.GeminiAPIKeyEnv
+		envName := envNameForModel(flags.modelName)
+		if envName == "" {
+			return modelSpec{}, "", fmt.Errorf("unknown model '%s', use -list-models to see available models", flags.modelName)
 		}
 		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)
 		if apiKey == "" {
@@ -899,7 +899,7 @@ func defaultGitEmail() string {
 func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey string) (llm.Service, error) {
 	if ant.IsClaudeModel(flags.modelName) {
 		if apiKey == "" {
-			return nil, fmt.Errorf("missing ANTHROPIC_API_KEY")
+			return nil, fmt.Errorf("no anthropic api key provided, set %s", ant.APIKeyEnv)
 		}
 		return &ant.Service{
 			HTTPC:   client,
@@ -912,7 +912,7 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 
 	if flags.modelName == "gemini" {
 		if apiKey == "" {
-			return nil, fmt.Errorf("missing %s", gem.GeminiAPIKeyEnv)
+			return nil, fmt.Errorf("no gemini api key provided, set %s", gem.GeminiAPIKeyEnv)
 		}
 		return &gem.Service{
 			HTTPC:   client,
@@ -929,8 +929,8 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 	}
 
 	// Verify we have an API key, if necessary.
-	apiKey = os.Getenv(model.APIKeyEnv)
-	if model.APIKeyEnv != "" && apiKey == "" {
+	apiKey = cmp.Or(os.Getenv(model.APIKeyEnv), flags.llmAPIKey)
+	if apiKey == "" {
 		return nil, fmt.Errorf("missing API key for %s model, set %s environment variable", model.UserName, model.APIKeyEnv)
 	}
 
@@ -940,6 +940,21 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 		APIKey:  apiKey,
 		DumpLLM: flags.dumpLLM,
 	}, nil
+}
+
+func envNameForModel(modelName string) string {
+	switch {
+	case ant.IsClaudeModel(modelName):
+		return ant.APIKeyEnv
+	case modelName == "gemini":
+		return gem.GeminiAPIKeyEnv
+	default:
+		model := oai.ModelByUserName(modelName)
+		if model.IsZero() {
+			return ""
+		}
+		return model.APIKeyEnv
+	}
 }
 
 // dumpDistFilesystem dumps the embedded /dist/ filesystem to the specified directory
