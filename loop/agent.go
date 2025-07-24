@@ -1377,9 +1377,15 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	browserTools = bTools
 
 	convo.Tools = []*llm.Tool{
-		bashTool.Tool(), claudetool.Keyword, claudetool.Patch(a.patchCallback),
-		claudetool.Think, claudetool.TodoRead, claudetool.TodoWrite, makeDoneTool(a.codereview),
-		a.codereview.Tool(), claudetool.AboutSketch,
+		bashTool.Tool(),
+		claudetool.Keyword,
+		claudetool.Patch(a.patchCallback),
+		claudetool.Think,
+		claudetool.TodoRead,
+		claudetool.TodoWrite,
+		makeDoneTool(a.codereview),
+		a.codereview.Tool(),
+		claudetool.AboutSketch,
 	}
 	convo.Tools = append(convo.Tools, browserTools...)
 
