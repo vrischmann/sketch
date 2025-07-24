@@ -368,10 +368,22 @@ func fromLLMMessage(msg llm.Message) []openai.ChatCompletionMessage {
 	// Process tool results as separate messages, but first
 	for _, tr := range toolResults {
 		// Convert toolresult array to a string for OpenAI
-		var toolResultContent string
-		if len(tr.ToolResult) > 0 {
-			// For now, just use the first text content in the array
-			toolResultContent = tr.ToolResult[0].Text
+		// Collect all text from content objects
+		var texts []string
+		for _, result := range tr.ToolResult {
+			if strings.TrimSpace(result.Text) != "" {
+				texts = append(texts, result.Text)
+			}
+		}
+		toolResultContent := strings.Join(texts, "\n")
+
+		// OpenAI doesn't have an explicit error field for tool results, so add it directly to the content.
+		if tr.ToolError {
+			if toolResultContent != "" {
+				toolResultContent = "error: " + toolResultContent
+			} else {
+				toolResultContent = "error: tool execution failed"
+			}
 		}
 
 		m := openai.ChatCompletionMessage{
@@ -504,7 +516,7 @@ func toToolResultLLMContent(msg openai.ChatCompletionMessage) llm.Content {
 			Type: llm.ContentTypeText,
 			Text: msg.Content,
 		}},
-		ToolError: false, // OpenAI doesn't specify errors explicitly
+		ToolError: false, // OpenAI doesn't specify errors explicitly; error information is parsed from content
 	}
 }
 
