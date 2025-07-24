@@ -43,61 +43,43 @@ func makeDoneTool(codereview *codereview.CodeReviewer) *llm.Tool {
 const (
 	doneDescription         = `Use this tool when you have achieved the user's goal. The parameters form a checklist which you should evaluate.`
 	doneChecklistJSONSchema = `{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Checklist",
-  "description": "A schema for tracking checklist items with status and comments",
   "type": "object",
-  "required": ["checklist_items"],
   "properties": {
-    "checklist_items": {
-      "type": "object",
-      "description": "Collection of checklist items",
-      "properties": {
-        "checked_guidance": {
-          "$ref": "#/definitions/checklistItem",
-          "description": "I checked for and followed any directory-specific guidance files for all modified files."
-        },
-        "wrote_tests": {
-          "$ref": "#/definitions/checklistItem",
-          "description": "If code was changed, tests were written or updated."
-        },
-        "passes_tests": {
-          "$ref": "#/definitions/checklistItem",
-          "description": "If any commits were made, tests pass."
-        },
-        "code_reviewed": {
-          "$ref": "#/definitions/checklistItem",
-          "description": "If any commits were made, the codereview tool was run and its output was addressed."
-        },
-        "git_commit": {
-          "$ref": "#/definitions/checklistItem",
-          "description": "Create git commits for any code changes you made. A git hook will add Co-Authored-By and Change-ID trailers. The git user is already configured correctly."
-        }
-      },
-      "additionalProperties": {
-        "$ref": "#/definitions/checklistItem"
-      }
-    }
-  },
-  "definitions": {
-    "checklistItem": {
+    "checked_guidance": {
       "type": "object",
       "required": ["status"],
       "properties": {
-        "status": {
-          "type": "string",
-          "description": "Current status of the checklist item",
-          "enum": ["yes", "no", "not applicable", "other"]
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of what this checklist item verifies"
-        },
-        "comments": {
-          "type": "string",
-          "description": "Additional comments or context for this checklist item"
-        }
-      }
+        "status": {"type": "string", "enum": ["yes", "no", "n/a"]},
+        "comments": {"type": "string"}
+      },
+      "description": "Checked for and followed any directory-specific guidance files for all modified files."
+    },
+    "tested": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string", "enum": ["yes", "no", "n/a"]},
+        "comments": {"type": "string"}
+      },
+      "description": "If code was changed, tests were written or updated, and all tests pass."
+    },
+    "code_reviewed": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string", "enum": ["yes", "no", "n/a"]},
+        "comments": {"type": "string"}
+      },
+      "description": "If any commits were made, the codereview tool was run and its output addressed."
+    },
+    "git_commit": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string", "enum": ["yes", "no", "n/a"]},
+        "comments": {"type": "string"}
+      },
+      "description": "All code changes were committed. A git hook adds Co-Authored-By and Change-ID trailers. The git user is already configured correctly."
     }
   }
 }`
