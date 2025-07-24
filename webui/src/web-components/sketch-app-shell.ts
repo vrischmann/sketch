@@ -5,6 +5,18 @@ import { SketchAppShellBase } from "./sketch-app-shell-base";
 
 @customElement("sketch-app-shell")
 export class SketchAppShell extends SketchAppShellBase {
+  connectedCallback(): void {
+    super.connectedCallback();
+
+    this.dataManager.addEventListener("sessionEnded", () => {
+      this.handleSessionEnded();
+    });
+  }
+
+  async handleSessionEnded() {
+    await this.navigateToMessagesArchiveView();
+  }
+
   render() {
     return html`
       <!-- Main container: flex column, full height, system font, hidden overflow-x -->

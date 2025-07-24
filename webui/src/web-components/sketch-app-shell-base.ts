@@ -119,7 +119,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
 
   private _slug: string = "";
 
-  private dataManager = new DataManager();
+  dataManager = new DataManager();
 
   @property({ attribute: false })
   containerState: State = {
@@ -727,29 +727,33 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
 
       // After successful response, redirect to messages view
       // Extract the session ID from the URL
-      const currentUrl = window.location.href;
-      // The URL pattern should be like https://sketch.dev/s/cs71-8qa6-1124-aw79/
-      const urlParts = currentUrl.split("/");
-      let sessionId = "";
-
-      // Find the session ID in the URL (should be after /s/)
-      for (let i = 0; i < urlParts.length; i++) {
-        if (urlParts[i] === "s" && i + 1 < urlParts.length) {
-          sessionId = urlParts[i + 1];
-          break;
-        }
-      }
-
-      if (sessionId) {
-        // Create the messages URL
-        const messagesUrl = `/messages/${sessionId}`;
-        // Redirect to messages view
-        window.location.href = messagesUrl;
-      }
+      await this.navigateToMessagesArchiveView();
 
       // End request sent - connection will be closed by server
     } catch (error) {
       console.error("Error ending session:", error);
+    }
+  }
+
+  async navigateToMessagesArchiveView(): Promise<void> {
+    const currentUrl = window.location.href;
+    // The URL pattern should be like https://sketch.dev/s/cs71-8qa6-1124-aw79/
+    const urlParts = currentUrl.split("/");
+    let sessionId = "";
+
+    // Find the session ID in the URL (should be after /s/)
+    for (let i = 0; i < urlParts.length; i++) {
+      if (urlParts[i] === "s" && i + 1 < urlParts.length) {
+        sessionId = urlParts[i + 1];
+        break;
+      }
+    }
+
+    if (sessionId) {
+      // Create the messages URL
+      const messagesUrl = `/messages/${sessionId}`;
+      // Redirect to messages view
+      window.location.href = messagesUrl;
     }
   }
 
