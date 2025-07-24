@@ -2401,6 +2401,7 @@ type systemPromptData struct {
 	InitialCommit      string
 	Codebase           *onstart.Codebase
 	UseSketchWIP       bool
+	InstallationNudge  bool
 	Branch             string
 	SpecialInstruction string
 }
@@ -2408,13 +2409,14 @@ type systemPromptData struct {
 // renderSystemPrompt renders the system prompt template.
 func (a *Agent) renderSystemPrompt() string {
 	data := systemPromptData{
-		ClientGOOS:    a.config.ClientGOOS,
-		ClientGOARCH:  a.config.ClientGOARCH,
-		WorkingDir:    a.workingDir,
-		RepoRoot:      a.repoRoot,
-		InitialCommit: a.SketchGitBase(),
-		Codebase:      a.codebase,
-		UseSketchWIP:  a.config.InDocker,
+		ClientGOOS:        a.config.ClientGOOS,
+		ClientGOARCH:      a.config.ClientGOARCH,
+		WorkingDir:        a.workingDir,
+		RepoRoot:          a.repoRoot,
+		InitialCommit:     a.SketchGitBase(),
+		Codebase:          a.codebase,
+		UseSketchWIP:      a.config.InDocker,
+		InstallationNudge: a.config.InDocker,
 	}
 	now := time.Now()
 	if now.Month() == time.September && now.Day() == 19 {
