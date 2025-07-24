@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Demo runner that dynamically loads and executes demo modules
  */

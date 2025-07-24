@@ -52,6 +52,8 @@ export default tseslint.config(
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // Allow explicit any - often needed for interfacing with dynamic data
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 );

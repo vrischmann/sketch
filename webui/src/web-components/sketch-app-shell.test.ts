@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from "@sand4rt/experimental-ct-web";
 import { SketchAppShell } from "./sketch-app-shell";
 import { initialMessages, initialState } from "../fixtures/dummy";

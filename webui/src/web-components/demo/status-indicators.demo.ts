@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DemoModule } from "./demo-framework/types";
 import { demoUtils } from "./demo-fixtures/index";
 

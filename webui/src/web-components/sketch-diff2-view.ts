@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { SketchTailwindElement } from "./sketch-tailwind-element.js";

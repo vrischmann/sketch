@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { html } from "lit";
 import { property, state } from "lit/decorators.js";
 import { ConnectionStatus, DataManager } from "../data";

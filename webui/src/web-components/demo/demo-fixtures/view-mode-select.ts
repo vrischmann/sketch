@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Shared demo fixtures for SketchViewModeSelect component
  */
