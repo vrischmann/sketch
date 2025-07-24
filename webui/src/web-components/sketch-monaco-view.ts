@@ -373,6 +373,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
                 placeholder="Type your comment here..."
                 .value="${this.commentText}"
                 @input="${this.handleCommentInput}"
+                @keydown="${this.handleCommentKeydown}"
               ></textarea>
               <div class="flex justify-end gap-2">
                 <button
@@ -400,6 +401,17 @@ export class CodeDiffEditor extends SketchTailwindElement {
   private handleCommentInput(e: Event) {
     const target = e.target as HTMLTextAreaElement;
     this.commentText = target.value;
+  }
+
+  /**
+   * Handle keyboard shortcuts in the comment textarea
+   */
+  private handleCommentKeydown(e: KeyboardEvent) {
+    // Check for Command+Enter (Mac) or Ctrl+Enter (other platforms)
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      this.submitComment();
+    }
   }
 
   /**
