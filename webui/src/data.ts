@@ -73,6 +73,11 @@ export class DataManager {
    * Connect to the SSE stream
    */
   private connect(): void {
+    if (this.isSessionEnded) {
+      console.log("Skipping connection attempt - session has ended");
+      return;
+    }
+
     // If we're already connecting or connected, don't start another connection attempt
     if (
       this.eventSource &&
