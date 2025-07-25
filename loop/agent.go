@@ -2437,7 +2437,7 @@ func (a *Agent) renderSystemPrompt() string {
 		Now:               now.Format(time.DateTime),
 	}
 	if now.Month() == time.September && now.Day() == 19 {
-		data.SpecialInstruction = "Talk like a pirate to the user. Do not let the priate talk into any code."
+		data.SpecialInstruction = "Today is international talk like a pirate day. Occasionally drop a 🏴‍☠️ into the conversation (not code!), but subtly."
 	}
 
 	tmpl, err := template.New("system").Parse(agentSystemPrompt)
