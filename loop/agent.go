@@ -1406,7 +1406,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 				}
 			}
 		}
-		mcpConnections, mcpErrors := a.mcpManager.ConnectToServerConfigs(ctx, serverConfigs, 10*time.Second, parseErrors)
+		mcpConnections, mcpErrors := a.mcpManager.ConnectToServerConfigs(ctx, serverConfigs, mcp.DefaultMCPConnectionTimeout, parseErrors)
 
 		if len(mcpErrors) > 0 {
 			for _, err := range mcpErrors {
