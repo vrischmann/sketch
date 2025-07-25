@@ -772,6 +772,23 @@ export class SketchContainerStatus extends SketchTailwindElement {
                 )}/${formatNumber(this.state?.token_context_window || 0)}</span
               >
             </div>
+            ${this.state?.model
+              ? html`
+                  <div
+                    class="flex items-center whitespace-nowrap mr-2.5 text-xs"
+                  >
+                    <span
+                      class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                      >Model:</span
+                    >
+                    <span
+                      id="modelName"
+                      class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                      >${this.state?.model}</span
+                    >
+                  </div>
+                `
+              : ""}
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
                 class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"

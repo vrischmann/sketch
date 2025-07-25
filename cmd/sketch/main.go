@@ -657,6 +657,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		OutsideOS:         flags.outsideOS,
 		OutsideWorkingDir: flags.outsideWorkingDir,
 		WorkingDir:        wd,
+		Model:             flags.modelName,
 		// Ultimately this is a subtle flag because it's trying to distinguish
 		// between unsafe-on-host and inside sketch, and should probably be renamed/simplified.
 		InDocker:            flags.outsideHostname != "",

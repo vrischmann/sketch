@@ -35,11 +35,17 @@ type mockAgent struct {
 	slug                     string
 	retryNumber              int
 	skabandAddr              string
+	model                    string
 }
 
 // TokenContextWindow implements loop.CodingAgent.
 func (m *mockAgent) TokenContextWindow() int {
 	return 200000
+}
+
+// ModelName implements loop.CodingAgent.
+func (m *mockAgent) ModelName() string {
+	return m.model
 }
 
 func (m *mockAgent) NewIterator(ctx context.Context, nextMessageIdx int) loop.MessageIterator {
@@ -293,6 +299,7 @@ func TestSSEStream(t *testing.T) {
 		branchName:               "sketch/test-branch",
 		branchPrefix:             "sketch/",
 		slug:                     "test-slug",
+		model:                    "fake-model",
 	}
 
 	// Add the initial messages before creating the server
@@ -428,6 +435,7 @@ func TestGitRawDiffHandler(t *testing.T) {
 	mockAgent := &mockAgent{
 		workingDir:   t.TempDir(), // Use a temp directory
 		branchPrefix: "sketch/",
+		model:        "fake-model",
 	}
 
 	// Create the server with the mock agent
@@ -475,6 +483,7 @@ func TestGitShowHandler(t *testing.T) {
 	mockAgent := &mockAgent{
 		workingDir:   t.TempDir(), // Use a temp directory
 		branchPrefix: "sketch/",
+		model:        "fake-model",
 	}
 
 	// Create the server with the mock agent
@@ -514,6 +523,7 @@ func TestCompactHandler(t *testing.T) {
 		messageCount: 0,
 		sessionID:    "test-session",
 		branchPrefix: "sketch/",
+		model:        "fake-model",
 	}
 
 	ctx := context.Background()
@@ -618,6 +628,7 @@ func TestStateEndpointIncludesPorts(t *testing.T) {
 		branchPrefix:  "test-",
 		workingDir:    "/tmp/test",
 		sessionID:     "test-session",
+		model:         "fake-model",
 		slug:          "test-slug",
 		skabandAddr:   "http://localhost:8080",
 	}
@@ -686,6 +697,7 @@ func TestGitPushHandler(t *testing.T) {
 	mockAgent := &mockAgent{
 		workingDir:   t.TempDir(),
 		branchPrefix: "sketch/",
+		model:        "fake-model",
 	}
 
 	// Create the server with the mock agent
@@ -771,6 +783,7 @@ func TestGitPushInfoHandler(t *testing.T) {
 	mockAgent := &mockAgent{
 		workingDir:   t.TempDir(),
 		branchPrefix: "sketch/",
+		model:        "fake-model",
 	}
 
 	// Create the server with the mock agent

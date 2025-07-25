@@ -164,6 +164,9 @@ type CodingAgent interface {
 
 	// TokenContextWindow returns the TokenContextWindow size of the model the agent is using.
 	TokenContextWindow() int
+
+	// ModelName returns the name of the model the agent is using.
+	ModelName() string
 }
 
 type CodingAgentMessageType string
@@ -479,6 +482,11 @@ type Agent struct {
 // TokenContextWindow implements CodingAgent.
 func (a *Agent) TokenContextWindow() int {
 	return a.config.Service.TokenContextWindow()
+}
+
+// ModelName returns the name of the model the agent is using.
+func (a *Agent) ModelName() string {
+	return a.config.Model
 }
 
 // GetConvo returns the conversation interface for debugging purposes.
@@ -1090,6 +1098,8 @@ type AgentConfig struct {
 	InDocker     bool
 	OneShot      bool
 	WorkingDir   string
+	// Model is the name of the LLM model being used
+	Model string
 	// Outside information
 	OutsideHostname   string
 	OutsideOS         string

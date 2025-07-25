@@ -104,6 +104,7 @@ export interface State {
 	diff_lines_removed: number;
 	open_ports?: Port[] | null;
 	token_context_window?: number;
+	model?: string;
 	session_ended?: boolean;
 	can_send_messages?: boolean;
 	ended_at?: string;
