@@ -67,6 +67,12 @@ type GitPushResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
+// httpError logs the error and sends an HTTP error response
+func httpError(w http.ResponseWriter, r *http.Request, message string, code int) {
+	slog.Error("HTTP error", "method", r.Method, "path", r.URL.Path, "message", message, "code", code)
+	http.Error(w, message, code)
+}
+
 // isGitHubURL checks if a URL is a GitHub URL
 func isGitHubURL(url string) bool {
 	return strings.Contains(url, "github.com")
@@ -237,7 +243,7 @@ func (s *Server) proxyToPort(w http.ResponseWriter, r *http.Request, port string
 	// Create a reverse proxy to localhost:<port>
 	target, err := url.Parse(fmt.Sprintf("http://localhost:%s", port))
 	if err != nil {
-		http.Error(w, "Failed to parse proxy target", http.StatusInternalServerError)
+		httpError(w, r, "Failed to parse proxy target", http.StatusInternalServerError)
 		return
 	}
 
@@ -256,7 +262,7 @@ func (s *Server) proxyToPort(w http.ResponseWriter, r *http.Request, port string
 	// Handle proxy errors
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		slog.Error("Proxy error", "error", err, "target", target.String(), "port", port)
-		http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
+		httpError(w, r, "Proxy error: "+err.Error(), http.StatusBadGateway)
 	}
 
 	proxy.ServeHTTP(w, r)
@@ -294,7 +300,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if commit != "" {
 			// Validate the commit hash format
 			if !isValidGitSHA(commit) {
-				http.Error(w, fmt.Sprintf("Invalid git commit SHA format: %s", commit), http.StatusBadRequest)
+				httpError(w, r, fmt.Sprintf("Invalid git commit SHA format: %s", commit), http.StatusBadRequest)
 				return
 			}
 
@@ -304,7 +310,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error generating diff: %v", err), http.StatusInternalServerError)
+			httpError(w, r, fmt.Sprintf("Error generating diff: %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -319,25 +325,25 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 				slog.ErrorContext(r.Context(), "/init panic", slog.Any("recovered_err", err))
 
 				// Return an error response to the client
-				http.Error(w, fmt.Sprintf("panic: %v\n", err), http.StatusInternalServerError)
+				httpError(w, r, fmt.Sprintf("panic: %v\n", err), http.StatusInternalServerError)
 			}
 		}()
 
 		if r.Method != "POST" {
-			http.Error(w, "POST required", http.StatusBadRequest)
+			httpError(w, r, "POST required", http.StatusBadRequest)
 			return
 		}
 
 		body, err := io.ReadAll(r.Body)
 		r.Body.Close()
 		if err != nil {
-			http.Error(w, "failed to read request body: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "failed to read request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		m := &InitRequest{}
 		if err := json.Unmarshal(body, m); err != nil {
-			http.Error(w, "bad request body: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "bad request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -363,7 +369,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 			HostAddr: m.HostAddr,
 		}
 		if err := agent.Init(ini); err != nil {
-			http.Error(w, "init failed: "+err.Error(), http.StatusInternalServerError)
+			httpError(w, r, "init failed: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -384,7 +390,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if startParam != "" {
 			start, err = strconv.Atoi(startParam)
 			if err != nil {
-				http.Error(w, "Invalid 'start' parameter", http.StatusBadRequest)
+				httpError(w, r, "Invalid 'start' parameter", http.StatusBadRequest)
 				return
 			}
 		}
@@ -393,7 +399,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if endParam != "" {
 			end, err = strconv.Atoi(endParam)
 			if err != nil {
-				http.Error(w, "Invalid 'end' parameter", http.StatusBadRequest)
+				httpError(w, r, "Invalid 'end' parameter", http.StatusBadRequest)
 				return
 			}
 		} else {
@@ -401,7 +407,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 
 		if start < 0 || start > end || end > currentCount {
-			http.Error(w, fmt.Sprintf("Invalid range: start %d end %d currentCount %d", start, end, currentCount), http.StatusBadRequest)
+			httpError(w, r, fmt.Sprintf("Invalid range: start %d end %d currentCount %d", start, end, currentCount), http.StatusBadRequest)
 			return
 		}
 
@@ -415,19 +421,19 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		err = encoder.Encode(messages)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpError(w, r, err.Error(), http.StatusInternalServerError)
 		}
 	})
 
 	// Handler for /logs - displays the contents of the log file
 	s.mux.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
 		if s.logFile == nil {
-			http.Error(w, "log file not set", http.StatusNotFound)
+			httpError(w, r, "log file not set", http.StatusNotFound)
 			return
 		}
 		logContents, err := os.ReadFile(s.logFile.Name())
 		if err != nil {
-			http.Error(w, "error reading log file: "+err.Error(), http.StatusInternalServerError)
+			httpError(w, r, "error reading log file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -476,7 +482,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		// Marshal the JSON with indentation for better readability
 		jsonData, err := json.MarshalIndent(downloadData, "", "  ")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpError(w, r, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Write(jsonData)
@@ -494,7 +500,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if seenParam != "" {
 			clientMessageCount, err = strconv.Atoi(seenParam)
 			if err != nil {
-				http.Error(w, "Invalid 'seen' parameter", http.StatusBadRequest)
+				httpError(w, r, "Invalid 'seen' parameter", http.StatusBadRequest)
 				return
 			}
 		}
@@ -538,7 +544,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		err = encoder.Encode(state)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpError(w, r, err.Error(), http.StatusInternalServerError)
 		}
 	})
 
@@ -549,19 +555,19 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// TODO: The UI doesn't actually know how to use terminals 2-9!
 	s.mux.HandleFunc("/terminal/events/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		pathParts := strings.Split(r.URL.Path, "/")
 		if len(pathParts) < 4 {
-			http.Error(w, "Invalid terminal ID", http.StatusBadRequest)
+			httpError(w, r, "Invalid terminal ID", http.StatusBadRequest)
 			return
 		}
 
 		sessionID := pathParts[3]
 		// Validate that the terminal ID is between 1-9
 		if len(sessionID) != 1 || sessionID[0] < '1' || sessionID[0] > '9' {
-			http.Error(w, "Terminal ID must be between 1 and 9", http.StatusBadRequest)
+			httpError(w, r, "Terminal ID must be between 1 and 9", http.StatusBadRequest)
 			return
 		}
 
@@ -570,12 +576,12 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 	s.mux.HandleFunc("/terminal/input/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		pathParts := strings.Split(r.URL.Path, "/")
 		if len(pathParts) < 4 {
-			http.Error(w, "Invalid terminal ID", http.StatusBadRequest)
+			httpError(w, r, "Invalid terminal ID", http.StatusBadRequest)
 			return
 		}
 		sessionID := pathParts[3]
@@ -595,14 +601,14 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// Handler for /commit-description - returns the description of a git commit
 	s.mux.HandleFunc("/commit-description", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
 		// Get the revision parameter
 		revision := r.URL.Query().Get("revision")
 		if revision == "" {
-			http.Error(w, "Missing revision parameter", http.StatusBadRequest)
+			httpError(w, r, "Missing revision parameter", http.StatusBadRequest)
 			return
 		}
 
@@ -613,7 +619,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			http.Error(w, "Failed to get commit description: "+err.Error(), http.StatusInternalServerError)
+			httpError(w, r, "Failed to get commit description: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -631,14 +637,14 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// Handler for /screenshot/{id} - serves screenshot images
 	s.mux.HandleFunc("/screenshot/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
 		// Extract the screenshot ID from the path
 		pathParts := strings.Split(r.URL.Path, "/")
 		if len(pathParts) < 3 {
-			http.Error(w, "Invalid screenshot ID", http.StatusBadRequest)
+			httpError(w, r, "Invalid screenshot ID", http.StatusBadRequest)
 			return
 		}
 
@@ -646,7 +652,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		// Validate the ID format (prevent directory traversal)
 		if strings.Contains(screenshotID, "/") || strings.Contains(screenshotID, "\\") {
-			http.Error(w, "Invalid screenshot ID format", http.StatusBadRequest)
+			httpError(w, r, "Invalid screenshot ID format", http.StatusBadRequest)
 			return
 		}
 
@@ -655,7 +661,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		// Check if the file exists
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			http.Error(w, "Screenshot not found", http.StatusNotFound)
+			httpError(w, r, "Screenshot not found", http.StatusNotFound)
 			return
 		}
 
@@ -668,7 +674,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// Handler for POST /chat
 	s.mux.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -679,13 +685,13 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&requestBody); err != nil {
-			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "Invalid request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer r.Body.Close()
 
 		if requestBody.Message == "" {
-			http.Error(w, "Message cannot be empty", http.StatusBadRequest)
+			httpError(w, r, "Message cannot be empty", http.StatusBadRequest)
 			return
 		}
 
@@ -697,7 +703,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// Handler for POST /upload - uploads a file to /tmp
 	s.mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -706,14 +712,14 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		// Parse the multipart form
 		if err := r.ParseMultipartForm(10 * 1024 * 1024); err != nil {
-			http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		// Get the file from the multipart form
 		file, handler, err := r.FormFile("file")
 		if err != nil {
-			http.Error(w, "Failed to get uploaded file: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "Failed to get uploaded file: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer file.Close()
@@ -721,7 +727,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		// Generate a unique ID (8 random bytes converted to 16 hex chars)
 		randBytes := make([]byte, 8)
 		if _, err := rand.Read(randBytes); err != nil {
-			http.Error(w, "Failed to generate random filename: "+err.Error(), http.StatusInternalServerError)
+			httpError(w, r, "Failed to generate random filename: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -734,14 +740,14 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		// Create the destination file
 		destFile, err := os.Create(filename)
 		if err != nil {
-			http.Error(w, "Failed to create destination file: "+err.Error(), http.StatusInternalServerError)
+			httpError(w, r, "Failed to create destination file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer destFile.Close()
 
 		// Copy the file contents to the destination file
 		if _, err := io.Copy(destFile, file); err != nil {
-			http.Error(w, "Failed to save file: "+err.Error(), http.StatusInternalServerError)
+			httpError(w, r, "Failed to save file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -759,7 +765,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// Handler for /cancel - cancels the current inner loop in progress
 	s.mux.HandleFunc("/cancel", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -771,7 +777,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&requestBody); err != nil && err != io.EOF {
-			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "Invalid request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer r.Body.Close()
@@ -784,7 +790,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		if requestBody.ToolCallID != "" {
 			err := agent.CancelToolUse(requestBody.ToolCallID, fmt.Errorf("%s", cancelReason))
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				httpError(w, r, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// Return a success response
@@ -806,7 +812,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 	// Handler for /end - shuts down the inner sketch process
 	s.mux.HandleFunc("/end", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -819,7 +825,7 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&requestBody); err != nil && err != io.EOF {
-			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			httpError(w, r, "Invalid request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer r.Body.Close()
@@ -916,7 +922,7 @@ func (s *Server) handleTerminalEvents(w http.ResponseWriter, r *http.Request, se
 		session, err = s.createTerminalSession(sessionID)
 		if err != nil {
 			s.ptyMutex.Unlock()
-			http.Error(w, fmt.Sprintf("Failed to create terminal: %v", err), http.StatusInternalServerError)
+			httpError(w, r, fmt.Sprintf("Failed to create terminal: %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -979,14 +985,14 @@ func (s *Server) handleTerminalInput(w http.ResponseWriter, r *http.Request, ses
 	s.ptyMutex.Unlock()
 
 	if !exists {
-		http.Error(w, "Terminal session not found", http.StatusNotFound)
+		httpError(w, r, "Terminal session not found", http.StatusNotFound)
 		return
 	}
 
 	// Read the request body (terminal input or resize command)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		httpError(w, r, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
@@ -1011,7 +1017,7 @@ func (s *Server) handleTerminalInput(w http.ResponseWriter, r *http.Request, ses
 	_, err = session.pty.Write(body)
 	if err != nil {
 		slog.Error("Failed to write to pty", "error", err)
-		http.Error(w, "Failed to write to terminal", http.StatusInternalServerError)
+		httpError(w, r, "Failed to write to terminal", http.StatusInternalServerError)
 		return
 	}
 
@@ -1136,14 +1142,14 @@ func initDebugMux(agent loop.CodingAgent) *http.ServeMux {
 			// Call the DebugJSON method to get the conversation history
 			historyJSON, err := convoProvider.GetConvo().DebugJSON()
 			if err != nil {
-				http.Error(w, fmt.Sprintf("Error getting conversation history: %v", err), http.StatusInternalServerError)
+				httpError(w, r, fmt.Sprintf("Error getting conversation history: %v", err), http.StatusInternalServerError)
 				return
 			}
 
 			// Write the JSON response
 			w.Write(historyJSON)
 		} else {
-			http.Error(w, "Agent does not support conversation history debugging", http.StatusNotImplemented)
+			httpError(w, r, "Agent does not support conversation history debugging", http.StatusNotImplemented)
 		}
 	})
 
@@ -1182,7 +1188,7 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 	if fromParam != "" {
 		fromIndex, err = strconv.Atoi(fromParam)
 		if err != nil {
-			http.Error(w, "Invalid 'from' parameter", http.StatusBadRequest)
+			httpError(w, r, "Invalid 'from' parameter", http.StatusBadRequest)
 			return
 		}
 	}
@@ -1433,7 +1439,7 @@ func (s *Server) handleGitRawDiff(w http.ResponseWriter, r *http.Request) {
 
 	// Check if we have enough parameters
 	if from == "" {
-		http.Error(w, "Missing required parameter: either 'commit' or at least 'from'", http.StatusBadRequest)
+		httpError(w, r, "Missing required parameter: either 'commit' or at least 'from'", http.StatusBadRequest)
 		return
 	}
 	// Note: 'to' can be empty to indicate working directory (unstaged changes)
@@ -1441,14 +1447,14 @@ func (s *Server) handleGitRawDiff(w http.ResponseWriter, r *http.Request) {
 	// Call the git_tools function
 	diff, err := git_tools.GitRawDiff(repoDir, from, to)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting git diff: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error getting git diff: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Return the result as JSON
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(diff); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -1465,14 +1471,14 @@ func (s *Server) handleGitShow(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	hash := r.URL.Query().Get("hash")
 	if hash == "" {
-		http.Error(w, "Missing required parameter: 'hash'", http.StatusBadRequest)
+		httpError(w, r, "Missing required parameter: 'hash'", http.StatusBadRequest)
 		return
 	}
 
 	// Call the git_tools function
 	show, err := git_tools.GitShow(repoDir, hash)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error running git show: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error running git show: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -1485,7 +1491,7 @@ func (s *Server) handleGitShow(w http.ResponseWriter, r *http.Request) {
 	// Return the result as JSON
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -1503,14 +1509,14 @@ func (s *Server) handleGitRecentLog(w http.ResponseWriter, r *http.Request) {
 	// Call the git_tools function
 	log, err := git_tools.GitRecentLog(repoDir, initialCommit)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting git log: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error getting git log: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Return the result as JSON
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(log); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -1530,7 +1536,7 @@ func (s *Server) handleGitCat(w http.ResponseWriter, r *http.Request) {
 
 	// Check if path is provided
 	if path == "" {
-		http.Error(w, "Missing required parameter: path", http.StatusBadRequest)
+		httpError(w, r, "Missing required parameter: path", http.StatusBadRequest)
 		return
 	}
 
@@ -1543,14 +1549,14 @@ func (s *Server) handleGitCat(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	default:
-		http.Error(w, fmt.Sprintf("error reading file: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("error reading file: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Return the content as JSON for consistency with other endpoints
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"output": content}); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -1571,34 +1577,34 @@ func (s *Server) handleGitSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		http.Error(w, fmt.Sprintf("Error parsing request body: %v", err), http.StatusBadRequest)
+		httpError(w, r, fmt.Sprintf("Error parsing request body: %v", err), http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	// Check if path is provided
 	if requestBody.Path == "" {
-		http.Error(w, "Missing required parameter: path", http.StatusBadRequest)
+		httpError(w, r, "Missing required parameter: path", http.StatusBadRequest)
 		return
 	}
 
 	// Save file content using GitSaveFile
 	err := git_tools.GitSaveFile(repoDir, requestBody.Path, requestBody.Content)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error saving file: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error saving file: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Auto-commit the changes
 	err = git_tools.AutoCommitDiffViewChanges(r.Context(), repoDir, requestBody.Path)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error auto-committing changes: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error auto-committing changes: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Detect git changes to push and notify user
 	if err = s.agent.DetectGitChanges(r.Context()); err != nil {
-		http.Error(w, fmt.Sprintf("Error detecting git changes: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error detecting git changes: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -1616,7 +1622,7 @@ func (s *Server) handleGitUntracked(w http.ResponseWriter, r *http.Request) {
 	repoDir := s.agent.RepoRoot()
 	untrackedFiles, err := git_tools.GitGetUntrackedFiles(repoDir)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting untracked files: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error getting untracked files: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -1641,13 +1647,13 @@ func (s *Server) handleGitPushInfo(w http.ResponseWriter, r *http.Request) {
 	cmd.Dir = repoDir
 	output, err := cmd.Output()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting HEAD commit: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error getting HEAD commit: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	parts := strings.Split(strings.TrimSpace(string(output)), "\x00")
 	if len(parts) != 2 {
-		http.Error(w, "Unexpected git log output format", http.StatusInternalServerError)
+		httpError(w, r, "Unexpected git log output format", http.StatusInternalServerError)
 		return
 	}
 	hash := parts[0]
@@ -1658,7 +1664,7 @@ func (s *Server) handleGitPushInfo(w http.ResponseWriter, r *http.Request) {
 	cmd.Dir = repoDir
 	output, err = cmd.Output()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting remotes: %v", err), http.StatusInternalServerError)
+		httpError(w, r, fmt.Sprintf("Error getting remotes: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -1720,13 +1726,13 @@ func (s *Server) handleGitPush(w http.ResponseWriter, r *http.Request) {
 	var requestBody GitPushRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		http.Error(w, fmt.Sprintf("Error parsing request body: %v", err), http.StatusBadRequest)
+		httpError(w, r, fmt.Sprintf("Error parsing request body: %v", err), http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	if requestBody.Remote == "" || requestBody.Branch == "" || requestBody.Commit == "" {
-		http.Error(w, "Missing required parameters: remote, branch, and commit", http.StatusBadRequest)
+		httpError(w, r, "Missing required parameters: remote, branch, and commit", http.StatusBadRequest)
 		return
 	}
 

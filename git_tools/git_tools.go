@@ -434,20 +434,15 @@ func AutoCommitDiffViewChanges(ctx context.Context, repoDir, filePath string) er
 	const expectedMsg = "User changes from diff view."
 	amend := err == nil && commitMsg == expectedMsg
 
-	// Add the file to git
-	cmd = exec.CommandContext(ctx, "git", "add", filePath)
-	cmd.Dir = repoDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("error adding file to git: %w - git output: %s", err, string(out))
-	}
-
 	// Commit the changes
+	// Instead of calling git add first, we call git commit with a filepsec, which works the same,
+	// but would fail if the file isn't tracked by git already.
 	if amend {
 		// Amend the previous commit
-		cmd = exec.CommandContext(ctx, "git", "commit", "--amend", "--no-edit")
+		cmd = exec.CommandContext(ctx, "git", "commit", "--amend", "--no-edit", "--", filePath)
 	} else {
 		// Create a new commit
-		cmd = exec.CommandContext(ctx, "git", "commit", "-m", expectedMsg, filePath)
+		cmd = exec.CommandContext(ctx, "git", "commit", "-m", expectedMsg, "--", filePath)
 	}
 	cmd.Dir = repoDir
 
