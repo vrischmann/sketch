@@ -100,9 +100,9 @@ Direct user instructions from the current conversation always take highest prece
 <pwd>
 {{.WorkingDir}}
 </pwd>
-<current_datetime>
+<current_date>
 {{.Now}}
-</current_datetime>
+</current_date>
 </system_info>
 
 <git_info>

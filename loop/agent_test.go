@@ -921,31 +921,31 @@ func TestSystemPromptIncludesDateTime(t *testing.T) {
 	// Render the system prompt
 	systemPrompt := agent.renderSystemPrompt()
 
-	// Check that the system prompt contains a current_datetime section
-	if !strings.Contains(systemPrompt, "<current_datetime>") {
-		t.Error("System prompt should contain <current_datetime> section")
+	// Check that the system prompt contains a current_date section
+	if !strings.Contains(systemPrompt, "<current_date>") {
+		t.Error("System prompt should contain <current_date> section")
 	}
 
-	// Check that it contains what looks like a date/time
-	// The format is "2006-01-02 15:04:05" (time.DateTime)
-	if !strings.Contains(systemPrompt, "-") || !strings.Contains(systemPrompt, ":") {
-		t.Error("System prompt should contain a formatted date/time")
+	// Check that it contains what looks like a date
+	// The format is "2006-01-02" (time.DateOnly)
+	if !strings.Contains(systemPrompt, "-") {
+		t.Error("System prompt should contain a formatted date")
 	}
 
-	// Verify the expected fixed time (2025-07-25 19:37:57)
-	expectedDateTime := "2025-07-25 19:37:57"
-	if !strings.Contains(systemPrompt, expectedDateTime) {
-		t.Errorf("System prompt should contain expected fixed date/time %s", expectedDateTime)
+	// Verify the expected fixed date (2025-07-25)
+	expectedDate := "2025-07-25"
+	if !strings.Contains(systemPrompt, expectedDate) {
+		t.Errorf("System prompt should contain expected fixed date %s", expectedDate)
 	}
 
 	// Print part of the system prompt for manual verification in test output
-	// Find the current_datetime section
-	start := strings.Index(systemPrompt, "<current_datetime>")
+	// Find the current_date section
+	start := strings.Index(systemPrompt, "<current_date>")
 	if start != -1 {
-		end := strings.Index(systemPrompt[start:], "</current_datetime>") + start
+		end := strings.Index(systemPrompt[start:], "</current_date>") + start
 		if end > start {
-			datetimeSection := systemPrompt[start : end+len("</current_datetime>")]
-			t.Logf("DateTime section in system prompt: %s", datetimeSection)
+			dateSection := systemPrompt[start : end+len("</current_date>")]
+			t.Logf("Date section in system prompt: %s", dateSection)
 		}
 	}
 }

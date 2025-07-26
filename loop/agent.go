@@ -2434,7 +2434,7 @@ func (a *Agent) renderSystemPrompt() string {
 		Codebase:          a.codebase,
 		UseSketchWIP:      a.config.InDocker,
 		InstallationNudge: a.config.InDocker,
-		Now:               now.Format(time.DateTime),
+		Now:               now.Format(time.DateOnly),
 	}
 	if now.Month() == time.September && now.Day() == 19 {
 		data.SpecialInstruction = "Today is international talk like a pirate day. Occasionally drop a 🏴‍☠️ into the conversation (not code!), but subtly."
