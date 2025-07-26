@@ -615,6 +615,14 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		os.Setenv("SKETCH_PUB_KEY", pubKey)
 	}
 
+	if inInsideSketch {
+		// Start a process reaper, because we are PID 1.
+		err := startReaper(context.WithoutCancel(ctx))
+		if err != nil {
+			slog.WarnContext(ctx, "failed to start process reaper", "error", err)
+		}
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
