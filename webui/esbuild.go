@@ -16,7 +16,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	esbuildcli "github.com/evanw/esbuild/pkg/cli"
 )
@@ -79,13 +78,11 @@ func ensureNodeModules(buildDir string) error {
 
 // runNpmCI executes npm ci and stores the package-lock.json content
 func runNpmCI(buildDir, packageLockPath, packageLockBackupPath string) error {
-	start := time.Now()
 	cmd := exec.Command("npm", "ci", "--omit", "dev")
 	cmd.Dir = buildDir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("npm ci: %s: %v", out, err)
 	}
-	fmt.Printf("[BUILD] npm ci completed in %v\n", time.Since(start))
 
 	// Store a copy of package-lock.json for future comparisons
 	packageLockData, err := os.ReadFile(packageLockPath)
