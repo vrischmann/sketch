@@ -30,6 +30,7 @@ import (
 	"sketch.dev/claudetool/browse"
 	"sketch.dev/embedded"
 	"sketch.dev/git_tools"
+	"sketch.dev/llm"
 	"sketch.dev/llm/conversation"
 	"sketch.dev/loop"
 	"sketch.dev/loop/server/gzhandler"
@@ -1118,6 +1119,7 @@ func initDebugMux(agent loop.CodingAgent) *http.ServeMux {
 					<li><a href="pprof/trace">pprof/trace</a></li>
 					<li><a href="pprof/goroutine?debug=1">pprof/goroutine?debug=1</a></li>
 					<li><a href="conversation-history">conversation-history</a></li>
+				<li><a href="tools">tools</a></li>
 			</ul>
 			</body>
 			</html>
@@ -1153,7 +1155,99 @@ func initDebugMux(agent loop.CodingAgent) *http.ServeMux {
 		}
 	})
 
+	// Add tools debug handler
+	mux.HandleFunc("GET /debug/tools", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		// Try to get the conversation and its tools
+		type ConvoProvider interface {
+			GetConvo() loop.ConvoInterface
+		}
+
+		if convoProvider, ok := agent.(ConvoProvider); ok {
+			convoInterface := convoProvider.GetConvo()
+
+			// Type assert to get the actual conversation
+			if convo, ok := convoInterface.(*conversation.Convo); ok {
+				// Render the tools debug page
+				renderToolsDebugPage(w, convo.Tools)
+			} else {
+				http.Error(w, "Unable to access conversation tools", http.StatusInternalServerError)
+			}
+		} else {
+			http.Error(w, "Agent does not support conversation debugging", http.StatusNotImplemented)
+		}
+	})
+
 	return mux
+}
+
+// renderToolsDebugPage renders an HTML page showing all available tools
+func renderToolsDebugPage(w http.ResponseWriter, tools []*llm.Tool) {
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html>
+<head>
+	<title>Sketch Tools Debug</title>
+	<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; }
+		h1 { color: #333; }
+		.tool { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 20px; margin: 20px 0; }
+		.tool-name { font-size: 1.2em; font-weight: bold; color: #0366d6; margin-bottom: 8px; }
+		.tool-description { color: #586069; margin-bottom: 12px; }
+		.tool-schema { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 4px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; overflow-x: auto; }
+		.tool-meta { font-size: 0.9em; color: #656d76; margin-top: 8px; }
+		.summary { background: #e6f3ff; border-left: 4px solid #0366d6; padding: 16px; margin-bottom: 30px; }
+	</style>
+</head>
+<body>
+	<h1>Sketch Tools Debug</h1>
+	<div class="summary">
+		<strong>Total Tools Available:</strong> %d
+	</div>
+`, len(tools))
+
+	for i, tool := range tools {
+		fmt.Fprintf(w, `	<div class="tool">
+		<div class="tool-name">%d. %s</div>
+`, i+1, html.EscapeString(tool.Name))
+
+		if tool.Description != "" {
+			fmt.Fprintf(w, `		<div class="tool-description">%s</div>
+`, html.EscapeString(tool.Description))
+		}
+
+		// Display schema
+		if tool.InputSchema != nil {
+			// Pretty print the JSON schema
+			var schemaFormatted string
+			if prettySchema, err := json.MarshalIndent(json.RawMessage(tool.InputSchema), "", "  "); err == nil {
+				schemaFormatted = string(prettySchema)
+			} else {
+				schemaFormatted = string(tool.InputSchema)
+			}
+			fmt.Fprintf(w, `		<div class="tool-schema">%s</div>
+`, html.EscapeString(schemaFormatted))
+		}
+
+		// Display metadata
+		var metaParts []string
+		if tool.Type != "" {
+			metaParts = append(metaParts, fmt.Sprintf("Type: %s", tool.Type))
+		}
+		if tool.EndsTurn {
+			metaParts = append(metaParts, "Ends Turn: true")
+		}
+		if len(metaParts) > 0 {
+			fmt.Fprintf(w, `		<div class="tool-meta">%s</div>
+`, html.EscapeString(strings.Join(metaParts, " | ")))
+		}
+
+		fmt.Fprintf(w, `	</div>
+`)
+	}
+
+	fmt.Fprintf(w, `</body>
+</html>`)
 }
 
 // isValidGitSHA validates if a string looks like a valid git SHA hash.
