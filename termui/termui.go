@@ -385,13 +385,9 @@ func (ui *TermUI) updatePrompt(thinking bool) {
 	var t string
 	if thinking {
 		// Emoji don't seem to work here? Messes up my terminal.
-		t = "*"
+		t = " *"
 	}
-	var money string
-	if totalCost := ui.agent.TotalUsage().TotalCostUSD; totalCost > 0 {
-		money = fmt.Sprintf("($%0.2f/%0.2f)", totalCost, ui.agent.OriginalBudget().MaxDollars)
-	}
-	p := fmt.Sprintf("%s %s%s> ", ui.httpURL, money, t)
+	p := fmt.Sprintf("%s%s> ", ui.agent.Slug(), t)
 	ui.trm.SetPrompt(p)
 }
 
