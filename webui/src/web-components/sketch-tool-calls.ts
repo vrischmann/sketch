@@ -167,9 +167,10 @@ export class SketchToolCalls extends SketchTailwindElement {
       <div class="block">
         ${repeat(this.toolCalls, this.toolUseKey, (toolCall, idx) => {
           let shouldOpen = false;
-          // Always expand screenshot tool calls, expand last tool call if this.open is true
+          // Always expand screenshot and patch tool calls, expand last tool call if this.open is true
           if (
             toolCall.name === "browser_take_screenshot" ||
+            toolCall.name === "patch" ||
             (idx == this.toolCalls?.length - 1 && this.open)
           ) {
             shouldOpen = true;
