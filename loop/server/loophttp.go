@@ -4,12 +4,14 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"embed"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -35,6 +37,9 @@ import (
 	"sketch.dev/loop"
 	"sketch.dev/loop/server/gzhandler"
 )
+
+//go:embed templates/*
+var templateFS embed.FS
 
 // Remote represents a git remote with display information.
 type Remote struct {
@@ -426,8 +431,8 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		}
 	})
 
-	// Handler for /logs - displays the contents of the log file
-	s.mux.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
+	// Handler for /debug/logs - displays the contents of the log file
+	s.mux.HandleFunc("/debug/logs", func(w http.ResponseWriter, r *http.Request) {
 		if s.logFile == nil {
 			httpError(w, r, "log file not set", http.StatusNotFound)
 			return
@@ -1113,13 +1118,15 @@ func initDebugMux(agent loop.CodingAgent) *http.ServeMux {
 			pid %d<br>
 			build %s<br>
 			<ul>
-					<li><a href="pprof/cmdline">pprof/cmdline</a></li>
-					<li><a href="pprof/profile">pprof/profile</a></li>
-					<li><a href="pprof/symbol">pprof/symbol</a></li>
-					<li><a href="pprof/trace">pprof/trace</a></li>
-					<li><a href="pprof/goroutine?debug=1">pprof/goroutine?debug=1</a></li>
-					<li><a href="conversation-history">conversation-history</a></li>
+				<li><a href="pprof/cmdline">pprof/cmdline</a></li>
+				<li><a href="pprof/profile">pprof/profile</a></li>
+				<li><a href="pprof/symbol">pprof/symbol</a></li>
+				<li><a href="pprof/trace">pprof/trace</a></li>
+				<li><a href="pprof/goroutine?debug=1">pprof/goroutine?debug=1</a></li>
+				<li><a href="conversation-history">conversation-history</a></li>
 				<li><a href="tools">tools</a></li>
+				<li><a href="system-prompt">system-prompt</a></li>
+				<li><a href="logs">logs</a></li>
 			</ul>
 			</body>
 			</html>
@@ -1164,19 +1171,47 @@ func initDebugMux(agent loop.CodingAgent) *http.ServeMux {
 			GetConvo() loop.ConvoInterface
 		}
 
-		if convoProvider, ok := agent.(ConvoProvider); ok {
-			convoInterface := convoProvider.GetConvo()
-
-			// Type assert to get the actual conversation
-			if convo, ok := convoInterface.(*conversation.Convo); ok {
-				// Render the tools debug page
-				renderToolsDebugPage(w, convo.Tools)
-			} else {
-				http.Error(w, "Unable to access conversation tools", http.StatusInternalServerError)
-			}
-		} else {
+		convoProvider, ok := agent.(ConvoProvider)
+		if !ok {
 			http.Error(w, "Agent does not support conversation debugging", http.StatusNotImplemented)
+			return
 		}
+
+		convoInterface := convoProvider.GetConvo()
+		convo, ok := convoInterface.(*conversation.Convo)
+		if !ok {
+			http.Error(w, "Unable to access conversation tools", http.StatusInternalServerError)
+			return
+		}
+
+		// Render the tools debug page
+		renderToolsDebugPage(w, convo.Tools)
+	})
+
+	// Add system prompt debug handler
+	mux.HandleFunc("GET /debug/system-prompt", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		// Try to get the conversation and its system prompt
+		type ConvoProvider interface {
+			GetConvo() loop.ConvoInterface
+		}
+
+		convoProvider, ok := agent.(ConvoProvider)
+		if !ok {
+			http.Error(w, "Agent does not support conversation debugging", http.StatusNotImplemented)
+			return
+		}
+
+		convoInterface := convoProvider.GetConvo()
+		convo, ok := convoInterface.(*conversation.Convo)
+		if !ok {
+			http.Error(w, "Unable to access conversation system prompt", http.StatusInternalServerError)
+			return
+		}
+
+		// Render the system prompt debug page
+		renderSystemPromptDebugPage(w, convo.SystemPrompt)
 	})
 
 	return mux
@@ -1248,6 +1283,38 @@ func renderToolsDebugPage(w http.ResponseWriter, tools []*llm.Tool) {
 
 	fmt.Fprintf(w, `</body>
 </html>`)
+}
+
+// SystemPromptDebugData holds the data for the system prompt debug template
+type SystemPromptDebugData struct {
+	SystemPrompt string
+	Length       int
+	Lines        int
+}
+
+// renderSystemPromptDebugPage renders an HTML page showing the system prompt
+func renderSystemPromptDebugPage(w http.ResponseWriter, systemPrompt string) {
+	// Calculate stats
+	length := len(systemPrompt)
+	lines := strings.Count(systemPrompt, "\n") + 1
+
+	// Parse template
+	tmpl, err := template.ParseFS(templateFS, "templates/system_prompt_debug.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Execute template
+	data := SystemPromptDebugData{
+		SystemPrompt: systemPrompt,
+		Length:       length,
+		Lines:        lines,
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // isValidGitSHA validates if a string looks like a valid git SHA hash.

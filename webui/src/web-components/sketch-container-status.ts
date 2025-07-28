@@ -822,7 +822,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
             <div
               class="flex items-center whitespace-nowrap mr-2.5 text-xs col-span-full mt-1.5 border-t border-gray-300 dark:border-gray-600 pt-1.5"
             >
-              <a href="logs" class="text-blue-600">Logs</a> (<a
+              <a href="debug/logs" class="text-blue-600">Logs</a> (<a
                 href="download"
                 class="text-blue-600"
                 >Download</a
