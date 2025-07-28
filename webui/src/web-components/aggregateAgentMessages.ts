@@ -18,6 +18,14 @@ export function aggregateAgentMessages(
       if (msg.type == "slug" || msg.type == "compact") {
         return false;
       }
+      // Filter out messages with empty/missing content unless they have tool_calls or commits
+      const hasContent = msg.content && msg.content.trim().length > 0;
+      const hasToolCalls = msg.tool_calls && msg.tool_calls.length > 0;
+      const hasCommits = msg.commits && msg.commits.length > 0;
+
+      if (!hasContent && !hasToolCalls && !hasCommits) {
+        return false;
+      }
       if (seenIds.has(msg.idx)) {
         return false; // Skip if idx is already seen
       }
