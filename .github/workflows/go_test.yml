@@ -88,9 +88,19 @@ jobs:
         run: |
           if [ "${{ inputs.include-slow-tests }}" = "false" ]; then
             echo "Running tests without slow tests (short mode, no race re-run)"
-            GOEXPERIMENT=synctest gotestsum --format testname -- -short ./...
+            GOEXPERIMENT=synctest gotestsum --format testname --jsonfile test-results.json -- -short ./...
           else
             echo "Running full test suite including slow tests"
-            GOEXPERIMENT=synctest gotestsum --format testname -- ./...
-            GOEXPERIMENT=synctest gotestsum --format testname -- -race ./...
+            GOEXPERIMENT=synctest gotestsum --format testname --jsonfile test-results.json -- ./...
+            GOEXPERIMENT=synctest gotestsum --format testname --jsonfile test-results-race.json -- -race ./...
           fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketch-test-results-${{ github.run_id }}
+          path: |
+            ${{ inputs.working-directory || vars.SKETCH_WORKING_DIR || '.'}}/test-results.json
+            ${{ inputs.working-directory || vars.SKETCH_WORKING_DIR || '.'}}/test-results-race.json
+          retention-days: 30
