@@ -5,6 +5,9 @@ import { AgentMessage, State } from "../types";
 import { marked, MarkedOptions, Renderer, Tokens } from "marked";
 import type mermaid from "mermaid";
 import DOMPurify from "dompurify";
+import "./sketch-tool-calls";
+import "./sketch-external-message";
+import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 // Mermaid is loaded dynamically - see loadMermaid() function
 declare global {
@@ -54,8 +57,6 @@ function loadMermaid(): Promise<typeof mermaid> {
 
   return mermaidLoadPromise;
 }
-import "./sketch-tool-calls";
-import { SketchTailwindElement } from "./sketch-tailwind-element";
 
 @customElement("sketch-timeline-message")
 export class SketchTimelineMessage extends SketchTailwindElement {
@@ -927,12 +928,15 @@ export class SketchTimelineMessage extends SketchTailwindElement {
       .join(" ");
 
     const messageContentClasses = [
-      "relative px-2.5 py-1.5 rounded-xl shadow-sm min-w-min",
+      "relative px-2.5 py-1.5 min-w-min",
       // User message styling
       this.message?.type === "user"
-        ? "bg-blue-500 text-white rounded-br-sm"
-        : // Agent/tool/error message styling
-          "bg-gray-100 dark:bg-gray-800 text-black dark:text-gray-100 rounded-bl-sm",
+        ? "rounded-xl shadow-sm bg-blue-500 text-white rounded-br-sm"
+        : this.message?.type === "agent" // Agent/tool/error message styling
+          ? "rounded-xl shadow-sm bg-gray-100 dark:bg-gray-800 text-black dark:text-gray-100 rounded-bl-sm"
+          : this.message?.type === "external" // External message styling
+            ? "bg-white dark:bg-gray-800 text-black dark:text-gray-100"
+            : "", // default styling for other types
     ]
       .filter(Boolean)
       .join(" ");
@@ -1132,6 +1136,16 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                       .toolCalls=${this.message?.tool_calls}
                       .open=${this.open}
                     ></sketch-tool-calls>
+                  `
+                : ""}
+
+              <!-- External messages -->
+              ${this.message?.type === "external"
+                ? html`
+                    <sketch-external-message
+                      .message=${this.message?.external_message}
+                      .open=${this.open}
+                    ></sketch-external-message>
                   `
                 : ""}
 

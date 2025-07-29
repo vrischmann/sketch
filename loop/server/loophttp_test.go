@@ -38,6 +38,11 @@ type mockAgent struct {
 	model                    string
 }
 
+// ExternalMessage implements loop.CodingAgent.
+func (m *mockAgent) ExternalMessage(ctx context.Context, msg loop.ExternalMessage) error {
+	panic("unimplemented")
+}
+
 // TokenContextWindow implements loop.CodingAgent.
 func (m *mockAgent) TokenContextWindow() int {
 	return 200000

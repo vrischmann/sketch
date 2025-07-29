@@ -50,6 +50,7 @@ func TS() *go2ts.Go2TS {
 			loop.PortMessageType,
 			loop.CompactMessageType,
 			loop.SlugMessageType,
+			loop.ExternalMessageType,
 		},
 	)
 

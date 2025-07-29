@@ -167,21 +167,25 @@ type CodingAgent interface {
 
 	// ModelName returns the name of the model the agent is using.
 	ModelName() string
+
+	// ExternalMessage enqueues an external message to the agent and returns immediately.
+	ExternalMessage(ctx context.Context, msg ExternalMessage) error
 }
 
 type CodingAgentMessageType string
 
 const (
-	UserMessageType    CodingAgentMessageType = "user"
-	AgentMessageType   CodingAgentMessageType = "agent"
-	ErrorMessageType   CodingAgentMessageType = "error"
-	BudgetMessageType  CodingAgentMessageType = "budget" // dedicated for "out of budget" errors
-	ToolUseMessageType CodingAgentMessageType = "tool"
-	CommitMessageType  CodingAgentMessageType = "commit"  // for displaying git commits
-	AutoMessageType    CodingAgentMessageType = "auto"    // for automated notifications like autoformatting
-	CompactMessageType CodingAgentMessageType = "compact" // for conversation compaction notifications
-	PortMessageType    CodingAgentMessageType = "port"    // for port monitoring events
-	SlugMessageType    CodingAgentMessageType = "slug"    // for slug updates
+	UserMessageType     CodingAgentMessageType = "user"
+	AgentMessageType    CodingAgentMessageType = "agent"
+	ErrorMessageType    CodingAgentMessageType = "error"
+	BudgetMessageType   CodingAgentMessageType = "budget" // dedicated for "out of budget" errors
+	ToolUseMessageType  CodingAgentMessageType = "tool"
+	CommitMessageType   CodingAgentMessageType = "commit"   // for displaying git commits
+	AutoMessageType     CodingAgentMessageType = "auto"     // for automated notifications like autoformatting
+	CompactMessageType  CodingAgentMessageType = "compact"  // for conversation compaction notifications
+	PortMessageType     CodingAgentMessageType = "port"     // for port monitoring events
+	SlugMessageType     CodingAgentMessageType = "slug"     // for slug updates
+	ExternalMessageType CodingAgentMessageType = "external" // for external notifications
 
 	cancelToolUseMessage = "Stop responding to my previous message. Wait for me to ask you something else before attempting to use any more tools."
 )
@@ -191,12 +195,13 @@ type AgentMessage struct {
 	// EndOfTurn indicates that the AI is done working and is ready for the next user input.
 	EndOfTurn bool `json:"end_of_turn"`
 
-	Content    string `json:"content"`
-	ToolName   string `json:"tool_name,omitempty"`
-	ToolInput  string `json:"input,omitempty"`
-	ToolResult string `json:"tool_result,omitempty"`
-	ToolError  bool   `json:"tool_error,omitempty"`
-	ToolCallId string `json:"tool_call_id,omitempty"`
+	Content         string           `json:"content"`
+	ExternalMessage *ExternalMessage `json:"external_message,omitempty"`
+	ToolName        string           `json:"tool_name,omitempty"`
+	ToolInput       string           `json:"input,omitempty"`
+	ToolResult      string           `json:"tool_result,omitempty"`
+	ToolError       bool             `json:"tool_error,omitempty"`
+	ToolCallId      string           `json:"tool_call_id,omitempty"`
 
 	// ToolCalls is a list of all tool calls requested in this message (name and input pairs)
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
@@ -478,6 +483,18 @@ type Agent struct {
 
 	// Track outstanding tool calls by ID with their names
 	outstandingToolCalls map[string]string
+}
+
+// ExternalMessage implements CodingAgent.
+// TODO: Debounce and/or coalesce these messages so they're less disruptive to the conversation.
+func (a *Agent) ExternalMessage(ctx context.Context, msg ExternalMessage) error {
+	agentMsg := AgentMessage{
+		Type:            ExternalMessageType,
+		ExternalMessage: &msg,
+	}
+	a.pushToOutbox(ctx, agentMsg)
+	a.inbox <- msg.TextContent
+	return nil
 }
 
 // TokenContextWindow implements CodingAgent.
@@ -2728,4 +2745,12 @@ func (a *Agent) SkabandAddr() string {
 		return a.config.SkabandClient.Addr()
 	}
 	return ""
+}
+
+// ExternalMsg represents a message from a source external to the agent/user conversation,
+// such as the outcome of a github workflow run.
+type ExternalMessage struct {
+	MessageType string `json:"message_type"`
+	Body        any    `json:"body"`
+	TextContent string `json:"text_content"`
 }

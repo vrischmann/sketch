@@ -96,6 +96,7 @@ export class DemoRunner {
       "sketch-diff-range-picker",
       "sketch-timeline",
       "sketch-timeline-message",
+      "sketch-external-message",
       "sketch-todo-panel",
       "sketch-tool-calls",
       "sketch-view-mode-select",

@@ -706,6 +706,35 @@ func New(agent loop.CodingAgent, logFile *os.File) (*Server, error) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	// Handler for POST /external - e.g. where you send messages about e.g. github workflow
+	// outcomes and other external events that the agent wouldn't otherwise be aware of.
+	s.mux.HandleFunc("/external", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			httpError(w, r, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var msg loop.ExternalMessage
+
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&msg); err != nil {
+			httpError(w, r, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		if msg.TextContent == "" {
+			httpError(w, r, "Message cannot be empty", http.StatusBadRequest)
+			return
+		}
+
+		if err := agent.ExternalMessage(r.Context(), msg); err != nil {
+			httpError(w, r, "agent ExternalMessage error: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	})
+
 	// Handler for POST /upload - uploads a file to /tmp
 	s.mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
