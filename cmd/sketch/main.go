@@ -639,6 +639,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 	// This is needed for MCP server authentication placeholder replacement
 	if pubKey != "" {
 		os.Setenv("SKETCH_PUB_KEY", pubKey)
+		os.Setenv("SKETCH_MODEL_API_KEY", apiKey)
 	}
 
 	wd, err := os.Getwd()
