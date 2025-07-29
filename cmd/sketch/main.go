@@ -551,11 +551,6 @@ func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) e
 		return err
 	}
 
-	// Add skaband MCP server configuration if skaband address is provided
-	if flags.skabandAddr != "" {
-		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
-	}
-
 	return setupAndRunAgent(ctx, flags, modelURL, apiKey, pubKey, true, logFile)
 }
 
