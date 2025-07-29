@@ -31,16 +31,6 @@ import (
 	"golang.org/x/net/http2"
 )
 
-// SketchSession represents a sketch session with metadata
-type SketchSession struct {
-	ID               string    `json:"id"`
-	Title            string    `json:"title"`
-	FirstMessage     string    `json:"first_message"`
-	LastMessage      string    `json:"last_message"`
-	FirstMessageDate time.Time `json:"first_message_date"`
-	LastMessageDate  time.Time `json:"last_message_date"`
-}
-
 // SkabandClient provides HTTP client functionality for skaband server
 type SkabandClient struct {
 	addr      string
@@ -313,81 +303,6 @@ func NewSkabandClient(addr, publicKey string) *SkabandClient {
 		publicKey: publicKey,
 		client:    &http.Client{Timeout: 30 * time.Second},
 	}
-}
-
-// ListRecentSketchSessionsMarkdown returns recent sessions as a markdown table
-func (c *SkabandClient) ListRecentSketchSessionsMarkdown(ctx context.Context, currentRepo, sessionID string) (string, error) {
-	if c == nil {
-		return "", fmt.Errorf("SkabandClient is nil")
-	}
-
-	// Build URL with query parameters
-	baseURL := c.addr + "/api/sessions/recent"
-	if currentRepo != "" {
-		baseURL += "?repo=" + url.QueryEscape(currentRepo)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", baseURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Add headers
-	req.Header.Set("Public-Key", c.publicKey)
-	req.Header.Set("Session-ID", sessionID)
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	return string(body), nil
-}
-
-// ReadSketchSession reads the full details of a specific session and returns formatted text
-func (c *SkabandClient) ReadSketchSession(ctx context.Context, targetSessionID, originSessionID string) (*string, error) {
-	if c == nil {
-		return nil, fmt.Errorf("SkabandClient is nil")
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", c.addr+"/api/sessions/"+targetSessionID, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Add headers
-	req.Header.Set("Public-Key", c.publicKey)
-	req.Header.Set("Session-ID", originSessionID)
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	response := string(body)
-	return &response, nil
 }
 
 // DialAndServeLoop is a redial loop around DialAndServe.
