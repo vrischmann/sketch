@@ -26,6 +26,7 @@ import (
 type PatchCallback func(input PatchInput, output llm.ToolOut) llm.ToolOut
 
 // PatchTool specifies an llm.Tool for patching files.
+// PatchTools are not concurrency-safe.
 type PatchTool struct {
 	Callback PatchCallback // may be nil
 	// Pwd is the working directory for resolving relative paths
@@ -38,14 +39,7 @@ func (p *PatchTool) Tool() *llm.Tool {
 		Name:        PatchName,
 		Description: strings.TrimSpace(PatchDescription),
 		InputSchema: llm.MustSchema(PatchInputSchema),
-		Run: func(ctx context.Context, m json.RawMessage) llm.ToolOut {
-			var input PatchInput
-			output := p.patchRun(ctx, m, &input)
-			if p.Callback != nil {
-				return p.Callback(input, output)
-			}
-			return output
-		},
+		Run:         p.Run,
 	}
 }
 
@@ -55,7 +49,7 @@ const (
 File modification tool for precise text edits.
 
 Operations:
-- replace: Substitute text with new content
+- replace: Substitute unique text with new content
 - append_eof: Append new text at the end of the file
 - prepend_bof: Insert new text at the beginning of the file
 - overwrite: Replace the entire file with new content (automatically creates the file)
