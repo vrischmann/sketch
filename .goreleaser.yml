@@ -17,6 +17,9 @@ builds:
     goarch:
       - amd64
       - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
     tags:
       - outie
     ldflags:
