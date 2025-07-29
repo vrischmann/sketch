@@ -733,6 +733,13 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 		}
 
 		// Handle errors
+		// Check for TLS "bad record MAC" errors and retry once
+		if strings.Contains(err.Error(), "tls: bad record MAC") && attempts == 0 {
+			slog.WarnContext(ctx, "tls bad record MAC error, retrying once", "error", err.Error())
+			errs = errors.Join(errs, fmt.Errorf("TLS error (attempt %d): %w", attempts+1, err))
+			continue
+		}
+
 		var apiErr *openai.APIError
 		if ok := errors.As(err, &apiErr); !ok {
 			// Not an OpenAI API error, return immediately with accumulated errors
