@@ -190,16 +190,36 @@ func run() error {
 		flagArgs.gitEmail = defaultGitEmail()
 	}
 
+	// Add skaband MCP server configuration if skaband address is provided and
+	// it's not otherwise specified.
+	if flagArgs.skabandAddr != "" {
+		seenSketchDev := false
+		for _, serverConfig := range flagArgs.mcpServers {
+			c, err := parseSingleMcpConfiguration(serverConfig)
+			// We can ignore errors; they'll get checked when the MCP configuration is used by the agent.
+			if err == nil && c.Name == "sketchdev" {
+				seenSketchDev = true
+				break
+			}
+		}
+		if !seenSketchDev {
+			flagArgs.mcpServers = append(flagArgs.mcpServers, skabandMcpConfiguration(flagArgs))
+		}
+	}
+
 	// Dispatch to the appropriate execution path
 	if inInsideSketch {
-		// We're running inside the Docker container
-		return runInContainerMode(ctx, flagArgs, logFile)
+		// We're running inside the Docker container that was launched by outtie
+		slog.Debug("running in innie/container mode")
+		return runInInnieMode(ctx, flagArgs, logFile)
 	} else if flagArgs.unsafe {
 		// We're running directly on the host in unsafe mode
+		slog.Debug("running in unsafe mode")
 		return runInUnsafeMode(ctx, flagArgs, logFile)
 	} else {
 		// We're running on the host and need to launch a container
-		return runInHostMode(ctx, flagArgs)
+		slog.Debug("running in host mode (outtie)")
+		return runAsOuttie(ctx, flagArgs)
 	}
 }
 
@@ -436,6 +456,14 @@ func parseCLIFlags() CLIFlags {
 	return flags
 }
 
+func parseSingleMcpConfiguration(mcpConfig string) (mcp.ServerConfig, error) {
+	var serverConfig mcp.ServerConfig
+	if err := json.Unmarshal([]byte(mcpConfig), &serverConfig); err != nil {
+		return mcp.ServerConfig{}, fmt.Errorf("failed to parse MCP config: %w", err)
+	}
+	return serverConfig, nil
+}
+
 func skabandMcpConfiguration(flags CLIFlags) string {
 	skabandaddr, err := skabandclient.LocalhostToDockerInternal(flags.skabandAddr)
 	if err != nil {
@@ -458,9 +486,9 @@ func skabandMcpConfiguration(flags CLIFlags) string {
 	return string(out)
 }
 
-// runInHostMode handles execution on the host machine, which typically involves
+// runAsOuttie handles execution on the host machine, which typically involves
 // checking host requirements and launching a Docker container.
-func runInHostMode(ctx context.Context, flags CLIFlags) error {
+func runAsOuttie(ctx context.Context, flags CLIFlags) error {
 	// Check host requirements
 	msgs, err := hostReqsCheck(flags.unsafe)
 	if flags.verbose {
@@ -539,10 +567,10 @@ func runInHostMode(ctx context.Context, flags CLIFlags) error {
 	return nil
 }
 
-// runInContainerMode handles execution inside the Docker container.
+// runInInnieMode handles execution inside the Docker container.
 // The inInsideSketch parameter indicates whether we're inside the sketch container
 // with access to outside environment variables.
-func runInContainerMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
+func runInInnieMode(ctx context.Context, flags CLIFlags, logFile *os.File) error {
 	// Get credentials from environment
 	apiKey := cmp.Or(os.Getenv("SKETCH_MODEL_API_KEY"), flags.llmAPIKey)
 	pubKey := os.Getenv("SKETCH_PUB_KEY")
@@ -590,8 +618,6 @@ func resolveModel(flags CLIFlags) (spec modelSpec, pubKey string, err error) {
 		if apiKey == "" {
 			return modelSpec{}, "", fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
 		}
-	} else {
-		flags.mcpServers = append(flags.mcpServers, skabandMcpConfiguration(flags))
 	}
 
 	return modelSpec{modelURL: modelURL, apiKey: apiKey}, pubKey, nil
