@@ -65,7 +65,7 @@ func TestSetupAndRunAgent_SetsPubKeyEnvVar(t *testing.T) {
 	}
 
 	// This should fail due to missing API key, but should still set the environment variable
-	err := setupAndRunAgent(context.TODO(), flags, "", "", testPubKey, false, nil)
+	err := setupAndRunAgent(context.TODO(), flags, modelSpec{}, testPubKey, false, nil)
 
 	// Check that the environment variable was set correctly
 	if os.Getenv("SKETCH_PUB_KEY") != testPubKey {
@@ -98,7 +98,7 @@ func TestSetupAndRunAgent_DoesNotSetEmptyPubKey(t *testing.T) {
 	}
 
 	// This should fail due to missing API key, but should not change the environment variable
-	err := setupAndRunAgent(context.TODO(), flags, "", "", "", false, nil)
+	err := setupAndRunAgent(context.TODO(), flags, modelSpec{}, "", false, nil)
 
 	// Check that the environment variable was not changed
 	if os.Getenv("SKETCH_PUB_KEY") != "existing-value" {

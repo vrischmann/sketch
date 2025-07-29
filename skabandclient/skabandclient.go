@@ -192,16 +192,16 @@ func LoadOrCreatePrivateKey(path string) (ed25519.PrivateKey, error) {
 // Login connects to skaband and authenticates the user.
 // If skabandAddr is empty, it returns the public key without contacting a server.
 // It is the caller's responsibility to set the API URL and key in this case.
-func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID, model string) (pubKey, apiURL, apiKey string, err error) {
+func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID, model string) (pubKey, apiURL, oaiModelName, apiKey string, err error) {
 	sig := ed25519.Sign(privKey, []byte(sessionID))
 	pubKey = hex.EncodeToString(privKey.Public().(ed25519.PublicKey))
 	if skabandAddr == "" {
-		return pubKey, "", "", nil
+		return pubKey, "", "", "", nil
 	}
 
 	req, err := http.NewRequest("POST", skabandAddr+"/authclient", nil)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 	req.Header.Set("Public-Key", pubKey)
 	req.Header.Set("Session-ID", sessionID)
@@ -209,25 +209,27 @@ func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID,
 	req.Header.Set("X-Model", model)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", "", "", fmt.Errorf("skaband login: %w", err)
+		return "", "", "", "", fmt.Errorf("skaband login: %w", err)
 	}
 	apiURL = resp.Header.Get("X-API-URL")
 	apiKey = resp.Header.Get("X-API-Key")
+	oaiModelName = resp.Header.Get("X-OAI-Model")
 	defer resp.Body.Close()
 	_, err = io.Copy(stdout, resp.Body)
 	if err != nil {
-		return "", "", "", fmt.Errorf("skaband login: %w", err)
+		return "", "", "", "", fmt.Errorf("skaband login: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		return "", "", "", fmt.Errorf("skaband login failed: %d", resp.StatusCode)
+		return "", "", "", "", fmt.Errorf("skaband login failed: %d", resp.StatusCode)
 	}
 	if apiURL == "" {
-		return "", "", "", fmt.Errorf("skaband returned no api url")
+		return "", "", "", "", fmt.Errorf("skaband returned no api url")
 	}
 	if apiKey == "" {
-		return "", "", "", fmt.Errorf("skaband returned no api key")
+		return "", "", "", "", fmt.Errorf("skaband returned no api key")
 	}
-	return pubKey, apiURL, apiKey, nil
+	fmt.Printf("skaband login successful, API URL: %s, API Key: %s\n", apiURL, apiKey)
+	return pubKey, apiURL, oaiModelName, apiKey, nil
 }
 
 func DefaultKeyPath(skabandAddr string) string {

@@ -127,6 +127,7 @@ func run() error {
 		fmt.Println("- opus (Claude 4 Opus)")
 		fmt.Println("- sonnet (Claude 4 Sonnet)")
 		fmt.Println("- gemini (Google Gemini 2.5 Pro)")
+		fmt.Println("- qwen (Qwen3-Coder)")
 		for _, name := range oai.ListModels() {
 			note := ""
 			if name != "gpt4.1" {
@@ -141,10 +142,10 @@ func run() error {
 		return dumpDistFilesystem(flagArgs.dumpDist)
 	}
 
-	// Only Claude and Gemini have skaband support, for now.
-	hasSkabandSupport := flagArgs.modelName == "gemini" || ant.IsClaudeModel(flagArgs.modelName)
+	// Only Claude, Gemini, and Qwen have skaband support, for now.
+	hasSkabandSupport := flagArgs.modelName == "gemini" || ant.IsClaudeModel(flagArgs.modelName) || flagArgs.modelName == "qwen"
 	if !hasSkabandSupport && flagArgs.skabandAddr != "" {
-		return fmt.Errorf("only claude and gemini are supported by skaband, use -skaband-addr='' for other models")
+		return fmt.Errorf("only claude, gemini, and qwen are supported by skaband, use -skaband-addr='' for other models")
 	}
 
 	if err := flagArgs.experimentFlag.Process(); err != nil {
@@ -529,6 +530,7 @@ func runAsOuttie(ctx context.Context, flags CLIFlags) error {
 		SkabandAddr:       flags.skabandAddr,
 		Model:             flags.modelName,
 		ModelURL:          spec.modelURL,
+		OAIModelName:      spec.oaiModelName,
 		ModelAPIKey:       spec.apiKey,
 		Path:              cwd,
 		GitUsername:       flags.gitUsername,
@@ -583,8 +585,12 @@ func runInInnieMode(ctx context.Context, flags CLIFlags, logFile *os.File) error
 	if err != nil && os.Getenv("SKETCH_MODEL_URL") != "" {
 		return err
 	}
-
-	return setupAndRunAgent(ctx, flags, modelURL, apiKey, pubKey, true, logFile)
+	spec := modelSpec{
+		modelURL:     modelURL,
+		oaiModelName: os.Getenv("SKETCH_OAI_MODEL_NAME"),
+		apiKey:       apiKey,
+	}
+	return setupAndRunAgent(ctx, flags, spec, pubKey, true, logFile)
 }
 
 // runInUnsafeMode handles execution on the host machine without Docker.
@@ -594,12 +600,13 @@ func runInUnsafeMode(ctx context.Context, flags CLIFlags, logFile *os.File) erro
 	if err != nil {
 		return err
 	}
-	return setupAndRunAgent(ctx, flags, spec.modelURL, spec.apiKey, pubKey, false, logFile)
+	return setupAndRunAgent(ctx, flags, spec, pubKey, false, logFile)
 }
 
 type modelSpec struct {
-	modelURL string
-	apiKey   string
+	modelURL     string
+	oaiModelName string // the OpenAI model name, if applicable; this varies even for the same model by provider
+	apiKey       string
 }
 
 // resolveModel logs in to skaband (as appropriate) and resolves the flags to a model URL and API key.
@@ -608,7 +615,7 @@ func resolveModel(flags CLIFlags) (spec modelSpec, pubKey string, err error) {
 	if err != nil {
 		return modelSpec{}, "", err
 	}
-	pubKey, modelURL, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
+	pubKey, modelURL, oaiModelName, apiKey, err := skabandclient.Login(os.Stdout, privKey, flags.skabandAddr, flags.sessionID, flags.modelName)
 	if err != nil {
 		return modelSpec{}, "", err
 	}
@@ -625,12 +632,12 @@ func resolveModel(flags CLIFlags) (spec modelSpec, pubKey string, err error) {
 		}
 	}
 
-	return modelSpec{modelURL: modelURL, apiKey: apiKey}, pubKey, nil
+	return modelSpec{modelURL: modelURL, oaiModelName: oaiModelName, apiKey: apiKey}, pubKey, nil
 }
 
 // setupAndRunAgent handles the common logic for setting up and running the agent
 // in both container and unsafe modes.
-func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pubKey string, inInsideSketch bool, logFile *os.File) error {
+func setupAndRunAgent(ctx context.Context, flags CLIFlags, spec modelSpec, pubKey string, inInsideSketch bool, logFile *os.File) error {
 	// Kick off a version/upgrade check early.
 	// If the results come back quickly enough,
 	// we can show them as part of the startup UI.
@@ -644,7 +651,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 	// This is needed for MCP server authentication placeholder replacement
 	if pubKey != "" {
 		os.Setenv("SKETCH_PUB_KEY", pubKey)
-		os.Setenv("SKETCH_MODEL_API_KEY", apiKey)
+		os.Setenv("SKETCH_MODEL_API_KEY", spec.apiKey)
 	}
 
 	wd, err := os.Getwd()
@@ -661,7 +668,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		}
 	}
 
-	llmService, err := selectLLMService(nil, flags, modelURL, apiKey)
+	llmService, err := selectLLMService(nil, flags, spec)
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM service: %w", err)
 	}
@@ -823,7 +830,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 			}
 		}
 		if agentConfig.SkabandClient != nil {
-			sessionSecret := apiKey
+			sessionSecret := spec.apiKey
 			go agentConfig.SkabandClient.DialAndServeLoop(ctx, flags.sessionID, sessionSecret, srv, connectFn)
 		}
 	}
@@ -930,29 +937,29 @@ func defaultGitEmail() string {
 // If modelName is "gemini", it uses the Gemini service.
 // Otherwise, it tries to use the OpenAI service with the specified model.
 // Returns an error if the model name is not recognized or if required configuration is missing.
-func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey string) (llm.Service, error) {
+func selectLLMService(client *http.Client, flags CLIFlags, spec modelSpec) (llm.Service, error) {
 	if ant.IsClaudeModel(flags.modelName) {
-		if apiKey == "" {
+		if spec.apiKey == "" {
 			return nil, fmt.Errorf("no anthropic api key provided, set %s", ant.APIKeyEnv)
 		}
 		return &ant.Service{
 			HTTPC:   client,
-			URL:     modelURL,
-			APIKey:  apiKey,
+			URL:     spec.modelURL,
+			APIKey:  spec.apiKey,
 			DumpLLM: flags.dumpLLM,
 			Model:   ant.ClaudeModelName(flags.modelName),
 		}, nil
 	}
 
 	if flags.modelName == "gemini" {
-		if apiKey == "" {
+		if spec.apiKey == "" {
 			return nil, fmt.Errorf("no gemini api key provided, set %s", gem.GeminiAPIKeyEnv)
 		}
 		return &gem.Service{
 			HTTPC:   client,
-			URL:     modelURL,
+			URL:     spec.modelURL,
 			Model:   gem.DefaultModel,
-			APIKey:  apiKey,
+			APIKey:  spec.apiKey,
 			DumpLLM: flags.dumpLLM,
 		}, nil
 	}
@@ -963,16 +970,22 @@ func selectLLMService(client *http.Client, flags CLIFlags, modelURL, apiKey stri
 	}
 
 	// Verify we have an API key, if necessary.
-	apiKey = cmp.Or(os.Getenv(model.APIKeyEnv), flags.llmAPIKey)
+	apiKey := cmp.Or(spec.apiKey, os.Getenv(model.APIKeyEnv), flags.llmAPIKey)
 	if apiKey == "" {
 		return nil, fmt.Errorf("missing API key for %s model, set %s environment variable", model.UserName, model.APIKeyEnv)
 	}
 
+	// Respect skaband-provided model name, if present.
+	if spec.oaiModelName != "" {
+		model.ModelName = spec.oaiModelName
+	}
+
 	return &oai.Service{
-		HTTPC:   client,
-		Model:   model,
-		APIKey:  apiKey,
-		DumpLLM: flags.dumpLLM,
+		HTTPC:    client,
+		Model:    model,
+		ModelURL: spec.modelURL,
+		APIKey:   apiKey,
+		DumpLLM:  flags.dumpLLM,
 	}, nil
 }
 

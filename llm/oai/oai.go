@@ -215,6 +215,13 @@ var (
 		URL:       FireworksURL,
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
+
+	// Qwen is a skaband-specific model name for Qwen3-Coder
+	// Provider details (URL and APIKeyEnv) are handled by skaband
+	Qwen = Model{
+		UserName:  "qwen",
+		ModelName: "qwen", // skaband will map this to the actual provider model
+	}
 )
 
 // Service provides chat completions.
@@ -223,6 +230,7 @@ type Service struct {
 	HTTPC     *http.Client // defaults to http.DefaultClient if nil
 	APIKey    string       // optional, if not set will try to load from env var
 	Model     Model        // defaults to DefaultModel if zero value
+	ModelURL  string       // optional, overrides Model.URL
 	MaxTokens int          // defaults to DefaultMaxTokens if zero
 	Org       string       // optional - organization ID
 	DumpLLM   bool         // whether to dump request/response text to files for debugging; defaults to false
@@ -255,6 +263,7 @@ var ModelsRegistry = []Model{
 	MistralMedium,
 	DevstralSmall,
 	Qwen3CoderFireworks,
+	Qwen,
 }
 
 // ListModels returns a list of all available models with their user-friendly names.
@@ -635,6 +644,8 @@ func (s *Service) TokenContextWindow() int {
 		return 200000 // 200k for O3 models
 	case "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct":
 		return 256000 // 256k native context for Qwen3-Coder
+	case "qwen":
+		return 256000 // 256k native context for Qwen3-Coder
 	default:
 		// Default for unknown models
 		return 128000
@@ -649,8 +660,8 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 
 	// TODO: do this one during Service setup? maybe with a constructor instead?
 	config := openai.DefaultConfig(s.APIKey)
-	if model.URL != "" {
-		config.BaseURL = model.URL
+	if modelURLOverride := cmp.Or(s.ModelURL, model.URL); modelURLOverride != "" {
+		config.BaseURL = modelURLOverride
 	}
 	if s.Org != "" {
 		config.OrgID = s.Org

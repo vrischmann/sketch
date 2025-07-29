@@ -46,6 +46,9 @@ type ContainerConfig struct {
 	// ModelURL is the URL of the LLM service.
 	ModelURL string
 
+	// OAIModelName is the openai model name of the LLM model to use.
+	OAIModelName string
+
 	// ModelAPIKey is the API key for LLM service.
 	ModelAPIKey string
 
@@ -549,6 +552,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	}
 	if config.ModelURL != "" {
 		cmdArgs = append(cmdArgs, "-e", "SKETCH_MODEL_URL="+config.ModelURL)
+	}
+	if config.OAIModelName != "" {
+		cmdArgs = append(cmdArgs, "-e", "SKETCH_OAI_MODEL_NAME="+config.OAIModelName)
 	}
 	if config.SketchPubKey != "" {
 		cmdArgs = append(cmdArgs, "-e", "SKETCH_PUB_KEY="+config.SketchPubKey)
