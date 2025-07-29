@@ -50,13 +50,9 @@ const demo: DemoModule = {
     // Status display for basic selector
     const basicStatus = document.createElement("div");
     basicStatus.id = "basic-status";
-    basicStatus.style.cssText = `
-      margin-top: 15px;
-      padding: 10px;
-      background: #f6f8fa;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 14px;
+    basicStatus.className = `
+      mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded font-mono text-sm 
+      text-gray-900 dark:text-gray-100
     `;
 
     const updateBasicStatus = () => {
@@ -86,11 +82,9 @@ const demo: DemoModule = {
 
     viewModeScenarios.forEach((scenario) => {
       const scenarioCard = document.createElement("div");
-      scenarioCard.style.cssText = `
-        padding: 15px;
-        border: 1px solid #d0d7de;
-        border-radius: 8px;
-        background: white;
+      scenarioCard.className = `
+        p-4 border border-gray-300 dark:border-gray-600 rounded-lg 
+        bg-white dark:bg-gray-800
       `;
 
       const scenarioTitle = document.createElement("h4");
@@ -134,7 +128,7 @@ const demo: DemoModule = {
     // Status display for interactive selector
     const interactiveStatus = document.createElement("div");
     interactiveStatus.id = "interactive-status";
-    interactiveStatus.style.cssText = basicStatus.style.cssText;
+    interactiveStatus.className = basicStatus.className;
 
     const updateInteractiveStatus = () => {
       interactiveStatus.innerHTML = `
@@ -159,11 +153,8 @@ const demo: DemoModule = {
 
     // Custom controls for interactive testing
     const customControls = document.createElement("div");
-    customControls.style.cssText = `
-      margin: 15px 0;
-      padding: 15px;
-      background: #f6f8fa;
-      border-radius: 6px;
+    customControls.className = `
+      my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded
     `;
 
     const addLinesButton = demoUtils.createButton("Add +5 Lines", () => {
@@ -258,11 +249,8 @@ const demo: DemoModule = {
     containerExamples.forEach((example) => {
       // Create container wrapper
       const wrapper = document.createElement("div");
-      wrapper.style.cssText = `
-        border: 2px solid;
-        border-radius: 8px;
-        padding: 15px;
-        background: #f9f9f9;
+      wrapper.className = `
+        border-2 rounded-lg p-4 bg-gray-50 dark:bg-gray-800 ${example.borderColor}
       `;
       wrapper.className = example.borderColor;
 
@@ -278,12 +266,9 @@ const demo: DemoModule = {
       // Create constrained container for the component
       const componentContainer = document.createElement("div");
       componentContainer.className = "@container";
-      componentContainer.style.cssText = `
-        width: ${example.width};
-        border: 1px dashed #ccc;
-        padding: 10px;
-        background: white;
-        border-radius: 4px;
+      componentContainer.className = `
+        border border-dashed border-gray-400 dark:border-gray-600 p-3 
+        bg-white dark:bg-gray-800 rounded ${example.containerClass}
       `;
 
       // Create the component
@@ -317,13 +302,9 @@ const demo: DemoModule = {
     // Create interactive container
     const interactiveContainer = document.createElement("div");
     interactiveContainer.className = "@container";
-    interactiveContainer.style.cssText = `
-      border: 2px solid #007acc;
-      border-radius: 8px;
-      padding: 15px;
-      background: #f0f8ff;
-      transition: width 0.3s ease;
-      width: 700px;
+    interactiveContainer.className = `
+      @container border-2 border-blue-600 dark:border-blue-400 rounded-lg p-4 
+      bg-blue-50 dark:bg-blue-900/20 transition-all duration-300 w-[700px]
     `;
 
     // Create interactive component

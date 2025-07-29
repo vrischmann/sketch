@@ -45,8 +45,8 @@ const demo: DemoModule = {
       state = mockState,
     ) => {
       const wrapper = document.createElement("div");
-      wrapper.style.cssText =
-        "margin: 15px 0; padding: 15px; border: 1px solid #e1e5e9; border-radius: 6px; background: white;";
+      wrapper.className =
+        "my-4 p-4 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800";
 
       const labelEl = document.createElement("h4");
       labelEl.textContent = label;
@@ -178,8 +178,8 @@ const demo: DemoModule = {
     interactiveMessage.open = true;
 
     const interactiveWrapper = document.createElement("div");
-    interactiveWrapper.style.cssText =
-      "padding: 15px; border: 1px solid #e1e5e9; border-radius: 6px; background: white;";
+    interactiveWrapper.className =
+      "p-4 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800";
     interactiveWrapper.appendChild(interactiveMessage);
 
     // Control buttons for interactive demo

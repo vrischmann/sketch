@@ -195,19 +195,12 @@ export class DemoRunner {
    */
   private showError(message: string, error: any): void {
     this.container.innerHTML = `
-      <div style="
-        padding: 20px;
-        background: #fee;
-        border: 1px solid #fcc;
-        border-radius: 4px;
-        color: #800;
-        font-family: monospace;
-      ">
-        <h3>Demo Error</h3>
-        <p><strong>${message}</strong></p>
-        <details>
-          <summary>Error Details</summary>
-          <pre>${error.stack || error.message || error}</pre>
+      <div class="p-5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-800 dark:text-red-200 font-mono">
+        <h3 class="text-lg font-semibold mb-2">Demo Error</h3>
+        <p class="mb-4"><strong>${message}</strong></p>
+        <details class="text-sm">
+          <summary class="cursor-pointer hover:text-red-600 dark:hover:text-red-300">Error Details</summary>
+          <pre class="mt-2 p-2 bg-red-100 dark:bg-red-800/30 rounded text-xs overflow-auto">${error.stack || error.message || error}</pre>
         </details>
       </div>
     `;

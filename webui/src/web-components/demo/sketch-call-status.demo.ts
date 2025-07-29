@@ -39,8 +39,8 @@ const demo: DemoModule = {
       label: string,
     ) => {
       const wrapper = document.createElement("div");
-      wrapper.style.cssText =
-        "margin: 15px 0; padding: 10px; border: 1px solid #e1e5e9; border-radius: 6px; background: white;";
+      wrapper.className =
+        "my-4 p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800";
 
       const labelEl = document.createElement("h4");
       labelEl.textContent = label;
@@ -215,8 +215,8 @@ const demo: DemoModule = {
     statusVariationsSection.appendChild(workingDisconnectedStatus);
 
     const interactiveWrapper = document.createElement("div");
-    interactiveWrapper.style.cssText =
-      "padding: 10px; border: 1px solid #e1e5e9; border-radius: 6px; background: white;";
+    interactiveWrapper.className =
+      "p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800";
     interactiveWrapper.appendChild(interactiveStatus);
     interactiveWrapper.appendChild(controlsDiv);
     interactiveSection.appendChild(interactiveWrapper);

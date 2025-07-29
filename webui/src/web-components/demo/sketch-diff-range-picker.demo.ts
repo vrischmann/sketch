@@ -30,14 +30,9 @@ const demo: DemoModule = {
     const rangePickerElement = document.createElement(
       "sketch-diff-range-picker",
     );
-    rangePickerElement.style.cssText = `
-      width: 100%;
-      max-width: 800px;
-      margin: 20px 0;
-      padding: 16px;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      background: white;
+    rangePickerElement.className = `
+      w-full max-w-3xl my-5 p-4 border border-gray-300 dark:border-gray-600 
+      rounded-lg bg-white dark:bg-gray-800
     `;
 
     // Set up the git service
@@ -45,15 +40,9 @@ const demo: DemoModule = {
 
     // Create status display
     const statusDisplay = document.createElement("div");
-    statusDisplay.style.cssText = `
-      padding: 12px;
-      margin: 16px 0;
-      background: var(--demo-fixture-section-bg);
-      border-radius: 6px;
-      border: 1px solid #e9ecef;
-      font-family: monospace;
-      font-size: 14px;
-      line-height: 1.4;
+    statusDisplay.className = `
+      p-3 my-4 bg-gray-50 dark:bg-gray-800 rounded border 
+      border-gray-200 dark:border-gray-700 font-mono text-sm leading-relaxed
     `;
     statusDisplay.innerHTML = `
       <div><strong>Status:</strong> No range selected</div>
@@ -84,12 +73,9 @@ const demo: DemoModule = {
 
     // Add some demo instructions
     const instructionsDiv = document.createElement("div");
-    instructionsDiv.style.cssText = `
-      margin: 20px 0;
-      padding: 16px;
-      background: var(--demo-instruction-bg);
-      border-radius: 6px;
-      border-left: 4px solid #2196f3;
+    instructionsDiv.className = `
+      my-5 p-4 bg-blue-50 dark:bg-blue-900/20 rounded 
+      border-l-4 border-blue-500 dark:border-blue-400
     `;
     instructionsDiv.innerHTML = `
       <h3 style="margin: 0 0 8px 0; color: #1976d2;">Demo Instructions:</h3>
