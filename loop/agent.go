@@ -1392,6 +1392,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	}
 	patchTool := &claudetool.PatchTool{
 		Callback: a.patchCallback,
+		Pwd:      a.workingDir,
 	}
 
 	// Register all tools with the conversation

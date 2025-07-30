@@ -28,6 +28,8 @@ type PatchCallback func(input PatchInput, output llm.ToolOut) llm.ToolOut
 // PatchTool specifies an llm.Tool for patching files.
 type PatchTool struct {
 	Callback PatchCallback // may be nil
+	// Pwd is the working directory for resolving relative paths
+	Pwd string
 }
 
 // Tool returns an llm.Tool based on p.
@@ -38,7 +40,7 @@ func (p *PatchTool) Tool() *llm.Tool {
 		InputSchema: llm.MustSchema(PatchInputSchema),
 		Run: func(ctx context.Context, m json.RawMessage) llm.ToolOut {
 			var input PatchInput
-			output := patchRun(ctx, m, &input)
+			output := p.patchRun(ctx, m, &input)
 			if p.Callback != nil {
 				return p.Callback(input, output)
 			}
@@ -71,7 +73,7 @@ Usage notes:
   "properties": {
     "path": {
       "type": "string",
-      "description": "Absolute path to the file to patch"
+      "description": "Path to the file to patch"
     },
     "patches": {
       "type": "array",
@@ -118,15 +120,19 @@ type PatchRequest struct {
 
 // patchRun implements the guts of the patch tool.
 // It populates input from m.
-func patchRun(ctx context.Context, m json.RawMessage, input *PatchInput) llm.ToolOut {
+func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *PatchInput) llm.ToolOut {
 	if err := json.Unmarshal(m, &input); err != nil {
 		return llm.ErrorfToolOut("failed to unmarshal user_patch input: %w", err)
 	}
 
-	// Validate the input
+	path := input.Path
 	if !filepath.IsAbs(input.Path) {
-		return llm.ErrorfToolOut("path %q is not absolute", input.Path)
+		if p.Pwd == "" {
+			return llm.ErrorfToolOut("path %q is not absolute and no working directory is set", input.Path)
+		}
+		path = filepath.Join(p.Pwd, input.Path)
 	}
+	input.Path = path
 	if len(input.Patches) == 0 {
 		return llm.ErrorToolOut(fmt.Errorf("no patches provided"))
 	}
