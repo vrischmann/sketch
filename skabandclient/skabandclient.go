@@ -228,7 +228,6 @@ func Login(stdout io.Writer, privKey ed25519.PrivateKey, skabandAddr, sessionID,
 	if apiKey == "" {
 		return "", "", "", "", fmt.Errorf("skaband returned no api key")
 	}
-	fmt.Printf("skaband login successful, API URL: %s, API Key: %s\n", apiURL, apiKey)
 	return pubKey, apiURL, oaiModelName, apiKey, nil
 }
 
