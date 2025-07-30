@@ -455,6 +455,8 @@ func parseCLIFlags() CLIFlags {
 		flags.mounts[i] = expanded + ":" + container
 	}
 
+	flags.skabandAddr = strings.TrimSuffix(flags.skabandAddr, "/")
+
 	return flags
 }
 
