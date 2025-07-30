@@ -257,13 +257,6 @@ export class MobileChat extends SketchTailwindElement {
         case "browser_take_screenshot":
           return "Taking screenshot";
 
-        case "browser_click":
-          return `Click: ${input.selector || ""}`;
-
-        case "browser_type":
-          const text = input.text || "";
-          return `Type: ${text.length > 30 ? text.substring(0, 30) + "..." : text}`;
-
         case "todo_write":
           const tasks = input.tasks || [];
           return `${tasks.length} task${tasks.length > 1 ? "s" : ""}`;

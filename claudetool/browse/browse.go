@@ -173,7 +173,7 @@ func (b *BrowseTools) NewNavigateTool() *llm.Tool {
 				},
 				"timeout": {
 					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
+					"description": "Timeout as a Go duration string (default: 15s)"
 				}
 			},
 			"required": ["url"]
@@ -212,264 +212,19 @@ func (b *BrowseTools) navigateRun(ctx context.Context, m json.RawMessage) llm.To
 	return llm.ToolOut{LLMContent: llm.TextContent("done")}
 }
 
-// ClickTool definition
-type clickInput struct {
-	Selector    string `json:"selector"`
-	WaitVisible bool   `json:"wait_visible,omitempty"`
-	Timeout     string `json:"timeout,omitempty"`
-}
-
-// NewClickTool creates a tool for clicking elements
-func (b *BrowseTools) NewClickTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "browser_click",
-		Description: "Click the first element matching a CSS selector",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"selector": {
-					"type": "string",
-					"description": "CSS selector for the element to click"
-				},
-				"wait_visible": {
-					"type": "boolean",
-					"description": "Wait for the element to be visible before clicking"
-				},
-				"timeout": {
-					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
-				}
-			},
-			"required": ["selector"]
-		}`),
-		Run: b.clickRun,
-	}
-}
-
-func (b *BrowseTools) clickRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
-	var input clickInput
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("invalid input: %w", err)
-	}
-
-	browserCtx, err := b.GetBrowserContext()
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	// Create a timeout context for this operation
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
-	defer cancel()
-
-	actions := []chromedp.Action{
-		chromedp.WaitReady(input.Selector),
-	}
-
-	if input.WaitVisible {
-		actions = append(actions, chromedp.WaitVisible(input.Selector))
-	}
-
-	actions = append(actions, chromedp.Click(input.Selector))
-
-	err = chromedp.Run(timeoutCtx, actions...)
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	return llm.ToolOut{LLMContent: llm.TextContent("done")}
-}
-
-// TypeTool definition
-type typeInput struct {
-	Selector string `json:"selector"`
-	Text     string `json:"text"`
-	Clear    bool   `json:"clear,omitempty"`
-	Timeout  string `json:"timeout,omitempty"`
-}
-
-// NewTypeTool creates a tool for typing into input elements
-func (b *BrowseTools) NewTypeTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "browser_type",
-		Description: "Type text into an input or textarea element",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"selector": {
-					"type": "string",
-					"description": "CSS selector for the input element"
-				},
-				"text": {
-					"type": "string",
-					"description": "Text to type into the element"
-				},
-				"clear": {
-					"type": "boolean",
-					"description": "Clear the input field before typing"
-				},
-				"timeout": {
-					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
-				}
-			},
-			"required": ["selector", "text"]
-		}`),
-		Run: b.typeRun,
-	}
-}
-
-func (b *BrowseTools) typeRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
-	var input typeInput
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("invalid input: %w", err)
-	}
-
-	browserCtx, err := b.GetBrowserContext()
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	// Create a timeout context for this operation
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
-	defer cancel()
-
-	actions := []chromedp.Action{
-		chromedp.WaitReady(input.Selector),
-		chromedp.WaitVisible(input.Selector),
-	}
-
-	if input.Clear {
-		actions = append(actions, chromedp.Clear(input.Selector))
-	}
-
-	actions = append(actions, chromedp.SendKeys(input.Selector, input.Text))
-
-	err = chromedp.Run(timeoutCtx, actions...)
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	return llm.ToolOut{LLMContent: llm.TextContent("done")}
-}
-
-// WaitForTool definition
-type waitForInput struct {
-	Selector string `json:"selector"`
-	Timeout  string `json:"timeout,omitempty"`
-}
-
-// NewWaitForTool creates a tool for waiting for elements
-func (b *BrowseTools) NewWaitForTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "browser_wait_for",
-		Description: "Wait for an element to be present in the DOM",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"selector": {
-					"type": "string",
-					"description": "CSS selector for the element to wait for"
-				},
-				"timeout": {
-					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
-				}
-			},
-			"required": ["selector"]
-		}`),
-		Run: b.waitForRun,
-	}
-}
-
-func (b *BrowseTools) waitForRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
-	var input waitForInput
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("invalid input: %w", err)
-	}
-
-	browserCtx, err := b.GetBrowserContext()
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
-	defer cancel()
-
-	err = chromedp.Run(timeoutCtx, chromedp.WaitReady(input.Selector))
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	return llm.ToolOut{LLMContent: llm.TextContent("done")}
-}
-
-// GetTextTool definition
-type getTextInput struct {
-	Selector string `json:"selector"`
-	Timeout  string `json:"timeout,omitempty"`
-}
-
-// NewGetTextTool creates a tool for getting text from elements
-func (b *BrowseTools) NewGetTextTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "browser_get_text",
-		Description: "Get the innerText of an element, returned in innerText tag. Can be used to read the web page.",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"selector": {
-					"type": "string",
-					"description": "CSS selector for the element to get text from"
-				},
-				"timeout": {
-					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
-				}
-			},
-			"required": ["selector"]
-		}`),
-		Run: b.getTextRun,
-	}
-}
-
-func (b *BrowseTools) getTextRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
-	var input getTextInput
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("invalid input: %w", err)
-	}
-
-	browserCtx, err := b.GetBrowserContext()
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	// Create a timeout context for this operation
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
-	defer cancel()
-
-	var text string
-	err = chromedp.Run(timeoutCtx,
-		chromedp.WaitReady(input.Selector),
-		chromedp.Text(input.Selector, &text),
-	)
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	return llm.ToolOut{LLMContent: llm.TextContent("<innerText>" + text + "</innerText>")}
-}
-
 // EvalTool definition
 type evalInput struct {
 	Expression string `json:"expression"`
 	Timeout    string `json:"timeout,omitempty"`
+	Await      *bool  `json:"await,omitempty"`
 }
 
 // NewEvalTool creates a tool for evaluating JavaScript
 func (b *BrowseTools) NewEvalTool() *llm.Tool {
 	return &llm.Tool{
-		Name:        "browser_eval",
-		Description: "Evaluate JavaScript in the browser context",
+		Name: "browser_eval",
+		Description: `Evaluate JavaScript in the browser context.
+Your go-to tool for interacting with content: clicking buttons, typing, getting content, scrolling, resizing, waiting for content/selector to be ready, etc.`,
 		InputSchema: json.RawMessage(`{
 			"type": "object",
 			"properties": {
@@ -479,7 +234,11 @@ func (b *BrowseTools) NewEvalTool() *llm.Tool {
 				},
 				"timeout": {
 					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
+					"description": "Timeout as a Go duration string (default: 15s)"
+				},
+				"await": {
+					"type": "boolean",
+					"description": "If true, wait for promises to resolve and return their resolved value (default: true)"
 				}
 			},
 			"required": ["expression"]
@@ -504,7 +263,21 @@ func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) llm.ToolOu
 	defer cancel()
 
 	var result any
-	err = chromedp.Run(timeoutCtx, chromedp.Evaluate(input.Expression, &result))
+	var evalOps []chromedp.EvaluateOption
+
+	await := true
+	if input.Await != nil {
+		await = *input.Await
+	}
+	if await {
+		evalOps = append(evalOps, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
+			return p.WithAwaitPromise(true)
+		})
+	}
+
+	evalAction := chromedp.Evaluate(input.Expression, &result, evalOps...)
+
+	err = chromedp.Run(timeoutCtx, evalAction)
 	if err != nil {
 		return llm.ErrorToolOut(err)
 	}
@@ -538,7 +311,7 @@ func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 				},
 				"timeout": {
 					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
+					"description": "Timeout as a Go duration string (default: 15s)"
 				}
 			}
 		}`),
@@ -606,151 +379,11 @@ func (b *BrowseTools) screenshotRun(ctx context.Context, m json.RawMessage) llm.
 	}}
 }
 
-// ScrollIntoViewTool definition
-type scrollIntoViewInput struct {
-	Selector string `json:"selector"`
-	Timeout  string `json:"timeout,omitempty"`
-}
-
-// NewScrollIntoViewTool creates a tool for scrolling elements into view
-func (b *BrowseTools) NewScrollIntoViewTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "browser_scroll_into_view",
-		Description: "Scroll an element into view if it's not visible",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"selector": {
-					"type": "string",
-					"description": "CSS selector for the element to scroll into view"
-				},
-				"timeout": {
-					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
-				}
-			},
-			"required": ["selector"]
-		}`),
-		Run: b.scrollIntoViewRun,
-	}
-}
-
-func (b *BrowseTools) scrollIntoViewRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
-	var input scrollIntoViewInput
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("invalid input: %w", err)
-	}
-
-	browserCtx, err := b.GetBrowserContext()
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	// Create a timeout context for this operation
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
-	defer cancel()
-
-	script := fmt.Sprintf(`
-		const el = document.querySelector('%s');
-		if (el) {
-			el.scrollIntoView({behavior: 'smooth', block: 'center'});
-			return true;
-		}
-		return false;
-	`, input.Selector)
-
-	var result bool
-	err = chromedp.Run(timeoutCtx,
-		chromedp.WaitReady(input.Selector),
-		chromedp.Evaluate(script, &result),
-	)
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	if !result {
-		return llm.ErrorToolOut(fmt.Errorf("element not found: %s", input.Selector))
-	}
-
-	return llm.ToolOut{LLMContent: llm.TextContent("done")}
-}
-
-// ResizeTool definition
-type resizeInput struct {
-	Width   int    `json:"width"`
-	Height  int    `json:"height"`
-	Timeout string `json:"timeout,omitempty"`
-}
-
-// NewResizeTool creates a tool for resizing the browser window
-func (b *BrowseTools) NewResizeTool() *llm.Tool {
-	return &llm.Tool{
-		Name:        "browser_resize",
-		Description: "Resize the browser window to a specific width and height",
-		InputSchema: json.RawMessage(`{
-			"type": "object",
-			"properties": {
-				"width": {
-					"type": "integer",
-					"description": "Window width in pixels"
-				},
-				"height": {
-					"type": "integer",
-					"description": "Window height in pixels"
-				},
-				"timeout": {
-					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
-				}
-			},
-			"required": ["width", "height"]
-		}`),
-		Run: b.resizeRun,
-	}
-}
-
-func (b *BrowseTools) resizeRun(ctx context.Context, m json.RawMessage) llm.ToolOut {
-	var input resizeInput
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("invalid input: %w", err)
-	}
-
-	browserCtx, err := b.GetBrowserContext()
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	// Create a timeout context for this operation
-	timeoutCtx, cancel := context.WithTimeout(browserCtx, parseTimeout(input.Timeout))
-	defer cancel()
-
-	// Validate dimensions
-	if input.Width <= 0 || input.Height <= 0 {
-		return llm.ErrorToolOut(fmt.Errorf("invalid dimensions: width and height must be positive"))
-	}
-
-	// Resize the browser window
-	err = chromedp.Run(timeoutCtx,
-		chromedp.EmulateViewport(int64(input.Width), int64(input.Height)),
-	)
-	if err != nil {
-		return llm.ErrorToolOut(err)
-	}
-
-	return llm.ToolOut{LLMContent: llm.TextContent("done")}
-}
-
 // GetTools returns browser tools, optionally filtering out screenshot-related tools
 func (b *BrowseTools) GetTools(includeScreenshotTools bool) []*llm.Tool {
 	tools := []*llm.Tool{
 		b.NewNavigateTool(),
-		b.NewClickTool(),
-		b.NewTypeTool(),
-		b.NewWaitForTool(),
-		b.NewGetTextTool(),
 		b.NewEvalTool(),
-		b.NewScrollIntoViewTool(),
-		b.NewResizeTool(),
 		b.NewRecentConsoleLogsTool(),
 		b.NewClearConsoleLogsTool(),
 	}
@@ -809,7 +442,7 @@ func (b *BrowseTools) NewReadImageTool() *llm.Tool {
 				},
 				"timeout": {
 					"type": "string",
-					"description": "Timeout as a Go duration string (default: 5s)"
+					"description": "Timeout as a Go duration string (default: 15s)"
 				}
 			},
 			"required": ["path"]
@@ -861,16 +494,10 @@ func (b *BrowseTools) readImageRun(ctx context.Context, m json.RawMessage) llm.T
 // parseTimeout parses a timeout string and returns a time.Duration
 // It returns a default of 5 seconds if the timeout is empty or invalid
 func parseTimeout(timeout string) time.Duration {
-	if timeout == "" {
-		return 5 * time.Second // default 5 seconds
-	}
-
 	dur, err := time.ParseDuration(timeout)
 	if err != nil {
-		// If parsing fails, return the default
-		return 5 * time.Second
+		return 15 * time.Second
 	}
-
 	return dur
 }
 

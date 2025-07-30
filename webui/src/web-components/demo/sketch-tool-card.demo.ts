@@ -17,7 +17,6 @@ const demo: DemoModule = {
     "../sketch-tool-card-browser-resize.ts",
     "../sketch-tool-card-browser-scroll-into-view.ts",
     "../sketch-tool-card-browser-type.ts",
-    "../sketch-tool-card-browser-wait-for.ts",
     "../sketch-tool-card-read-image.ts",
     "../sketch-tool-card-take-screenshot.ts",
   ],
@@ -202,39 +201,6 @@ Total reclaimed space: 1.426GB`,
           tool_call_id: "toolu_navigate",
         },
       },
-      // Browser click
-      {
-        name: "browser_click",
-        input: JSON.stringify({ selector: ".login-button" }),
-        tool_call_id: "toolu_click",
-        result_message: {
-          type: "tool",
-          tool_result: "Clicked element: .login-button",
-          tool_call_id: "toolu_click",
-        },
-      },
-      // Browser type
-      {
-        name: "browser_type",
-        input: JSON.stringify({ selector: "#username", text: "testuser" }),
-        tool_call_id: "toolu_type",
-        result_message: {
-          type: "tool",
-          tool_result: "Typed 'testuser' into #username",
-          tool_call_id: "toolu_type",
-        },
-      },
-      // Browser get text
-      {
-        name: "browser_get_text",
-        input: JSON.stringify({ selector: ".welcome-message" }),
-        tool_call_id: "toolu_get_text",
-        result_message: {
-          type: "tool",
-          tool_result: "Welcome to our application! Please log in to continue.",
-          tool_call_id: "toolu_get_text",
-        },
-      },
       // Browser eval
       {
         name: "browser_eval",
@@ -244,39 +210,6 @@ Total reclaimed space: 1.426GB`,
           type: "tool",
           tool_result: "Example Domain",
           tool_call_id: "toolu_eval",
-        },
-      },
-      // Browser wait for
-      {
-        name: "browser_wait_for",
-        input: JSON.stringify({ selector: ".loading-complete" }),
-        tool_call_id: "toolu_wait",
-        result_message: {
-          type: "tool",
-          tool_result: "Element .loading-complete is now present",
-          tool_call_id: "toolu_wait",
-        },
-      },
-      // Browser resize
-      {
-        name: "browser_resize",
-        input: JSON.stringify({ width: 1024, height: 768 }),
-        tool_call_id: "toolu_resize",
-        result_message: {
-          type: "tool",
-          tool_result: "Browser resized to 1024x768",
-          tool_call_id: "toolu_resize",
-        },
-      },
-      // Browser scroll into view
-      {
-        name: "browser_scroll_into_view",
-        input: JSON.stringify({ selector: "#bottom-section" }),
-        tool_call_id: "toolu_scroll",
-        result_message: {
-          type: "tool",
-          tool_result: "Scrolled element #bottom-section into view",
-          tool_call_id: "toolu_scroll",
         },
       },
       // Browser clear console logs
@@ -377,34 +310,8 @@ Total reclaimed space: 1.426GB`,
             "sketch-tool-card-browser-navigate",
           );
           break;
-        case "browser_click":
-          toolCardEl = document.createElement("sketch-tool-card-browser-click");
-          break;
-        case "browser_type":
-          toolCardEl = document.createElement("sketch-tool-card-browser-type");
-          break;
-        case "browser_get_text":
-          toolCardEl = document.createElement(
-            "sketch-tool-card-browser-get-text",
-          );
-          break;
         case "browser_eval":
           toolCardEl = document.createElement("sketch-tool-card-browser-eval");
-          break;
-        case "browser_wait_for":
-          toolCardEl = document.createElement(
-            "sketch-tool-card-browser-wait-for",
-          );
-          break;
-        case "browser_resize":
-          toolCardEl = document.createElement(
-            "sketch-tool-card-browser-resize",
-          );
-          break;
-        case "browser_scroll_into_view":
-          toolCardEl = document.createElement(
-            "sketch-tool-card-browser-scroll-into-view",
-          );
           break;
         case "browser_clear_console_logs":
           toolCardEl = document.createElement(

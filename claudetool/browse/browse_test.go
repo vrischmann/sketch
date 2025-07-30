@@ -30,13 +30,8 @@ func TestToolCreation(t *testing.T) {
 		requiredProps []string
 	}{
 		{tools.NewNavigateTool(), "browser_navigate", "Navigate", []string{"url"}},
-		{tools.NewClickTool(), "browser_click", "Click", []string{"selector"}},
-		{tools.NewTypeTool(), "browser_type", "Type", []string{"selector", "text"}},
-		{tools.NewWaitForTool(), "browser_wait_for", "Wait", []string{"selector"}},
-		{tools.NewGetTextTool(), "browser_get_text", "Get", []string{"selector"}},
 		{tools.NewEvalTool(), "browser_eval", "Evaluate", []string{"expression"}},
 		{tools.NewScreenshotTool(), "browser_take_screenshot", "Take", nil},
-		{tools.NewScrollIntoViewTool(), "browser_scroll_into_view", "Scroll", []string{"selector"}},
 	}
 
 	for _, tt := range toolTests {
@@ -78,8 +73,8 @@ func TestGetTools(t *testing.T) {
 	// Test with screenshot tools included
 	t.Run("with screenshots", func(t *testing.T) {
 		toolsWithScreenshots := tools.GetTools(true)
-		if len(toolsWithScreenshots) != 12 {
-			t.Errorf("expected 12 tools with screenshots, got %d", len(toolsWithScreenshots))
+		if len(toolsWithScreenshots) != 6 {
+			t.Errorf("expected 6 tools with screenshots, got %d", len(toolsWithScreenshots))
 		}
 
 		// Check tool naming convention
@@ -94,8 +89,8 @@ func TestGetTools(t *testing.T) {
 	// Test without screenshot tools
 	t.Run("without screenshots", func(t *testing.T) {
 		noScreenshotTools := tools.GetTools(false)
-		if len(noScreenshotTools) != 10 {
-			t.Errorf("expected 10 tools without screenshots, got %d", len(noScreenshotTools))
+		if len(noScreenshotTools) != 4 {
+			t.Errorf("expected 4 tools without screenshots, got %d", len(noScreenshotTools))
 		}
 	})
 }
@@ -381,62 +376,4 @@ func TestDefaultViewportSize(t *testing.T) {
 	if response.Height != expectedHeight {
 		t.Errorf("Expected default height %v, got %v", expectedHeight, response.Height)
 	}
-}
-
-// TestResizeTool tests the browser resize functionality
-func TestResizeTool(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	// Skip if CI or headless testing environment
-	if os.Getenv("CI") != "" || os.Getenv("HEADLESS_TEST") != "" {
-		t.Skip("Skipping browser test in CI/headless environment")
-	}
-
-	t.Run("ResizeWindow", func(t *testing.T) {
-		tools := NewBrowseTools(ctx)
-		t.Cleanup(func() {
-			tools.Close()
-		})
-
-		// Resize to mobile dimensions
-		resizeTool := tools.NewResizeTool()
-		input := json.RawMessage(`{"width": 375, "height": 667}`)
-		toolOut := resizeTool.Run(ctx, input)
-		if toolOut.Error != nil {
-			t.Fatalf("Error: %v", toolOut.Error)
-		}
-		content := toolOut.LLMContent
-		if !strings.Contains(content[0].Text, "done") {
-			t.Fatalf("Expected done in response, got: %s", content[0].Text)
-		}
-
-		// Navigate to a test page and verify using JavaScript to get window dimensions
-		navInput := json.RawMessage(`{"url": "https://example.com"}`)
-		toolOut = tools.NewNavigateTool().Run(ctx, navInput)
-		if toolOut.Error != nil {
-			t.Fatalf("Error: %v", toolOut.Error)
-		}
-		content = toolOut.LLMContent
-		if !strings.Contains(content[0].Text, "done") {
-			t.Fatalf("Expected done in response, got: %s", content[0].Text)
-		}
-
-		// Check dimensions via JavaScript
-		evalInput := json.RawMessage(`{"expression": "({width: window.innerWidth, height: window.innerHeight})"}`)
-		toolOut = tools.NewEvalTool().Run(ctx, evalInput)
-		if toolOut.Error != nil {
-			t.Fatalf("Error: %v", toolOut.Error)
-		}
-		content = toolOut.LLMContent
-
-		// The dimensions might not be exactly what we set (browser chrome, etc.)
-		// but they should be close
-		if !strings.Contains(content[0].Text, "width") {
-			t.Fatalf("Expected width in response, got: %s", content[0].Text)
-		}
-		if !strings.Contains(content[0].Text, "height") {
-			t.Fatalf("Expected height in response, got: %s", content[0].Text)
-		}
-	})
 }

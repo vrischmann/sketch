@@ -51,22 +51,10 @@ var (
  🐛  Running automated code review, may be slow
 {{else if eq .msg.ToolName "browser_navigate" -}}
  🌐 {{.input.url -}}
-{{else if eq .msg.ToolName "browser_click" -}}
- 🖱️  {{.input.selector -}}
-{{else if eq .msg.ToolName "browser_type" -}}
- ⌨️  {{.input.selector}}: "{{.input.text}}"
-{{else if eq .msg.ToolName "browser_wait_for" -}}
- ⏳ {{.input.selector -}}
-{{else if eq .msg.ToolName "browser_get_text" -}}
- 📖 {{.input.selector -}}
 {{else if eq .msg.ToolName "browser_eval" -}}
  📱 {{.input.expression -}}
 {{else if eq .msg.ToolName "browser_take_screenshot" -}}
  📸 Screenshot
-{{else if eq .msg.ToolName "browser_scroll_into_view" -}}
- 🔄 {{.input.selector -}}
-{{else if eq .msg.ToolName "browser_resize" -}}
- 🖼️  {{.input.width}}x{{.input.height -}}
 {{else if eq .msg.ToolName "read_image" -}}
  🖼️  {{.input.path -}}
 {{else if eq .msg.ToolName "browser_recent_console_logs" -}}

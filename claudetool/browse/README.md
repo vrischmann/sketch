@@ -7,14 +7,8 @@ Chrome browser from Go. The tools are built using the
 ## Available Tools
 
 1. `browser_navigate` - Navigate to a URL and wait for the page to load
-2. `browser_click` - Click an element matching a CSS selector
-3. `browser_type` - Type text into an input field
-4. `browser_wait_for` - Wait for an element to appear in the DOM
-5. `browser_get_text` - Get the text content of an element
-6. `browser_eval` - Evaluate JavaScript in the browser context
-7. `browser_screenshot` - Take a screenshot of the page or a specific element
-8. `browser_scroll_into_view` - Scroll an element into view
-9. `browser_resize` - Resize the browser window to specific dimensions
+2. `browser_eval` - Evaluate JavaScript in the browser context
+3. `browser_screenshot` - Take a screenshot of the page or a specific element
 
 ## Usage
 
