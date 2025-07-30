@@ -25,7 +25,7 @@ import (
 // PermissionCallback is a function type for checking if a command is allowed to run
 type PermissionCallback func(command string) error
 
-// BashTool specifies a llm.Tool for executing shell commands.
+// BashTool specifies an llm.Tool for executing shell commands.
 type BashTool struct {
 	// CheckPermission is called before running any command, if set
 	CheckPermission PermissionCallback

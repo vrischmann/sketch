@@ -25,8 +25,13 @@ import (
 // and returns a new, possibly altered tool output.
 type PatchCallback func(input PatchInput, output llm.ToolOut) llm.ToolOut
 
-// Patch creates a patch tool. The callback may be nil.
-func Patch(callback PatchCallback) *llm.Tool {
+// PatchTool specifies an llm.Tool for patching files.
+type PatchTool struct {
+	Callback PatchCallback // may be nil
+}
+
+// Tool returns an llm.Tool based on p.
+func (p *PatchTool) Tool() *llm.Tool {
 	return &llm.Tool{
 		Name:        PatchName,
 		Description: strings.TrimSpace(PatchDescription),
@@ -34,8 +39,8 @@ func Patch(callback PatchCallback) *llm.Tool {
 		Run: func(ctx context.Context, m json.RawMessage) llm.ToolOut {
 			var input PatchInput
 			output := patchRun(ctx, m, &input)
-			if callback != nil {
-				return callback(input, output)
+			if p.Callback != nil {
+				return p.Callback(input, output)
 			}
 			return output
 		},

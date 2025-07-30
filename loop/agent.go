@@ -1390,6 +1390,9 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 		Timeouts:         a.config.BashTimeouts,
 		Pwd:              a.workingDir,
 	}
+	patchTool := &claudetool.PatchTool{
+		Callback: a.patchCallback,
+	}
 
 	// Register all tools with the conversation
 	// When adding, removing, or modifying tools here, double-check that the termui tool display
@@ -1411,7 +1414,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	convo.Tools = []*llm.Tool{
 		bashTool.Tool(),
 		claudetool.Keyword,
-		claudetool.Patch(a.patchCallback),
+		patchTool.Tool(),
 		claudetool.Think,
 		claudetool.TodoRead,
 		claudetool.TodoWrite,
