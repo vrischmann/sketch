@@ -111,6 +111,17 @@ type PatchInput struct {
 	Patches []PatchRequest `json:"patches"`
 }
 
+// PatchInputOne is a simplified version of PatchInput for single patch operations.
+type PatchInputOne struct {
+	Path    string       `json:"path"`
+	Patches PatchRequest `json:"patches"`
+}
+
+type PatchInputOneString struct {
+	Path    string `json:"path"`
+	Patches string `json:"patches"` // contains Patches as a JSON string 🤦
+}
+
 // PatchRequest represents a single patch operation.
 type PatchRequest struct {
 	Operation string `json:"operation"`
@@ -118,13 +129,52 @@ type PatchRequest struct {
 	NewText   string `json:"newText,omitempty"`
 }
 
+// Run implements the patch tool logic.
+func (p *PatchTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
+	input, err := p.patchParse(m)
+	var output llm.ToolOut
+	if err != nil {
+		output = llm.ErrorToolOut(err)
+	} else {
+		output = p.patchRun(ctx, m, &input)
+	}
+	if p.Callback != nil {
+		return p.Callback(input, output)
+	}
+	return output
+}
+
+// patchParse parses the input message into a PatchInput structure.
+// It accepts a few different formats, because empirically,
+// LLMs sometimes generate slightly different JSON structures,
+// and we may as well accept such near misses.
+func (p *PatchTool) patchParse(m json.RawMessage) (PatchInput, error) {
+	var input PatchInput
+	originalErr := json.Unmarshal(m, &input)
+	if originalErr == nil {
+		return input, nil
+	}
+	var inputOne PatchInputOne
+	if err := json.Unmarshal(m, &inputOne); err == nil {
+		return PatchInput{Path: inputOne.Path, Patches: []PatchRequest{inputOne.Patches}}, nil
+	}
+	var inputOneString PatchInputOneString
+	if err := json.Unmarshal(m, &inputOneString); err == nil {
+		var onePatch PatchRequest
+		if err := json.Unmarshal([]byte(inputOneString.Patches), &onePatch); err == nil {
+			return PatchInput{Path: inputOneString.Path, Patches: []PatchRequest{onePatch}}, nil
+		}
+		var patches []PatchRequest
+		if err := json.Unmarshal([]byte(inputOneString.Patches), &patches); err == nil {
+			return PatchInput{Path: inputOneString.Path, Patches: patches}, nil
+		}
+	}
+	return PatchInput{}, fmt.Errorf("failed to unmarshal patch input: %w", originalErr)
+}
+
 // patchRun implements the guts of the patch tool.
 // It populates input from m.
 func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *PatchInput) llm.ToolOut {
-	if err := json.Unmarshal(m, &input); err != nil {
-		return llm.ErrorfToolOut("failed to unmarshal user_patch input: %w", err)
-	}
-
 	path := input.Path
 	if !filepath.IsAbs(input.Path) {
 		if p.Pwd == "" {
