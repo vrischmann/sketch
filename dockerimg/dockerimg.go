@@ -386,7 +386,6 @@ func LaunchContainer(ctx context.Context, config ContainerConfig) error {
 		// Get the Container CA public key for mutual auth
 		if cst.containerCAPublicKey != nil {
 			containerCAPublicKey = ssh.MarshalAuthorizedKey(cst.containerCAPublicKey)
-			fmt.Println("🔒 SSH Mutual Authentication enabled (container will verify host)")
 		}
 
 		// Get the host certificate for mutual auth
