@@ -18,12 +18,14 @@ export function aggregateAgentMessages(
       if (msg.type == "slug" || msg.type == "compact") {
         return false;
       }
-      // Filter out messages with empty/missing content unless they have tool_calls or commits
+      // Filter out messages with empty/missing content unless they have tool_calls, commits or
+      // external messsages.
       const hasContent = msg.content && msg.content.trim().length > 0;
       const hasToolCalls = msg.tool_calls && msg.tool_calls.length > 0;
       const hasCommits = msg.commits && msg.commits.length > 0;
+      const hasExtneral = msg.external_message ? true : false;
 
-      if (!hasContent && !hasToolCalls && !hasCommits) {
+      if (!hasContent && !hasToolCalls && !hasCommits && !hasExtneral) {
         return false;
       }
       if (seenIds.has(msg.idx)) {

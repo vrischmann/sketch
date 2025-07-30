@@ -46,7 +46,8 @@ export class SketchExternalMessage extends SketchTailwindElement {
           >${run.workflow.name} -
           ${run.workflow_run.conclusion || run.workflow_run.status}</span
         >
-        on ${run.workflow_run.head_branch} at ${run.workflow_run.head_commit}`;
+        on ${run.workflow_run.head_branch} at
+        ${run.workflow_run.head_sha.substring(0, 7)}`;
 
       this.detailsContent = html`
         <div class="flex items-center gap-2">
