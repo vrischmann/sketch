@@ -14,7 +14,6 @@ const demo: DemoModule = {
     "../sketch-tool-card-browser-get-text.ts",
     "../sketch-tool-card-browser-navigate.ts",
     "../sketch-tool-card-browser-recent-console-logs.ts",
-    "../sketch-tool-card-browser-resize.ts",
     "../sketch-tool-card-browser-scroll-into-view.ts",
     "../sketch-tool-card-browser-type.ts",
     "../sketch-tool-card-read-image.ts",

@@ -71,7 +71,7 @@ export class SketchCallStatus extends SketchTailwindElement {
             class="llm-indicator flex justify-center items-center w-8 h-8 rounded transition-all duration-200 relative ${this
               .llmCalls > 0
               ? "bg-yellow-100 dark:bg-yellow-900 text-amber-500 dark:text-amber-400 animate-gentle-pulse active"
-              : "bg-transparent text-gray-400 dark:text-gray-500"}"
+              : "bg-transparent text-gray-400 dark:text-neutral-500"}"
             title="${this.llmCalls > 0
               ? `${this.llmCalls} LLM ${this.llmCalls === 1 ? "call" : "calls"} in progress`
               : "No LLM calls in progress"}${agentState}"
@@ -82,7 +82,7 @@ export class SketchCallStatus extends SketchTailwindElement {
             class="tool-indicator flex justify-center items-center w-8 h-8 rounded transition-all duration-200 relative ${this
               .toolCalls.length > 0
               ? "bg-blue-100 dark:bg-blue-900 text-blue-500 dark:text-blue-400 animate-gentle-pulse active"
-              : "bg-transparent text-gray-400 dark:text-gray-500"}"
+              : "bg-transparent text-gray-400 dark:text-neutral-500"}"
             title="${this.toolCalls.length > 0
               ? `${this.toolCalls.length} tool ${this.toolCalls.length === 1 ? "call" : "calls"} in progress: ${this.toolCalls.join(", ")}`
               : "No tool calls in progress"}${agentState}"

@@ -25,10 +25,10 @@ const demo: DemoModule = {
 
     const toggleContainer = document.createElement("div");
     toggleContainer.className =
-      "flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700";
+      "flex items-center gap-4 p-4 bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700";
     toggleContainer.innerHTML = `
       <sketch-theme-toggle></sketch-theme-toggle>
-      <div class="text-sm text-gray-600 dark:text-gray-400">
+      <div class="text-sm text-gray-600 dark:text-neutral-400">
         <div class="font-medium mb-1">Theme modes:</div>
         <div class="space-y-1">
           <div>☀️ Light mode - Always light theme</div>
@@ -48,9 +48,9 @@ const demo: DemoModule = {
     const visualContainer = document.createElement("div");
     visualContainer.className = "space-y-4";
     visualContainer.innerHTML = `
-      <div class="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-600">
-        <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Test Card</h4>
-        <p class="text-gray-600 dark:text-gray-300">
+      <div class="bg-white dark:bg-neutral-800 p-4 rounded border border-gray-200 dark:border-neutral-600">
+        <h4 class="font-medium text-gray-900 dark:text-neutral-100 mb-2">Test Card</h4>
+        <p class="text-gray-600 dark:text-neutral-300">
           This card should switch between light and dark styling when you toggle the theme.
         </p>
       </div>
@@ -59,23 +59,23 @@ const demo: DemoModule = {
         <button class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors">
           Primary Button
         </button>
-        <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors">
+        <button class="px-4 py-2 bg-gray-200 dark:bg-neutral-700 hover:bg-gray-300 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 rounded transition-colors">
           Secondary Button
         </button>
       </div>
       
       <div class="grid grid-cols-3 gap-4">
-        <div class="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Light Background</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Should be dark in dark mode</div>
+        <div class="bg-white dark:bg-neutral-800 p-3 rounded border border-gray-200 dark:border-neutral-600">
+          <div class="text-sm font-medium text-gray-900 dark:text-neutral-100">Light Background</div>
+          <div class="text-xs text-gray-500 dark:text-neutral-400">Should be dark in dark mode</div>
         </div>
-        <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Gray Background</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Should be darker in dark mode</div>
+        <div class="bg-gray-100 dark:bg-neutral-800 p-3 rounded border border-gray-200 dark:border-neutral-600">
+          <div class="text-sm font-medium text-gray-900 dark:text-neutral-100">Gray Background</div>
+          <div class="text-xs text-gray-500 dark:text-neutral-400">Should be darker in dark mode</div>
         </div>
-        <div class="bg-gray-200 dark:bg-gray-700 p-3 rounded border border-gray-200 dark:border-gray-600">
-          <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Darker Background</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Should be lighter in dark mode</div>
+        <div class="bg-gray-200 dark:bg-neutral-700 p-3 rounded border border-gray-200 dark:border-neutral-600">
+          <div class="text-sm font-medium text-gray-900 dark:text-neutral-100">Darker Background</div>
+          <div class="text-xs text-gray-500 dark:text-neutral-400">Should be lighter in dark mode</div>
         </div>
       </div>
     `;

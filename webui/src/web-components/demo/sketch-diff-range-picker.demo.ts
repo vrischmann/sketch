@@ -31,8 +31,8 @@ const demo: DemoModule = {
       "sketch-diff-range-picker",
     );
     rangePickerElement.className = `
-      w-full max-w-3xl my-5 p-4 border border-gray-300 dark:border-gray-600 
-      rounded-lg bg-white dark:bg-gray-800
+      w-full max-w-3xl my-5 p-4 border border-gray-300 dark:border-neutral-600 
+      rounded-lg bg-white dark:bg-neutral-800
     `;
 
     // Set up the git service
@@ -41,8 +41,8 @@ const demo: DemoModule = {
     // Create status display
     const statusDisplay = document.createElement("div");
     statusDisplay.className = `
-      p-3 my-4 bg-gray-50 dark:bg-gray-800 rounded border 
-      border-gray-200 dark:border-gray-700 font-mono text-sm leading-relaxed
+      p-3 my-4 bg-gray-50 dark:bg-neutral-800 rounded border 
+      border-gray-200 dark:border-neutral-700 font-mono text-sm leading-relaxed
     `;
     statusDisplay.innerHTML = `
       <div><strong>Status:</strong> No range selected</div>

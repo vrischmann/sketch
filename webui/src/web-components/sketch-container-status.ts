@@ -381,7 +381,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
     if (!this.state?.ssh_available) {
       return html`
         <div
-          class="mt-2.5 pt-2.5 border-t border-gray-300 dark:border-gray-600"
+          class="mt-2.5 pt-2.5 border-t border-gray-300 dark:border-neutral-600"
         >
           <h3>Connect to Container</h3>
           <div
@@ -395,16 +395,18 @@ export class SketchContainerStatus extends SketchTailwindElement {
     }
 
     return html`
-      <div class="mt-2.5 pt-2.5 border-t border-gray-300 dark:border-gray-600">
+      <div
+        class="mt-2.5 pt-2.5 border-t border-gray-300 dark:border-neutral-600"
+      >
         <h3>Connect to Container</h3>
         <div class="flex items-center mb-2 gap-2.5">
           <div
-            class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 flex-grow"
+            class="font-mono text-xs bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded border border-gray-300 dark:border-neutral-600 text-gray-900 dark:text-neutral-100 flex-grow"
           >
             ${sshCommand}
           </div>
           <button
-            class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 text-xs text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-gray-600"
+            class="bg-gray-100 dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-xs text-gray-900 dark:text-neutral-100 cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-neutral-600"
             @click=${() => this.copyToClipboard(sshCommand)}
           >
             Copy
@@ -412,12 +414,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
         </div>
         <div class="flex items-center mb-2 gap-2.5">
           <div
-            class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 flex-grow"
+            class="font-mono text-xs bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded border border-gray-300 dark:border-neutral-600 text-gray-900 dark:text-neutral-100 flex-grow"
           >
             ${vscodeCommand}
           </div>
           <button
-            class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 text-xs text-gray-900 dark:text-gray-100 cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-gray-600"
+            class="bg-gray-100 dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-xs text-gray-900 dark:text-neutral-100 cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-neutral-600"
             @click=${() => this.copyToClipboard(vscodeCommand)}
           >
             Copy
@@ -656,10 +658,10 @@ export class SketchContainerStatus extends SketchTailwindElement {
           class="info-toggle ml-2 w-6 h-6 rounded-full flex items-center justify-center ${this
             .showDetails
             ? "bg-blue-500 text-white border-blue-600"
-            : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600"} border cursor-pointer font-bold italic transition-all hover:${this
+            : "bg-gray-100 dark:bg-neutral-700 text-gray-600 dark:text-neutral-400 border-gray-300 dark:border-neutral-600"} border cursor-pointer font-bold italic transition-all hover:${this
             .showDetails
             ? "bg-blue-600"
-            : "bg-gray-200 dark:bg-gray-600"}"
+            : "bg-gray-200 dark:bg-neutral-600"}"
           @click=${this._toggleInfoDetails}
           title="Show/hide details"
         >
@@ -670,7 +672,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
         <div
           class="${this.showDetails
             ? "block"
-            : "hidden"} absolute min-w-max top-full z-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 shadow-lg mt-1.5"
+            : "hidden"} absolute min-w-max top-full z-100 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-600 rounded-lg p-4 shadow-lg mt-1.5"
           style="left: 50%; transform: translateX(-50%);"
         >
           <!-- Last Commit section moved to main grid -->
@@ -681,45 +683,45 @@ export class SketchContainerStatus extends SketchTailwindElement {
           >
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Commit:</span
               >
               <span
                 id="initialCommit"
-                class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                 >${this.state?.initial_commit?.substring(0, 8)}</span
               >
             </div>
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Msgs:</span
               >
               <span
                 id="messageCount"
-                class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                 >${this.state?.message_count}</span
               >
             </div>
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Session ID:</span
               >
               <span
                 id="sessionId"
-                class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                 >${this.state?.session_id || "N/A"}</span
               >
             </div>
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Hostname:</span
               >
               <span
                 id="hostnameDetail"
-                class="text-xs font-semibold break-all cursor-default text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all cursor-default text-gray-900 dark:text-neutral-100"
                 title="${this.getHostnameTooltip()}"
               >
                 ${this.formatHostname()}
@@ -731,12 +733,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
                     class="flex items-center whitespace-nowrap mr-2.5 text-xs"
                   >
                     <span
-                      class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                      class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                       >Agent State:</span
                     >
                     <span
                       id="agentState"
-                      class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                      class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                       >${this.state?.agent_state}</span
                     >
                   </div>
@@ -744,12 +746,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
               : ""}
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Input tokens:</span
               >
               <span
                 id="inputTokens"
-                class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                 >${formatNumber(
                   (this.state?.total_usage?.input_tokens || 0) +
                     (this.state?.total_usage?.cache_read_input_tokens || 0) +
@@ -759,12 +761,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
             </div>
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Context Window:</span
               >
               <span
                 id="contextWindow"
-                class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                 >${formatNumber(
                   (this.latestUsage?.input_tokens || 0) +
                     (this.latestUsage?.cache_read_input_tokens || 0) +
@@ -778,12 +780,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
                     class="flex items-center whitespace-nowrap mr-2.5 text-xs"
                   >
                     <span
-                      class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                      class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                       >Model:</span
                     >
                     <span
                       id="modelName"
-                      class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                      class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                       >${this.state?.model}</span
                     >
                   </div>
@@ -791,12 +793,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
               : ""}
             <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
               <span
-                class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                 >Output tokens:</span
               >
               <span
                 id="outputTokens"
-                class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                 >${formatNumber(this.state?.total_usage?.output_tokens)}</span
               >
             </div>
@@ -806,12 +808,12 @@ export class SketchContainerStatus extends SketchTailwindElement {
                     class="flex items-center whitespace-nowrap mr-2.5 text-xs"
                   >
                     <span
-                      class="text-xs text-gray-600 dark:text-gray-400 mr-1 font-medium"
+                      class="text-xs text-gray-600 dark:text-neutral-400 mr-1 font-medium"
                       >Total cost:</span
                     >
                     <span
                       id="totalCost"
-                      class="text-xs font-semibold break-all text-gray-900 dark:text-gray-100"
+                      class="text-xs font-semibold break-all text-gray-900 dark:text-neutral-100"
                       >$${(
                         this.state?.total_usage?.total_cost_usd ?? 0
                       ).toFixed(2)}</span
@@ -820,7 +822,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
                 `
               : ""}
             <div
-              class="flex items-center whitespace-nowrap mr-2.5 text-xs col-span-full mt-1.5 border-t border-gray-300 dark:border-gray-600 pt-1.5"
+              class="flex items-center whitespace-nowrap mr-2.5 text-xs col-span-full mt-1.5 border-t border-gray-300 dark:border-neutral-600 pt-1.5"
             >
               <a href="debug/logs" class="text-blue-600">Logs</a> (<a
                 href="download"

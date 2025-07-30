@@ -26,7 +26,7 @@ const demo: DemoModule = {
     const messagesDiv = document.createElement("div");
     messagesDiv.id = "chat-messages";
     messagesDiv.className =
-      "min-h-[100px] max-h-[200px] overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 mb-3 bg-gray-50 dark:bg-gray-900";
+      "min-h-[100px] max-h-[200px] overflow-y-auto border border-gray-300 dark:border-neutral-600 rounded-md p-3 mb-3 bg-gray-50 dark:bg-neutral-900";
 
     // Create chat input
     const chatInput = document.createElement("sketch-chat-input") as any;
@@ -41,7 +41,7 @@ const demo: DemoModule = {
       messageDiv.className = `p-2 my-1 rounded max-w-xs ${
         isUser
           ? "bg-blue-500 text-white ml-auto"
-          : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 mr-auto"
+          : "bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 mr-auto"
       }`;
 
       const timeStr = timestamp

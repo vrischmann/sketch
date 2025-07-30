@@ -857,7 +857,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       <!-- Top banner: flex row, space between, border bottom, shadow -->
       <div
         id="top-banner"
-        class="flex self-stretch justify-between items-center px-5 pr-8 mb-0 border-b border-gray-200 dark:border-gray-700 gap-5 bg-white dark:bg-gray-800 shadow-md w-full h-12"
+        class="flex self-stretch justify-between items-center px-5 pr-8 mb-0 border-b border-gray-200 dark:border-neutral-700 gap-5 bg-white dark:bg-neutral-800 shadow-md w-full h-12"
       >
         <!-- Title container -->
         <div
@@ -883,7 +883,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
               : html`sketch`}
           </h1>
           <h2
-            class="m-0 p-0 text-gray-600 dark:text-gray-400 text-sm font-normal italic whitespace-nowrap overflow-hidden text-ellipsis"
+            class="m-0 p-0 text-gray-600 dark:text-neutral-400 text-sm font-normal italic whitespace-nowrap overflow-hidden text-ellipsis"
           >
             ${this.slug}
           </h2>
@@ -1031,7 +1031,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
       <div
         class="${this._todoPanelVisible && this.viewMode === "chat"
           ? "block"
-          : "hidden"} fixed top-12 right-4 max-lg:hidden xl:w-[350px] lg:w-[300px] z-[100] transition-[bottom] duration-200 ease-in-out bg-gradient-to-b from-gray-50 to-gray-50/20 dark:from-gray-800 dark:to-gray-800/20 border-l border-gray-300 dark:border-gray-600"
+          : "hidden"} fixed top-12 right-4 max-lg:hidden xl:w-[350px] lg:w-[300px] z-[100] transition-[bottom] duration-200 ease-in-out bg-gradient-to-b from-gray-50 to-gray-50/20 dark:from-neutral-800 dark:to-neutral-800/20 border-l border-gray-300 dark:border-neutral-600"
         style="bottom: var(--chat-input-height, 90px);"
       >
         <sketch-todo-panel

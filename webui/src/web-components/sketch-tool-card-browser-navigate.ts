@@ -25,7 +25,7 @@ export class SketchToolCardBrowserNavigate extends SketchTailwindElement {
     }
 
     const summaryContent = html`<span
-      class="font-mono text-gray-700 dark:text-gray-300 break-all"
+      class="font-mono text-gray-700 dark:text-neutral-300 break-all"
     >
       🌐 ${url}
     </span>`;
@@ -38,7 +38,7 @@ export class SketchToolCardBrowserNavigate extends SketchTailwindElement {
     </div>`;
     const resultContent = this.toolCall?.result_message?.tool_result
       ? html`<pre
-          class="bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
+          class="bg-gray-200 dark:bg-neutral-700 text-black dark:text-neutral-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border"
         >
 ${this.toolCall.result_message.tool_result}</pre
         >`

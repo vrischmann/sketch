@@ -40,7 +40,7 @@ const demo: DemoModule = {
     ) => {
       const wrapper = document.createElement("div");
       wrapper.className =
-        "my-4 p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800";
+        "my-4 p-3 border border-gray-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-800";
 
       const labelEl = document.createElement("h4");
       labelEl.textContent = label;
@@ -216,7 +216,7 @@ const demo: DemoModule = {
 
     const interactiveWrapper = document.createElement("div");
     interactiveWrapper.className =
-      "p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800";
+      "p-3 border border-gray-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-800";
     interactiveWrapper.appendChild(interactiveStatus);
     interactiveWrapper.appendChild(controlsDiv);
     interactiveSection.appendChild(interactiveWrapper);

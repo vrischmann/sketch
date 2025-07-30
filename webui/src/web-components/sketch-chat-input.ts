@@ -301,7 +301,7 @@ export class SketchChatInput extends SketchTailwindElement {
   render() {
     return html`
       <div
-        class="chat-container w-full bg-gray-100 dark:bg-gray-800 p-4 min-h-[40px] relative"
+        class="chat-container w-full bg-gray-100 dark:bg-neutral-800 p-4 min-h-[40px] relative"
       >
         <div class="chat-input-wrapper flex max-w-6xl mx-auto gap-2.5">
           <textarea
@@ -311,13 +311,13 @@ export class SketchChatInput extends SketchTailwindElement {
             @keydown="${this._chatInputKeyDown}"
             @input="${this._chatInputChanged}"
             .value=${this.content || ""}
-            class="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded resize-y font-mono text-xs min-h-[40px] max-h-[300px] bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 overflow-y-auto box-border leading-relaxed"
+            class="flex-1 p-3 border border-gray-300 dark:border-neutral-600 rounded resize-y font-mono text-xs min-h-[40px] max-h-[300px] bg-gray-50 dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 overflow-y-auto box-border leading-relaxed"
           ></textarea>
           <button
             @click="${this._sendChatClicked}"
             id="sendChatButton"
             ?disabled=${this.uploadsInProgress > 0}
-            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white border-none rounded px-5 cursor-pointer font-semibold self-center h-10"
+            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-neutral-600 disabled:cursor-not-allowed text-white border-none rounded px-5 cursor-pointer font-semibold self-center h-10"
           >
             ${this.uploadsInProgress > 0 ? "Uploading..." : "Send"}
           </button>
@@ -328,7 +328,7 @@ export class SketchChatInput extends SketchTailwindElement {
                 class="drop-zone-overlay absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded flex justify-center items-center z-10 pointer-events-none"
               >
                 <div
-                  class="drop-zone-message bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 rounded font-semibold shadow-lg"
+                  class="drop-zone-message bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 p-4 rounded font-semibold shadow-lg"
                 >
                   Drop files here
                 </div>

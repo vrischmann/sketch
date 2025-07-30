@@ -12,20 +12,22 @@ export class SketchPushButtonDemo extends SketchTailwindElement {
   render() {
     return html`
       <div
-        class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 max-w-md mx-auto"
+        class="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 max-w-md mx-auto"
       >
-        <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+        <h2
+          class="text-lg font-semibold mb-4 text-gray-900 dark:text-neutral-100"
+        >
           Push Button Demo
         </h2>
 
         <div class="mb-4">
-          <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <p class="text-sm text-gray-600 dark:text-neutral-300 mb-2">
             Test the push button component:
           </p>
           <sketch-push-button></sketch-push-button>
         </div>
 
-        <div class="text-xs text-gray-500 dark:text-gray-400">
+        <div class="text-xs text-gray-500 dark:text-neutral-400">
           <p>Click the push button to test:</p>
           <ul class="list-disc list-inside mt-1">
             <li>Modal opens with git information</li>

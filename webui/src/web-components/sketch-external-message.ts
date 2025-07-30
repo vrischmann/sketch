@@ -51,8 +51,8 @@ export class SketchExternalMessage extends SketchTailwindElement {
 
       this.detailsContent = html`
         <div class="flex items-center gap-2">
-          <span class="text-gray-700 dark:text-gray-300">Workflow ID:</span>
-          <span class="font-mono font-medium text-gray-800 dark:text-gray-200">${run.workflow_run.id}</span>
+          <span class="text-gray-700 dark:text-neutral-300">Workflow ID:</span>
+          <span class="font-mono font-medium text-gray-800 dark:text-neutral-200">${run.workflow_run.id}</span>
         </div>
         <div class="flex items-center gap-2">
           bg-gray-600/10 text-gray-600
@@ -64,25 +64,30 @@ export class SketchExternalMessage extends SketchTailwindElement {
 
       this.detailsContent = html`
         <div class="flex items-center gap-2">
-          <span class="text-gray-700 dark:text-gray-300">Workflow Run ID:</span>
-          <span class="font-mono font-medium text-gray-800 dark:text-gray-200"
+          <span class="text-gray-700 dark:text-neutral-300"
+            >Workflow Run ID:</span
+          >
+          <span
+            class="font-mono font-medium text-gray-800 dark:text-neutral-200"
             >${run.workflow_run.id}</span
           >
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-gray-700 dark:text-gray-300">Status:</span>
-          <span class="font-mono font-medium text-gray-800 dark:text-gray-200"
+          <span class="text-gray-700 dark:text-neutral-300">Status:</span>
+          <span
+            class="font-mono font-medium text-gray-800 dark:text-neutral-200"
             >${run.workflow_run.status}</span
           >
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-gray-700 dark:text-gray-300">Conclusion:</span>
-          <span class="font-mono font-medium text-gray-800 dark:text-gray-200"
+          <span class="text-gray-700 dark:text-neutral-300">Conclusion:</span>
+          <span
+            class="font-mono font-medium text-gray-800 dark:text-neutral-200"
             >${run.workflow_run.conclusion}</span
           >
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-gray-700 dark:text-gray-300">Run URL:</span>
+          <span class="text-gray-700 dark:text-neutral-300">Run URL:</span>
           <a
             class="text-blue-600 dark:text-blue-400 hover:underline"
             href="${run.workflow_run.html_url}"
@@ -103,14 +108,14 @@ export class SketchExternalMessage extends SketchTailwindElement {
             @click=${this._toggleDetails}
           >
             <span
-              class="whitespace-nowrap flex-grow flex-shrink text-gray-700 dark:text-gray-300 font-mono text-xs px-1 min-w-[50px] max-w-[calc(100%-150px)] inline-block"
+              class="whitespace-nowrap flex-grow flex-shrink text-gray-700 dark:text-neutral-300 font-mono text-xs px-1 min-w-[50px] max-w-[calc(100%-150px)] inline-block"
               >${this.summaryContent}</span
             >
           </div>
           <div
             class="${this.detailsVisible
               ? "block"
-              : "hidden"} p-2 bg-black/[0.02] dark:bg-white/[0.05] mt-px border-t border-black/[0.05] dark:border-white/[0.1] font-mono text-xs text-gray-800 dark:text-gray-200 rounded-b max-w-full w-full box-border overflow-hidden"
+              : "hidden"} p-2 bg-black/[0.02] dark:bg-white/[0.05] mt-px border-t border-black/[0.05] dark:border-white/[0.1] font-mono text-xs text-gray-800 dark:text-neutral-200 rounded-b max-w-full w-full box-border overflow-hidden"
           >
             ${this.detailsContent
               ? html`<div class="mb-2">${this.detailsContent}</div>`

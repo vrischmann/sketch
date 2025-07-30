@@ -141,7 +141,7 @@ export class SketchToolCalls extends SketchTailwindElement {
           }
           return html`<div
             id="${toolCall.tool_call_id}"
-            class="flex flex-col bg-white/60 dark:bg-gray-800/60 rounded-md mb-1.5 overflow-hidden cursor-pointer border-l-2 border-black/10 dark:border-white/10 shadow-sm max-w-full break-words ${toolCall.name}"
+            class="flex flex-col bg-white/60 dark:bg-neutral-800/60 rounded-md mb-1.5 overflow-hidden cursor-pointer border-l-2 border-black/10 dark:border-white/10 shadow-sm max-w-full break-words ${toolCall.name}"
           >
             ${this.cardForToolCall(toolCall, shouldOpen)}
           </div>`;

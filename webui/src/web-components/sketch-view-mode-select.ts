@@ -74,14 +74,14 @@ export class SketchViewModeSelect extends SketchTailwindElement {
   render() {
     return html`
       <div
-        class="flex mr-2.5 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 overflow-hidden"
+        class="flex mr-2.5 bg-gray-100 dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-600 overflow-hidden"
       >
         <button
           id="showConversationButton"
-          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 dark:text-gray-400 border-transparent transition-all whitespace-nowrap ${this
+          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 dark:text-neutral-400 border-transparent transition-all whitespace-nowrap ${this
             .activeMode === "chat"
-            ? "border-b-blue-600 dark:border-b-gray-500 text-blue-600 font-medium bg-blue-50 dark:bg-gray-700"
-            : "hover:bg-gray-200 dark:hover:bg-gray-700"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 dark:border-gray-600 last-of-type:border-r-0"
+            ? "border-b-blue-600 dark:border-b-neutral-500 text-blue-600 font-medium bg-blue-50 dark:bg-neutral-700"
+            : "hover:bg-gray-200 dark:hover:bg-neutral-700"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 dark:border-neutral-600 last-of-type:border-r-0"
           title="Conversation View"
           @click=${() => this._handleViewModeClick("chat")}
         >
@@ -90,10 +90,10 @@ export class SketchViewModeSelect extends SketchTailwindElement {
         </button>
         <button
           id="showDiff2Button"
-          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 dark:text-gray-400 border-transparent transition-all whitespace-nowrap ${this
+          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 dark:text-neutral-400 border-transparent transition-all whitespace-nowrap ${this
             .activeMode === "diff2"
-            ? "border-b-blue-600 dark:border-b-gray-500 text-blue-600 font-medium bg-blue-50 dark:bg-gray-700"
-            : "hover:bg-gray-200 dark:hover:bg-gray-700"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 dark:border-gray-600 last-of-type:border-r-0"
+            ? "border-b-blue-600 dark:border-b-neutral-500 text-blue-600 font-medium bg-blue-50 dark:bg-neutral-700"
+            : "hover:bg-gray-200 dark:hover:bg-neutral-700"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 dark:border-neutral-600 last-of-type:border-r-0"
           title="Diff View - ${this.diffLinesAdded > 0 ||
           this.diffLinesRemoved > 0
             ? `+${this.diffLinesAdded} -${this.diffLinesRemoved}`
@@ -115,10 +115,10 @@ export class SketchViewModeSelect extends SketchTailwindElement {
 
         <button
           id="showTerminalButton"
-          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 dark:text-gray-400 border-transparent transition-all whitespace-nowrap ${this
+          class="px-3 py-2 bg-none border-0 border-b-2 cursor-pointer text-xs flex items-center gap-1.5 text-gray-600 dark:text-neutral-400 border-transparent transition-all whitespace-nowrap ${this
             .activeMode === "terminal"
-            ? "border-b-blue-600 !dark:border-b-gray-500 text-blue-600 font-medium bg-blue-50 dark:bg-gray-700"
-            : "hover:bg-gray-200 dark:hover:bg-gray-700"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 dark:border-gray-600 last-of-type:border-r-0"
+            ? "border-b-blue-600 !dark:border-b-neutral-500 text-blue-600 font-medium bg-blue-50 dark:bg-neutral-700"
+            : "hover:bg-gray-200 dark:hover:bg-neutral-700"} @xl:px-3 @xl:py-2 @max-xl:px-2.5 @max-xl:[&>span:not(.tab-icon):not(.diff-stats)]:hidden @max-xl:[&>.diff-stats]:inline @max-xl:[&>.diff-stats]:text-xs @max-xl:[&>.diff-stats]:ml-0.5 border-r border-gray-200 dark:border-neutral-600 last-of-type:border-r-0"
           title="Terminal View"
           @click=${() => this._handleViewModeClick("terminal")}
         >

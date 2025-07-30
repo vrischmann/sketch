@@ -104,10 +104,10 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
 
   render() {
     return html`
-      <div class="block w-full font-system text-gray-800 dark:text-gray-200">
+      <div class="block w-full font-system text-gray-800 dark:text-neutral-200">
         <div class="flex flex-col gap-3 w-full">
           ${this.loading
-            ? html`<div class="italic text-gray-500 dark:text-gray-400">
+            ? html`<div class="italic text-gray-500 dark:text-neutral-400">
                 Loading commits...
               </div>`
             : this.error
@@ -140,7 +140,7 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
       <div class="flex items-center gap-2 flex-1 relative">
         <label
           for="fromCommit"
-          class="font-medium text-sm text-gray-700 dark:text-gray-300"
+          class="font-medium text-sm text-gray-700 dark:text-neutral-300"
           >Diff from:</label
         >
         <div
@@ -148,9 +148,9 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
           @click=${this.toggleDropdown}
         >
           <button
-            class="w-full py-2 px-3 pr-8 border rounded text-left min-h-[36px] text-sm relative cursor-pointer bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${isDefaultCommit
+            class="w-full py-2 px-3 pr-8 border rounded text-left min-h-[36px] text-sm relative cursor-pointer bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 ${isDefaultCommit
               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-              : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"} focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
+              : "border-gray-300 dark:border-neutral-600 hover:border-gray-400 dark:hover:border-neutral-500"} focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
             @click=${this.toggleDropdown}
             @blur=${this.handleBlur}
           >
@@ -174,12 +174,12 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
           ${this.dropdownOpen
             ? html`
                 <div
-                  class="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg z-50 max-h-[300px] overflow-y-auto mt-0.5"
+                  class="absolute top-full left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded shadow-lg z-50 max-h-[300px] overflow-y-auto mt-0.5"
                 >
                   ${this.commits.map(
                     (commit) => html`
                       <div
-                        class="px-3 py-2.5 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 flex items-start gap-2 text-sm leading-5 hover:bg-gray-50 dark:hover:bg-gray-700 ${commit.hash ===
+                        class="px-3 py-2.5 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-b-0 flex items-start gap-2 text-sm leading-5 hover:bg-gray-50 dark:hover:bg-neutral-700 ${commit.hash ===
                         this.fromCommit
                           ? "bg-blue-50 dark:bg-blue-900/30"
                           : ""} ${this.isSketchBaseCommit(commit)
@@ -368,10 +368,10 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
     }
 
     return html`
-      <span class="font-mono text-gray-600 dark:text-gray-400 text-xs"
+      <span class="font-mono text-gray-600 dark:text-neutral-400 text-xs"
         >${shortHash}</span
       >
-      <span class="text-gray-800 dark:text-gray-200 text-xs truncate"
+      <span class="text-gray-800 dark:text-neutral-200 text-xs truncate"
         >${subject}</span
       >
       ${this.isSketchBaseCommit(commit)
@@ -396,11 +396,11 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
     }
 
     return html`
-      <span class="font-mono text-gray-600 dark:text-gray-400 text-xs"
+      <span class="font-mono text-gray-600 dark:text-neutral-400 text-xs"
         >${shortHash}</span
       >
       <span
-        class="text-gray-800 dark:text-gray-200 text-xs flex-1 truncate min-w-[200px]"
+        class="text-gray-800 dark:text-neutral-200 text-xs flex-1 truncate min-w-[200px]"
         >${subject}</span
       >
       ${commit.refs && commit.refs.length > 0

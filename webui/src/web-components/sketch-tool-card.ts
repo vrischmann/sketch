@@ -63,7 +63,7 @@ function renderMarkdown(markdownContent: string): string {
 // Shared utility function for creating Tailwind pre elements
 function createPreElement(content: string, additionalClasses: string = "") {
   return html`<pre
-    class="bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-wrap-break-word ${additionalClasses}"
+    class="bg-gray-200 dark:bg-neutral-700 text-black dark:text-neutral-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-wrap-break-word ${additionalClasses}"
   >
 ${content}</pre
   >`;
@@ -101,7 +101,7 @@ export class SketchToolCardBash extends SketchTailwindElement {
     >
       <div class="w-full relative">
         <pre
-          class="bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-wrap-break-word w-full mb-0 rounded-t rounded-b-none box-border"
+          class="bg-gray-200 dark:bg-neutral-700 text-black dark:text-neutral-100 p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-wrap-break-word w-full mb-0 rounded-t rounded-b-none box-border"
         >
 ${backgroundIcon}${slowIcon}${inputData?.command}</pre
         >
@@ -221,12 +221,12 @@ export class SketchToolCardPatch extends SketchTailwindElement {
         return html`<div class="text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 font-semibold">${line}</div>`;
       } else {
         // prettier-ignore
-        return html`<div class="text-gray-800 dark:text-gray-200">${line}</div>`;
+        return html`<div class="text-gray-800 dark:text-neutral-200">${line}</div>`;
       }
     });
 
     // prettier-ignore
-    return html`<pre class="bg-gray-100 dark:bg-gray-800 text-xs p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-x-auto font-mono text-gray-900 dark:text-gray-100">${coloredLines}</pre>`;
+    return html`<pre class="bg-gray-100 dark:bg-neutral-800 text-xs p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-x-auto font-mono text-gray-900 dark:text-neutral-100">${coloredLines}</pre>`;
   }
 
   render() {
@@ -286,7 +286,7 @@ export class SketchToolCardThink extends SketchTailwindElement {
     </span>`;
 
     const inputContent = html`<div
-      class="overflow-x-auto mb-1 font-mono px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded select-text cursor-text text-sm leading-relaxed text-gray-900 dark:text-gray-100"
+      class="overflow-x-auto mb-1 font-mono px-2 py-1 bg-gray-200 dark:bg-neutral-700 rounded select-text cursor-text text-sm leading-relaxed text-gray-900 dark:text-neutral-100"
     >
       <div class="markdown-content">
         ${unsafeHTML(renderMarkdown(thoughts))}

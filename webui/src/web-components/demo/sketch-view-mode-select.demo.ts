@@ -51,8 +51,8 @@ const demo: DemoModule = {
     const basicStatus = document.createElement("div");
     basicStatus.id = "basic-status";
     basicStatus.className = `
-      mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded font-mono text-sm 
-      text-gray-900 dark:text-gray-100
+      mt-4 p-3 bg-gray-50 dark:bg-neutral-800 rounded font-mono text-sm 
+      text-gray-900 dark:text-neutral-100
     `;
 
     const updateBasicStatus = () => {
@@ -83,8 +83,8 @@ const demo: DemoModule = {
     viewModeScenarios.forEach((scenario) => {
       const scenarioCard = document.createElement("div");
       scenarioCard.className = `
-        p-4 border border-gray-300 dark:border-gray-600 rounded-lg 
-        bg-white dark:bg-gray-800
+        p-4 border border-gray-300 dark:border-neutral-600 rounded-lg 
+        bg-white dark:bg-neutral-800
       `;
 
       const scenarioTitle = document.createElement("h4");
@@ -154,7 +154,7 @@ const demo: DemoModule = {
     // Custom controls for interactive testing
     const customControls = document.createElement("div");
     customControls.className = `
-      my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded
+      my-4 p-4 bg-gray-50 dark:bg-neutral-800 rounded
     `;
 
     const addLinesButton = demoUtils.createButton("Add +5 Lines", () => {
@@ -250,7 +250,7 @@ const demo: DemoModule = {
       // Create container wrapper
       const wrapper = document.createElement("div");
       wrapper.className = `
-        border-2 rounded-lg p-4 bg-gray-50 dark:bg-gray-800 ${example.borderColor}
+        border-2 rounded-lg p-4 bg-gray-50 dark:bg-neutral-800 ${example.borderColor}
       `;
       wrapper.className = example.borderColor;
 
@@ -267,8 +267,8 @@ const demo: DemoModule = {
       const componentContainer = document.createElement("div");
       componentContainer.className = "@container";
       componentContainer.className = `
-        border border-dashed border-gray-400 dark:border-gray-600 p-3 
-        bg-white dark:bg-gray-800 rounded ${example.containerClass}
+        border border-dashed border-gray-400 dark:border-neutral-600 p-3 
+        bg-white dark:bg-neutral-800 rounded ${example.containerClass}
       `;
 
       // Create the component

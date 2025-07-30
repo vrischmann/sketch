@@ -34,11 +34,11 @@ export class SketchToolCardAboutSketch extends SketchTailwindElement {
       <span class="mr-1.5">📚</span> About Sketch
     </span>`;
     const inputContent = html`<div>
-      <span class="font-bold text-gray-800 dark:text-gray-200"></span>
+      <span class="font-bold text-gray-800 dark:text-neutral-200"></span>
     </div>`;
     const resultContent = this.toolCall?.result_message?.tool_result
       ? html`<div
-          class="bg-gray-50 dark:bg-gray-700 rounded-md p-3 mt-2.5 max-h-[300px] overflow-y-auto border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+          class="bg-gray-50 dark:bg-neutral-700 rounded-md p-3 mt-2.5 max-h-[300px] overflow-y-auto border border-gray-200 dark:border-neutral-600 text-gray-900 dark:text-neutral-100"
         >
           ${unsafeHTML(renderMarkdown(resultText))}
         </div>`

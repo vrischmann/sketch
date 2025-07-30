@@ -340,6 +340,35 @@ export const initialMessages: AgentMessage[] = [
     turnDuration: 28393844125,
     idx: 16,
   },
+  {
+    type: "external",
+    end_of_turn: false,
+    content: "",
+    external_message: {
+      text_content:
+        "Workflow run 123456789 completed with status completed and conclusion success.",
+      message_type: "github_workflow_run",
+      body: {
+        workflow: {
+          name: "go_tests",
+        },
+        workflow_run: {
+          id: 123456789,
+          status: "completed",
+          conclusion: "success",
+          head_branch: "user/sketch/slug-name",
+          head_sha: "abc123deadbeef1234567890abcdef",
+          html_url: "https://github.com/user/sketch/pull/123",
+        },
+      },
+    },
+    timestamp: "2025-04-24T10:32:19.121365+01:00",
+    conversation_id: "37s-g6xg",
+    start_time: "2025-04-24T10:32:19.070249+01:00",
+    end_time: "2025-04-24T10:32:19.121358+01:00",
+    elapsed: 51109583,
+    idx: 17,
+  },
 ];
 
 export const initialState: State = {
