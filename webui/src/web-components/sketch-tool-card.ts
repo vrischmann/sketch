@@ -211,33 +211,22 @@ export class SketchToolCardPatch extends SketchTailwindElement {
 
     const coloredLines = lines.map((line) => {
       if (line.startsWith("+")) {
-        return html`<div
-          class="text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
-        >
-          ${line}
-        </div>`;
+        // prettier-ignore
+        return html`<div class="text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20">${line}</div>`;
       } else if (line.startsWith("-")) {
-        return html`<div
-          class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20"
-        >
-          ${line}
-        </div>`;
+        // prettier-ignore
+        return html`<div class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20">${line}</div>`;
       } else if (line.startsWith("@@")) {
         // prettier-ignore
         return html`<div class="text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/20 font-semibold">${line}</div>`;
       } else {
-        return html`<div class="text-gray-800 dark:text-gray-200">
-          ${line}
-        </div>`;
+        // prettier-ignore
+        return html`<div class="text-gray-800 dark:text-gray-200">${line}</div>`;
       }
     });
 
-    return html`<pre
-      class="bg-gray-100 dark:bg-gray-800 text-xs p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-x-auto font-mono text-gray-900 dark:text-gray-100"
-    >
-      ${coloredLines}
-    </pre
-    >`;
+    // prettier-ignore
+    return html`<pre class="bg-gray-100 dark:bg-gray-800 text-xs p-2 rounded whitespace-pre-wrap break-words max-w-full w-full box-border overflow-x-auto font-mono text-gray-900 dark:text-gray-100">${coloredLines}</pre>`;
   }
 
   render() {
