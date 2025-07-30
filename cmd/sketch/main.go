@@ -264,28 +264,29 @@ func (f *StringSliceFlag) Get() any {
 }
 
 type CLIFlags struct {
-	addr         string
-	skabandAddr  string
-	unsafe       bool
-	openBrowser  bool
-	httprrFile   string
-	maxDollars   float64
-	oneShot      bool
-	prompt       string
-	modelName    string
-	llmAPIKey    string
-	listModels   bool
-	verbose      bool
-	version      bool
-	workingDir   string
-	dumpDist     string
-	sshPort      int
-	forceRebuild bool
-	baseImage    string
-	linkToGitHub bool
-	ignoreSig    bool
-	doUpdate     bool
-	checkVersion bool
+	addr          string
+	skabandAddr   string
+	unsafe        bool
+	openBrowser   bool
+	httprrFile    string
+	maxDollars    float64
+	oneShot       bool
+	prompt        string
+	modelName     string
+	llmAPIKey     string
+	listModels    bool
+	verbose       bool
+	version       bool
+	workingDir    string
+	dumpDist      string
+	sshPort       int
+	forceRebuild  bool
+	baseImage     string
+	linkToGitHub  bool
+	ignoreSig     bool
+	doUpdate      bool
+	checkVersion  bool
+	fetchOnLaunch bool
 
 	gitUsername         string
 	gitEmail            string
@@ -344,6 +345,7 @@ func parseCLIFlags() CLIFlags {
 	userFlags.BoolVar(&flags.version, "version", false, "print the version and exit")
 	userFlags.BoolVar(&flags.doUpdate, "update", false, "update to the latest version of sketch")
 	userFlags.BoolVar(&flags.checkVersion, "version-check", true, "do version upgrade check (please leave this on)")
+	userFlags.BoolVar(&flags.fetchOnLaunch, "fetch-on-launch", true, "do a git fetch when sketch starts")
 	userFlags.IntVar(&flags.sshPort, "ssh-port", 0, "the host port number that the container's ssh server will listen on, or a randomly chosen port if this value is 0")
 	userFlags.BoolVar(&flags.forceRebuild, "force-rebuild-container", false, "rebuild Docker container")
 	userFlags.BoolVar(&flags.forceRebuild, "rebuild", false, "rebuild Docker container (alias for -force-rebuild-container)")
@@ -555,6 +557,7 @@ func runAsOuttie(ctx context.Context, flags CLIFlags) error {
 		MCPServers:          flags.mcpServers,
 		PassthroughUpstream: flags.passthroughUpstream,
 		DumpLLM:             flags.dumpLLM,
+		FetchOnLaunch:       flags.fetchOnLaunch,
 	}
 
 	if err := dockerimg.LaunchContainer(ctx, config); err != nil {
@@ -699,6 +702,7 @@ func setupAndRunAgent(ctx context.Context, flags CLIFlags, modelURL, apiKey, pub
 		SSHConnectionString: flags.sshConnectionString,
 		MCPServers:          flags.mcpServers,
 		PassthroughUpstream: flags.passthroughUpstream,
+		FetchOnLaunch:       flags.fetchOnLaunch,
 	}
 
 	// Parse timeout configuration

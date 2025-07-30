@@ -142,6 +142,9 @@ type ContainerConfig struct {
 
 	// DumpLLM requests dumping of raw communications with LLM services to files
 	DumpLLM bool
+
+	// FetchOnLaunch enables git fetch during initialization
+	FetchOnLaunch bool
 }
 
 // LaunchContainer creates a docker container for a project, installs sketch and opens a connection to it.
@@ -645,6 +648,9 @@ func createDockerContainer(ctx context.Context, cntrName, hostPort, relPath, img
 	}
 	if config.DumpLLM {
 		cmdArgs = append(cmdArgs, "-dump-llm")
+	}
+	if !config.FetchOnLaunch {
+		cmdArgs = append(cmdArgs, "-fetch-on-launch=false")
 	}
 
 	// Add additional docker arguments if provided

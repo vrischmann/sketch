@@ -1130,6 +1130,8 @@ type AgentConfig struct {
 	BashTimeouts *claudetool.Timeouts
 	// PassthroughUpstream configures upstream remote for passthrough to innie
 	PassthroughUpstream bool
+	// FetchOnLaunch enables git fetch during initialization
+	FetchOnLaunch bool
 }
 
 // NewAgent creates a new Agent.
@@ -1242,15 +1244,16 @@ func (a *Agent) Init(ini AgentInit) error {
 
 	// If a commit was specified, we fetch and reset to it.
 	if a.config.Commit != "" && a.gitState.gitRemoteAddr != "" {
-		slog.InfoContext(ctx, "updating git repo", "commit", a.config.Commit)
-
-		cmd := exec.CommandContext(ctx, "git", "fetch", "--prune", "origin")
-		cmd.Dir = a.workingDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git fetch: %s: %w", out, err)
+		if a.config.FetchOnLaunch {
+			slog.InfoContext(ctx, "updating git repo", "commit", a.config.Commit)
+			cmd := exec.CommandContext(ctx, "git", "fetch", "--prune", "origin")
+			cmd.Dir = a.workingDir
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("git fetch: %s: %w", out, err)
+			}
 		}
 		// The -B resets the branch if it already exists (or creates it if it doesn't)
-		cmd = exec.CommandContext(ctx, "git", "checkout", "-f", "-B", "sketch-wip", a.config.Commit)
+		cmd := exec.CommandContext(ctx, "git", "checkout", "-f", "-B", "sketch-wip", a.config.Commit)
 		cmd.Dir = a.workingDir
 		if checkoutOut, err := cmd.CombinedOutput(); err != nil {
 			// Remove git hooks if they exist and retry
