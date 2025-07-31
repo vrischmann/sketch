@@ -232,14 +232,13 @@ export class SketchToolCardPatch extends SketchTailwindElement {
   render() {
     const patchInput = JSON.parse(this.toolCall?.input);
 
-    const toolFailed = this.toolCall?.result_message?.tool_error;    
+    const toolFailed = this.toolCall?.result_message?.tool_error;
     const summaryContent = html`<span
       class="text-gray-600 font-mono overflow-hidden text-ellipsis whitespace-nowrap rounded"
     >
-      ${toolFailed 
+      ${toolFailed
         ? `${patchInput?.path}: failed`
-        : `${patchInput?.path}: ${patchInput.patches.length} edit${patchInput.patches.length > 1 ? "s" : ""}`
-      }
+        : `${patchInput?.path}: ${patchInput.patches.length} edit${patchInput.patches.length > 1 ? "s" : ""}`}
     </span>`;
 
     const inputContent = html``;
