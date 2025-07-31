@@ -31,21 +31,33 @@ type PatchTool struct {
 	Callback PatchCallback // may be nil
 	// Pwd is the working directory for resolving relative paths
 	Pwd string
+	// ClipboardEnabled controls whether clipboard functionality is enabled.
+	// NB: The actual implementation of the patch tool is unchanged,
+	// this flag merely extends the description and input schema to include the clipboard operations.
+	ClipboardEnabled bool
+	// clipboards stores clipboard name -> text
+	clipboards map[string]string
 }
 
 // Tool returns an llm.Tool based on p.
 func (p *PatchTool) Tool() *llm.Tool {
+	description := PatchBaseDescription + PatchUsageNotes
+	schema := PatchStandardInputSchema
+	if p.ClipboardEnabled {
+		description = PatchBaseDescription + PatchClipboardDescription + PatchUsageNotes
+		schema = PatchClipboardInputSchema
+	}
 	return &llm.Tool{
 		Name:        PatchName,
-		Description: strings.TrimSpace(PatchDescription),
-		InputSchema: llm.MustSchema(PatchInputSchema),
+		Description: strings.TrimSpace(description),
+		InputSchema: llm.MustSchema(schema),
 		Run:         p.Run,
 	}
 }
 
 const (
-	PatchName        = "patch"
-	PatchDescription = `
+	PatchName            = "patch"
+	PatchBaseDescription = `
 File modification tool for precise text edits.
 
 Operations:
@@ -53,14 +65,36 @@ Operations:
 - append_eof: Append new text at the end of the file
 - prepend_bof: Insert new text at the beginning of the file
 - overwrite: Replace the entire file with new content (automatically creates the file)
+`
 
+	PatchClipboardDescription = `
+Clipboard:
+- toClipboard: Store oldText to a named clipboard before the operation
+- fromClipboard: Use clipboard content as newText (ignores provided newText)
+- Clipboards persist across patch calls
+- Always use clipboards when moving/copying code (within or across files), even when the moved/copied code will also have edits.
+  This prevents transcription errors and distinguishes intentional changes from unintentional changes.
+
+Indentation adjustment:
+- reindent applies to whatever text is being inserted
+- First strips the specified prefix from each line, then adds the new prefix
+- Useful when moving code from one indentation to another
+
+Recipes:
+- cut: replace with empty newText and toClipboard
+- copy: replace with toClipboard and fromClipboard using the same clipboard name
+- paste: replace with fromClipboard
+- in-place indentation change: same as copy, but add indentation adjustment
+`
+
+	PatchUsageNotes = `
 Usage notes:
 - All inputs are interpreted literally (no automatic newline or whitespace handling)
 - For replace operations, oldText must appear EXACTLY ONCE in the file
 `
 
 	// If you modify this, update the termui template for prettier rendering.
-	PatchInputSchema = `
+	PatchStandardInputSchema = `
 {
   "type": "object",
   "required": ["path", "patches"],
@@ -95,6 +129,64 @@ Usage notes:
   }
 }
 `
+
+	PatchClipboardInputSchema = `
+{
+  "type": "object",
+  "required": ["path", "patches"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Path to the file to patch"
+    },
+    "patches": {
+      "type": "array",
+      "description": "List of patch requests to apply",
+      "items": {
+        "type": "object",
+        "required": ["operation"],
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["replace", "append_eof", "prepend_bof", "overwrite"],
+            "description": "Type of operation to perform"
+          },
+          "oldText": {
+            "type": "string",
+            "description": "Text to locate (must be unique in file, required for replace)"
+          },
+          "newText": {
+            "type": "string",
+            "description": "The new text to use (empty for deletions, leave empty if fromClipboard is set)"
+          },
+          "toClipboard": {
+            "type": "string",
+            "description": "Save oldText to this named clipboard before the operation"
+          },
+          "fromClipboard": {
+            "type": "string",
+            "description": "Use content from this clipboard as newText (overrides newText field)"
+          },
+          "reindent": {
+            "type": "object",
+            "description": "Modify indentation of the inserted text (newText or fromClipboard) before insertion",
+            "properties": {
+              "strip": {
+                "type": "string",
+                "description": "Remove this prefix from each non-empty line before insertion"
+              },
+              "add": {
+                "type": "string",
+                "description": "Add this prefix to each non-empty line after stripping"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
 )
 
 // TODO: maybe rename PatchRequest to PatchOperation or PatchSpec or PatchPart or just Patch?
@@ -118,19 +210,35 @@ type PatchInputOneString struct {
 
 // PatchRequest represents a single patch operation.
 type PatchRequest struct {
-	Operation string `json:"operation"`
-	OldText   string `json:"oldText,omitempty"`
-	NewText   string `json:"newText,omitempty"`
+	Operation     string    `json:"operation"`
+	OldText       string    `json:"oldText,omitempty"`
+	NewText       string    `json:"newText,omitempty"`
+	ToClipboard   string    `json:"toClipboard,omitempty"`
+	FromClipboard string    `json:"fromClipboard,omitempty"`
+	Reindent      *Reindent `json:"reindent,omitempty"`
+}
+
+// Reindent represents indentation adjustment configuration.
+type Reindent struct {
+	// TODO: it might be nice to make this more flexible,
+	// so it can e.g. strip all whitespace,
+	// or strip the prefix only on lines where it is present,
+	// or strip based on a regex.
+	Strip string `json:"strip,omitempty"`
+	Add   string `json:"add,omitempty"`
 }
 
 // Run implements the patch tool logic.
 func (p *PatchTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
+	if p.clipboards == nil {
+		p.clipboards = make(map[string]string)
+	}
 	input, err := p.patchParse(m)
 	var output llm.ToolOut
 	if err != nil {
 		output = llm.ErrorToolOut(err)
 	} else {
-		output = p.patchRun(ctx, m, &input)
+		output = p.patchRun(ctx, &input)
 	}
 	if p.Callback != nil {
 		return p.Callback(input, output)
@@ -168,7 +276,7 @@ func (p *PatchTool) patchParse(m json.RawMessage) (PatchInput, error) {
 
 // patchRun implements the guts of the patch tool.
 // It populates input from m.
-func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *PatchInput) llm.ToolOut {
+func (p *PatchTool) patchRun(ctx context.Context, input *PatchInput) llm.ToolOut {
 	path := input.Path
 	if !filepath.IsAbs(input.Path) {
 		if p.Pwd == "" {
@@ -213,21 +321,63 @@ func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *Patc
 	// TODO: when the model gets into a "cannot apply patch" cycle of doom, how do we get it unstuck?
 	// Also: how do we detect that it's in a cycle?
 	var patchErr error
+
+	var clipboardsModified []string
+	updateToClipboard := func(patch PatchRequest, spec *patchkit.Spec) {
+		if patch.ToClipboard == "" {
+			return
+		}
+		// Update clipboard with the actual matched text
+		matchedOldText := origStr[spec.Off : spec.Off+spec.Len]
+		p.clipboards[patch.ToClipboard] = matchedOldText
+		clipboardsModified = append(clipboardsModified, fmt.Sprintf(`<clipboard_modified name="%s"><message>clipboard contents altered in order to match uniquely</message><new_contents>%q</new_contents></clipboard_modified>`, patch.ToClipboard, matchedOldText))
+	}
+
 	for i, patch := range input.Patches {
+		// Process toClipboard first, so that copy works
+		if patch.ToClipboard != "" {
+			if patch.Operation != "replace" {
+				return llm.ErrorfToolOut("toClipboard (%s): can only be used with replace operation", patch.ToClipboard)
+			}
+			if patch.OldText == "" {
+				return llm.ErrorfToolOut("toClipboard (%s): oldText cannot be empty when using toClipboard", patch.ToClipboard)
+			}
+			p.clipboards[patch.ToClipboard] = patch.OldText
+		}
+
+		// Handle fromClipboard
+		newText := patch.NewText
+		if patch.FromClipboard != "" {
+			clipboardText, ok := p.clipboards[patch.FromClipboard]
+			if !ok {
+				return llm.ErrorfToolOut("fromClipboard (%s): no clipboard with that name", patch.FromClipboard)
+			}
+			newText = clipboardText
+		}
+
+		// Apply indentation adjustment if specified
+		if patch.Reindent != nil {
+			reindentedText, err := reindent(newText, patch.Reindent)
+			if err != nil {
+				return llm.ErrorfToolOut("reindent(%q -> %q): %w", patch.Reindent.Strip, patch.Reindent.Add, err)
+			}
+			newText = reindentedText
+		}
+
 		switch patch.Operation {
 		case "prepend_bof":
-			buf.Insert(0, patch.NewText)
+			buf.Insert(0, newText)
 		case "append_eof":
-			buf.Insert(len(orig), patch.NewText)
+			buf.Insert(len(orig), newText)
 		case "overwrite":
-			buf.Replace(0, len(orig), patch.NewText)
+			buf.Replace(0, len(orig), newText)
 		case "replace":
 			if patch.OldText == "" {
 				return llm.ErrorfToolOut("patch %d: oldText cannot be empty for %s operation", i, patch.Operation)
 			}
 
 			// Attempt to apply the patch.
-			spec, count := patchkit.Unique(origStr, patch.OldText, patch.NewText)
+			spec, count := patchkit.Unique(origStr, patch.OldText, newText)
 			switch count {
 			case 0:
 				// no matches, maybe recoverable, continued below
@@ -241,7 +391,6 @@ func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *Patc
 				patchErr = errors.Join(patchErr, fmt.Errorf("old text not unique:\n%s", patch.OldText))
 				continue
 			default:
-				// TODO: return an error instead of using agentPatch
 				slog.ErrorContext(ctx, "unique returned unexpected count", "count", count)
 				patchErr = errors.Join(patchErr, fmt.Errorf("internal error"))
 				continue
@@ -252,34 +401,39 @@ func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *Patc
 			// and the cases they cover appear with some regularity.
 
 			// Try adjusting the whitespace prefix.
-			spec, ok := patchkit.UniqueDedent(origStr, patch.OldText, patch.NewText)
+			spec, ok := patchkit.UniqueDedent(origStr, patch.OldText, newText)
 			if ok {
 				slog.DebugContext(ctx, "patch_applied", "method", "unique_dedent")
 				spec.ApplyToEditBuf(buf)
+				updateToClipboard(patch, spec)
 				continue
 			}
 
 			// Try ignoring leading/trailing whitespace in a semantically safe way.
-			spec, ok = patchkit.UniqueInValidGo(origStr, patch.OldText, patch.NewText)
+			spec, ok = patchkit.UniqueInValidGo(origStr, patch.OldText, newText)
 			if ok {
 				slog.DebugContext(ctx, "patch_applied", "method", "unique_in_valid_go")
 				spec.ApplyToEditBuf(buf)
+				updateToClipboard(patch, spec)
 				continue
 			}
 
 			// Try ignoring semantically insignificant whitespace.
-			spec, ok = patchkit.UniqueGoTokens(origStr, patch.OldText, patch.NewText)
+			spec, ok = patchkit.UniqueGoTokens(origStr, patch.OldText, newText)
 			if ok {
 				slog.DebugContext(ctx, "patch_applied", "method", "unique_go_tokens")
 				spec.ApplyToEditBuf(buf)
+				updateToClipboard(patch, spec)
 				continue
 			}
 
 			// Try trimming the first line of the patch, if we can do so safely.
-			spec, ok = patchkit.UniqueTrim(origStr, patch.OldText, patch.NewText)
+			spec, ok = patchkit.UniqueTrim(origStr, patch.OldText, newText)
 			if ok {
 				slog.DebugContext(ctx, "patch_applied", "method", "unique_trim")
 				spec.ApplyToEditBuf(buf)
+				// Do NOT call updateToClipboard here,
+				// because the trimmed text may vary significantly from the original text.
 				continue
 			}
 
@@ -292,7 +446,11 @@ func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *Patc
 	}
 
 	if patchErr != nil {
-		return llm.ErrorToolOut(patchErr)
+		errorMsg := patchErr.Error()
+		for _, msg := range clipboardsModified {
+			errorMsg += "\n" + msg
+		}
+		return llm.ErrorToolOut(fmt.Errorf("%s", errorMsg))
 	}
 
 	patched, err := buf.Bytes()
@@ -307,10 +465,13 @@ func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *Patc
 	}
 
 	response := new(strings.Builder)
-	fmt.Fprintf(response, "- Applied all patches\n")
+	fmt.Fprintf(response, "<patches_applied>all</patches_applied>\n")
+	for _, msg := range clipboardsModified {
+		fmt.Fprintln(response, msg)
+	}
 
 	if autogenerated {
-		fmt.Fprintf(response, "- WARNING: %q appears to be autogenerated. Patches were applied anyway.\n", input.Path)
+		fmt.Fprintf(response, "<warning>%q appears to be autogenerated. Patches were applied anyway.</warning>\n", input.Path)
 	}
 
 	diff := generateUnifiedDiff(input.Path, string(orig), string(patched))
@@ -374,4 +535,33 @@ func generateUnifiedDiff(filePath, original, patched string) string {
 		return fmt.Sprintf("(diff generation failed: %v)\n", err)
 	}
 	return buf.String()
+}
+
+// reindent applies indentation adjustments to text.
+func reindent(text string, adj *Reindent) (string, error) {
+	if adj == nil {
+		return text, nil
+	}
+
+	lines := strings.Split(text, "\n")
+
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		var ok bool
+		lines[i], ok = strings.CutPrefix(line, adj.Strip)
+		if !ok {
+			return "", fmt.Errorf("strip precondition failed: line %q does not start with %q", line, adj.Strip)
+		}
+	}
+
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		lines[i] = adj.Add + line
+	}
+
+	return strings.Join(lines, "\n"), nil
 }

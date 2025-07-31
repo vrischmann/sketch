@@ -29,6 +29,10 @@ var (
 			Name:        "all",
 			Description: "Enable all experiments",
 		},
+		{
+			Name:        "clipboard",
+			Description: "Enable enhanced clipboard functionality in patch tool",
+		},
 	}
 	byName = map[string]*Experiment{}
 )

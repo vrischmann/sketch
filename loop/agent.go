@@ -24,6 +24,7 @@ import (
 	"sketch.dev/claudetool/browse"
 	"sketch.dev/claudetool/codereview"
 	"sketch.dev/claudetool/onstart"
+	"sketch.dev/experiment"
 	"sketch.dev/llm"
 	"sketch.dev/llm/ant"
 	"sketch.dev/llm/conversation"
@@ -1391,8 +1392,9 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 		Pwd:              a.workingDir,
 	}
 	patchTool := &claudetool.PatchTool{
-		Callback: a.patchCallback,
-		Pwd:      a.workingDir,
+		Callback:         a.patchCallback,
+		Pwd:              a.workingDir,
+		ClipboardEnabled: experiment.Enabled("clipboard"),
 	}
 
 	// Register all tools with the conversation
