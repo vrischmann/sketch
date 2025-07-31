@@ -31,7 +31,11 @@ type PatchTool struct {
 	Callback PatchCallback // may be nil
 	// Pwd is the working directory for resolving relative paths
 	Pwd string
+	// Simplified indicates whether to use the simplified input schema.
+	// Helpful for weaker models.
+	Simplified bool
 	// ClipboardEnabled controls whether clipboard functionality is enabled.
+	// Ignored if Simplified is true.
 	// NB: The actual implementation of the patch tool is unchanged,
 	// this flag merely extends the description and input schema to include the clipboard operations.
 	ClipboardEnabled bool
@@ -43,7 +47,10 @@ type PatchTool struct {
 func (p *PatchTool) Tool() *llm.Tool {
 	description := PatchBaseDescription + PatchUsageNotes
 	schema := PatchStandardInputSchema
-	if p.ClipboardEnabled {
+	switch {
+	case p.Simplified:
+		schema = PatchStandardSimplifiedSchema
+	case p.ClipboardEnabled:
 		description = PatchBaseDescription + PatchClipboardDescription + PatchUsageNotes
 		schema = PatchClipboardInputSchema
 	}
@@ -130,6 +137,36 @@ Usage notes:
 }
 `
 
+	PatchStandardSimplifiedSchema = `{
+  "type": "object",
+  "required": ["path", "patch"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Path to the file to patch"
+    },
+    "patch": {
+      "type": "object",
+      "required": ["operation", "newText"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["replace", "append_eof", "prepend_bof", "overwrite"],
+          "description": "Type of operation to perform"
+        },
+        "oldText": {
+          "type": "string",
+          "description": "Text to locate for the operation (must be unique in file, required for replace)"
+        },
+        "newText": {
+          "type": "string",
+          "description": "The new text to use (empty for deletions)"
+        }
+      }
+    }
+  }
+}`
+
 	PatchClipboardInputSchema = `
 {
   "type": "object",
@@ -199,8 +236,14 @@ type PatchInput struct {
 
 // PatchInputOne is a simplified version of PatchInput for single patch operations.
 type PatchInputOne struct {
-	Path    string       `json:"path"`
-	Patches PatchRequest `json:"patches"`
+	Path    string        `json:"path"`
+	Patches *PatchRequest `json:"patches"`
+}
+
+// PatchInputOneSingular is PatchInputOne with a better name for the singular case.
+type PatchInputOneSingular struct {
+	Path  string        `json:"path"`
+	Patch *PatchRequest `json:"patch"`
 }
 
 type PatchInputOneString struct {
@@ -253,17 +296,21 @@ func (p *PatchTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
 func (p *PatchTool) patchParse(m json.RawMessage) (PatchInput, error) {
 	var input PatchInput
 	originalErr := json.Unmarshal(m, &input)
-	if originalErr == nil {
+	if originalErr == nil && len(input.Patches) > 0 {
 		return input, nil
 	}
 	var inputOne PatchInputOne
-	if err := json.Unmarshal(m, &inputOne); err == nil {
-		return PatchInput{Path: inputOne.Path, Patches: []PatchRequest{inputOne.Patches}}, nil
+	if err := json.Unmarshal(m, &inputOne); err == nil && inputOne.Patches != nil {
+		return PatchInput{Path: inputOne.Path, Patches: []PatchRequest{*inputOne.Patches}}, nil
+	}
+	var inputOneSingular PatchInputOneSingular
+	if err := json.Unmarshal(m, &inputOneSingular); err == nil && inputOneSingular.Patch != nil {
+		return PatchInput{Path: inputOneSingular.Path, Patches: []PatchRequest{*inputOneSingular.Patch}}, nil
 	}
 	var inputOneString PatchInputOneString
 	if err := json.Unmarshal(m, &inputOneString); err == nil {
 		var onePatch PatchRequest
-		if err := json.Unmarshal([]byte(inputOneString.Patches), &onePatch); err == nil {
+		if err := json.Unmarshal([]byte(inputOneString.Patches), &onePatch); err == nil && onePatch.Operation != "" {
 			return PatchInput{Path: inputOneString.Path, Patches: []PatchRequest{onePatch}}, nil
 		}
 		var patches []PatchRequest

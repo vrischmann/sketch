@@ -21,6 +21,18 @@ type Service interface {
 	TokenContextWindow() int
 }
 
+type SimplifiedPatcher interface {
+	// UseSimplifiedPatch reports whether the service should use the simplified patch input schema.
+	UseSimplifiedPatch() bool
+}
+
+func UseSimplifiedPatch(svc Service) bool {
+	if sp, ok := svc.(SimplifiedPatcher); ok {
+		return sp.UseSimplifiedPatch()
+	}
+	return false
+}
+
 // MustSchema validates that schema is a valid JSON schema and returns it as a json.RawMessage.
 // It panics if the schema is invalid.
 // The schema must have at least type="object" and a properties key.

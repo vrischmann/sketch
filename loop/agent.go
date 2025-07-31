@@ -1394,6 +1394,7 @@ func (a *Agent) initConvoWithUsage(usage *conversation.CumulativeUsage) *convers
 	patchTool := &claudetool.PatchTool{
 		Callback:         a.patchCallback,
 		Pwd:              a.workingDir,
+		Simplified:       llm.UseSimplifiedPatch(a.config.Service),
 		ClipboardEnabled: experiment.Enabled("clipboard"),
 	}
 

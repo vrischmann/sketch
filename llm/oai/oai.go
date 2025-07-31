@@ -37,11 +37,12 @@ const (
 )
 
 type Model struct {
-	UserName         string // provided by the user to identify this model (e.g. "gpt4.1")
-	ModelName        string // provided to the service provide to specify which model to use (e.g. "gpt-4.1-2025-04-14")
-	URL              string
-	APIKeyEnv        string // environment variable name for the API key
-	IsReasoningModel bool   // whether this model is a reasoning model (e.g. O3, O4-mini)
+	UserName           string // provided by the user to identify this model (e.g. "gpt4.1")
+	ModelName          string // provided to the service provide to specify which model to use (e.g. "gpt-4.1-2025-04-14")
+	URL                string
+	APIKeyEnv          string // environment variable name for the API key
+	IsReasoningModel   bool   // whether this model is a reasoning model (e.g. O3, O4-mini)
+	UseSimplifiedPatch bool   // whether to use the simplified patch input schema; defaults to false
 }
 
 var (
@@ -210,17 +211,19 @@ var (
 	}
 
 	Qwen3CoderFireworks = Model{
-		UserName:  "qwen3-coder-fireworks",
-		ModelName: "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct",
-		URL:       FireworksURL,
-		APIKeyEnv: FireworksAPIKeyEnv,
+		UserName:           "qwen3-coder-fireworks",
+		ModelName:          "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct",
+		URL:                FireworksURL,
+		APIKeyEnv:          FireworksAPIKeyEnv,
+		UseSimplifiedPatch: true,
 	}
 
 	// Qwen is a skaband-specific model name for Qwen3-Coder
 	// Provider details (URL and APIKeyEnv) are handled by skaband
 	Qwen = Model{
-		UserName:  "qwen",
-		ModelName: "qwen", // skaband will map this to the actual provider model
+		UserName:           "qwen",
+		ModelName:          "qwen", // skaband will map this to the actual provider model
+		UseSimplifiedPatch: true,
 	}
 )
 
@@ -782,4 +785,8 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 			continue
 		}
 	}
+}
+
+func (s *Service) UseSimplifiedPatch() bool {
+	return s.Model.UseSimplifiedPatch
 }

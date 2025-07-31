@@ -320,7 +320,7 @@ func TestPatchTool_FlexibleInputParsing(t *testing.T) {
 	// Test single patch format (PatchInputOne)
 	inputOne := PatchInputOne{
 		Path: testFile,
-		Patches: PatchRequest{
+		Patches: &PatchRequest{
 			Operation: "overwrite",
 			NewText:   "Single patch format\n",
 		},
