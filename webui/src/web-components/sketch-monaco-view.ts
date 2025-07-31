@@ -7,6 +7,7 @@ import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 // See https://rodydavis.com/posts/lit-monaco-editor for some ideas.
 
 import type * as monaco from "monaco-editor";
+import { ThemeService } from "./theme-service.js";
 
 // Monaco is loaded dynamically - see loadMonaco() function
 declare global {
@@ -84,15 +85,6 @@ const monacoStyles = `
     height: 100%;
   }
 
-  /* Ensure light theme colors */
-  .monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
-    background-color: var(--monaco-editor-bg, #ffffff) !important;
-  }
-
-  .monaco-editor .margin {
-    background-color: var(--monaco-editor-margin, #f5f5f5) !important;
-  }
-
   /* Glyph decoration styles - only show on hover */
   .comment-glyph-decoration {
     width: 16px !important;
@@ -114,6 +106,28 @@ const monacoStyles = `
 
   .comment-glyph-decoration.hover-visible {
     opacity: 1;
+  }
+`;
+
+const lightThemeStyles = `
+  /* Ensure light theme colors */
+  .monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
+    background-color: var(--monaco-editor-bg, #ffffff) !important;
+  }
+
+  .monaco-editor .margin {
+    background-color: var(--monaco-editor-margin, #f5f5f5) !important;
+  }
+`;
+
+const darkThemeStyles = `
+  /* Ensure dark theme colors */
+  .monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
+    background-color: var(--monaco-editor-bg, #000) !important;
+  }
+
+  .monaco-editor .margin {
+    background-color: var(--monaco-editor-margin, #000) !important;
   }
 `;
 
@@ -175,6 +189,8 @@ export class CodeDiffEditor extends SketchTailwindElement {
   @state() private isDragging: boolean = false;
   @state() private dragStartLine: number | null = null;
   @state() private dragStartEditor: "original" | "modified" | null = null;
+
+  @property() theme: "light" | "dark" = "light";
 
   // Track visible glyphs to ensure proper cleanup
   private visibleGlyphs: Set<string> = new Set();
@@ -291,7 +307,9 @@ export class CodeDiffEditor extends SketchTailwindElement {
     return html`
       <style>
         ${monacoStyles}
-
+        ${this.theme === "dark"
+          ? darkThemeStyles
+          : lightThemeStyles}
         /* Custom animation for comment box fade-in */
         @keyframes fadeIn {
           from {
@@ -1140,6 +1158,15 @@ export class CodeDiffEditor extends SketchTailwindElement {
         });
       }
 
+      const themeService = ThemeService.getInstance();
+      this.theme = themeService.getEffectiveTheme();
+      monaco.editor.setTheme(this.theme == "dark" ? "vs-dark" : "vs");
+
+      document.addEventListener("theme-changed", () => {
+        this.theme = themeService.getEffectiveTheme();
+        monaco.editor.setTheme(this.theme == "dark" ? "vs-dark" : "vs");
+      });
+
       // First time initialization
       if (!this.editor) {
         // Ensure the container ref is available
@@ -1355,6 +1382,13 @@ export class CodeDiffEditor extends SketchTailwindElement {
   }
 
   async updated(changedProperties: Map<string, any>) {
+    if (changedProperties.has("theme")) {
+      // Update Monaco theme if it changed
+      const monaco = await loadMonaco();
+      if (monaco && this.theme) {
+        monaco.editor.setTheme(this.theme == "dark" ? "vs-dark" : "vs");
+      }
+    }
     // If any relevant properties changed, just update the models
     if (
       changedProperties.has("originalCode") ||
