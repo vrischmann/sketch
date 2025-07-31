@@ -219,12 +219,23 @@ var (
 		UseSimplifiedPatch: true,
 	}
 
-	// Qwen is a skaband-specific model name for Qwen3-Coder
+	ZaiGLM45CoderFireworks = Model{
+		UserName:  "zai-glm45-fireworks",
+		ModelName: "accounts/fireworks/models/glm-4p5",
+		URL:       FireworksURL,
+		APIKeyEnv: FireworksAPIKeyEnv,
+	}
+
+	// Skaband-specific model names.
 	// Provider details (URL and APIKeyEnv) are handled by skaband
 	Qwen = Model{
 		UserName:           "qwen",
 		ModelName:          "qwen", // skaband will map this to the actual provider model
 		UseSimplifiedPatch: true,
+	}
+	GLM = Model{
+		UserName:  "glm",
+		ModelName: "glm", // skaband will map this to the actual provider model
 	}
 )
 
@@ -267,7 +278,10 @@ var ModelsRegistry = []Model{
 	MistralMedium,
 	DevstralSmall,
 	Qwen3CoderFireworks,
+	ZaiGLM45CoderFireworks,
+	// Skaband-supported models
 	Qwen,
+	GLM,
 }
 
 // ListModels returns a list of all available models with their user-friendly names.
@@ -648,6 +662,8 @@ func (s *Service) TokenContextWindow() int {
 		return 200000 // 200k for O3 models
 	case "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct":
 		return 256000 // 256k native context for Qwen3-Coder
+	case "glm", "zai-glm45-fireworks":
+		return 128000
 	case "qwen":
 		return 256000 // 256k native context for Qwen3-Coder
 	default:

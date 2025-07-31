@@ -128,6 +128,7 @@ func run() error {
 		fmt.Println("- sonnet (Claude 4 Sonnet)")
 		fmt.Println("- gemini (Google Gemini 2.5 Pro)")
 		fmt.Println("- qwen (Qwen3-Coder)")
+		fmt.Println("- glm (Zai GLM4.5)")
 		for _, name := range oai.ListModels() {
 			note := ""
 			if name != "gpt4.1" {
@@ -142,10 +143,14 @@ func run() error {
 		return dumpDistFilesystem(flagArgs.dumpDist)
 	}
 
-	// Only Claude, Gemini, and Qwen have skaband support, for now.
-	hasSkabandSupport := flagArgs.modelName == "gemini" || ant.IsClaudeModel(flagArgs.modelName) || flagArgs.modelName == "qwen"
+	// Not all models have skaband support.
+	hasSkabandSupport := ant.IsClaudeModel(flagArgs.modelName)
+	switch flagArgs.modelName {
+	case "gemini", "qwen", "glm":
+		hasSkabandSupport = true
+	}
 	if !hasSkabandSupport && flagArgs.skabandAddr != "" {
-		return fmt.Errorf("only claude, gemini, and qwen are supported by skaband, use -skaband-addr='' for other models")
+		return fmt.Errorf("only claude, gemini, qwen, and glm are supported by skaband, use -skaband-addr='' for other models")
 	}
 
 	if err := flagArgs.experimentFlag.Process(); err != nil {
