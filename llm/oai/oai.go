@@ -21,7 +21,7 @@ const (
 
 	OpenAIURL    = "https://api.openai.com/v1"
 	FireworksURL = "https://api.fireworks.ai/inference/v1"
-	LlamaCPPURL  = "http://localhost:8080/v1"
+	LlamaCPPURL  = "http://host.docker.internal:1234/v1"
 	TogetherURL  = "https://api.together.xyz/v1"
 	GeminiURL    = "https://generativelanguage.googleapis.com/v1beta/openai/"
 	MistralURL   = "https://api.mistral.ai/v1"
