@@ -407,4 +407,42 @@ export const initialState: State = {
   agent_state: "WaitingForUserInput",
   diff_lines_added: 42,
   diff_lines_removed: 7,
+  open_ports: [
+    {
+      port: 3000,
+      proto: "tcp",
+      process: "demo-ui",
+      pid: 12345,
+    },
+    {
+      port: 3001,
+      proto: "tcp",
+      process: "demo-ui",
+      pid: 12345,
+    },
+    {
+      port: 3002,
+      proto: "tcp",
+      process: "demo-ui",
+      pid: 12345,
+    },
+    {
+      port: 3003,
+      proto: "tcp",
+      process: "demo-ui",
+      pid: 12345,
+    },
+    {
+      port: 3004,
+      proto: "tcp",
+      process: "demo-ui",
+      pid: 12345,
+    },
+    {
+      port: 3005,
+      proto: "tcp",
+      process: "demo-ui",
+      pid: 12345,
+    },
+  ],
 };

@@ -1154,7 +1154,7 @@ export class SketchTimelineMessage extends SketchTailwindElement {
                 ? html`
                     <div class="mt-2.5">
                       <div
-                        class="bg-green-100 text-green-800 font-medium text-xs py-1.5 px-2.5 rounded-2xl mb-2 text-center shadow-sm"
+                        class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-400 font-medium text-xs py-1.5 px-2.5 rounded-2xl mb-2 text-center shadow-sm"
                       >
                         ${this.message.commits.length} new
                         commit${this.message.commits.length > 1 ? "s" : ""}

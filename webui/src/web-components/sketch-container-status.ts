@@ -469,7 +469,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
                         href="${github.url}"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="github-link text-blue-600 no-underline hover:underline"
+                        class="github-link text-blue-600 dark:text-blue-400 no-underline hover:underline"
                         title="${this.state?.git_origin}"
                       >
                         ${github.formatted}
@@ -502,7 +502,8 @@ export class SketchContainerStatus extends SketchTailwindElement {
             <!-- Second column: Last Commit -->
             <div class="flex flex-col gap-0.5 justify-start">
               <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
-                <span class="text-xs text-gray-600 font-medium"
+                <span
+                  class="text-xs text-gray-600 dark:text-gray-300 font-medium"
                   >Last Commit</span
                 >
               </div>
@@ -520,7 +521,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
                         return html`
                           <div class="flex items-center gap-1.5">
                             <span
-                              class="text-green-600 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis"
+                              class="text-green-600 dark:text-green-400 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis"
                               title="Click to copy: ${this.lastCommit
                                 .pushedBranch}"
                               @click=${(e) => this.copyCommitInfo(e)}
@@ -574,7 +575,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
                                   href="${githubLink}"
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  class="text-gray-600 no-underline flex items-center transition-colors hover:text-blue-600"
+                                  class="text-gray-600 dark:text-gray-300 no-underline flex items-center transition-colors hover:text-blue-600"
                                   title="Open ${this.lastCommit
                                     .pushedBranch} on GitHub"
                                   @click=${(e) => e.stopPropagation()}
@@ -596,10 +597,13 @@ export class SketchContainerStatus extends SketchTailwindElement {
                         `;
                       })()
                     : html`<span
-                        class="text-gray-600 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis"
+                        class="text-gray-600 dark:text-gray-300 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis"
                         >${this.lastCommit.hash.substring(0, 8)}</span
                       >`
-                  : html`<span class="text-gray-500 italic text-xs">N/A</span>`}
+                  : html`<span
+                      class="text-gray-500 dark:text-gray-400 italic text-xs"
+                      >N/A</span
+                    >`}
               </div>
             </div>
           </div>
@@ -618,7 +622,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
               ${displayPorts.map(
                 (port) => html`
                   <button
-                    class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-1 ${this.highlightedPorts.has(
+                    class="text-xs bg-gray-100 dark:bg-neutral-800 dark:hover:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors flex items-center gap-1 ${this.highlightedPorts.has(
                       port.port,
                     )
                       ? "pulse-custom"
@@ -634,7 +638,7 @@ export class SketchContainerStatus extends SketchTailwindElement {
               ${remainingPorts.length > 0
                 ? html`
                     <button
-                      class="text-xs bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 cursor-pointer transition-colors ${remainingPorts.some(
+                      class="text-xs bg-gray-100 dark:bg-neutral-800 dark:hover:bg-gray-700 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors ${remainingPorts.some(
                         (port) => this.highlightedPorts.has(port.port),
                       )
                         ? "pulse-custom"
@@ -840,14 +844,14 @@ export class SketchContainerStatus extends SketchTailwindElement {
         <div
           class="${this.showPortsPopup
             ? "block"
-            : "hidden"} absolute min-w-max top-full right-0 z-20 bg-white rounded-lg p-3 shadow-lg mt-1.5 border border-gray-200"
+            : "hidden"} absolute min-w-max top-full right-0 z-20 bg-white dark:bg-neutral-800 rounded-lg p-3 shadow-lg mt-1.5 border border-gray-200 dark:border-neutral-600"
         >
           <h3 class="text-sm font-semibold mb-2">Open Ports</h3>
           <div class="flex flex-col gap-1">
             ${this.getSortedPorts().map(
               (port) => html`
                 <button
-                  class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer transition-colors flex items-center gap-2 justify-between"
+                  class="text-xs bg-gray-100 dark:bg-neutral-800 dark:hover:bg-gray-700 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors flex items-center gap-2 justify-between"
                   @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
                   title="Open ${port.process} on port ${port.port}"
                 >
