@@ -521,7 +521,6 @@ func (b *BrowseTools) evalRun(ctx context.Context, m json.RawMessage) llm.ToolOu
 // ScreenshotTool definition
 type screenshotInput struct {
 	Selector string `json:"selector,omitempty"`
-	Format   string `json:"format,omitempty"`
 	Timeout  string `json:"timeout,omitempty"`
 }
 
@@ -536,11 +535,6 @@ func (b *BrowseTools) NewScreenshotTool() *llm.Tool {
 				"selector": {
 					"type": "string",
 					"description": "CSS selector for the element to screenshot (optional)"
-				},
-				"format": {
-					"type": "string",
-					"description": "Output format ('base64' or 'png'), defaults to 'base64'",
-					"enum": ["base64", "png"]
 				},
 				"timeout": {
 					"type": "string",
