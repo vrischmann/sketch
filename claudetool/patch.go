@@ -239,6 +239,7 @@ func (p *PatchTool) patchRun(ctx context.Context, m json.RawMessage, input *Patc
 			case 2:
 				// multiple matches
 				patchErr = errors.Join(patchErr, fmt.Errorf("old text not unique:\n%s", patch.OldText))
+				continue
 			default:
 				// TODO: return an error instead of using agentPatch
 				slog.ErrorContext(ctx, "unique returned unexpected count", "count", count)
