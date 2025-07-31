@@ -627,7 +627,7 @@ func resolveModel(flags CLIFlags) (spec modelSpec, pubKey string, err error) {
 			return modelSpec{}, "", fmt.Errorf("unknown model '%s', use -list-models to see available models", flags.modelName)
 		}
 		apiKey = cmp.Or(os.Getenv(envName), flags.llmAPIKey)
-		if apiKey == "" {
+		if apiKey == "" && envName != "NONE" {
 			return modelSpec{}, "", fmt.Errorf("%s environment variable is not set, -llm-api-key flag not provided", envName)
 		}
 	}
@@ -971,7 +971,7 @@ func selectLLMService(client *http.Client, flags CLIFlags, spec modelSpec) (llm.
 
 	// Verify we have an API key, if necessary.
 	apiKey := cmp.Or(spec.apiKey, os.Getenv(model.APIKeyEnv), flags.llmAPIKey)
-	if apiKey == "" {
+	if apiKey == "" && model.APIKeyEnv != "NONE" {
 		return nil, fmt.Errorf("missing API key for %s model, set %s environment variable", model.UserName, model.APIKeyEnv)
 	}
 

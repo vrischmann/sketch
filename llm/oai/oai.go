@@ -180,6 +180,7 @@ var (
 		UserName:  "llama.cpp",
 		ModelName: "llama.cpp local model",
 		URL:       LlamaCPPURL,
+		APIKeyEnv: "NONE",
 	}
 
 	FireworksDeepseekV3 = Model{
