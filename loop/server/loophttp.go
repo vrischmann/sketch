@@ -1258,7 +1258,7 @@ func renderToolsDebugPage(w http.ResponseWriter, tools []*llm.Tool) {
 		.tool { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 20px; margin: 20px 0; }
 		.tool-name { font-size: 1.2em; font-weight: bold; color: #0366d6; margin-bottom: 8px; }
 		.tool-description { color: #586069; margin-bottom: 12px; white-space: pre-wrap; font-family: 'SF Mono', Monaco, monospace; }
-		.tool-schema { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 4px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; overflow-x: auto; }
+		.tool-schema { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 4px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; overflow-x: auto; white-space: pre; }
 		.tool-meta { font-size: 0.9em; color: #656d76; margin-top: 8px; }
 		.summary { background: #e6f3ff; border-left: 4px solid #0366d6; padding: 16px; margin-bottom: 30px; }
 	</style>
@@ -1289,7 +1289,7 @@ func renderToolsDebugPage(w http.ResponseWriter, tools []*llm.Tool) {
 			} else {
 				schemaFormatted = string(tool.InputSchema)
 			}
-			fmt.Fprintf(w, `		<div class="tool-schema">%s</div>
+			fmt.Fprintf(w, `		<pre class="tool-schema">%s</pre>
 `, html.EscapeString(schemaFormatted))
 		}
 

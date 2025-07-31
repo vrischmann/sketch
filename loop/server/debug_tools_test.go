@@ -37,6 +37,19 @@ func TestRenderToolsDebugPage_UsesPre(t *testing.T) {
 		t.Error("Expected HTML to NOT use <div class=\"tool-description\"> tag")
 	}
 
+	// Verify HTML uses <pre> tag for tool schema
+	if !strings.Contains(html, `<pre class="tool-schema">`) {
+		t.Error("Expected HTML to use <pre class=\"tool-schema\"> tag")
+	}
+	if strings.Contains(html, `<div class="tool-schema">`) {
+		t.Error("Expected HTML to NOT use <div class=\"tool-schema\"> tag")
+	}
+
+	// Verify CSS includes white-space: pre for schemas
+	if !strings.Contains(html, "white-space: pre") {
+		t.Error("Expected CSS to contain 'white-space: pre' for schemas")
+	}
+
 	// Verify the description content is preserved
 	if !strings.Contains(html, "This is a test tool") {
 		t.Error("Expected tool description to be included")
