@@ -302,20 +302,28 @@ func (p *PatchTool) patchParse(m json.RawMessage) (PatchInput, error) {
 	var inputOne PatchInputOne
 	if err := json.Unmarshal(m, &inputOne); err == nil && inputOne.Patches != nil {
 		return PatchInput{Path: inputOne.Path, Patches: []PatchRequest{*inputOne.Patches}}, nil
+	} else if originalErr == nil {
+		originalErr = err
 	}
 	var inputOneSingular PatchInputOneSingular
 	if err := json.Unmarshal(m, &inputOneSingular); err == nil && inputOneSingular.Patch != nil {
 		return PatchInput{Path: inputOneSingular.Path, Patches: []PatchRequest{*inputOneSingular.Patch}}, nil
+	} else if originalErr == nil {
+		originalErr = err
 	}
 	var inputOneString PatchInputOneString
 	if err := json.Unmarshal(m, &inputOneString); err == nil {
 		var onePatch PatchRequest
 		if err := json.Unmarshal([]byte(inputOneString.Patches), &onePatch); err == nil && onePatch.Operation != "" {
 			return PatchInput{Path: inputOneString.Path, Patches: []PatchRequest{onePatch}}, nil
+		} else if originalErr == nil {
+			originalErr = err
 		}
 		var patches []PatchRequest
 		if err := json.Unmarshal([]byte(inputOneString.Patches), &patches); err == nil {
 			return PatchInput{Path: inputOneString.Path, Patches: patches}, nil
+		} else if originalErr == nil {
+			originalErr = err
 		}
 	}
 	return PatchInput{}, fmt.Errorf("failed to unmarshal patch input: %w", originalErr)
