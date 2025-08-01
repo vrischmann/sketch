@@ -369,6 +369,32 @@ export const initialMessages: AgentMessage[] = [
     elapsed: 51109583,
     idx: 17,
   },
+  {
+    type: "agent",
+    end_of_turn: false,
+    content: "",
+    tool_calls: [
+      {
+        name: "keyword_search",
+        input:
+          '{"query":"Find sketch\'s theme service and theme toggle components to understand how dark mode is implemented","search_terms":["theme-service.ts","sketch-theme-toggle.ts","dark mode","theme toggle","sketch webui"]}',
+        tool_call_id: "toolu_01R7p4SJUw37j7izBHhaYkjS",
+      },
+    ],
+    timestamp: "2025-08-01T21:07:05.101118136Z",
+    conversation_id: "3bk-xk6f",
+    usage: {
+      input_tokens: 6,
+      cache_creation_input_tokens: 255,
+      cache_read_input_tokens: 4941,
+      output_tokens: 115,
+      cost_usd: 0.00418155,
+    },
+    start_time: "2025-08-01T21:07:02.412557772Z",
+    end_time: "2025-08-01T21:07:05.101114826Z",
+    elapsed: 2688557047,
+    idx: 18,
+  },
 ];
 
 export const initialState: State = {
