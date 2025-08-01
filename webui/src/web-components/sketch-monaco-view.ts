@@ -361,14 +361,14 @@ export class CodeDiffEditor extends SketchTailwindElement {
       ${this.showCommentBox
         ? html`
             <div
-              class="fixed bg-white border border-gray-300 rounded shadow-lg p-3 z-[10001] w-[600px] animate-fade-in max-h-[80vh] overflow-y-auto"
+              class="fixed bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded shadow-lg p-3 z-[10001] w-[600px] animate-fade-in max-h-[80vh] overflow-y-auto"
               style="top: ${this.commentBoxPosition.top}px; left: ${this
                 .commentBoxPosition.left}px;"
             >
               <div class="flex justify-between items-center mb-2">
                 <h3 class="m-0 text-sm font-medium">Add comment</h3>
                 <button
-                  class="bg-none border-none cursor-pointer text-base text-gray-600 px-1.5 py-0.5 hover:text-gray-800"
+                  class="bg-none border-none cursor-pointer text-base text-gray-600 dark:text-gray-400 px-1.5 py-0.5 hover:text-gray-800"
                   @click="${this.closeCommentBox}"
                 >
                   ×
@@ -377,7 +377,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
               ${this.selectedLines
                 ? html`
                     <div
-                      class="bg-gray-100 border border-gray-200 rounded p-2 mb-2.5 font-mono text-xs overflow-y-auto whitespace-pre-wrap break-all leading-relaxed ${this.getPreviewCssClass() ===
+                      class="bg-gray-100 dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded p-2 mb-2.5 font-mono text-xs overflow-y-auto whitespace-pre-wrap break-all leading-relaxed ${this.getPreviewCssClass() ===
                       "small-selection"
                         ? ""
                         : "max-h-[280px]"}"
@@ -387,7 +387,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
                   `
                 : ""}
               <textarea
-                class="w-full min-h-[80px] p-2 border border-gray-300 rounded resize-y font-inherit mb-2.5 box-border"
+                class="w-full min-h-[80px] p-2 border border-gray-300 dark:border-neutral-600 rounded resize-y font-inherit mb-2.5 box-border"
                 placeholder="Type your comment here..."
                 .value="${this.commentText}"
                 @input="${this.handleCommentInput}"
@@ -395,7 +395,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
               ></textarea>
               <div class="flex justify-end gap-2">
                 <button
-                  class="px-3 py-1.5 rounded cursor-pointer text-xs bg-transparent border border-gray-300 hover:bg-gray-100"
+                  class="px-3 py-1.5 rounded cursor-pointer text-xs bg-transparent border border-gray-300 dark:border-neutral-600 hover:bg-gray-100"
                   @click="${this.closeCommentBox}"
                 >
                   Cancel
