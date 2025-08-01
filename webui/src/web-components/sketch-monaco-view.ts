@@ -1183,6 +1183,8 @@ export class CodeDiffEditor extends SketchTailwindElement {
           theme: "vs", // Always use light mode
           renderSideBySide: !this.inline,
           ignoreTrimWhitespace: false,
+          diffAlgorithm: "advanced", // smarter Myers/PDF diff
+          experimental: { showMoves: true }, // highlight moved blocks
           // Enable glyph margin for both editors to show decorations
           glyphMargin: true,
           scrollbar: {
