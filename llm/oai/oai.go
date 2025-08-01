@@ -21,6 +21,7 @@ const (
 
 	OpenAIURL    = "https://api.openai.com/v1"
 	FireworksURL = "https://api.fireworks.ai/inference/v1"
+	CerebrasURL  = "https://api.cerebras.ai/v1"
 	LlamaCPPURL  = "http://host.docker.internal:1234/v1"
 	TogetherURL  = "https://api.together.xyz/v1"
 	GeminiURL    = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -30,6 +31,7 @@ const (
 	// Environment variable names for API keys
 	OpenAIAPIKeyEnv    = "OPENAI_API_KEY"
 	FireworksAPIKeyEnv = "FIREWORKS_API_KEY"
+	CerebrasAPIKeyEnv  = "CEREBRAS_API_KEY"
 	TogetherAPIKeyEnv  = "TOGETHER_API_KEY"
 	GeminiAPIKeyEnv    = "GEMINI_API_KEY"
 	MistralAPIKeyEnv   = "MISTRAL_API_KEY"
@@ -219,6 +221,13 @@ var (
 		UseSimplifiedPatch: true,
 	}
 
+	Qwen3CoderCerebras = Model{
+		UserName:  "qwen3-coder-cerebras",
+		ModelName: "qwen-3-coder-480b",
+		URL:       CerebrasURL,
+		APIKeyEnv: CerebrasAPIKeyEnv,
+	}
+
 	ZaiGLM45CoderFireworks = Model{
 		UserName:  "zai-glm45-fireworks",
 		ModelName: "accounts/fireworks/models/glm-4p5",
@@ -278,6 +287,7 @@ var ModelsRegistry = []Model{
 	MistralMedium,
 	DevstralSmall,
 	Qwen3CoderFireworks,
+	Qwen3CoderCerebras,
 	ZaiGLM45CoderFireworks,
 	// Skaband-supported models
 	Qwen,
@@ -664,7 +674,7 @@ func (s *Service) TokenContextWindow() int {
 		return 256000 // 256k native context for Qwen3-Coder
 	case "glm", "zai-glm45-fireworks":
 		return 128000
-	case "qwen":
+	case "qwen", "qwen3-coder-cerebras", "qwen3-coder-fireworks":
 		return 256000 // 256k native context for Qwen3-Coder
 	default:
 		// Default for unknown models
