@@ -19,6 +19,7 @@ import "./sketch-terminal";
 import "./sketch-timeline";
 import "./sketch-view-mode-select";
 import "./sketch-todo-panel";
+import "./sketch-theme-toggle";
 
 import { createRef } from "lit/directives/ref.js";
 import { SketchChatInput } from "./sketch-chat-input";
@@ -996,6 +997,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
             })()}
             .isDisconnected=${this.connectionStatus === "disconnected"}
           ></sketch-call-status>
+          <sketch-theme-toggle></sketch-theme-toggle>
         </div>
       </div>
     `;
