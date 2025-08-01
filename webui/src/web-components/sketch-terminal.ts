@@ -5,7 +5,38 @@ import { FitAddon } from "@xterm/addon-fit";
 import { html } from "lit";
 import { customElement } from "lit/decorators.js";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
+import { ThemeService } from "./theme-service";
 import "./sketch-container-status";
+
+const darkTheme = {
+  background: "#1e1e1e", // Dark background color
+  foreground: "#d4d4d4", // Light text color
+  cursor: "#d4d4d4", // Cursor color
+  selection: "rgba(255, 255, 255, 0.3)", // Selection highlight
+  black: "#000000",
+  red: "#cd3131",
+  green: "#0dbc79",
+  yellow: "#e5e510",
+  blue: "#2472c8",
+  magenta: "#bc3fbc",
+  cyan: "#0598bc",
+  white: "#e5e5e5",
+  brightBlack: "#666666",
+  brightRed: "#f14c4c",
+  brightGreen: "#23d18b",
+  brightYellow: "#f5f543",
+  brightBlue: "#3b8eea",
+  brightMagenta: "#d670d6",
+  brightCyan: "#29b8db",
+  brightWhite: "#ffffff",
+};
+
+const lightTheme = {
+  background: "#f5f5f5",
+  foreground: "#333333",
+  cursor: "#0078d7",
+  selectionBackground: "rgba(0, 120, 215, 0.4)",
+};
 
 @customElement("sketch-terminal")
 export class SketchTerminal extends SketchTailwindElement {
@@ -150,15 +181,19 @@ export class SketchTerminal extends SketchTailwindElement {
     // Clear the terminal container
     terminalContainer.innerHTML = "";
 
+    const currentTheme = ThemeService.getInstance().getEffectiveTheme();
     // Create new terminal instance
     this.terminal = new Terminal({
       cursorBlink: true,
-      theme: {
-        background: "#f5f5f5",
-        foreground: "#333333",
-        cursor: "#0078d7",
-        selectionBackground: "rgba(0, 120, 215, 0.4)",
-      },
+      theme: currentTheme === "dark" ? darkTheme : lightTheme,
+    });
+
+    document.addEventListener("theme-changed", () => {
+      if (this.terminal) {
+        const effectiveTheme = ThemeService.getInstance().getEffectiveTheme();
+        this.terminal!.options.theme =
+          effectiveTheme === "dark" ? darkTheme : lightTheme;
+      }
     });
 
     // Add fit addon to handle terminal resizing
@@ -354,7 +389,7 @@ export class SketchTerminal extends SketchTailwindElement {
     return html`
       <div
         id="terminalView"
-        class="w-full bg-gray-100 rounded-lg overflow-hidden mb-5 shadow-md p-4"
+        class="w-full bg-gray-100 dark:bg-neutral-800 rounded-lg overflow-hidden mb-5 shadow-md p-4"
         style="height: 70vh;"
       >
         <div id="terminalContainer" class="w-full h-full overflow-hidden"></div>

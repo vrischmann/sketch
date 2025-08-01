@@ -80,7 +80,7 @@ export class SketchThemeToggle extends SketchTailwindElement {
     return html`
       <button
         @click=${this.toggleTheme}
-        class="p-2 rounded-md border border-gray-300 dark:border-neutral-600 
+        class="p-1 text-xs rounded-md
                bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-200
                hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors
                focus:outline-none focus:ring-2 focus:ring-blue-500"
