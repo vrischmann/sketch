@@ -170,7 +170,7 @@ export class MobileChatInput extends SketchTailwindElement {
 
     return html`
       <div
-        class="block bg-white border-t border-gray-200 p-3 relative z-[1000]"
+        class="block bg-white border-t border-gray-200 dark:bg-neutral-800 dark:border-gray-700 p-3 relative z-[1000]"
         style="padding-bottom: max(12px, env(safe-area-inset-bottom)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));"
       >
         <div class="flex items-end gap-3 max-w-full">
@@ -183,7 +183,7 @@ export class MobileChatInput extends SketchTailwindElement {
               placeholder="Message Sketch..."
               ?disabled=${this.disabled || this.uploadsInProgress > 0}
               rows="1"
-              class="w-full min-h-[40px] max-h-[120px] p-3 border border-gray-300 rounded-[20px] text-base font-inherit leading-relaxed resize-none outline-none bg-gray-50 transition-colors duration-200 box-border focus:border-blue-500 focus:bg-white disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed placeholder:text-gray-500"
+              class="w-full min-h-[40px] max-h-[120px] p-3 border border-gray-300 dark:border-gray-600 rounded-[20px] text-base font-inherit leading-relaxed resize-none outline-none bg-gray-50 dark:bg-neutral-800 transition-colors duration-200 box-border focus:border-blue-500 focus:bg-white dark:focus:bg-neutral-800 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed placeholder:text-gray-500"
               style="font-size: 16px;"
             ></textarea>
 

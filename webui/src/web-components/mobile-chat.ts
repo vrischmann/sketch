@@ -201,11 +201,12 @@ export class MobileChat extends SketchTailwindElement {
             <div
               class="bg-black/[0.04] rounded-lg px-2 py-1.5 text-xs font-mono leading-snug flex items-center gap-1.5 ${toolCall.name}"
             >
-              <span class="font-bold text-gray-800 flex-shrink-0 mr-0.5"
+              <span
+                class="font-bold text-gray-800 dark:text-gray-100 flex-shrink-0 mr-0.5"
                 >${toolCall.name}</span
               >
               <span
-                class="text-gray-600 flex-grow overflow-hidden text-ellipsis whitespace-nowrap"
+                class="text-gray-600 dark:text-gray-300 flex-grow overflow-hidden text-ellipsis whitespace-nowrap"
                 >${summary}</span
               >
             </div>
@@ -310,7 +311,7 @@ export class MobileChat extends SketchTailwindElement {
           ${displayMessages.length === 0
             ? html`
                 <div
-                  class="empty-state flex-1 flex items-center justify-center text-gray-500 italic text-center p-8"
+                  class="empty-state flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400 italic text-center p-8"
                 >
                   Start a conversation with Sketch...
                 </div>
@@ -333,7 +334,7 @@ export class MobileChat extends SketchTailwindElement {
                         ? "bg-blue-500 text-white rounded-br-[6px]"
                         : role === "error"
                           ? "bg-red-50 text-red-700"
-                          : "bg-gray-100 text-gray-800 rounded-bl-[6px]"}"
+                          : "bg-gray-100 dark:bg-neutral-700 text-gray-800 dark:text-gray-100 rounded-bl-[6px]"}"
                     >
                       ${role === "assistant"
                         ? html`<div class="leading-6 break-words">

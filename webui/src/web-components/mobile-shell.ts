@@ -119,7 +119,7 @@ export class MobileShell extends SketchTailwindElement {
 
     return html`
       <div
-        class="flex flex-col bg-white font-sans w-screen overflow-hidden"
+        class="flex flex-col bg-white dark:bg-neutral-800 font-sans w-screen overflow-hidden"
         style="height: 100dvh; height: 100vh; height: calc(var(--vh, 1vh) * 100); min-height: 100vh; min-height: -webkit-fill-available;"
       >
         <mobile-title
