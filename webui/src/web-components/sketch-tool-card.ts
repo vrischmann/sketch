@@ -356,12 +356,12 @@ export class SketchToolCardKeywordSearch extends SketchTailwindElement {
       class="flex flex-col gap-0.5 w-full max-w-full overflow-hidden"
     >
       <div
-        class="text-gray-800 text-xs normal-case whitespace-normal break-words leading-tight"
+        class="text-gray-800 dark:text-gray-200 text-xs normal-case whitespace-normal break-words leading-tight"
       >
         🔍 ${query}
       </div>
       <div
-        class="text-gray-600 text-xs normal-case whitespace-normal break-words leading-tight mt-px"
+        class="text-gray-600 dark:text-gray-400 text-xs normal-case whitespace-normal break-words leading-tight mt-px"
       >
         🗝️ ${searchTerms.join(", ")}
       </div>
