@@ -114,6 +114,7 @@ export class ThemeService {
       "dark",
       effectiveTheme === "dark",
     );
+    document.documentElement.style.colorScheme = effectiveTheme;
   }
 
   /**
