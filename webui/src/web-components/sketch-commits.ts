@@ -1,8 +1,11 @@
 import { html } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { GitCommit, State } from "../types";
+import { customElement, property, state } from "lit/decorators.js";
+import { AgentMessage, GitCommit, State } from "../types";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
-
+import {
+  workflowEventTracker,
+  WorkflowEventGroup,
+} from "../services/workflow-event-tracker";
 @customElement("sketch-commits")
 export class SketchCommits extends SketchTailwindElement {
   @property({ type: Array })
@@ -10,6 +13,57 @@ export class SketchCommits extends SketchTailwindElement {
 
   @property({ type: Object })
   state: State | null = null;
+
+  @state()
+  workflowGroups = new Map<string, WorkflowEventGroup>();
+  unsubscribeWorkflowEventTracker: () => void;
+
+  constructor() {
+    super();
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+
+    // Subscribe to workflow event tracker updates
+    this.unsubscribeWorkflowEventTracker = workflowEventTracker.subscribe(
+      this.handleWorkflowEventGroups.bind(this),
+    );
+    this.handleWorkflowEventGroups(workflowEventTracker.getEventGroups());
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.unsubscribeWorkflowEventTracker();
+  }
+
+  handleWorkflowEventGroups(groups: Map<string, WorkflowEventGroup>) {
+    if (!this.commits || this.commits.length === 0) {
+      return;
+    }
+    if (!groups || groups.size === 0) {
+      return;
+    }
+    // If this component has any of the commits mentioned in this update,
+    // then update the workflow groups affected.
+    for (const commit of this.commits) {
+      const key = `${commit.pushed_branch}:${commit.hash}`;
+
+      const group = groups.get(key);
+      if (group) {
+        // This update contains a commit we care about
+        const wfg = this.workflowGroups.get(key);
+        if (wfg) {
+          wfg.events = group.events;
+          wfg.lastUpdated = group.lastUpdated;
+        } else {
+          this.workflowGroups.set(key, group);
+        }
+      }
+    }
+
+    this.requestUpdate();
+  }
 
   // Event handlers for copying text and showing commit diffs
   copyToClipboard(text: string, event: Event) {
@@ -125,6 +179,16 @@ export class SketchCommits extends SketchTailwindElement {
     return `https://github.com/${github.owner}/${github.repo}/tree/${branchName}`;
   }
 
+  private getWorkflowMessages(commit: GitCommit): AgentMessage[] {
+    const group = this.workflowGroups.get(
+      `${commit.pushed_branch}:${commit.hash}`,
+    );
+    if (group) {
+      return [...group.events];
+    }
+    return [];
+  }
+
   render() {
     if (!this.commits || this.commits.length === 0) {
       return html``;
@@ -140,103 +204,113 @@ export class SketchCommits extends SketchTailwindElement {
         </div>
         ${this.commits.map((commit) => {
           if (!commit) return html``;
+          const wfMessages = this.getWorkflowMessages(commit);
           return html`
             <div
-              class="text-sm bg-gray-100 dark:bg-neutral-800 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 flex items-center gap-2"
+              class="text-sm bg-gray-100 dark:bg-neutral-800 rounded-lg overflow-hidden mb-1.5 shadow-sm p-1.5 px-2 gap-2"
             >
-              <span
-                class="text-blue-600 font-bold font-mono cursor-pointer no-underline bg-blue-600/10 py-0.5 px-1 rounded hover:bg-blue-600/20"
-                title="Click to copy: ${commit.hash}"
-                @click=${(e: Event) =>
-                  this.copyToClipboard(commit.hash.substring(0, 8), e)}
-              >
-                ${commit.hash.substring(0, 8)}
-              </span>
-              ${commit.pushed_branch
-                ? (() => {
-                    const githubLink = this.getGitHubBranchLink(
-                      commit.pushed_branch,
-                    );
-                    return html`
-                      <div class="flex items-center gap-1.5">
-                        <span
-                          class="text-green-600 font-medium cursor-pointer font-mono bg-green-600/10 py-0.5 px-1 rounded hover:bg-green-600/20"
-                          title="Click to copy: ${commit.pushed_branch}"
-                          @click=${(e: Event) =>
-                            this.copyToClipboard(commit.pushed_branch!, e)}
-                          >${commit.pushed_branch}</span
-                        >
-                        <span
-                          class="opacity-70 flex items-center hover:opacity-100"
-                          @click=${(e: Event) => {
-                            e.stopPropagation();
-                            this.copyToClipboard(commit.pushed_branch!, e);
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="align-middle"
+              <div class="flex items-center gap-2">
+                <span
+                  class="text-blue-600 font-bold font-mono cursor-pointer no-underline bg-blue-600/10 py-0.5 px-1 rounded hover:bg-blue-600/20"
+                  title="Click to copy: ${commit.hash}"
+                  @click=${(e: Event) =>
+                    this.copyToClipboard(commit.hash.substring(0, 8), e)}
+                >
+                  ${commit.hash.substring(0, 8)}
+                </span>
+                ${commit.pushed_branch
+                  ? (() => {
+                      const githubLink = this.getGitHubBranchLink(
+                        commit.pushed_branch,
+                      );
+                      return html`
+                        <div class="flex items-center gap-1.5">
+                          <span
+                            class="text-green-600 font-medium cursor-pointer font-mono bg-green-600/10 py-0.5 px-1 rounded hover:bg-green-600/20"
+                            title="Click to copy: ${commit.pushed_branch}"
+                            @click=${(e: Event) =>
+                              this.copyToClipboard(commit.pushed_branch!, e)}
+                            >${commit.pushed_branch}</span
                           >
-                            <rect
-                              x="9"
-                              y="9"
-                              width="13"
-                              height="13"
-                              rx="2"
-                              ry="2"
-                            ></rect>
-                            <path
-                              d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                            ></path>
-                          </svg>
-                        </span>
-                        ${githubLink
-                          ? html`
-                              <a
-                                href="${githubLink}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="text-gray-600 dark:text-neutral-400 no-underline flex items-center transition-colors duration-200 hover:text-blue-600 dark:hover:text-blue-400"
-                                title="Open ${commit.pushed_branch} on GitHub"
-                                @click=${(e: Event) => e.stopPropagation()}
-                              >
-                                <svg
-                                  class="w-3.5 h-3.5"
-                                  viewBox="0 0 16 16"
-                                  width="14"
-                                  height="14"
+                          <span
+                            class="opacity-70 flex items-center hover:opacity-100"
+                            @click=${(e: Event) => {
+                              e.stopPropagation();
+                              this.copyToClipboard(commit.pushed_branch!, e);
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              class="align-middle"
+                            >
+                              <rect
+                                x="9"
+                                y="9"
+                                width="13"
+                                height="13"
+                                rx="2"
+                                ry="2"
+                              ></rect>
+                              <path
+                                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                              ></path>
+                            </svg>
+                          </span>
+                          ${githubLink
+                            ? html`
+                                <a
+                                  href="${githubLink}"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  class="text-gray-600 dark:text-neutral-400 no-underline flex items-center transition-colors duration-200 hover:text-blue-600 dark:hover:text-blue-400"
+                                  title="Open ${commit.pushed_branch} on GitHub"
+                                  @click=${(e: Event) => e.stopPropagation()}
                                 >
-                                  <path
-                                    fill="currentColor"
-                                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
-                                  />
-                                </svg>
-                              </a>
-                            `
-                          : ""}
-                      </div>
-                    `;
-                  })()
-                : html``}
-              <span
-                class="text-sm text-gray-700 dark:text-neutral-300 flex-grow truncate"
-              >
-                ${commit.subject}
-              </span>
-              <button
-                class="py-0.5 px-2 border-0 rounded bg-blue-600 text-white text-xs cursor-pointer transition-all duration-200 block ml-auto hover:bg-blue-700"
-                @click=${() => this.showCommit(commit.hash)}
-              >
-                View Diff
-              </button>
+                                  <svg
+                                    class="w-3.5 h-3.5"
+                                    viewBox="0 0 16 16"
+                                    width="14"
+                                    height="14"
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+                                    />
+                                  </svg>
+                                </a>
+                              `
+                            : ""}
+                        </div>
+                      `;
+                    })()
+                  : html``}
+                <span
+                  class="text-sm text-gray-700 dark:text-neutral-300 flex-grow truncate"
+                >
+                  ${commit.subject}
+                </span>
+                <button
+                  class="py-0.5 px-2 border-0 rounded bg-blue-600 text-white text-xs cursor-pointer transition-all duration-200 block ml-auto hover:bg-blue-700"
+                  @click=${() => this.showCommit(commit.hash)}
+                >
+                  View Diff
+                </button>
+              </div>
+              <div>
+                <sketch-workflow-status-summary
+                  .commit=${commit.hash}
+                  .branch=${commit.pushed_branch}
+                  .messages=${wfMessages}
+                ></sketch-workflow-status-summary>
+              </div>
             </div>
           `;
         })}

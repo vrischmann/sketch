@@ -307,7 +307,7 @@
           filteredComponents.forEach((component) => {
             const li = document.createElement("li");
             const button = document.createElement("button");
-            button.textContent = this.formatComponentName(component);
+            button.textContent = component;
             button.addEventListener("click", () =>
               this.loadComponent(component),
             );

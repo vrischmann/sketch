@@ -1,4 +1,5 @@
 import { AgentMessage, State } from "./types";
+import { workflowEventTracker } from "./services/workflow-event-tracker";
 
 /**
  * Event types for data manager
@@ -341,6 +342,8 @@ export class DataManager {
 
     // Check if initial load is now complete
     this.checkInitialLoadComplete();
+
+    workflowEventTracker.processMessages([message]);
 
     // Emit an event that data has changed
     this.emitEvent("dataChanged", {

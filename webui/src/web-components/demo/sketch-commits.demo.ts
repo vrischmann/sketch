@@ -4,7 +4,13 @@
 
 import { DemoModule } from "./demo-framework/types";
 import { demoUtils } from "./demo-fixtures/index";
-import type { GitCommit, State } from "../../types";
+import type {
+  GitCommit,
+  State,
+  AgentMessage,
+  ExternalMessage,
+} from "../../types";
+import { workflowEventTracker } from "../../services/workflow-event-tracker";
 
 // Sample commit data for demonstrations
 const sampleCommits: GitCommit[] = [
@@ -72,11 +78,116 @@ const createMockState = (overrides: Partial<State> = {}): State => {
   } as State;
 };
 
+// Helper function to create AgentMessage with WorkflowRunEvent
+const createWorkflowMessage = (
+  workflowName: string,
+  commitHash: string,
+  branch: string,
+  status?: string,
+  conclusion?: string,
+): AgentMessage => {
+  // Create a minimal WorkflowRunEvent object with just the required fields
+  const workflowRunEvent = {
+    action: "completed",
+    workflow: {
+      id: 123456,
+      name: workflowName,
+      path: ".github/workflows/ci.yml",
+      state: "active",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      url: "https://api.github.com/repos/boldsoftware/bold/actions/workflows/123456",
+      html_url: "https://github.com/boldsoftware/bold/actions/workflows/ci.yml",
+      badge_url: "https://github.com/boldsoftware/bold/workflows/CI/badge.svg",
+    },
+    workflow_run: {
+      id: Math.floor(Math.random() * 1000000),
+      name: workflowName,
+      head_branch: branch || "main",
+      head_sha: commitHash,
+      path: ".github/workflows/ci.yml",
+      run_number: Math.floor(Math.random() * 100) + 1,
+      event: "push",
+      status: status || "completed",
+      conclusion: conclusion || null,
+      workflow_id: 123456,
+      check_suite_id: 789012,
+      check_suite_node_id: "CS_node_id",
+      url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000),
+      html_url:
+        "https://github.com/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      run_attempt: 1,
+      referenced_workflows: [],
+      run_started_at: new Date().toISOString(),
+      jobs_url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000) +
+        "/jobs",
+      logs_url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000) +
+        "/logs",
+      check_suite_url:
+        "https://api.github.com/repos/boldsoftware/bold/check-suites/789012",
+      artifacts_url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000) +
+        "/artifacts",
+      cancel_url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000) +
+        "/cancel",
+      rerun_url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/runs/" +
+        Math.floor(Math.random() * 1000000) +
+        "/rerun",
+      previous_attempt_url: null,
+      workflow_url:
+        "https://api.github.com/repos/boldsoftware/bold/actions/workflows/123456",
+      head_commit: {
+        id: commitHash,
+        tree_id: "tree_" + commitHash.substring(0, 8),
+        message: "Sample commit for demo",
+        timestamp: new Date().toISOString(),
+        author: {
+          name: "Demo User",
+          email: "demo@example.com",
+        },
+        committer: {
+          name: "Demo User",
+          email: "demo@example.com",
+        },
+      },
+    },
+  };
+
+  const externalMessage: ExternalMessage = {
+    message_type: "github_workflow_run",
+    body: workflowRunEvent,
+    text_content: `Workflow ${workflowRunEvent.workflow.name} ${conclusion || status} for commit ${commitHash.substring(0, 8)}`,
+  };
+
+  return {
+    type: "external",
+    end_of_turn: false,
+    content: "",
+    external_message: externalMessage,
+    timestamp: new Date().toISOString(),
+    conversation_id: "demo-conversation",
+    idx: Math.floor(Math.random() * 1000),
+  } as AgentMessage;
+};
+
 const demo: DemoModule = {
   title: "Commits Component Demo",
   description:
     "Interactive demo showing commit display with various configurations",
-  imports: ["../sketch-commits"],
+  imports: ["../sketch-commits", "../sketch-workflow-status-summary"],
   styles: ["/dist/tailwind.css"],
 
   setup: async (container: HTMLElement) => {
@@ -89,6 +200,11 @@ const demo: DemoModule = {
     const interactiveSection = demoUtils.createDemoSection(
       "Interactive Examples",
       "Test copy functionality and commit interactions",
+    );
+
+    const workflowStatusSection = demoUtils.createDemoSection(
+      "Workflow Status Testing",
+      "Test workflow status events for each commit",
     );
 
     const configurationsSection = demoUtils.createDemoSection(
@@ -270,11 +386,194 @@ const demo: DemoModule = {
     interactiveSection.appendChild(interactiveCommits);
     interactiveSection.appendChild(controlsDiv);
 
+    // Workflow status testing section
+    const workflowContainer = document.createElement("div");
+
+    const commitSelector: HTMLSelectElement = document.createElement("select");
+    commitSelector.style.cssText = `
+      margin: 10px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: white;
+      color: #333;
+    `;
+    sampleCommits.forEach((commit) => {
+      const option = document.createElement("option");
+      option.value = commit.hash;
+      option.textContent = `${commit.hash.substring(0, 8)} - ${commit.subject}`;
+      commitSelector.appendChild(option);
+    });
+    workflowContainer.appendChild(commitSelector);
+
+    const workflowNames = ["Presubmit", "Build and Test", "Deploy to Staging"];
+    const workflowSelector = document.createElement("select");
+    workflowSelector.style.cssText = `
+      margin: 10px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: white;
+      color: #333;
+    `;
+    workflowNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      workflowSelector.appendChild(option);
+    });
+    workflowContainer.appendChild(workflowSelector);
+
+    // Queued button
+    const queuedBtn = demoUtils.createButton("Queued", () => {
+      const commit = sampleCommits.find((c) => c.hash === commitSelector.value);
+      if (!commit) return;
+
+      const message = createWorkflowMessage(
+        workflowSelector.value,
+        commit.hash,
+        commit.pushed_branch || "main",
+        "queued",
+        undefined,
+      );
+      workflowEventTracker.processMessages([message]);
+
+      // Show notification
+      const notification = document.createElement("div");
+      notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #6b7280;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 6px;
+          z-index: 1000;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+      notification.textContent = `Queued workflow event sent for ${commit.hash.substring(0, 8)}`;
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
+    });
+    queuedBtn.style.cssText +=
+      "background: #6b7280; color: white; border: none;";
+    workflowContainer.appendChild(queuedBtn);
+
+    // In Progress button
+    const inProgressBtn = demoUtils.createButton("In Progress", () => {
+      const commit = sampleCommits.find((c) => c.hash === commitSelector.value);
+      if (!commit) return;
+
+      const message = createWorkflowMessage(
+        workflowSelector.value,
+        commit.hash,
+        commit.pushed_branch || "main",
+        "in_progress",
+        undefined,
+      );
+      workflowEventTracker.processMessages([message]);
+
+      // Show notification
+      const notification = document.createElement("div");
+      notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #f59e0b;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 6px;
+          z-index: 1000;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+      notification.textContent = `In Progress workflow event sent for ${commit.hash.substring(0, 8)}`;
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
+    });
+    inProgressBtn.style.cssText +=
+      "background: #f59e0b; color: white; border: none;";
+    workflowContainer.appendChild(inProgressBtn);
+
+    // Success button
+    const successBtn = demoUtils.createButton("Success", () => {
+      const commit = sampleCommits.find((c) => c.hash === commitSelector.value);
+      if (!commit) return;
+      const message = createWorkflowMessage(
+        workflowSelector.value,
+        commit.hash,
+        commit.pushed_branch || "main",
+        undefined,
+        "success",
+      );
+      workflowEventTracker.processMessages([message]);
+
+      // Show notification
+      const notification = document.createElement("div");
+      notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #10b981;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 6px;
+          z-index: 1000;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+      notification.textContent = `Success workflow event sent for ${commit.hash.substring(0, 8)}`;
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
+    });
+    successBtn.style.cssText +=
+      "background: #10b981; color: white; border: none;";
+    workflowContainer.appendChild(successBtn);
+
+    // Failure button
+    const failureBtn = demoUtils.createButton("Failure", () => {
+      const commit = sampleCommits.find((c) => c.hash === commitSelector.value);
+      if (!commit) return;
+      const message = createWorkflowMessage(
+        workflowSelector.value,
+        commit.hash,
+        commit.pushed_branch || "main",
+        undefined,
+        "failure",
+      );
+      workflowEventTracker.processMessages([message]);
+
+      // Show notification
+      const notification = document.createElement("div");
+      notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #ef4444;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 6px;
+          z-index: 1000;
+          font-size: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+      notification.textContent = `Failure workflow event sent for ${commit.hash.substring(0, 8)}`;
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
+    });
+    failureBtn.style.cssText +=
+      "background: #ef4444; color: white; border: none;";
+    workflowContainer.appendChild(failureBtn);
+
+    workflowStatusSection.appendChild(workflowContainer);
+
     configurationsSection.appendChild(configContainer);
     edgeCasesSection.appendChild(edgeCasesContainer);
 
     container.appendChild(basicSection);
     container.appendChild(interactiveSection);
+    container.appendChild(workflowStatusSection);
     container.appendChild(configurationsSection);
     container.appendChild(edgeCasesSection);
 

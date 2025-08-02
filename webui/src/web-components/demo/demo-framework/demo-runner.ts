@@ -113,6 +113,7 @@ export class DemoRunner {
       "sketch-timeline-viewport",
       "sketch-tool-card",
       "status-indicators",
+      "sketch-workflow-status-summary",
     ];
     knownComponents.sort();
 

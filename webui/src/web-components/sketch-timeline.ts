@@ -266,7 +266,24 @@ export class SketchTimeline extends SketchTailwindElement {
    * Get the filtered messages (excluding hidden ones)
    */
   private get filteredMessages(): AgentMessage[] {
-    return this.messages.filter((msg) => !msg.hide_output);
+    return this.messages.filter((msg) => {
+      if (msg.hide_output) {
+        return false; // Hide messages marked to be hidden
+      }
+      // HACK: Hide external messages that are not related to GitHub workflow failures
+      if (
+        msg.type === "external" &&
+        msg.external_message?.message_type?.includes("github_workflow_run")
+      ) {
+        if (
+          msg.external_message?.body?.workflow_run?.conclusion === "failure"
+        ) {
+          return true;
+        }
+        return false;
+      }
+      return true;
+    });
   }
 
   /**
