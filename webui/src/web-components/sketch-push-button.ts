@@ -242,7 +242,7 @@ export class SketchPushButton extends SketchTailwindElement {
                         e.target as HTMLInputElement
                       ).value;
                     }}
-                    class="text-blue-600 focus:ring-blue-500 bg-white dark:bg-neutral-700 border-gray-300 dark:border-neutral-600"
+                    class="text-blue-600 dark:text-blue-400 focus:ring-blue-500 bg-white dark:bg-neutral-700 border-gray-300 dark:border-neutral-600"
                   />
                   <span class="text-xs text-gray-700 dark:text-neutral-300"
                     >${this._renderRemoteDisplay(remote)}</span
@@ -292,7 +292,7 @@ export class SketchPushButton extends SketchTailwindElement {
         <!-- Push Button -->
         <button
           @click=${this._openModal}
-          class="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+          class="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white dark:text-white rounded transition-colors"
           title="Open dialog box for pushing changes"
         >
           <svg

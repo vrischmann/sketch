@@ -911,7 +911,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
         >
           <button
             id="stopButton"
-            class="bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed disabled:opacity-70 text-white border-none px-1.5 py-1 xl:px-2.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
+            class="bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-600 disabled:bg-red-300 dark:disabled:bg-red-300 disabled:cursor-not-allowed disabled:opacity-70 text-white dark:text-white border-none px-1.5 py-1 xl:px-2.5 rounded cursor-pointer text-xs mr-1.5 flex items-center gap-1.5 transition-colors"
             ?disabled=${(this.containerState?.outstanding_llm_calls || 0) ===
               0 &&
             (this.containerState?.outstanding_tool_calls || []).length === 0}
