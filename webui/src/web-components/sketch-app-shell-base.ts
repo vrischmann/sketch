@@ -997,7 +997,7 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
             })()}
             .isDisconnected=${this.connectionStatus === "disconnected"}
           ></sketch-call-status>
-          <sketch-theme-toggle></sketch-theme-toggle>
+          <sketch-theme-toggle .showLabel=${false}></sketch-theme-toggle>
         </div>
       </div>
     `;

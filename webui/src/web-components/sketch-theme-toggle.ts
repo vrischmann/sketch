@@ -1,5 +1,5 @@
 import { html } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 import { ThemeService, ThemeMode } from "./theme-service.js";
 
@@ -7,6 +7,7 @@ import { ThemeService, ThemeMode } from "./theme-service.js";
 export class SketchThemeToggle extends SketchTailwindElement {
   @state() private currentTheme: ThemeMode = "system";
   @state() private effectiveTheme: "light" | "dark" = "light";
+  @property({ type: Boolean }) showLabel: boolean = true;
 
   private themeService = ThemeService.getInstance();
 
@@ -88,6 +89,9 @@ export class SketchThemeToggle extends SketchTailwindElement {
         aria-label="${this.getNextThemeLabel()}"
       >
         ${this.getThemeIcon()}
+        ${this.showLabel
+          ? html`<span class="ml-2">${this.getThemeLabel()}</span>`
+          : ""}
       </button>
     `;
   }
