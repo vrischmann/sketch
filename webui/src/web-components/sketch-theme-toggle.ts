@@ -45,9 +45,9 @@ export class SketchThemeToggle extends SketchTailwindElement {
       case "dark":
         return "\ud83c\udf19"; // Moon
       case "system":
-        return "\ud83d\udcbb"; // Computer/Laptop
+        return "\uD83D\uDDA5\uFE0F"; // Desktop Computer
       default:
-        return "\ud83d\udcbb";
+        return "\uD83D\uDDA5\uFE0F"; // Desktop Computer
     }
   }
 
