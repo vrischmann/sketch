@@ -142,17 +142,17 @@ export class MobileDiff extends SketchTailwindElement {
   private getFileStatusTailwindClass(status: string): string {
     switch (status.toUpperCase()) {
       case "A":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-300";
       case "M":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-300";
       case "D":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-300";
       case "R":
       default:
         if (status.toUpperCase().startsWith("R")) {
-          return "bg-blue-100 text-blue-800";
+          return "bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-300";
         }
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-300";
     }
   }
 
@@ -268,7 +268,7 @@ export class MobileDiff extends SketchTailwindElement {
       return html`
         <div class="mb-4 last:mb-0">
           <div
-            class="bg-gray-50 border border-gray-200 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 sticky top-0 z-10 flex items-center justify-between"
+            class="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 dark:text-gray-300 sticky top-0 z-10 flex items-center justify-between"
           >
             <div class="flex items-center">
               <span
@@ -280,20 +280,21 @@ export class MobileDiff extends SketchTailwindElement {
               </span>
               ${this.getPathInfo(file)}
               ${this.getChangesInfo(file)
-                ? html`<span class="ml-2 text-xs text-gray-500"
+                ? html`<span
+                    class="ml-2 text-xs text-gray-500 dark:text-neutral-400"
                     >${this.getChangesInfo(file)}</span
                   >`
                 : ""}
             </div>
-            <button class="text-gray-400" disabled>
+            <button class="text-gray-400 dark:text-gray-300" disabled>
               ${this.renderExpandAllIcon()}
             </button>
           </div>
           <div
-            class="border border-gray-200 border-t-0 min-h-[200px] overflow-hidden bg-white"
+            class="border border-gray-200 dark:border-neutral-700 border-t-0 min-h-[200px] overflow-hidden bg-white dark:bg-neutral-900"
           >
             <div
-              class="flex items-center justify-center h-full text-base text-gray-500 text-center p-5"
+              class="flex items-center justify-center h-full text-base text-gray-500 dark:text-gray-300 text-center p-5"
             >
               Loading ${file.path}...
             </div>
@@ -305,7 +306,7 @@ export class MobileDiff extends SketchTailwindElement {
     return html`
       <div class="mb-4 last:mb-0">
         <div
-          class="bg-gray-50 border border-gray-200 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 sticky top-0 z-10 flex items-center justify-between"
+          class="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 dark:text-gray-300 sticky top-0 z-10 flex items-center justify-between"
         >
           <div class="flex items-center">
             <span
@@ -317,13 +318,14 @@ export class MobileDiff extends SketchTailwindElement {
             </span>
             ${this.getPathInfo(file)}
             ${this.getChangesInfo(file)
-              ? html`<span class="ml-2 text-xs text-gray-500"
+              ? html`<span
+                  class="ml-2 text-xs text-gray-500 dark:text-neutral-400"
                   >${this.getChangesInfo(file)}</span
                 >`
               : ""}
           </div>
           <button
-            class="text-gray-600 hover:text-gray-800 p-1 rounded"
+            class="text-gray-600 dark:text-gray-300 hover:text-gray-800 p-1 rounded"
             @click="${() => this.toggleFileExpansion(file.path)}"
             title="${isExpanded
               ? "Collapse: Hide unchanged regions to focus on changes"
@@ -335,7 +337,7 @@ export class MobileDiff extends SketchTailwindElement {
           </button>
         </div>
         <div
-          class="border border-gray-200 border-t-0 min-h-[200px] overflow-hidden bg-white"
+          class="border border-gray-200 dark:border-neutral-700 border-t-0 min-h-[200px] overflow-hidden bg-white dark:bg-neutral-900"
         >
           <sketch-monaco-view
             class="w-full min-h-[200px]"
@@ -354,26 +356,28 @@ export class MobileDiff extends SketchTailwindElement {
 
   render() {
     return html`
-      <div class="flex flex-col h-full min-h-0 overflow-hidden bg-white">
+      <div
+        class="flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-neutral-900"
+      >
         <div
           class="flex-1 overflow-auto min-h-0"
           style="-webkit-overflow-scrolling: touch;"
         >
           ${this.loading
             ? html`<div
-                class="flex items-center justify-center h-full text-base text-gray-500 text-center p-5"
+                class="flex items-center justify-center h-full text-base text-gray-500 dark:text-gray-300 text-center p-5"
               >
                 Loading diff...
               </div>`
             : this.error
               ? html`<div
-                  class="flex items-center justify-center h-full text-base text-red-600 text-center p-5"
+                  class="flex items-center justify-center h-full text-base text-red-600 dark:text-red-400 text-center p-5"
                 >
                   ${this.error}
                 </div>`
               : !this.files || this.files.length === 0
                 ? html`<div
-                    class="flex items-center justify-center h-full text-base text-gray-500 text-center p-5"
+                    class="flex items-center justify-center h-full text-base text-gray-500 dark:text-gray-300 text-center p-5"
                   >
                     No changes to show
                   </div>`

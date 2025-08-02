@@ -747,7 +747,7 @@ export class SketchDiff2View extends SketchTailwindElement {
       </div>
       <div class="flex items-center">
         <button
-          class="bg-transparent border border-gray-300 rounded px-2 py-1 text-sm cursor-pointer whitespace-nowrap transition-colors duration-200 flex items-center justify-center min-w-8 min-h-8 hover:bg-gray-200"
+          class="bg-transparent border border-gray-300 rounded px-2 py-1 text-sm cursor-pointer whitespace-nowrap transition-colors duration-200 flex items-center justify-center min-w-8 min-h-8 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           @click="${() => this.toggleFileExpansion(file.path)}"
           title="${isExpanded
             ? "Collapse: Hide unchanged regions to focus on changes"
@@ -765,21 +765,21 @@ export class SketchDiff2View extends SketchTailwindElement {
   getFileStatusTailwindClasses(status: string): string {
     switch (status.toUpperCase()) {
       case "A":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-300";
       case "M":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-300";
       case "D":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-300";
       case "R":
       case "C":
       default:
         if (status.toUpperCase().startsWith("R")) {
-          return "bg-cyan-100 text-cyan-800";
+          return "bg-cyan-100 dark:bg-cyan-800 text-cyan-800 dark:text-cyan-300";
         }
         if (status.toUpperCase().startsWith("C")) {
-          return "bg-indigo-100 text-indigo-800";
+          return "bg-indigo-100 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-300";
         }
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-300";
     }
   }
 
