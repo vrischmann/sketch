@@ -92,6 +92,7 @@ export class DemoRunner {
       "sketch-app-shell",
       "sketch-call-status",
       "sketch-chat-input",
+      "sketch-commits",
       "sketch-container-status",
       "sketch-diff-range-picker",
       "sketch-timeline",
