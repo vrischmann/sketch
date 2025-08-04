@@ -357,7 +357,7 @@ export class SketchPushButton extends SketchTailwindElement {
                         <p class="text-xs">
                           <span
                             class="text-gray-600 dark:text-neutral-400 font-mono"
-                            >${this._headCommit.hash.substring(0, 7)}</span
+                            >${this._headCommit.hash.substring(0, 8)}</span
                           >
                           <span class="text-gray-800 dark:text-neutral-200 ml-2"
                             >${this._headCommit.subject}</span

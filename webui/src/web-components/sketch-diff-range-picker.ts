@@ -203,7 +203,7 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
    * Format a commit for display in the dropdown (legacy method, kept for compatibility)
    */
   formatCommitOption(commit: GitLogEntry): string {
-    const shortHash = commit.hash.substring(0, 7);
+    const shortHash = commit.hash.substring(0, 8);
 
     // Truncate subject if it's too long
     let subject = commit.subject;
@@ -361,7 +361,7 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
    * Render commit for the dropdown button
    */
   renderCommitButton(commit: GitLogEntry) {
-    const shortHash = commit.hash.substring(0, 7);
+    const shortHash = commit.hash.substring(0, 8);
     let subject = commit.subject;
     if (subject.length > 40) {
       subject = subject.substring(0, 37) + "...";
@@ -389,7 +389,7 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
    * Render commit option in dropdown
    */
   renderCommitOption(commit: GitLogEntry) {
-    const shortHash = commit.hash.substring(0, 7);
+    const shortHash = commit.hash.substring(0, 8);
     let subject = commit.subject;
     if (subject.length > 50) {
       subject = subject.substring(0, 47) + "...";
@@ -460,9 +460,9 @@ export class SketchDiffRangePicker extends SketchTailwindElement {
       return "No commits selected";
     }
 
-    const fromShort = this.fromCommit ? this.fromCommit.substring(0, 7) : "";
+    const fromShort = this.fromCommit ? this.fromCommit.substring(0, 8) : "";
     const toShort = this.toCommit
-      ? this.toCommit.substring(0, 7)
+      ? this.toCommit.substring(0, 8)
       : "Uncommitted";
 
     return `${fromShort}..${toShort}`;

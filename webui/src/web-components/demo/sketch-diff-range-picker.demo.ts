@@ -31,7 +31,7 @@ const demo: DemoModule = {
       "sketch-diff-range-picker",
     );
     rangePickerElement.className = `
-      w-full max-w-3xl my-5 p-4 border border-gray-300 dark:border-neutral-600 
+      w-full max-w-3xl my-5 p-4 border border-gray-300 dark:border-neutral-600
       rounded-lg bg-white dark:bg-neutral-800
     `;
 
@@ -41,7 +41,7 @@ const demo: DemoModule = {
     // Create status display
     const statusDisplay = document.createElement("div");
     statusDisplay.className = `
-      p-3 my-4 bg-gray-50 dark:bg-neutral-800 rounded border 
+      p-3 my-4 bg-gray-50 dark:bg-neutral-800 rounded border
       border-gray-200 dark:border-neutral-700 font-mono text-sm leading-relaxed
     `;
     statusDisplay.innerHTML = `
@@ -52,8 +52,8 @@ const demo: DemoModule = {
     // Listen for range change events
     rangePickerElement.addEventListener("range-change", (event: any) => {
       const range = event.detail.range;
-      const fromShort = range.from ? range.from.substring(0, 7) : "N/A";
-      const toShort = range.to ? range.to.substring(0, 7) : "Uncommitted";
+      const fromShort = range.from ? range.from.substring(0, 8) : "N/A";
+      const toShort = range.to ? range.to.substring(0, 8) : "Uncommitted";
 
       statusDisplay.innerHTML = `
         <div><strong>Status:</strong> Range selected</div>
@@ -74,7 +74,7 @@ const demo: DemoModule = {
     // Add some demo instructions
     const instructionsDiv = document.createElement("div");
     instructionsDiv.className = `
-      my-5 p-4 bg-blue-50 dark:bg-blue-900/20 rounded 
+      my-5 p-4 bg-blue-50 dark:bg-blue-900/20 rounded
       border-l-4 border-blue-500 dark:border-blue-400
     `;
     instructionsDiv.innerHTML = `
