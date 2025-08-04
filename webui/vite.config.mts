@@ -23,7 +23,7 @@ export default defineConfig({
           // Root redirect
           if (req.url === "/") {
             res.writeHead(302, {
-              Location: "/src/web-components/demo/index.html",
+              Location: "/src/web-components/demo/demo.html",
             });
             res.end();
             return;
