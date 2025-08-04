@@ -16,7 +16,6 @@ export const sampleUsage: CumulativeUsage = {
     bash: 45,
     patch: 23,
     think: 12,
-    "multiple-choice": 8,
     keyword_search: 6,
   },
 };
@@ -88,7 +87,6 @@ export const heavyUsageState: State = {
       bash: 234,
       patch: 89,
       think: 67,
-      "multiple-choice": 23,
       keyword_search: 45,
       browser_navigate: 12,
       codereview: 8,

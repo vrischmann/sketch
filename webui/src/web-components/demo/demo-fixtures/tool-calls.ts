@@ -6,48 +6,6 @@ import { ToolCall } from "../../../types";
 
 export const sampleToolCalls: ToolCall[] = [
   {
-    name: "multiple-choice",
-    input: JSON.stringify({
-      question: "What is your favorite programming language?",
-      choices: [
-        "JavaScript",
-        "TypeScript",
-        "Python",
-        "Go",
-        "Rust",
-        "Java",
-        "C#",
-        "C++",
-      ],
-    }),
-    tool_call_id: "toolu_01choice123",
-    result_message: {
-      type: "tool",
-      end_of_turn: false,
-      content: "Go",
-      tool_result: JSON.stringify({
-        selected: "Go",
-      }),
-      timestamp: new Date().toISOString(),
-      conversation_id: "demo-conversation",
-      idx: 1,
-    },
-  },
-  {
-    name: "multiple-choice",
-    input: JSON.stringify({
-      question: "Which feature would you like to implement next?",
-      choices: [
-        "Dark mode",
-        "User profiles",
-        "Social sharing",
-        "Analytics dashboard",
-      ],
-    }),
-    tool_call_id: "toolu_01choice456",
-    // No result yet, showing the choices without a selection
-  },
-  {
     name: "bash",
     input: JSON.stringify({
       command:

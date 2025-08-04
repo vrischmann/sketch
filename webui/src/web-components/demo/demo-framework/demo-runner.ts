@@ -114,6 +114,7 @@ export class DemoRunner {
       "sketch-tool-card",
       "status-indicators",
     ];
+    knownComponents.sort();
 
     // Filter to only components that actually have demo files
     const availableComponents: string[] = [];

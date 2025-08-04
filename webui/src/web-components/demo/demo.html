@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sketch Web Components Demo Runner</title>
-    <link rel="stylesheet" href="/dist/tailwind.css" />
     <style>
       :root {
         --demo-primary: #0969da;
@@ -39,6 +38,7 @@
           background-color 0.2s,
           color 0.2s;
         margin: 0;
+        padding: 0;
       }
 
       .demo-runner {
@@ -202,9 +202,6 @@
             justify-content: space-between;
           "
         >
-          <span style="font-size: 12px; color: var(--demo-secondary)"
-            >Theme:</span
-          >
           <sketch-theme-toggle></sketch-theme-toggle>
         </div>
 
@@ -236,6 +233,10 @@
     </div>
 
     <script type="module">
+      // Import global CSS for Tailwind processing
+      import "../../global.css";
+      import "./demo.css";
+
       import { DemoRunner } from "./demo-framework/demo-runner.ts";
       import "../sketch-theme-toggle.ts";
       import "../theme-service.ts";

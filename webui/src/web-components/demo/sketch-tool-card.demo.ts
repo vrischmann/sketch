@@ -23,33 +23,11 @@ const demo: DemoModule = {
   setup: async (container: HTMLElement) => {
     const section = demoUtils.createDemoSection(
       "Tool Card Components",
-      "Shows different tool card components for bash, codereview, done, patch, think, title, and multiple-choice tools",
+      "Shows different tool card components for bash, codereview, done, patch, think, and title tools",
     );
 
     // Sample tool calls from the original demo
     const toolCalls = [
-      {
-        name: "multiple-choice",
-        input: JSON.stringify({
-          question: "What is your favorite programming language?",
-          choices: [
-            "JavaScript",
-            "TypeScript",
-            "Python",
-            "Go",
-            "Rust",
-            "Java",
-            "C#",
-            "C++",
-          ],
-        }),
-        result_message: {
-          type: "tool",
-          tool_result: JSON.stringify({
-            selected: "Go",
-          }),
-        },
-      },
       {
         name: "bash",
         input: JSON.stringify({
@@ -295,11 +273,6 @@ Total reclaimed space: 1.426GB`,
           break;
         case "title":
           toolCardEl = document.createElement("sketch-tool-card-title");
-          break;
-        case "multiple-choice":
-          toolCardEl = document.createElement(
-            "sketch-tool-card-multiple-choice",
-          );
           break;
         case "about_sketch":
           toolCardEl = document.createElement("sketch-tool-card-about-sketch");

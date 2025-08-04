@@ -70,17 +70,6 @@ export class SketchToolCardExample extends SketchTailwindElement {
 - If you need to write or update the demo definition for an element, do so in demo files like ./demo/some-component-name.demo.ts
 - If you need to add new example data objects for demoing components, do so in ./demo/fixtures
 
-## Migration Complete ✅
-
-All Sketch web components have been successfully migrated to the modern SketchTailwindElement architecture:
-
-- ✅ **34 components** now extend `SketchTailwindElement`
-- ✅ **0 components** still extend `LitElement` directly
-- ✅ **All components** use Tailwind CSS classes instead of CSS-in-JS
-- ✅ **No Shadow DOM** conflicts with global Tailwind styles
-
-**All components now follow the modern architecture patterns described above.** The migration from legacy LitElement patterns is complete.
-
 # API URLs Must Be Relative
 
 When making fetch requests to backend APIs in Sketch, all URLs **must be relative** without leading slashes. The base URL for Sketch varies depending on how it is deployed and run:

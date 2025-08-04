@@ -10,7 +10,6 @@ The demo system consists of:
 - **Demo Framework** (`demo-framework/`) - Shared infrastructure for loading and running demos
 - **Shared Fixtures** (`demo-fixtures/`) - Common fake data and utilities
 - **Demo Runner** (`demo.html`) - Interactive demo browser
-- **Auto-generated Index** - Automatically maintained list of available demos
 
 ## Quick Start
 
@@ -22,9 +21,6 @@ npm run demo
 
 # Visit the demo runner
 open http://localhost:5173/src/web-components/demo/demo.html
-
-# Or view the auto-generated index
-open http://localhost:5173/src/web-components/demo/index-generated.html
 ```
 
 ### Creating a New Demo
@@ -64,11 +60,15 @@ const demo: DemoModule = {
 export default demo;
 ```
 
-2. Regenerate the index:
+2. Add the new demo to the knownComponents list in demo-framework/demo-runner.ts :
 
-```bash
-cd src/web-components/demo
-npx tsx generate-index.ts
+```typescript
+  async getAvailableComponents(): Promise<string[]> {
+    // ...
+    const knownComponents = [
+      // existing demos
+      "your-component",
+      // other existing demos...
 ```
 
 3. Your demo will automatically appear in the demo runner!
@@ -147,13 +147,11 @@ import {
 - **Hot Module Replacement**: Instant updates when demo code changes
 - **Shared Data**: Consistent fake data across all demos
 - **Reusable Utilities**: Common demo patterns abstracted into utilities
-- **Auto-discovery**: New demos automatically appear in the index
 
 ### For Maintenance
 
 - **No Boilerplate**: No need to copy HTML structure between demos
 - **Centralized Styling**: Demo appearance controlled in one place
-- **Automated Index**: Never forget to update the index page
 - **Type Safety**: Catch errors early with TypeScript compilation
 
 ## Vite Integration
@@ -187,9 +185,7 @@ demo/
 │   ├── timeline-messages.ts # Message sample data
 │   ├── container-status.ts  # Status sample data
 │   └── index.ts           # Centralized exports
-├── generate-index.ts      # Index generation script
 ├── demo.html       # Interactive demo browser
-├── index-generated.html   # Auto-generated index
 ├── *.demo.ts             # Individual demo modules
 └── readme.md             # This file
 ```
