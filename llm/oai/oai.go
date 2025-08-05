@@ -228,6 +228,14 @@ var (
 		APIKeyEnv: CerebrasAPIKeyEnv,
 	}
 
+	Qwen3Coder30Fireworks = Model{
+		UserName:           "qwen3-coder-30-fireworks",
+		ModelName:          "accounts/fireworks/models/qwen3-30b-a3b",
+		URL:                FireworksURL,
+		APIKeyEnv:          FireworksAPIKeyEnv,
+		UseSimplifiedPatch: true,
+	}
+
 	ZaiGLM45CoderFireworks = Model{
 		UserName:  "zai-glm45-fireworks",
 		ModelName: "accounts/fireworks/models/glm-4p5",
@@ -287,6 +295,7 @@ var ModelsRegistry = []Model{
 	MistralMedium,
 	DevstralSmall,
 	Qwen3CoderFireworks,
+	Qwen3Coder30Fireworks,
 	Qwen3CoderCerebras,
 	ZaiGLM45CoderFireworks,
 	// Skaband-supported models
