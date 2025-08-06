@@ -207,6 +207,12 @@ func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.W
 	cmd.Stderr = out
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // set up for killing the process group
 	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			// Process hasn't started yet.
+			// Not sure whether this is possible in practice,
+			// but it is possible in theory, and it doesn't hurt to handle it gracefully.
+			return nil
+		}
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) // kill entire process group
 	}
 	// Remove SKETCH_MODEL_URL, SKETCH_PUB_KEY, SKETCH_MODEL_API_KEY,
