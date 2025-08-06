@@ -243,6 +243,20 @@ var (
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
+	GPTOSS20B = Model{
+		UserName:  "gpt-oss-20b",
+		ModelName: "accounts/fireworks/models/gpt-oss-20b",
+		URL:       FireworksURL,
+		APIKeyEnv: FireworksAPIKeyEnv,
+	}
+
+	GPTOSS120B = Model{
+		UserName:  "gpt-oss-120b",
+		ModelName: "accounts/fireworks/models/gpt-oss-120b",
+		URL:       FireworksURL,
+		APIKeyEnv: FireworksAPIKeyEnv,
+	}
+
 	// Skaband-specific model names.
 	// Provider details (URL and APIKeyEnv) are handled by skaband
 	Qwen = Model{
@@ -298,6 +312,8 @@ var ModelsRegistry = []Model{
 	Qwen3Coder30Fireworks,
 	Qwen3CoderCerebras,
 	ZaiGLM45CoderFireworks,
+	GPTOSS120B,
+	GPTOSS20B,
 	// Skaband-supported models
 	Qwen,
 	GLM,
@@ -685,6 +701,8 @@ func (s *Service) TokenContextWindow() int {
 		return 128000
 	case "qwen", "qwen3-coder-cerebras", "qwen3-coder-fireworks":
 		return 256000 // 256k native context for Qwen3-Coder
+	case "gpt-oss-20b", "gpt-oss-120b":
+		return 128000
 	default:
 		// Default for unknown models
 		return 128000
