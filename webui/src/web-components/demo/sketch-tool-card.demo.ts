@@ -132,18 +132,16 @@ Total reclaimed space: 1.426GB`,
       {
         name: "done",
         input: JSON.stringify({
-          checklist_items: {
-            code_reviewed: {
-              status: "yes",
-              description:
-                "If any commits were made, the codereview tool was run and its output was addressed.",
-              comments: "Code review completed successfully",
-            },
-            git_commit: {
-              status: "yes",
-              description: "Create git commits for any code changes you made.",
-              comments: "All changes committed",
-            },
+          code_reviewed: {
+            status: "yes",
+            description:
+              "If any commits were made, the codereview tool was run and its output was addressed.",
+            comments: "Code review completed successfully",
+          },
+          git_commit: {
+            status: "yes",
+            description: "Create git commits for any code changes you made.",
+            comments: "All changes committed",
           },
         }),
         tool_call_id: "toolu_01HPgWQJF1aF9LUqkdDKWeES",

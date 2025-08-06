@@ -171,8 +171,8 @@ export class SketchToolCardDone extends SketchTailwindElement {
     const summaryContent = html`<span></span>`;
 
     const resultContent = html`<div>
-      ${Object.keys(doneInput.checklist_items).map((key) => {
-        const item = doneInput.checklist_items[key];
+      ${Object.keys(doneInput).map((key) => {
+        const item = doneInput[key];
         let statusIcon = "〰️";
         if (item.status == "yes") {
           statusIcon = "✅";

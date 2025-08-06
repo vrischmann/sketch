@@ -340,7 +340,7 @@ export const initialMessages: AgentMessage[] = [
       {
         name: "done",
         input:
-          '{"checklist_items":{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"not applicable","description":"The change was trivial - just adding a line to a dummy.txt file."}}}',
+          '{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"not applicable","description":"The change was trivial - just adding a line to a dummy.txt file."}}',
         tool_call_id: "toolu_01YMBDmBoCcE5tfZvbXAgWEa",
       },
     ],
@@ -364,7 +364,7 @@ export const initialMessages: AgentMessage[] = [
     content: "",
     tool_name: "done",
     input:
-      '{"checklist_items":{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"not applicable","description":"The change was trivial - just adding a line to a dummy.txt file."}}}',
+      '{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"not applicable","description":"The change was trivial - just adding a line to a dummy.txt file."}}',
     tool_result:
       "codereview tool has not been run for commit 898178a0c6681ce2b641cbe8994c22ed8bbb7dd7",
     tool_error: true,
@@ -424,7 +424,7 @@ export const initialMessages: AgentMessage[] = [
       {
         name: "done",
         input:
-          '{"checklist_items":{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"yes","description":"Code review completed and no issues found. The change was trivial - just adding a line to a dummy.txt file."}}}',
+          '{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"yes","description":"Code review completed and no issues found. The change was trivial - just adding a line to a dummy.txt file."}}',
         tool_call_id: "toolu_016TBxz5Ma8y3if3rY4DZBXE",
       },
     ],
@@ -448,7 +448,7 @@ export const initialMessages: AgentMessage[] = [
     content: "",
     tool_name: "done",
     input:
-      '{"checklist_items":{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"yes","description":"Code review completed and no issues found. The change was trivial - just adding a line to a dummy.txt file."}}}',
+      '{"git_commit":{"status":"yes","description":"Created a git commit for the code changes with the appropriate commit message that includes \'Co-Authored-By: sketch\' and the original user prompt."},"wrote_tests":{"status":"not applicable","description":"No functional code was changed, just added a line to a dummy file."},"passes_tests":{"status":"not applicable","description":"User explicitly mentioned not to run tests as this is just a dummy repo."},"code_reviewed":{"status":"yes","description":"Code review completed and no issues found. The change was trivial - just adding a line to a dummy.txt file."}}',
     tool_result:
       "Please ask the user to review your work. Be concise - users are more likely to read shorter comments.",
     tool_call_id: "toolu_016TBxz5Ma8y3if3rY4DZBXE",
