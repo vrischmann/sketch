@@ -215,6 +215,7 @@ func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.W
 		}
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) // kill entire process group
 	}
+	cmd.WaitDelay = 15 * time.Second // prevent indefinite hangs when child processes keep pipes open
 	// Remove SKETCH_MODEL_URL, SKETCH_PUB_KEY, SKETCH_MODEL_API_KEY,
 	// and any other future SKETCH_ goodies from the environment.
 	// ...except for SKETCH_PROXY_ID, which is intentionally available.
