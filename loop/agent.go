@@ -2269,7 +2269,7 @@ func (ags *AgentGitState) handleGitCommits(ctx context.Context, repoRoot string,
 }
 
 func cleanSlugName(s string) string {
-	return strings.Map(func(r rune) rune {
+	result := strings.Map(func(r rune) rune {
 		// lowercase
 		if r >= 'A' && r <= 'Z' {
 			return r + 'a' - 'A'
@@ -2284,6 +2284,15 @@ func cleanSlugName(s string) string {
 		}
 		return -1
 	}, s)
+
+	// Truncate to 64 bytes
+	result = result[:min(len(result), 64)]
+
+	// If more than 4 "words", split and keep first 4 words
+	parts := strings.Split(result, "-")
+	result = strings.Join(parts[:min(len(parts), 4)], "-")
+
+	return result
 }
 
 // parseGitLog parses the output of git log with format '%H%x00%s%x00%b%x00'
