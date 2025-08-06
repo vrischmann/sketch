@@ -5,7 +5,10 @@ import { SketchTailwindElement } from "./sketch-tailwind-element";
 import {
   workflowEventTracker,
   WorkflowEventGroup,
+  WorkflowEvent,
 } from "../services/workflow-event-tracker";
+import "./sketch-workflow-status-summary";
+
 @customElement("sketch-commits")
 export class SketchCommits extends SketchTailwindElement {
   @property({ type: Array })
@@ -16,7 +19,7 @@ export class SketchCommits extends SketchTailwindElement {
 
   @state()
   workflowGroups = new Map<string, WorkflowEventGroup>();
-  unsubscribeWorkflowEventTracker: () => void;
+  private abortController: AbortController | null = null;
 
   constructor() {
     super();
@@ -26,28 +29,46 @@ export class SketchCommits extends SketchTailwindElement {
     super.connectedCallback();
 
     // Subscribe to workflow event tracker updates
-    this.unsubscribeWorkflowEventTracker = workflowEventTracker.subscribe(
+    this.abortController = new AbortController();
+    workflowEventTracker.addEventListener(
+      "groupsUpdated",
       this.handleWorkflowEventGroups.bind(this),
+      { signal: this.abortController.signal },
     );
-    this.handleWorkflowEventGroups(workflowEventTracker.getEventGroups());
+    this.handleWorkflowEventGroups({
+      detail: {
+        groups: workflowEventTracker.getEventGroups(),
+        changedKeys: undefined,
+      },
+    } as WorkflowEvent);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.unsubscribeWorkflowEventTracker();
+    this.abortController?.abort();
   }
 
-  handleWorkflowEventGroups(groups: Map<string, WorkflowEventGroup>) {
+  handleWorkflowEventGroups(event: WorkflowEvent) {
+    const { groups, changedKeys } = event.detail;
+
     if (!this.commits || this.commits.length === 0) {
       return;
     }
     if (!groups || groups.size === 0) {
       return;
     }
+
+    let hasChanges = false;
+
     // If this component has any of the commits mentioned in this update,
     // then update the workflow groups affected.
     for (const commit of this.commits) {
       const key = `${commit.pushed_branch}:${commit.hash}`;
+
+      // Skip if this key wasn't changed (when changedKeys is available)
+      if (changedKeys && !changedKeys.includes(key)) {
+        continue;
+      }
 
       const group = groups.get(key);
       if (group) {
@@ -59,10 +80,13 @@ export class SketchCommits extends SketchTailwindElement {
         } else {
           this.workflowGroups.set(key, group);
         }
+        hasChanges = true;
       }
     }
 
-    this.requestUpdate();
+    if (hasChanges) {
+      this.requestUpdate();
+    }
   }
 
   // Event handlers for copying text and showing commit diffs

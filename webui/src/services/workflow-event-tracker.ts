@@ -11,26 +11,31 @@ export interface WorkflowEventGroup {
   lastUpdated: string;
 }
 
-export class WorkflowEventTracker {
+export interface WorkflowEvent extends CustomEvent {
+  detail: {
+    groups: Map<string, WorkflowEventGroup>;
+    changedKeys?: string[];
+  };
+}
+
+export class WorkflowEventTracker extends EventTarget {
   private eventGroups = new Map<string, WorkflowEventGroup>();
-  private listeners = new Set<
-    (groups: Map<string, WorkflowEventGroup>) => void
-  >();
 
-  // Subscribe to changes
-  subscribe(
-    listener: (groups: Map<string, WorkflowEventGroup>) => void,
-  ): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  private notify() {
-    this.listeners.forEach((listener) => listener(this.eventGroups));
+  private notify(changedKeys?: string[]) {
+    this.dispatchEvent(
+      new CustomEvent("groupsUpdated", {
+        detail: {
+          groups: this.eventGroups,
+          changedKeys,
+        },
+      }) as WorkflowEvent,
+    );
   }
 
   // Process timeline messages to extract workflow events and commits
   processMessages(messages: AgentMessage[]) {
+    const changedKeys = new Set<string>();
+
     // First pass: identify commits
     const commitMap = new Map<string, number>();
     messages.forEach((message, index) => {
@@ -50,6 +55,7 @@ export class WorkflowEventTracker {
         const commitSha = workflowData.workflow_run.head_sha;
         const branch = workflowData.workflow_run.head_branch;
         const key = `${branch}:${commitSha}`;
+        changedKeys.add(key);
 
         if (!this.eventGroups.has(key)) {
           this.eventGroups.set(key, {
@@ -78,7 +84,9 @@ export class WorkflowEventTracker {
       }
     });
 
-    this.notify();
+    if (changedKeys.size > 0) {
+      this.notify(Array.from(changedKeys));
+    }
   }
 
   private isWorkflowEvent(message: AgentMessage): boolean {
@@ -128,3 +136,10 @@ export class WorkflowEventTracker {
 
 // Global singleton instance
 export const workflowEventTracker = new WorkflowEventTracker();
+
+// Type declarations for better TypeScript support
+declare global {
+  interface GlobalEventHandlersEventMap {
+    groupsUpdated: WorkflowEvent;
+  }
+}

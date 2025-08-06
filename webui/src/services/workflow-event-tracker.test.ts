@@ -1,5 +1,8 @@
 import { expect, test } from "@sand4rt/experimental-ct-web";
-import { WorkflowEventTracker } from "./workflow-event-tracker.js";
+import {
+  WorkflowEventTracker,
+  WorkflowEvent,
+} from "./workflow-event-tracker.js";
 import { AgentMessage } from "../types.js";
 
 // Create minimal mock object with required fields
@@ -218,16 +221,20 @@ test("getWorkflowSummaryForIndex returns correct group", () => {
   expect(noSummary).toBeNull();
 });
 
-// Test subscription system
-test("subscription system works", () => {
+// Test event system
+test("event system works", () => {
   const tracker = new WorkflowEventTracker();
   let notified = false;
   let receivedGroups: Map<string, any> | null = null;
+  let receivedChangedKeys: string[] | undefined;
 
-  const unsubscribe = tracker.subscribe((groups) => {
+  const handler = (event: WorkflowEvent) => {
     notified = true;
-    receivedGroups = groups;
-  });
+    receivedGroups = event.detail.groups;
+    receivedChangedKeys = event.detail.changedKeys;
+  };
+
+  tracker.addEventListener("groupsUpdated", handler);
 
   const messages: AgentMessage[] = [createMockWorkflowMessage({ idx: 0 })];
 
@@ -236,25 +243,30 @@ test("subscription system works", () => {
   expect(notified).toBe(true);
   expect(receivedGroups).not.toBeNull();
   expect(receivedGroups!.size).toBe(1);
+  expect(receivedChangedKeys).toEqual([
+    "main:abcd1234567890abcd1234567890abcd12345678",
+  ]);
 
-  unsubscribe();
+  tracker.removeEventListener("groupsUpdated", handler);
 });
 
-// Test unsubscribe removes listeners
-test("unsubscribe removes listeners", () => {
+// Test removeEventListener removes listeners
+test("removeEventListener removes listeners", () => {
   const tracker = new WorkflowEventTracker();
   let notificationCount = 0;
 
-  const unsubscribe = tracker.subscribe(() => {
+  const handler = () => {
     notificationCount++;
-  });
+  };
+
+  tracker.addEventListener("groupsUpdated", handler);
 
   const messages: AgentMessage[] = [createMockWorkflowMessage({ idx: 0 })];
 
   tracker.processMessages(messages);
   expect(notificationCount).toBe(1);
 
-  unsubscribe();
+  tracker.removeEventListener("groupsUpdated", handler);
   tracker.processMessages(messages);
   expect(notificationCount).toBe(1);
 });
@@ -290,4 +302,48 @@ test("ignores non-workflow messages", () => {
 
   const groups = tracker.getEventGroups();
   expect(groups.size).toBe(0);
+});
+
+// Test AbortController cleanup works
+test("AbortController cleanup works", () => {
+  const tracker = new WorkflowEventTracker();
+  let notificationCount = 0;
+
+  const abortController = new AbortController();
+  const handler = () => {
+    notificationCount++;
+  };
+
+  tracker.addEventListener("groupsUpdated", handler, {
+    signal: abortController.signal,
+  });
+
+  const messages: AgentMessage[] = [createMockWorkflowMessage({ idx: 0 })];
+
+  tracker.processMessages(messages);
+  expect(notificationCount).toBe(1);
+
+  abortController.abort();
+  tracker.processMessages(messages);
+  expect(notificationCount).toBe(1);
+});
+
+// Test { once: true } option works
+test("once option works", () => {
+  const tracker = new WorkflowEventTracker();
+  let notificationCount = 0;
+
+  const handler = () => {
+    notificationCount++;
+  };
+
+  tracker.addEventListener("groupsUpdated", handler, { once: true });
+
+  const messages: AgentMessage[] = [createMockWorkflowMessage({ idx: 0 })];
+
+  tracker.processMessages(messages);
+  expect(notificationCount).toBe(1);
+
+  tracker.processMessages(messages);
+  expect(notificationCount).toBe(1);
 });
