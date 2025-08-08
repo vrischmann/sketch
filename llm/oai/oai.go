@@ -257,6 +257,20 @@ var (
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
+	GPT5 = Model{
+		UserName:  "gpt5",
+		ModelName: "gpt-5",
+		URL:       OpenAIURL,
+		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
+	GPT5Mini = Model{
+		UserName:  "gpt5mini",
+		ModelName: "gpt-5-mini",
+		URL:       OpenAIURL,
+		APIKeyEnv: OpenAIAPIKeyEnv,
+	}
+
 	// Skaband-specific model names.
 	// Provider details (URL and APIKeyEnv) are handled by skaband
 	Qwen = Model{
@@ -291,6 +305,8 @@ var ModelsRegistry = []Model{
 	GPT41Nano,
 	GPT4o,
 	GPT4oMini,
+	GPT5,
+	GPT5Mini,
 	O3,
 	O4Mini,
 	Gemini25Flash,
@@ -484,6 +500,22 @@ func fromLLMMessage(msg llm.Message) []openai.ChatCompletionMessage {
 	}
 
 	return messages
+}
+
+// requiresMaxCompletionTokens returns true if the model requires max_completion_tokens instead of max_tokens.
+func (m Model) requiresMaxCompletionTokens() bool {
+	// Reasoning models always use max_completion_tokens
+	if m.IsReasoningModel {
+		return true
+	}
+
+	// GPT-5 series models also require max_completion_tokens
+	switch m.ModelName {
+	case "gpt-5", "gpt-5-mini":
+		return true
+	default:
+		return false
+	}
 }
 
 // fromLLMToolChoice converts llm.ToolChoice to the format expected by OpenAI.
@@ -753,7 +785,7 @@ func (s *Service) Do(ctx context.Context, ir *llm.Request) (*llm.Response, error
 		Tools:      tools,
 		ToolChoice: fromLLMToolChoice(ir.ToolChoice), // TODO: make fromLLMToolChoice return an error when a perfect translation is not possible
 	}
-	if model.IsReasoningModel {
+	if model.requiresMaxCompletionTokens() {
 		req.MaxCompletionTokens = cmp.Or(s.MaxTokens, DefaultMaxTokens)
 	} else {
 		req.MaxTokens = cmp.Or(s.MaxTokens, DefaultMaxTokens)

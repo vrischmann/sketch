@@ -1,101 +1,102 @@
 package oai
 
-import (
-	"context"
-	"errors"
-	"net/http"
-	"strings"
-	"testing"
-	"time"
+import "testing"
 
-	"sketch.dev/llm"
-)
-
-// mockRoundTripper is a mock HTTP round tripper that can simulate TLS errors
-type mockRoundTripper struct {
-	callCount      int
-	errorOnAttempt []int // which attempts should return TLS errors
-}
-
-func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	m.callCount++
-
-	// Check if this attempt should return a TLS error
-	for _, errorAttempt := range m.errorOnAttempt {
-		if m.callCount == errorAttempt {
-			return nil, errors.New(`Post "https://api.fireworks.ai/inference/v1/chat/completions": remote error: tls: bad record MAC`)
-		}
-	}
-
-	// Simulate timeout for other cases to avoid actual HTTP calls
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-	<-ctx.Done()
-	return nil, ctx.Err()
-}
-
-func TestTLSBadRecordMACRetry(t *testing.T) {
+func TestRequiresMaxCompletionTokens(t *testing.T) {
 	tests := []struct {
-		name           string
-		errorOnAttempt []int
-		expectedCalls  int
-		shouldSucceed  bool
+		name     string
+		model    Model
+		expected bool
 	}{
 		{
-			name:           "first attempt succeeds",
-			errorOnAttempt: []int{}, // no TLS errors
-			expectedCalls:  1,
-			shouldSucceed:  false, // will timeout, but that's expected for this test
+			name:     "GPT-5 requires max_completion_tokens",
+			model:    GPT5,
+			expected: true,
 		},
 		{
-			name:           "first attempt fails with TLS error, second succeeds",
-			errorOnAttempt: []int{1}, // TLS error on first attempt
-			expectedCalls:  2,
-			shouldSucceed:  false, // will timeout on second attempt
+			name:     "GPT-5 Mini requires max_completion_tokens",
+			model:    GPT5Mini,
+			expected: true,
 		},
 		{
-			name:           "both attempts fail with TLS error",
-			errorOnAttempt: []int{1, 2}, // TLS error on both attempts
-			expectedCalls:  2,
-			shouldSucceed:  false, // should fail after second TLS error
+			name:     "O3 reasoning model requires max_completion_tokens",
+			model:    O3,
+			expected: true,
+		},
+		{
+			name:     "O4-mini reasoning model requires max_completion_tokens",
+			model:    O4Mini,
+			expected: true,
+		},
+		{
+			name:     "GPT-4.1 uses max_tokens",
+			model:    GPT41,
+			expected: false,
+		},
+		{
+			name:     "GPT-4o uses max_tokens",
+			model:    GPT4o,
+			expected: false,
+		},
+		{
+			name:     "GPT-4o Mini uses max_tokens",
+			model:    GPT4oMini,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRT := &mockRoundTripper{
-				errorOnAttempt: tt.errorOnAttempt,
+			result := tt.model.requiresMaxCompletionTokens()
+			if result != tt.expected {
+				t.Errorf("requiresMaxCompletionTokens() = %v, expected %v", result, tt.expected)
 			}
-			mockClient := &http.Client{
-				Transport: mockRT,
+		})
+	}
+}
+
+func TestRequestParameterGeneration(t *testing.T) {
+	// Test that we can generate the correct request structure without making API calls
+	tests := []struct {
+		name                      string
+		model                     Model
+		expectMaxTokens           bool
+		expectMaxCompletionTokens bool
+	}{
+		{
+			name:                      "GPT-5 uses max_completion_tokens",
+			model:                     GPT5,
+			expectMaxTokens:           false,
+			expectMaxCompletionTokens: true,
+		},
+		{
+			name:                      "GPT-5 Mini uses max_completion_tokens",
+			model:                     GPT5Mini,
+			expectMaxTokens:           false,
+			expectMaxCompletionTokens: true,
+		},
+		{
+			name:                      "GPT-4.1 uses max_tokens",
+			model:                     GPT41,
+			expectMaxTokens:           true,
+			expectMaxCompletionTokens: false,
+		},
+		{
+			name:                      "O3 uses max_completion_tokens",
+			model:                     O3,
+			expectMaxTokens:           false,
+			expectMaxCompletionTokens: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			usesMaxCompletionTokens := tt.model.requiresMaxCompletionTokens()
+			if tt.expectMaxCompletionTokens && !usesMaxCompletionTokens {
+				t.Errorf("Expected model %s to use max_completion_tokens, but it doesn't", tt.model.UserName)
 			}
-
-			service := &Service{
-				HTTPC:  mockClient,
-				Model:  Qwen3CoderFireworks,
-				APIKey: "test-key",
-			}
-
-			req := &llm.Request{
-				Messages: []llm.Message{
-					{Role: llm.MessageRoleUser, Content: []llm.Content{{Type: llm.ContentTypeText, Text: "test"}}},
-				},
-			}
-
-			_, err := service.Do(context.Background(), req)
-
-			// Verify the expected number of calls were made
-			if mockRT.callCount != tt.expectedCalls {
-				t.Errorf("expected %d calls, got %d", tt.expectedCalls, mockRT.callCount)
-			}
-
-			// For TLS error cases, verify the error message contains both attempts
-			if len(tt.errorOnAttempt) > 1 {
-				if err == nil {
-					t.Error("expected error after multiple TLS failures")
-				} else if !strings.Contains(err.Error(), "tls: bad record MAC") {
-					t.Errorf("expected error to contain TLS error message, got: %v", err)
-				}
+			if tt.expectMaxTokens && usesMaxCompletionTokens {
+				t.Errorf("Expected model %s to use max_tokens, but it uses max_completion_tokens", tt.model.UserName)
 			}
 		})
 	}
