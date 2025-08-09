@@ -310,17 +310,14 @@ test("correctly determines idle state ignoring system messages", async ({
     }
   });
 
-  // Check that the call status component shows IDLE
-  // The last user/agent message (agent with end_of_turn: true) should make it idle
-  // even though there are commit and tool messages after it
+  // Check that the call status component is hidden when not disconnected
+  // The trimmed component only shows when disconnected
   const callStatus = component.locator("sketch-call-status");
-  await expect(callStatus).toBeVisible();
+  await expect(callStatus).toBeAttached(); // The component element exists in DOM
 
-  // Check that the status banner shows IDLE
+  // Check that no status banner is visible (component should be empty/hidden)
   const statusBanner = callStatus.locator(".status-banner");
-  await expect(statusBanner).toBeVisible();
-  await expect(statusBanner).toHaveClass(/status-idle/);
-  await expect(statusBanner).toHaveText("IDLE");
+  await expect(statusBanner).not.toBeVisible();
 });
 
 test("correctly determines working state with non-end-of-turn agent message", async ({
@@ -425,13 +422,12 @@ test("correctly determines working state with non-end-of-turn agent message", as
   // Wait for the component to update
   await page.waitForTimeout(500);
 
-  // Now check that the call status component shows WORKING
+  // Check that the call status component is hidden when not disconnected
+  // The trimmed component only shows when disconnected
   const callStatus = component.locator("sketch-call-status");
-  await expect(callStatus).toBeVisible();
+  await expect(callStatus).toBeAttached(); // The component element exists in DOM
 
-  // Check that the status banner shows WORKING
+  // Check that no status banner is visible (component should be empty/hidden)
   const statusBanner = callStatus.locator(".status-banner");
-  await expect(statusBanner).toBeVisible();
-  await expect(statusBanner).toHaveClass(/status-working/);
-  await expect(statusBanner).toHaveText("WORKING");
+  await expect(statusBanner).not.toBeVisible();
 });

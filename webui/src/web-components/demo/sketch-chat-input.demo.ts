@@ -12,8 +12,13 @@ const demo: DemoModule = {
 
   setup: async (container: HTMLElement) => {
     // Create demo sections
+    const statusVariationsSection = demoUtils.createDemoSection(
+      "Connection States",
+      "Different states of the chat input component",
+    );
+
     const basicSection = demoUtils.createDemoSection(
-      "Basic Chat Input",
+      "Interactive Chat Input",
       "Type a message and press Enter or click Send",
     );
 
@@ -98,14 +103,68 @@ const demo: DemoModule = {
       chatInput.content = "Can you help me implement a file upload component?";
     });
 
+    const toggleConnectionButton = demoUtils.createButton(
+      "Toggle Connection",
+      () => {
+        chatInput.isDisconnected = !chatInput.isDisconnected;
+        const status = chatInput.isDisconnected ? "disconnected" : "connected";
+        addMessage(`Chat is now ${status}`, false);
+      },
+    );
+
     controlsDiv.appendChild(clearButton);
     controlsDiv.appendChild(presetButton);
+    controlsDiv.appendChild(toggleConnectionButton);
+
+    // Create status variations
+    const createStatusComponent = (
+      id: string,
+      isDisconnected: boolean,
+      label: string,
+    ) => {
+      const wrapper = document.createElement("div");
+      wrapper.className =
+        "my-4 p-3 border border-gray-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-800";
+
+      const labelEl = document.createElement("h4");
+      labelEl.textContent = label;
+      labelEl.style.cssText =
+        "margin: 0 0 10px 0; color: var(--demo-label-color); font-size: 14px; font-weight: 600;";
+
+      const statusComponent = document.createElement(
+        "sketch-chat-input",
+      ) as any;
+      statusComponent.id = id;
+      statusComponent.isDisconnected = isDisconnected;
+      statusComponent.content = isDisconnected
+        ? "This message cannot be sent while disconnected"
+        : "This message can be sent";
+
+      wrapper.appendChild(labelEl);
+      wrapper.appendChild(statusComponent);
+      return wrapper;
+    };
+
+    const connectedStatus = createStatusComponent(
+      "connected-input",
+      false,
+      "Connected State - Input enabled",
+    );
+
+    const disconnectedStatus = createStatusComponent(
+      "disconnected-input",
+      true,
+      "Disconnected State - Input disabled",
+    );
 
     // Assemble the demo
+    statusVariationsSection.appendChild(connectedStatus);
+    statusVariationsSection.appendChild(disconnectedStatus);
     messagesSection.appendChild(messagesDiv);
     basicSection.appendChild(chatInput);
     basicSection.appendChild(controlsDiv);
 
+    container.appendChild(statusVariationsSection);
     container.appendChild(messagesSection);
     container.appendChild(basicSection);
   },

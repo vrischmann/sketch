@@ -1,5 +1,5 @@
 import { html } from "lit";
-import { customElement, state, query } from "lit/decorators.js";
+import { customElement, state, query, property } from "lit/decorators.js";
 import { SketchTailwindElement } from "./sketch-tailwind-element.js";
 
 @customElement("sketch-chat-input")
@@ -15,6 +15,9 @@ export class SketchChatInput extends SketchTailwindElement {
 
   @state()
   showUploadInProgressMessage: boolean = false;
+
+  @property()
+  isDisconnected: boolean = false;
 
   constructor() {
     super();
@@ -199,6 +202,12 @@ export class SketchChatInput extends SketchTailwindElement {
   }
 
   sendChatMessage() {
+    // Prevent sending if disconnected
+    if (this.isDisconnected) {
+      console.log("Message send prevented: disconnected");
+      return;
+    }
+
     // Prevent sending if there are uploads in progress
     if (this.uploadsInProgress > 0) {
       console.log(
@@ -299,6 +308,11 @@ export class SketchChatInput extends SketchTailwindElement {
   }
 
   render() {
+    const isDisabled = this.isDisconnected || this.uploadsInProgress > 0;
+    const placeholder = this.isDisconnected
+      ? "Chat is disabled while disconnected..."
+      : "Type your message here and press Enter to send...";
+
     return html`
       <div
         class="chat-container w-full bg-gray-100 dark:bg-neutral-800 p-4 min-h-[40px] relative"
@@ -306,20 +320,25 @@ export class SketchChatInput extends SketchTailwindElement {
         <div class="chat-input-wrapper flex max-w-6xl mx-auto gap-2.5">
           <textarea
             id="chatInput"
-            placeholder="Type your message here and press Enter to send..."
+            placeholder="${placeholder}"
             autofocus
+            ?disabled=${isDisabled}
             @keydown="${this._chatInputKeyDown}"
             @input="${this._chatInputChanged}"
             .value=${this.content || ""}
-            class="flex-1 p-3 border border-gray-300 dark:border-neutral-600 rounded resize-y font-mono text-xs min-h-[40px] max-h-[300px] bg-gray-50 dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 overflow-y-auto box-border leading-relaxed"
+            class="flex-1 p-3 border border-gray-300 dark:border-neutral-600 rounded resize-y font-mono text-xs min-h-[40px] max-h-[300px] bg-gray-50 dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 overflow-y-auto box-border leading-relaxed disabled:bg-gray-200 dark:disabled:bg-neutral-800 disabled:text-gray-500 dark:disabled:text-neutral-500 disabled:cursor-not-allowed"
           ></textarea>
           <button
             @click="${this._sendChatClicked}"
             id="sendChatButton"
-            ?disabled=${this.uploadsInProgress > 0}
+            ?disabled=${isDisabled}
             class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-neutral-600 disabled:cursor-not-allowed text-white border-none rounded px-5 cursor-pointer font-semibold self-center h-10"
           >
-            ${this.uploadsInProgress > 0 ? "Uploading..." : "Send"}
+            ${this.isDisconnected
+              ? "Disconnected"
+              : this.uploadsInProgress > 0
+                ? "Uploading..."
+                : "Send"}
           </button>
         </div>
         ${this.isDraggingOver

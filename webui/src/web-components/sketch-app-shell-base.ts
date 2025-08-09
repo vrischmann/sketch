@@ -1071,7 +1071,10 @@ export abstract class SketchAppShellBase extends SketchTailwindElement {
         id="chat-input"
         class="self-end w-full shadow-[0_-2px_10px_rgba(0,0,0,0.1)]"
       >
-        <sketch-chat-input @send-chat="${this._sendChat}"></sketch-chat-input>
+        <sketch-chat-input
+          @send-chat="${this._sendChat}"
+          .isDisconnected=${this.connectionStatus === "disconnected"}
+        ></sketch-chat-input>
       </div>
     `;
   }

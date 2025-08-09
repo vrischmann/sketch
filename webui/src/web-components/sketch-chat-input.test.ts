@@ -223,3 +223,104 @@ test("has a drop event handler", async ({ mount }) => {
   );
   expect(hasDropHandler).toBe(true);
 });
+
+test("disables textarea and button when isDisconnected is true", async ({
+  mount,
+}) => {
+  const component = await mount(SketchChatInput, {
+    props: {
+      isDisconnected: true,
+    },
+  });
+
+  // Check that textarea is disabled
+  await expect(component.locator("#chatInput")).toBeDisabled();
+
+  // Check that send button is disabled
+  await expect(component.locator("#sendChatButton")).toBeDisabled();
+
+  // Check that placeholder text indicates disconnected state
+  await expect(component.locator("#chatInput")).toHaveAttribute(
+    "placeholder",
+    "Chat is disabled while disconnected...",
+  );
+
+  // Check that button text shows "Disconnected"
+  await expect(component.locator("#sendChatButton")).toHaveText("Disconnected");
+});
+
+test("enables textarea and button when isDisconnected is false", async ({
+  mount,
+}) => {
+  const component = await mount(SketchChatInput, {
+    props: {
+      isDisconnected: false,
+    },
+  });
+
+  // Check that textarea is not disabled
+  await expect(component.locator("#chatInput")).not.toBeDisabled();
+
+  // Check that send button is not disabled
+  await expect(component.locator("#sendChatButton")).not.toBeDisabled();
+
+  // Check that placeholder text is normal
+  await expect(component.locator("#chatInput")).toHaveAttribute(
+    "placeholder",
+    "Type your message here and press Enter to send...",
+  );
+
+  // Check that button text shows "Send"
+  await expect(component.locator("#sendChatButton")).toHaveText("Send");
+});
+
+test("does not send message when disconnected", async ({ mount }) => {
+  const testContent = "Test message";
+  const component = await mount(SketchChatInput, {
+    props: {
+      content: testContent,
+      isDisconnected: true,
+    },
+  });
+
+  // Set up to track if event fires
+  let eventFired = false;
+  await component.evaluate((el) => {
+    el.addEventListener("send-chat", () => {
+      (window as any).__eventFired = true;
+    });
+    (window as any).__eventFired = false;
+  });
+
+  // Try to click the send button (should be disabled but let's test)
+  await component.locator("#sendChatButton").click({ force: true });
+
+  // Wait a short time and check if event fired
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  eventFired = await component.evaluate(() => (window as any).__eventFired);
+  expect(eventFired).toBe(false);
+
+  // Check that content was not cleared
+  const content = await component.evaluate((el: SketchChatInput) => el.content);
+  expect(content).toBe(testContent);
+});
+
+test("prioritizes disconnected state over upload state", async ({ mount }) => {
+  const component = await mount(SketchChatInput, {
+    props: {
+      isDisconnected: true,
+    },
+  });
+
+  // Simulate uploads in progress
+  await component.evaluate((el: SketchChatInput) => {
+    el.uploadsInProgress = 2;
+  });
+
+  // Check that button still shows "Disconnected" not "Uploading..."
+  await expect(component.locator("#sendChatButton")).toHaveText("Disconnected");
+
+  // Check that both textarea and button are still disabled
+  await expect(component.locator("#chatInput")).toBeDisabled();
+  await expect(component.locator("#sendChatButton")).toBeDisabled();
+});
