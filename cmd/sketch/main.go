@@ -146,7 +146,7 @@ func run() error {
 	// Not all models have skaband support.
 	hasSkabandSupport := ant.IsClaudeModel(flagArgs.modelName)
 	switch flagArgs.modelName {
-	case "gemini", "qwen", "glm":
+	case "gemini", "qwen", "glm", "gpt5", "gpt5mini":
 		hasSkabandSupport = true
 	}
 	if !hasSkabandSupport && flagArgs.skabandAddr != "" {

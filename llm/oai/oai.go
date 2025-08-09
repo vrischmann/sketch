@@ -735,6 +735,8 @@ func (s *Service) TokenContextWindow() int {
 		return 256000 // 256k native context for Qwen3-Coder
 	case "gpt-oss-20b", "gpt-oss-120b":
 		return 128000
+	case "gpt-5", "gpt-5-mini":
+		return 256000
 	default:
 		// Default for unknown models
 		return 128000
