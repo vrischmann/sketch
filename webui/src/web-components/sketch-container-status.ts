@@ -615,38 +615,20 @@ export class SketchContainerStatus extends SketchTailwindElement {
           if (ports.length === 0) {
             return html``;
           }
-          const displayPorts = ports.slice(0, 2);
-          const remainingPorts = ports.slice(2);
           return html`
             <div class="flex items-center gap-1 ml-2">
-              ${displayPorts.map(
-                (port) => html`
-                  <button
-                    class="text-xs bg-gray-100 dark:bg-neutral-800 dark:hover:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors flex items-center gap-1 ${this.highlightedPorts.has(
-                      port.port,
-                    )
-                      ? "pulse-custom"
-                      : ""}"
-                    @click=${(e: MouseEvent) => this.onPortClick(port.port, e)}
-                    title="Open ${port.process} on port ${port.port}"
-                  >
-                    <span>${port.process}(${port.port})</span>
-                    <span>🔗</span>
-                  </button>
-                `,
-              )}
-              ${remainingPorts.length > 0
+              ${ports.length > 0
                 ? html`
                     <button
-                      class="text-xs bg-gray-100 dark:bg-neutral-800 dark:hover:bg-gray-700 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors ${remainingPorts.some(
+                      class="text-xs whitespace-nowrap bg-gray-100 dark:bg-neutral-800 dark:hover:bg-gray-700 hover:bg-gray-200 px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors ${ports.some(
                         (port) => this.highlightedPorts.has(port.port),
                       )
                         ? "pulse-custom"
                         : ""}"
                       @click=${(e: MouseEvent) => this._showMorePorts(e)}
-                      title="Show ${remainingPorts.length} more ports"
+                      title="Show ${ports.length} more ports"
                     >
-                      +${remainingPorts.length}
+                      🔗 ${ports.length}
                     </button>
                   `
                 : html``}
