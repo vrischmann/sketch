@@ -500,7 +500,10 @@ export class SketchContainerStatus extends SketchTailwindElement {
             </div>
 
             <!-- Second column: Last Commit -->
-            <div class="flex flex-col gap-0.5 justify-start">
+            <div
+              class="flex flex-col gap-0.5 justify-start"
+              style="${this.lastCommit ? "" : "display: none;"}"
+            >
               <div class="flex items-center whitespace-nowrap mr-2.5 text-xs">
                 <span
                   class="text-xs text-gray-600 dark:text-gray-300 font-medium"

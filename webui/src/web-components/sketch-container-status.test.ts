@@ -173,3 +173,27 @@ test("formatGitHubRepo handles boldsoftware/sketch.git correctly", async ({
     "git@github.com:boldsoftware/sketch.git",
   );
 });
+
+test("shows Last Commit column when commit info is available", async ({
+  mount,
+}) => {
+  // Test that the Last Commit column is visible when lastCommit is set
+  const component = await mount(SketchContainerStatus, {
+    props: {
+      state: mockCompleteState,
+    },
+  });
+
+  // Set commit information
+  await component.evaluate((el) => {
+    (el as any).lastCommit = { hash: "abcd1234", pushedBranch: "main" };
+  });
+
+  // Find the Last Commit column div - it should be visible
+  const lastCommitColumn = component
+    .locator('div:has-text("Last Commit")')
+    .first();
+
+  // Since lastCommit is set, the column should be visible (not display: none)
+  await expect(lastCommitColumn).not.toHaveCSS("display", "none");
+});
