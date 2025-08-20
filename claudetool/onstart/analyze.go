@@ -149,7 +149,7 @@ func categorizeFile(path string) string {
 	if isRepoRootFile {
 		if (strings.HasPrefix(lowerFilename, "claude.") && strings.HasSuffix(lowerFilename, ".md")) ||
 			strings.HasPrefix(lowerFilename, "dear_llm") ||
-			(strings.HasPrefix(lowerFilename, "agent.") && strings.HasSuffix(lowerFilename, ".md")) ||
+			(strings.HasPrefix(lowerFilename, "agents.") && strings.HasSuffix(lowerFilename, ".md")) ||
 			strings.Contains(lowerFilename, "cursorrules") {
 			return "inject"
 		}
