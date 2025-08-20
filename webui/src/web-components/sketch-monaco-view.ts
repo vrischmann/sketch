@@ -250,6 +250,8 @@ export class CodeDiffEditor extends SketchTailwindElement {
     );
   }
 
+
+
   // Setup content change listener for debounced save
   private setupContentChangeListener() {
     if (!this.editor || !this.editableRight) return;
@@ -293,15 +295,14 @@ export class CodeDiffEditor extends SketchTailwindElement {
   }
 
   render() {
-    // Set host element styles for layout (equivalent to :host styles)
+    // Set host element styles for full height layout
     this.style.cssText = `
-      --editor-width: 100%;
-      --editor-height: 100%;
       display: flex;
-      flex: none;
+      flex: 1;
       min-height: 0;
       position: relative;
       width: 100%;
+      height: 100%;
     `;
 
     return html`
@@ -326,7 +327,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
 
       <main
         ${ref(this.container)}
-        class="w-full h-full border border-gray-300 flex-none min-h-[200px] relative block box-border"
+        class="w-full h-full border border-gray-300 flex-1 min-h-0 relative block box-border"
       ></main>
 
       <!-- Save indicator - shown when editing -->
@@ -855,14 +856,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
         this.dragStartEditor = null;
       }
     });
-
-    // // Listen for mouse leave events
-    // editor.onMouseLeave(() => {
-    //   if (currentHoveredLine !== null) {
-    //     this.toggleGlyphVisibility(currentHoveredLine, false);
-    //     currentHoveredLine = null;
-    //   }
-    // });
   }
 
   /**
@@ -1080,24 +1073,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
   setOptions(value: monaco.editor.IDiffEditorConstructionOptions) {
     if (this.editor) {
       this.editor.updateOptions(value);
-      // Re-fit content after options change with scroll preservation
-      if (this.fitEditorToContent) {
-        setTimeout(() => {
-          // Preserve scroll positions during options change
-          const originalScrollTop =
-            this.editor!.getOriginalEditor().getScrollTop();
-          const modifiedScrollTop =
-            this.editor!.getModifiedEditor().getScrollTop();
-
-          this.fitEditorToContent!();
-
-          // Restore scroll positions
-          requestAnimationFrame(() => {
-            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
-            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
-          });
-        }, 50);
-      }
     }
   }
 
@@ -1114,24 +1089,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
           revealLineCount: 10,
         },
       });
-      // Re-fit content after toggling with scroll preservation
-      if (this.fitEditorToContent) {
-        setTimeout(() => {
-          // Preserve scroll positions during toggle
-          const originalScrollTop =
-            this.editor!.getOriginalEditor().getScrollTop();
-          const modifiedScrollTop =
-            this.editor!.getModifiedEditor().getScrollTop();
-
-          this.fitEditorToContent!();
-
-          // Restore scroll positions
-          requestAnimationFrame(() => {
-            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
-            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
-          });
-        }, 100);
-      }
     }
   }
 
@@ -1176,9 +1133,9 @@ export class CodeDiffEditor extends SketchTailwindElement {
           );
         }
 
-        // Create the diff editor with auto-sizing configuration
+        // Create the diff editor with default scrolling behavior
         this.editor = monaco.editor.createDiffEditor(this.container.value, {
-          automaticLayout: false, // We'll resize manually
+          automaticLayout: true, // Let Monaco handle layout automatically
           readOnly: true,
           theme: "vs", // Always use light mode
           renderSideBySide: !this.inline,
@@ -1188,18 +1145,15 @@ export class CodeDiffEditor extends SketchTailwindElement {
           // Enable glyph margin for both editors to show decorations
           glyphMargin: true,
           scrollbar: {
-            // Ideally we'd handle the mouse wheel for the horizontal scrollbar,
-            // but there doesn't seem to be that option. Setting
-            // alwaysConsumeMousewheel false and handleMouseWheel true didn't
-            // work for me.
-            handleMouseWheel: false,
+            // Use default Monaco scrollbar behavior
+            handleMouseWheel: true,
           },
-          renderOverviewRuler: false, // Disable overview ruler
-          scrollBeyondLastLine: false,
+          renderOverviewRuler: true, // Show overview ruler for navigation
+          scrollBeyondLastLine: true, // Allow scrolling beyond last line
           // Focus on the differences by hiding unchanged regions
           hideUnchangedRegions: {
             enabled: true, // Enable the feature
-            contextLineCount: 5, // Show 3 lines of context around each difference
+            contextLineCount: 5, // Show 5 lines of context around each difference
             minimumLineCount: 3, // Hide regions only when they're at least 3 lines
             revealLineCount: 10, // Show 10 lines when expanding a hidden region
           },
@@ -1222,9 +1176,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
           this.editor.getOriginalEditor().updateOptions({ glyphMargin: true });
           this.editor.getModifiedEditor().updateOptions({ glyphMargin: true });
         }
-
-        // Set up auto-sizing
-        this.setupAutoSizing();
 
         // Add Monaco editor to debug global
         this.addToDebugGlobal();
@@ -1250,10 +1201,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
 
           monaco.editor.remeasureFonts();
 
-          if (this.fitEditorToContent) {
-            this.fitEditorToContent();
-          }
-
           // Restore scroll positions after font remeasuring
           requestAnimationFrame(() => {
             this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
@@ -1262,26 +1209,7 @@ export class CodeDiffEditor extends SketchTailwindElement {
         }
       });
 
-      // Force layout recalculation after a short delay with scroll preservation
-      setTimeout(() => {
-        if (this.editor && this.fitEditorToContent) {
-          // Preserve scroll positions
-          const originalScrollTop = this.editor
-            .getOriginalEditor()
-            .getScrollTop();
-          const modifiedScrollTop = this.editor
-            .getModifiedEditor()
-            .getScrollTop();
-
-          this.fitEditorToContent();
-
-          // Restore scroll positions
-          requestAnimationFrame(() => {
-            this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
-            this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
-          });
-        }
-      }, 100);
+      // Monaco's automaticLayout will handle sizing
     } catch (error) {
       console.error("Error initializing Monaco editor:", error);
     }
@@ -1355,25 +1283,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
           },
         });
 
-        // Fit content after setting new models with scroll preservation
-        if (this.fitEditorToContent) {
-          setTimeout(() => {
-            // Preserve scroll positions when fitting content after model changes
-            const originalScrollTop =
-              this.editor!.getOriginalEditor().getScrollTop();
-            const modifiedScrollTop =
-              this.editor!.getModifiedEditor().getScrollTop();
-
-            this.fitEditorToContent!();
-
-            // Restore scroll positions
-            requestAnimationFrame(() => {
-              this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
-              this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
-            });
-          }, 50);
-        }
-
         // Add glyph decorations after setting new models
         setTimeout(() => this.setupGlyphDecorations(), 100);
       }
@@ -1402,25 +1311,12 @@ export class CodeDiffEditor extends SketchTailwindElement {
       if (this.editor) {
         this.updateModels();
 
-        // Force auto-sizing after model updates
-        // Use a slightly longer delay to ensure layout is stable with scroll preservation
+        // Monaco's automaticLayout will handle sizing after model updates
         setTimeout(() => {
-          if (this.fitEditorToContent && this.editor) {
-            // Preserve scroll positions during model update layout
-            const originalScrollTop = this.editor
-              .getOriginalEditor()
-              .getScrollTop();
-            const modifiedScrollTop = this.editor
-              .getModifiedEditor()
-              .getScrollTop();
-
-            this.fitEditorToContent();
-
-            // Restore scroll positions
-            requestAnimationFrame(() => {
-              this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
-              this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
-            });
+          // Just trigger a layout to ensure proper sizing after model change
+          if (this.editor) {
+            this.editor.getOriginalEditor().layout();
+            this.editor.getModifiedEditor().layout();
           }
         }, 100);
       } else {
@@ -1432,115 +1328,9 @@ export class CodeDiffEditor extends SketchTailwindElement {
     }
   }
 
-  // Set up auto-sizing for multi-file diff view
-  private setupAutoSizing() {
-    if (!this.editor) return;
+  // No auto-sizing needed - Monaco handles its own layout with automaticLayout: true
 
-    const fitContent = () => {
-      try {
-        const originalEditor = this.editor!.getOriginalEditor();
-        const modifiedEditor = this.editor!.getModifiedEditor();
-
-        const originalHeight = originalEditor.getContentHeight();
-        const modifiedHeight = modifiedEditor.getContentHeight();
-
-        // Use the maximum height of both editors, plus some padding
-        const maxHeight = Math.max(originalHeight, modifiedHeight) + 18; // 1 blank line bottom padding
-
-        // Set both container and host height to enable proper scrolling
-        if (this.container.value) {
-          // Set explicit heights on both container and host
-          this.container.value.style.height = `${maxHeight}px`;
-          this.style.height = `${maxHeight}px`; // Update host element height
-
-          // Emit the height change event BEFORE calling layout
-          // This ensures parent containers resize first
-          this.dispatchEvent(
-            new CustomEvent("monaco-height-changed", {
-              detail: { height: maxHeight },
-              bubbles: true,
-              composed: true,
-            }),
-          );
-
-          // Layout after both this component and parents have updated
-          setTimeout(() => {
-            if (this.editor && this.container.value) {
-              // Use explicit dimensions to ensure Monaco uses full available space
-              // Use clientWidth instead of offsetWidth to avoid border overflow
-              const width = this.container.value.clientWidth;
-              this.editor.layout({
-                width: width,
-                height: maxHeight,
-              });
-            }
-          }, 10);
-        }
-      } catch (error) {
-        console.error("Error in fitContent:", error);
-      }
-    };
-
-    // Store the fit function for external access
-    this.fitEditorToContent = fitContent;
-
-    // Set up listeners for content size changes
-    this.editor.getOriginalEditor().onDidContentSizeChange(fitContent);
-    this.editor.getModifiedEditor().onDidContentSizeChange(fitContent);
-
-    // Initial fit
-    fitContent();
-  }
-
-  private fitEditorToContent: (() => void) | null = null;
-
-  /**
-   * Set up window resize handler to ensure Monaco editor adapts to browser window changes
-   */
-  private setupWindowResizeHandler() {
-    // Create a debounced resize handler to avoid too many layout calls
-    let resizeTimeout: number | null = null;
-
-    this._windowResizeHandler = () => {
-      // Clear any existing timeout
-      if (resizeTimeout) {
-        window.clearTimeout(resizeTimeout);
-      }
-
-      // Debounce the resize to avoid excessive layout calls
-      resizeTimeout = window.setTimeout(() => {
-        if (this.editor && this.container.value) {
-          // Trigger layout recalculation with scroll preservation
-          if (this.fitEditorToContent) {
-            // Preserve scroll positions during window resize
-            const originalScrollTop = this.editor
-              .getOriginalEditor()
-              .getScrollTop();
-            const modifiedScrollTop = this.editor
-              .getModifiedEditor()
-              .getScrollTop();
-
-            this.fitEditorToContent();
-
-            // Restore scroll positions
-            requestAnimationFrame(() => {
-              this.editor!.getOriginalEditor().setScrollTop(originalScrollTop);
-              this.editor!.getModifiedEditor().setScrollTop(modifiedScrollTop);
-            });
-          } else {
-            // Fallback: just trigger a layout with current container dimensions
-            // Use clientWidth/Height instead of offsetWidth/Height to avoid border overflow
-            const width = this.container.value.clientWidth;
-            const height = this.container.value.clientHeight;
-            this.editor.layout({ width, height });
-          }
-        }
-      }, 100); // 100ms debounce
-    };
-
-    // Add the event listener
-    window.addEventListener("resize", this._windowResizeHandler);
-  }
+  // No manual resize handling needed - Monaco's automaticLayout handles this
 
   // Add resize observer to ensure editor resizes when container changes
   async firstUpdated() {
@@ -1550,11 +1340,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
     // Initialize the editor
     await this.initializeEditor();
 
-    // Set up window resize handler to ensure Monaco editor adapts to browser window changes
-    this.setupWindowResizeHandler();
-
-    // For multi-file diff, we don't use ResizeObserver since we control the size
-    // Instead, we rely on auto-sizing based on content
 
     // If editable, set up edit mode and content change listener
     if (this.editableRight && this.editor) {
@@ -1590,7 +1375,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
   }
 
   private _resizeObserver: ResizeObserver | null = null;
-  private _windowResizeHandler: (() => void) | null = null;
 
   /**
    * Add this Monaco editor instance to the global debug object
@@ -1683,15 +1467,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
       if (this._resizeObserver) {
         this._resizeObserver.disconnect();
         this._resizeObserver = null;
-      }
-
-      // Clear the fit function reference
-      this.fitEditorToContent = null;
-
-      // Remove window resize handler if set
-      if (this._windowResizeHandler) {
-        window.removeEventListener("resize", this._windowResizeHandler);
-        this._windowResizeHandler = null;
       }
 
       // Clear visible glyphs tracking

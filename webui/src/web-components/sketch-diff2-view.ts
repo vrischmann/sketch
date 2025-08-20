@@ -37,53 +37,7 @@ export class SketchDiff2View extends SketchTailwindElement {
     }
   }
 
-  /**
-   * Handle height change events from the Monaco editor
-   */
-  private handleMonacoHeightChange(event: CustomEvent) {
-    try {
-      // Get the monaco view that emitted the event
-      const monacoView = event.target as HTMLElement;
-      if (!monacoView) return;
-
-      // Find the parent Monaco editor container (now using Tailwind classes)
-      const fileDiffEditor = monacoView.closest(
-        ".flex.flex-col.w-full.min-h-\\[200px\\].flex-1",
-      ) as HTMLElement;
-      if (!fileDiffEditor) return;
-
-      // Get the new height from the event
-      const newHeight = event.detail.height;
-
-      // Only update if the height actually changed to avoid unnecessary layout
-      const currentHeight = fileDiffEditor.style.height;
-      const newHeightStr = `${newHeight}px`;
-
-      if (currentHeight !== newHeightStr) {
-        // Update the container height to match monaco's height
-        fileDiffEditor.style.height = newHeightStr;
-
-        // Remove any previous min-height constraint that might interfere
-        fileDiffEditor.style.minHeight = "auto";
-
-        // IMPORTANT: Tell Monaco to relayout after its container size changed
-        // Monaco has automaticLayout: false, so it won't detect container changes
-        setTimeout(() => {
-          const monacoComponent = monacoView as any;
-          if (monacoComponent && monacoComponent.editor) {
-            // Force layout with explicit dimensions to ensure Monaco fills the space
-            const editorWidth = fileDiffEditor.offsetWidth;
-            monacoComponent.editor.layout({
-              width: editorWidth,
-              height: newHeight,
-            });
-          }
-        }, 0);
-      }
-    } catch (error) {
-      console.error("Error handling Monaco height change:", error);
-    }
-  }
+  // No height change handling needed - Monaco uses automaticLayout now
 
   /**
    * Handle save events from the Monaco editor
@@ -155,10 +109,10 @@ export class SketchDiff2View extends SketchTailwindElement {
   private error: string | null = null;
 
   @state()
-  private selectedFile: string = ""; // Empty string means "All files"
+  private selectedFile: string = ""; // No "All files" option - always single file
 
   @state()
-  private viewMode: "all" | "single" = "all";
+  private viewMode = "single" as const; // Always single file mode
 
   @state()
   private untrackedFiles: string[] = [];
@@ -175,8 +129,7 @@ export class SketchDiff2View extends SketchTailwindElement {
     super();
     console.log("SketchDiff2View initialized");
 
-    // Fix for monaco-aria-container positioning and hide scrollbars globally
-    // Add a global style to ensure proper positioning of aria containers and hide scrollbars
+    // Fix for monaco-aria-container positioning
     const styleElement = document.createElement("style");
     styleElement.textContent = `
       .monaco-aria-container {
@@ -193,63 +146,20 @@ export class SketchDiff2View extends SketchTailwindElement {
         border: 0 !important;
         z-index: -1 !important;
       }
-
-      /* Aggressively hide all Monaco scrollbar elements */
-      .monaco-editor .scrollbar,
-      .monaco-editor .scroll-decoration,
-      .monaco-editor .invisible.scrollbar,
-      .monaco-editor .slider,
-      .monaco-editor .vertical.scrollbar,
-      .monaco-editor .horizontal.scrollbar,
-      .monaco-diff-editor .scrollbar,
-      .monaco-diff-editor .scroll-decoration,
-      .monaco-diff-editor .invisible.scrollbar,
-      .monaco-diff-editor .slider,
-      .monaco-diff-editor .vertical.scrollbar,
-      .monaco-diff-editor .horizontal.scrollbar {
-        display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-        opacity: 0 !important;
-      }
-
-      /* Target the specific scrollbar classes that Monaco uses */
-      .monaco-scrollable-element > .scrollbar,
-      .monaco-scrollable-element > .scroll-decoration,
-      .monaco-scrollable-element .slider {
-        display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-      }
-
-      /* Remove scrollbar space/padding from content area */
-      .monaco-editor .monaco-scrollable-element,
-      .monaco-diff-editor .monaco-scrollable-element {
-        padding-right: 0 !important;
-        padding-bottom: 0 !important;
-        margin-right: 0 !important;
-        margin-bottom: 0 !important;
-      }
-
-      /* Ensure the diff content takes full width without scrollbar space */
-      .monaco-diff-editor .editor.modified,
-      .monaco-diff-editor .editor.original {
-        margin-right: 0 !important;
-        padding-right: 0 !important;
-      }
-  `;
+    `;
     document.head.appendChild(styleElement);
   }
 
-  // Override createRenderRoot to apply host styles for proper sizing while still using light DOM
+  // Override createRenderRoot to apply host styles for full height layout while using light DOM
   createRenderRoot() {
     // Use light DOM like SketchTailwindElement but still apply host styles
     const style = document.createElement("style");
     style.textContent = `
       sketch-diff2-view {
-        height: -webkit-fill-available;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
       }
     `;
 
@@ -358,11 +268,11 @@ export class SketchDiff2View extends SketchTailwindElement {
           @change="${this.handleFileSelection}"
           ?disabled="${fileCount === 0}"
         >
-          <option value="">All files (${fileCount})</option>
+          ${fileCount === 0 ? html`<option value="">No files</option>` : ""}
           ${this.files.map(
             (file) => html`
               <option value="${file.path}">
-                ${this.getFileDisplayName(file)}
+                ${this.getFileDisplayNameWithStats(file)}
               </option>
             `,
           )}
@@ -476,15 +386,18 @@ export class SketchDiff2View extends SketchTailwindElement {
       return html`<sketch-diff-empty-view></sketch-diff-empty-view>`;
     }
 
-    // Render single file view if a specific file is selected
-    if (this.selectedFile && this.viewMode === "single") {
+    // Always render single file view
+    if (this.selectedFile) {
       return this.renderSingleFileView();
     }
 
-    // Render multi-file view
+    // If no file is selected, show message to select a file
     return html`
-      <div class="flex flex-col w-full min-h-full">
-        ${this.files.map((file, index) => this.renderFileDiff(file, index))}
+      <div class="flex items-center justify-center h-full text-gray-600 dark:text-gray-300">
+        <div class="text-center">
+          <div class="text-lg mb-2">Select a file to view</div>
+          <div class="text-sm">Use the file picker above to choose a file to display</div>
+        </div>
       </div>
     `;
   }
@@ -529,12 +442,17 @@ export class SketchDiff2View extends SketchTailwindElement {
             this.fileExpandStates.set(file.path, false); // false = collapsed (hide unchanged regions)
           }
         });
+        
+        // Auto-select the first file if none is selected
+        if (this.files.length > 0 && !this.selectedFile) {
+          this.selectedFile = this.files[0].path;
+        }
+        
         await this.loadAllFileContents();
       } else {
         // No files to display - reset the view to initial state
         this.selectedFilePath = "";
         this.selectedFile = "";
-        this.viewMode = "all";
         this.fileContents.clear();
         this.fileExpandStates.clear();
       }
@@ -546,7 +464,6 @@ export class SketchDiff2View extends SketchTailwindElement {
       // Reset the view to initial state
       this.selectedFilePath = "";
       this.selectedFile = "";
-      this.viewMode = "all";
       this.fileContents.clear();
       this.fileExpandStates.clear();
     } finally {
@@ -667,56 +584,7 @@ export class SketchDiff2View extends SketchTailwindElement {
     this.loadDiffData();
   }
 
-  /**
-   * Render a single file diff section
-   */
-  renderFileDiff(file: GitDiffFile, index: number) {
-    const content = this.fileContents.get(file.path);
-    if (!content) {
-      return html`
-        <div
-          class="flex flex-col border-b-4 border-gray-300 dark:border-gray-600 mb-0 last:border-b-0"
-        >
-          <div
-            class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-gray-600 px-4 py-2 font-medium text-sm text-gray-800 dark:text-gray-300 sticky top-0 z-10 shadow-sm flex justify-between items-center"
-          >
-            ${this.renderFileHeader(file)}
-          </div>
-          <div class="flex items-center justify-center h-full">
-            Loading ${file.path}...
-          </div>
-        </div>
-      `;
-    }
-
-    return html`
-      <div
-        class="flex flex-col border-b-4 border-gray-300 dark:border-gray-600 mb-0 last:border-b-0"
-      >
-        <div
-          class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-gray-600 px-4 py-2 font-medium text-sm text-gray-800 dark:text-gray-300 sticky top-0 z-10 shadow-sm flex justify-between items-center"
-        >
-          ${this.renderFileHeader(file)}
-        </div>
-        <div class="flex flex-col w-full min-h-[200px] flex-1">
-          <sketch-monaco-view
-            class="flex flex-col w-full min-h-[200px] flex-1"
-            .originalCode="${content.original}"
-            .modifiedCode="${content.modified}"
-            .originalFilename="${file.path}"
-            .modifiedFilename="${file.path}"
-            ?readOnly="${!content.editable}"
-            ?editable-right="${content.editable}"
-            @monaco-comment="${this.handleMonacoComment}"
-            @monaco-save="${this.handleMonacoSave}"
-            @monaco-height-changed="${this.handleMonacoHeightChange}"
-            data-file-index="${index}"
-            data-file-path="${file.path}"
-          ></sketch-monaco-view>
-        </div>
-      </div>
-    `;
-  }
+  // Removed multi-file renderFileDiff method - only single file view is used now
 
   /**
    * Render file header with status and path info
@@ -897,11 +765,12 @@ export class SketchDiff2View extends SketchTailwindElement {
     const selectedValue = selectElement.value;
 
     this.selectedFile = selectedValue;
-    this.viewMode = selectedValue ? "single" : "all";
 
     // Force re-render
     this.requestUpdate();
   }
+
+
 
   toggleUntrackedFilesPopup() {
     this.showUntrackedPopup = !this.showUntrackedPopup;
@@ -913,6 +782,20 @@ export class SketchDiff2View extends SketchTailwindElement {
   getFileDisplayName(file: GitDiffFile): string {
     const status = this.getFileStatusText(file.status);
     const pathInfo = this.getPathInfo(file);
+    return `${status}: ${pathInfo}`;
+  }
+
+  /**
+   * Get display name with +/- stats for file selector
+   */
+  getFileDisplayNameWithStats(file: GitDiffFile): string {
+    const status = this.getFileStatusText(file.status);
+    const pathInfo = this.getPathInfo(file);
+    const changesInfo = this.getChangesInfo(file);
+    
+    if (changesInfo) {
+      return `${status}: ${pathInfo} ${changesInfo}`;
+    }
     return `${status}: ${pathInfo}`;
   }
 
@@ -938,7 +821,7 @@ export class SketchDiff2View extends SketchTailwindElement {
   }
 
   /**
-   * Render single file view with full-screen Monaco editor
+   * Render single file view with full-height Monaco editor
    */
   renderSingleFileView() {
     const selectedFileData = this.files.find(
@@ -956,9 +839,10 @@ export class SketchDiff2View extends SketchTailwindElement {
     }
 
     return html`
-      <div class="flex-1 flex flex-col h-full min-h-0">
+      <div class="flex-1 flex flex-col min-h-0">
+        <!-- Monaco editor at full height without redundant header -->
         <sketch-monaco-view
-          class="flex-1 w-full h-full min-h-0"
+          class="flex-1 w-full min-h-0"
           .originalCode="${content.original}"
           .modifiedCode="${content.modified}"
           .originalFilename="${selectedFileData.path}"
@@ -967,6 +851,7 @@ export class SketchDiff2View extends SketchTailwindElement {
           ?editable-right="${content.editable}"
           @monaco-comment="${this.handleMonacoComment}"
           @monaco-save="${this.handleMonacoSave}"
+
           data-file-path="${selectedFileData.path}"
         ></sketch-monaco-view>
       </div>
