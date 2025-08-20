@@ -118,6 +118,10 @@ installs, tests, or any other substantive operation.
     "background": {
       "type": "boolean",
       "description": "Execute in background"
+    },
+    "detect_ports": {
+      "type": "boolean",
+      "description": "Whether to detect open ports from this process (default: false for foreground, true for background)"
     }
   }
 }
@@ -125,9 +129,10 @@ installs, tests, or any other substantive operation.
 )
 
 type bashInput struct {
-	Command    string `json:"command"`
-	SlowOK     bool   `json:"slow_ok,omitempty"`
-	Background bool   `json:"background,omitempty"`
+	Command     string `json:"command"`
+	SlowOK      bool   `json:"slow_ok,omitempty"`
+	Background  bool   `json:"background,omitempty"`
+	DetectPorts *bool  `json:"detect_ports,omitempty"`
 }
 
 type BackgroundResult struct {
@@ -149,6 +154,16 @@ func (i *bashInput) timeout(t *Timeouts) time.Duration {
 	default:
 		return t.fast()
 	}
+}
+
+// shouldDetectPorts returns whether port detection should be enabled for this command.
+// Default is false for foreground tasks, true for background tasks.
+func (i *bashInput) shouldDetectPorts() bool {
+	if i.DetectPorts != nil {
+		return *i.DetectPorts
+	}
+	// Default behavior: detect ports for background tasks, don't detect for foreground
+	return i.Background
 }
 
 func (b *BashTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
@@ -199,7 +214,7 @@ func (b *BashTool) Run(ctx context.Context, m json.RawMessage) llm.ToolOut {
 
 const maxBashOutputLength = 131072
 
-func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.Writer) *exec.Cmd {
+func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.Writer, detectPorts bool) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "bash", "-c", command)
 	cmd.Dir = b.Pwd
 	cmd.Stdin = nil
@@ -224,6 +239,9 @@ func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.W
 	})
 	env = append(env, "SKETCH=1")          // signal that this has been run by Sketch, sometimes useful for scripts
 	env = append(env, "EDITOR=/bin/false") // interactive editors won't work
+	if !detectPorts {
+		env = append(env, "SKETCH_IGNORE_PORTS=1") // disable port detection for this process
+	}
 	cmd.Env = env
 	return cmd
 }
@@ -258,7 +276,7 @@ func (b *BashTool) executeBash(ctx context.Context, req bashInput, timeout time.
 	defer cancel()
 
 	output := new(bytes.Buffer)
-	cmd := b.makeBashCommand(execCtx, req.Command, output)
+	cmd := b.makeBashCommand(execCtx, req.Command, output, req.shouldDetectPorts())
 	// TODO: maybe detect simple interactive git rebase commands and auto-background them?
 	// Would need to hint to the agent what is happening.
 	// We might also be able to do this for other simple interactive commands that use EDITOR.
@@ -325,7 +343,7 @@ func (b *BashTool) executeBackgroundBash(ctx context.Context, req bashInput, tim
 	}
 
 	execCtx, cancel := context.WithTimeout(context.Background(), timeout) // detach from tool use context
-	cmd := b.makeBashCommand(execCtx, req.Command, out)
+	cmd := b.makeBashCommand(execCtx, req.Command, out, req.shouldDetectPorts())
 	cmd.Env = append(cmd.Env, `GIT_SEQUENCE_EDITOR=python3 -c "import os, sys, signal, threading; print(f\"Send USR1 to pid {os.getpid()} after editing {sys.argv[1]}\", flush=True); signal.signal(signal.SIGUSR1, lambda *_: sys.exit(0)); threading.Event().wait()"`)
 
 	if err := cmd.Start(); err != nil {
