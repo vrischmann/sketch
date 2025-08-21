@@ -23,9 +23,7 @@ test("Monaco configuration uses default scrolling and layout", async () => {
 });
 
 // Test that the component uses Monaco's built-in automatic layout
-test("uses Monaco automatic layout for sizing", async ({
-  mount,
-}) => {
+test("uses Monaco automatic layout for sizing", async ({ mount }) => {
   const component = await mount(CodeDiffEditor, {
     props: {
       originalCode: `function hello() {\n    console.log("Hello, world!");\n    return true;\n}`,
@@ -40,8 +38,10 @@ test("uses Monaco automatic layout for sizing", async ({
     const monacoView = node as any;
 
     // Check that complex auto-sizing methods are no longer present
-    const hasNoFitFunction = typeof monacoView.fitEditorToContent === "undefined";
-    const hasNoSetupAutoSizing = typeof monacoView.setupAutoSizing === "undefined";
+    const hasNoFitFunction =
+      typeof monacoView.fitEditorToContent === "undefined";
+    const hasNoSetupAutoSizing =
+      typeof monacoView.setupAutoSizing === "undefined";
 
     return {
       hasNoFitFunction,

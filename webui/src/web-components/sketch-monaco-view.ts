@@ -250,8 +250,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
     );
   }
 
-
-
   // Setup content change listener for debounced save
   private setupContentChangeListener() {
     if (!this.editor || !this.editableRight) return;
@@ -1339,7 +1337,6 @@ export class CodeDiffEditor extends SketchTailwindElement {
 
     // Initialize the editor
     await this.initializeEditor();
-
 
     // If editable, set up edit mode and content change listener
     if (this.editableRight && this.editor) {

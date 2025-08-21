@@ -393,10 +393,14 @@ export class SketchDiff2View extends SketchTailwindElement {
 
     // If no file is selected, show message to select a file
     return html`
-      <div class="flex items-center justify-center h-full text-gray-600 dark:text-gray-300">
+      <div
+        class="flex items-center justify-center h-full text-gray-600 dark:text-gray-300"
+      >
         <div class="text-center">
           <div class="text-lg mb-2">Select a file to view</div>
-          <div class="text-sm">Use the file picker above to choose a file to display</div>
+          <div class="text-sm">
+            Use the file picker above to choose a file to display
+          </div>
         </div>
       </div>
     `;
@@ -442,12 +446,12 @@ export class SketchDiff2View extends SketchTailwindElement {
             this.fileExpandStates.set(file.path, false); // false = collapsed (hide unchanged regions)
           }
         });
-        
+
         // Auto-select the first file if none is selected
         if (this.files.length > 0 && !this.selectedFile) {
           this.selectedFile = this.files[0].path;
         }
-        
+
         await this.loadAllFileContents();
       } else {
         // No files to display - reset the view to initial state
@@ -770,8 +774,6 @@ export class SketchDiff2View extends SketchTailwindElement {
     this.requestUpdate();
   }
 
-
-
   toggleUntrackedFilesPopup() {
     this.showUntrackedPopup = !this.showUntrackedPopup;
   }
@@ -792,7 +794,7 @@ export class SketchDiff2View extends SketchTailwindElement {
     const status = this.getFileStatusText(file.status);
     const pathInfo = this.getPathInfo(file);
     const changesInfo = this.getChangesInfo(file);
-    
+
     if (changesInfo) {
       return `${status}: ${pathInfo} ${changesInfo}`;
     }
@@ -851,7 +853,6 @@ export class SketchDiff2View extends SketchTailwindElement {
           ?editable-right="${content.editable}"
           @monaco-comment="${this.handleMonacoComment}"
           @monaco-save="${this.handleMonacoSave}"
-
           data-file-path="${selectedFileData.path}"
         ></sketch-monaco-view>
       </div>
