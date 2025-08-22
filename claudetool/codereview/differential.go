@@ -212,6 +212,7 @@ func (r *CodeReviewer) checkTests(ctx context.Context, pkgList []string) (string
 
 	afterTestCmd := exec.CommandContext(ctx, "go", goTestArgs...)
 	afterTestCmd.Dir = r.repoRoot
+	afterTestCmd.Env = append(os.Environ(), "SKETCH_IGNORE_PORTS=1")
 	afterTestOut, _ := afterTestCmd.Output()
 	// unfortunately, we can't short-circuit here even if all tests pass,
 	// because we need to check for skipped tests.
@@ -223,6 +224,7 @@ func (r *CodeReviewer) checkTests(ctx context.Context, pkgList []string) (string
 
 	beforeTestCmd := exec.CommandContext(ctx, "go", goTestArgs...)
 	beforeTestCmd.Dir = r.initialWorktree
+	beforeTestCmd.Env = append(os.Environ(), "SKETCH_IGNORE_PORTS=1")
 	beforeTestOut, _ := beforeTestCmd.Output() // ignore error, interesting info is in the output
 
 	// Parse the jsonl test results
@@ -1254,6 +1256,7 @@ func (r *CodeReviewer) warmTestCache(ctx context.Context, modifiedFile string) e
 	cmd.Dir = r.initialWorktree
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
+	cmd.Env = append(os.Environ(), "SKETCH_IGNORE_PORTS=1")
 
 	slog.DebugContext(ctx, "warming test cache", "packages", len(pkgPaths), "worktree", r.initialWorktree)
 
