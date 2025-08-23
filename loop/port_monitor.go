@@ -195,8 +195,9 @@ func (pm *PortMonitor) sendPortNotification(event string, port portlist.Port) {
 	}
 
 	msg := AgentMessage{
-		Type:    PortMessageType,
-		Content: content,
+		Type:       PortMessageType,
+		Content:    content,
+		HideOutput: true,
 	}
 
 	pm.agent.pushToOutbox(pm.ctx, msg)
