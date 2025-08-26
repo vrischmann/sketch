@@ -28,6 +28,7 @@ RUN apt-get update; \
 		make python3-pip python-is-python3 tree net-tools file build-essential \
 		pipx cargo psmisc bsdmainutils openssh-client sudo \
 		unzip yarn util-linux \
+                strace tmux bind9-host iputils-ping \
 		libglib2.0-0 libnss3 libx11-6 libxcomposite1 libxdamage1 \
 		libxext6 libxi6 libxrandr2 libgbm1 libgtk-3-0 \
 		fonts-noto-color-emoji fonts-symbola && \
