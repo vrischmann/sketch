@@ -1,5 +1,5 @@
 import { html } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import {
   GitDiffFile,
   GitDataService,
@@ -7,17 +7,43 @@ import {
 } from "./git-data-service";
 import "./sketch-monaco-view";
 import { SketchTailwindElement } from "./sketch-tailwind-element";
+import { css } from "lit";
 
 @customElement("mobile-diff")
 export class MobileDiff extends SketchTailwindElement {
-  private gitService: GitDataService = new DefaultGitDataService();
+  static styles = [
+    SketchTailwindElement.styles || [],
+    css`
+      /* Make Monaco editor gutters smaller on mobile */
+      :host sketch-monaco-view {
+        --monaco-gutter-width: 32px;
+      }
+
+      :host .monaco-editor .margin {
+        width: 32px !important;
+      }
+
+      :host .monaco-editor .glyph-margin {
+        width: 16px !important;
+      }
+
+      :host .monaco-editor .line-numbers {
+        font-size: 11px !important;
+        width: 24px !important;
+      }
+    `,
+  ];
+  @property({ attribute: false, type: Object })
+  gitService: GitDataService = new DefaultGitDataService();
 
   @state()
   private files: GitDiffFile[] = [];
 
   @state()
-  private fileContents: Map<string, { original: string; modified: string }> =
-    new Map();
+  private fileContents: Map<
+    string,
+    { original: string; modified: string; editable: boolean }
+  > = new Map();
 
   @state()
   private loading: boolean = false;
@@ -29,7 +55,10 @@ export class MobileDiff extends SketchTailwindElement {
   private baseCommit: string = "";
 
   @state()
-  private fileExpandStates: Map<string, boolean> = new Map();
+  private selectedFile: string = "";
+
+  @state()
+  private inlineView: boolean = true; // Default to inline for mobile
 
   connectedCallback() {
     super.connectedCallback();
@@ -46,7 +75,7 @@ export class MobileDiff extends SketchTailwindElement {
       // Get base commit reference
       this.baseCommit = await this.gitService.getBaseCommitRef();
 
-      // Get diff from base commit to untracked changes (empty string for working directory)
+      // Get diff from base commit to working directory
       this.files = await this.gitService.getDiff(this.baseCommit, "");
 
       // Ensure files is always an array
@@ -55,12 +84,17 @@ export class MobileDiff extends SketchTailwindElement {
       }
 
       if (this.files.length > 0) {
+        // Auto-select the first file if none is selected
+        if (!this.selectedFile) {
+          this.selectedFile = this.files[0].path;
+        }
         await this.loadAllFileContents();
       }
     } catch (error) {
       console.error("Error loading diff data:", error);
-      this.error = `Error loading diff: ${error instanceof Error ? error.message : String(error)}`;
-      // Ensure files is always an array even on error
+      this.error = `Error loading diff: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
       this.files = [];
     } finally {
       this.loading = false;
@@ -73,10 +107,10 @@ export class MobileDiff extends SketchTailwindElement {
         try {
           let originalCode = "";
           let modifiedCode = "";
+          const editable = true; // Mobile diff always shows working directory changes
 
           // Load original content (from the base commit)
           if (file.status !== "A") {
-            // For modified, renamed, or deleted files: load original content
             originalCode = await this.gitService.getFileContent(
               file.old_hash || "",
             );
@@ -84,10 +118,8 @@ export class MobileDiff extends SketchTailwindElement {
 
           // Load modified content (from working directory)
           if (file.status === "D") {
-            // Deleted file: empty modified content
             modifiedCode = "";
           } else {
-            // Added/modified/renamed: use working copy content
             try {
               modifiedCode = await this.gitService.getWorkingCopyContent(
                 file.path,
@@ -104,13 +136,14 @@ export class MobileDiff extends SketchTailwindElement {
           this.fileContents.set(file.path, {
             original: originalCode,
             modified: modifiedCode,
+            editable: editable && file.status !== "D", // Don't make deleted files editable
           });
         } catch (error) {
           console.error(`Error loading content for file ${file.path}:`, error);
-          // Store empty content for failed files
           this.fileContents.set(file.path, {
             original: "",
             modified: "",
+            editable: false,
           });
         }
       });
@@ -119,23 +152,6 @@ export class MobileDiff extends SketchTailwindElement {
     } catch (error) {
       console.error("Error loading file contents:", error);
       throw error;
-    }
-  }
-
-  private getFileStatusClass(status: string): string {
-    switch (status.toUpperCase()) {
-      case "A":
-        return "added";
-      case "M":
-        return "modified";
-      case "D":
-        return "deleted";
-      case "R":
-      default:
-        if (status.toUpperCase().startsWith("R")) {
-          return "renamed";
-        }
-        return "modified";
     }
   }
 
@@ -194,162 +210,206 @@ export class MobileDiff extends SketchTailwindElement {
 
   private getPathInfo(file: GitDiffFile): string {
     if (file.old_path && file.old_path !== "") {
-      // For renames, show old_path → new_path
       return `${file.old_path} → ${file.path}`;
     }
-    // For regular files, just show the path
     return file.path;
   }
 
-  private toggleFileExpansion(filePath: string) {
-    const currentState = this.fileExpandStates.get(filePath) ?? false;
-    const newState = !currentState;
-    this.fileExpandStates.set(filePath, newState);
+  private getFileDisplayNameWithStats(file: GitDiffFile): string {
+    const status = this.getFileStatusText(file.status);
+    const pathInfo = this.getPathInfo(file);
+    const changesInfo = this.getChangesInfo(file);
 
-    // Apply to the specific Monaco view component for this file
-    const monacoView = this.querySelector(
-      `sketch-monaco-view[data-file-path="${filePath}"]`,
-    );
-    if (monacoView) {
-      (monacoView as any).toggleHideUnchangedRegions(!newState); // inverted because true means "hide unchanged"
+    if (changesInfo) {
+      return `${status}: ${pathInfo} ${changesInfo}`;
+    }
+    return `${status}: ${pathInfo}`;
+  }
+
+  private getTruncatedFileDisplayName(file: GitDiffFile): string {
+    const status = this.getFileStatusText(file.status);
+    const pathInfo = this.getPathInfo(file);
+    const changesInfo = this.getChangesInfo(file);
+
+    // Truncate the path if it's too long
+    const maxPathLength = 25;
+    let displayPath = pathInfo;
+    if (pathInfo.length > maxPathLength) {
+      const parts = pathInfo.split("/");
+      if (parts.length > 1) {
+        // Keep the filename and truncate the directory path
+        const filename = parts[parts.length - 1];
+        const remainingLength = maxPathLength - filename.length - 3; // 3 for "..."
+        if (remainingLength > 0) {
+          const dirPath = parts.slice(0, -1).join("/");
+          if (dirPath.length > remainingLength) {
+            displayPath = `...${dirPath.slice(dirPath.length - remainingLength)}/${filename}`;
+          } else {
+            displayPath = pathInfo;
+          }
+        } else {
+          displayPath = `...${filename}`;
+        }
+      } else {
+        displayPath =
+          pathInfo.length > maxPathLength
+            ? `...${pathInfo.slice(-maxPathLength + 3)}`
+            : pathInfo;
+      }
     }
 
-    // Force a re-render to update the button state
+    // Create a more compact display
+    const statusChar = status.charAt(0); // M, A, D, R
+    if (changesInfo) {
+      return `${statusChar}: ${displayPath} ${changesInfo}`;
+    }
+    return `${statusChar}: ${displayPath}`;
+  }
+
+  private handleFileSelection(event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    this.selectedFile = selectElement.value;
     this.requestUpdate();
   }
 
-  private renderExpandAllIcon() {
-    return html`
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <!-- Dotted line in the middle -->
-        <line
-          x1="2"
-          y1="8"
-          x2="14"
-          y2="8"
-          stroke="currentColor"
-          stroke-width="1"
-          stroke-dasharray="2,1"
-        />
-        <!-- Large arrow pointing up -->
-        <path d="M8 2 L5 6 L11 6 Z" fill="currentColor" />
-        <!-- Large arrow pointing down -->
-        <path d="M8 14 L5 10 L11 10 Z" fill="currentColor" />
-      </svg>
-    `;
+  private toggleViewMode() {
+    this.inlineView = !this.inlineView;
+    this.requestUpdate();
   }
 
-  private renderCollapseIcon() {
-    return html`
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <!-- Dotted line in the middle -->
-        <line
-          x1="2"
-          y1="8"
-          x2="14"
-          y2="8"
-          stroke="currentColor"
-          stroke-width="1"
-          stroke-dasharray="2,1"
-        />
-        <!-- Large arrow pointing down towards line -->
-        <path d="M8 6 L5 2 L11 2 Z" fill="currentColor" />
-        <!-- Large arrow pointing up towards line -->
-        <path d="M8 10 L5 14 L11 14 Z" fill="currentColor" />
-      </svg>
-    `;
+  // Comments disabled for mobile diff to save space and simplify UI
+
+  /**
+   * Handle save events from the Monaco editor
+   */
+  private async handleMonacoSave(event: CustomEvent) {
+    try {
+      if (
+        !event.detail ||
+        !event.detail.path ||
+        event.detail.content === undefined
+      ) {
+        console.error("Invalid save data received");
+        return;
+      }
+
+      const { path, content } = event.detail;
+      const monacoView = this.querySelector("sketch-monaco-view");
+      if (!monacoView) {
+        console.error("Monaco view not found");
+        return;
+      }
+
+      try {
+        await this.gitService?.saveFileContent(path, content);
+        console.log(`File saved: ${path}`);
+        (monacoView as any).notifySaveComplete(true);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        alert(`Failed to save changes to ${path}:\n\n${errorMessage}`);
+        (monacoView as any).notifySaveComplete(false);
+      }
+    } catch (error) {
+      console.error("Error handling save:", error);
+    }
   }
 
-  private renderFileDiff(file: GitDiffFile) {
-    const content = this.fileContents.get(file.path);
-    const isExpanded = this.fileExpandStates.get(file.path) ?? false;
+  private renderFileSelector() {
+    const fileCount = this.files.length;
 
-    if (!content) {
-      return html`
-        <div class="mb-4 last:mb-0">
-          <div
-            class="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 dark:text-gray-300 sticky top-0 z-10 flex items-center justify-between"
-          >
-            <div class="flex items-center">
-              <span
-                class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 font-sans ${this.getFileStatusTailwindClass(
-                  file.status,
-                )}"
-              >
-                ${this.getFileStatusText(file.status)}
-              </span>
-              ${this.getPathInfo(file)}
-              ${this.getChangesInfo(file)
-                ? html`<span
-                    class="ml-2 text-xs text-gray-500 dark:text-neutral-400"
-                    >${this.getChangesInfo(file)}</span
-                  >`
-                : ""}
-            </div>
-            <button class="text-gray-400 dark:text-gray-300" disabled>
-              ${this.renderExpandAllIcon()}
-            </button>
-          </div>
-          <div
-            class="border border-gray-200 dark:border-neutral-700 border-t-0 min-h-[200px] overflow-hidden bg-white dark:bg-neutral-900"
-          >
-            <div
-              class="flex items-center justify-center h-full text-base text-gray-500 dark:text-gray-300 text-center p-5"
+    return html`
+      <select
+        class="flex-1 px-2 py-1.5 border border-gray-400 dark:border-gray-600 rounded bg-white dark:bg-neutral-800 text-sm cursor-pointer focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 disabled:bg-gray-100 dark:disabled:bg-neutral-700 disabled:text-gray-500 dark:disabled:text-gray-300 disabled:cursor-not-allowed truncate"
+        .value="${this.selectedFile}"
+        @change="${this.handleFileSelection}"
+        ?disabled="${fileCount === 0}"
+        style="max-width: calc(100% - 120px);"
+      >
+        ${fileCount === 0 ? html`<option value="">No files</option>` : ""}
+        ${this.files.map(
+          (file) => html`
+            <option
+              value="${file.path}"
+              title="${this.getFileDisplayNameWithStats(file)}"
             >
-              Loading ${file.path}...
-            </div>
-          </div>
-        </div>
-      `;
+              ${this.getTruncatedFileDisplayName(file)}
+            </option>
+          `,
+        )}
+      </select>
+    `;
+  }
+
+  private renderViewToggle() {
+    return html`
+      <button
+        class="px-2 py-1.5 border border-gray-400 dark:border-gray-600 rounded bg-white dark:bg-neutral-800 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 flex items-center gap-1.5 flex-shrink-0"
+        @click="${this.toggleViewMode}"
+        title="${this.inlineView
+          ? "Switch to side-by-side view"
+          : "Switch to inline view"}"
+      >
+        ${this.inlineView
+          ? html`
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
+                <rect x="1" y="2" width="14" height="2" rx="1" />
+                <rect x="1" y="6" width="14" height="2" rx="1" />
+                <rect x="1" y="10" width="14" height="2" rx="1" />
+              </svg>
+              Split
+            `
+          : html`
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
+                <rect x="1" y="2" width="6" height="12" rx="1" />
+                <rect x="9" y="2" width="6" height="12" rx="1" />
+              </svg>
+              Inline
+            `}
+      </button>
+    `;
+  }
+
+  private renderSingleFileView() {
+    const selectedFileData = this.files.find(
+      (f) => f.path === this.selectedFile,
+    );
+    if (!selectedFileData) {
+      return html`<div class="text-red-600 p-4">Selected file not found</div>`;
+    }
+
+    const content = this.fileContents.get(this.selectedFile);
+    if (!content) {
+      return html`<div class="flex items-center justify-center h-full">
+        Loading ${this.selectedFile}...
+      </div>`;
     }
 
     return html`
-      <div class="mb-4 last:mb-0">
-        <div
-          class="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 border-b-0 p-3 font-mono text-sm font-medium text-gray-700 dark:text-gray-300 sticky top-0 z-10 flex items-center justify-between"
-        >
-          <div class="flex items-center">
-            <span
-              class="inline-block px-1.5 py-0.5 rounded text-xs font-bold mr-2 font-sans ${this.getFileStatusTailwindClass(
-                file.status,
-              )}"
-            >
-              ${this.getFileStatusText(file.status)}
-            </span>
-            ${this.getPathInfo(file)}
-            ${this.getChangesInfo(file)
-              ? html`<span
-                  class="ml-2 text-xs text-gray-500 dark:text-neutral-400"
-                  >${this.getChangesInfo(file)}</span
-                >`
-              : ""}
-          </div>
-          <button
-            class="text-gray-600 dark:text-gray-300 hover:text-gray-800 p-1 rounded"
-            @click="${() => this.toggleFileExpansion(file.path)}"
-            title="${isExpanded
-              ? "Collapse: Hide unchanged regions to focus on changes"
-              : "Expand: Show all lines including unchanged regions"}"
-          >
-            ${isExpanded
-              ? this.renderCollapseIcon()
-              : this.renderExpandAllIcon()}
-          </button>
-        </div>
-        <div
-          class="border border-gray-200 dark:border-neutral-700 border-t-0 min-h-[200px] overflow-hidden bg-white dark:bg-neutral-900"
-        >
-          <sketch-monaco-view
-            class="w-full min-h-[200px]"
-            .originalCode="${content.original}"
-            .modifiedCode="${content.modified}"
-            .originalFilename="${file.path}"
-            .modifiedFilename="${file.path}"
-            ?readOnly="true"
-            ?inline="true"
-            data-file-path="${file.path}"
-          ></sketch-monaco-view>
-        </div>
+      <div class="flex-1 flex flex-col min-h-0">
+        <sketch-monaco-view
+          class="flex-1 w-full min-h-0"
+          .originalCode="${content.original}"
+          .modifiedCode="${content.modified}"
+          .originalFilename="${selectedFileData.path}"
+          .modifiedFilename="${selectedFileData.path}"
+          ?readOnly="${!content.editable}"
+          ?editable-right="${content.editable}"
+          ?inline="${this.inlineView}"
+          ?disable-comments="true"
+          @monaco-save="${this.handleMonacoSave}"
+          data-file-path="${selectedFileData.path}"
+        ></sketch-monaco-view>
       </div>
     `;
   }
@@ -359,10 +419,18 @@ export class MobileDiff extends SketchTailwindElement {
       <div
         class="flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-neutral-900"
       >
+        <!-- Header with file selector and view toggle -->
         <div
-          class="flex-1 overflow-auto min-h-0"
-          style="-webkit-overflow-scrolling: touch;"
+          class="px-3 py-1.5 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-neutral-800 flex-shrink-0"
         >
+          <div class="flex items-center gap-2">
+            ${this.renderFileSelector()}
+            ${this.files.length > 0 ? this.renderViewToggle() : ""}
+          </div>
+        </div>
+
+        <!-- Content area -->
+        <div class="flex-1 overflow-auto flex flex-col min-h-0 relative h-full">
           ${this.loading
             ? html`<div
                 class="flex items-center justify-center h-full text-base text-gray-500 dark:text-gray-300 text-center p-5"
@@ -381,7 +449,18 @@ export class MobileDiff extends SketchTailwindElement {
                   >
                     No changes to show
                   </div>`
-                : this.files.map((file) => this.renderFileDiff(file))}
+                : this.selectedFile
+                  ? this.renderSingleFileView()
+                  : html`<div
+                      class="flex items-center justify-center h-full text-gray-600 dark:text-gray-300"
+                    >
+                      <div class="text-center">
+                        <div class="text-lg mb-2">Select a file to view</div>
+                        <div class="text-sm">
+                          Use the file picker above to choose a file to display
+                        </div>
+                      </div>
+                    </div>`}
         </div>
       </div>
     `;
