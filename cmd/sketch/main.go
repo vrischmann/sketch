@@ -166,6 +166,9 @@ func run() error {
 	// A "session" is a single full run of the agent.
 	ctx := skribe.ContextWithAttr(context.Background(), slog.String("session_id", flagArgs.sessionID))
 
+	// Start zombie reaper if we're running as PID 1
+	go zombieReaper(ctx)
+
 	// Configure logging
 	slogHandler, logFile, err := setupLogging(flagArgs.termUI, flagArgs.verbose, flagArgs.unsafe)
 	if err != nil {
@@ -1104,4 +1107,110 @@ func doSelfUpdate() error {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 	return update.Do(context.Background(), release, executable)
+}
+
+// zombieReaper monitors /proc for zombie processes and reaps them after 5 minutes.
+// This goroutine should only run when we are PID 1 (init process).
+func zombieReaper(ctx context.Context) {
+	if runtime.GOOS != "linux" {
+		return // only needed on Linux
+	}
+	if os.Getpid() != 1 {
+		return // not running as init, exit immediately
+	}
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	// Track when we first saw each zombie process
+	zombieStartTime := make(map[int]time.Time)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Find zombie processes
+			currentZombies := findZombieProcesses()
+			now := time.Now()
+
+			// Check existing zombies
+			for pid, startTime := range zombieStartTime {
+				if _, exists := currentZombies[pid]; !exists {
+					// Process is no longer a zombie, remove from tracking
+					delete(zombieStartTime, pid)
+					continue
+				}
+
+				// If zombie has been around for 5+ minutes, try to reap it
+				if now.Sub(startTime) >= 5*time.Minute {
+					var wstatus syscall.WaitStatus
+					reapedPid, err := syscall.Wait4(pid, &wstatus, syscall.WNOHANG, nil)
+					if err == nil && reapedPid == pid {
+						slog.Info("reaped long-lived zombie process", "pid", pid, "zombie_duration", now.Sub(startTime), "status", wstatus)
+						delete(zombieStartTime, pid)
+					} else if err != nil && err != syscall.ECHILD {
+						slog.Debug("failed to reap zombie process", "pid", pid, "error", err)
+					}
+				}
+			}
+
+			// Track new zombies
+			for pid := range currentZombies {
+				if _, exists := zombieStartTime[pid]; !exists {
+					// New zombie process discovered
+					zombieStartTime[pid] = now
+					slog.Debug("discovered zombie process", "pid", pid)
+				}
+			}
+		}
+	}
+}
+
+// findZombieProcesses scans /proc to find zombie processes.
+// Returns a map of PID -> true for all zombie processes.
+func findZombieProcesses() map[int]bool {
+	zombies := make(map[int]bool)
+
+	if runtime.GOOS != "linux" {
+		return zombies // empty map on non-Linux
+	}
+
+	// Read /proc directory
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return zombies
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Check if directory name is a PID (numeric)
+		var pid int
+		if _, err := fmt.Sscanf(entry.Name(), "%d", &pid); err != nil {
+			continue
+		}
+
+		// Read /proc/PID/stat to check process state
+		statPath := fmt.Sprintf("/proc/%d/stat", pid)
+		statData, err := os.ReadFile(statPath)
+		if err != nil {
+			continue // Process may have disappeared
+		}
+
+		// Parse the stat file to get the process state
+		// Format: pid (comm) state ...
+		statStr := string(statData)
+		fields := strings.Fields(statStr)
+		if len(fields) >= 3 {
+			state := fields[2]
+			if state == "Z" {
+				zombies[pid] = true
+			}
+		}
+	}
+
+	return zombies
 }

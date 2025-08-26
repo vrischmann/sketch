@@ -246,28 +246,12 @@ func (b *BashTool) makeBashCommand(ctx context.Context, command string, out io.W
 	return cmd
 }
 
-// processGroupHasProcesses reports whether process group pgid contains any processes.
-func processGroupHasProcesses(pgid int) bool {
-	return syscall.Kill(-pgid, 0) == nil
-}
-
 func cmdWait(cmd *exec.Cmd) error {
-	pgid := cmd.Process.Pid
 	err := cmd.Wait()
-	// After Wait, if there were misbehaved children,
-	// and the process group is still around,
-	// (if the process died via some means other than context cancellation),
-	// we need to (re-)kill the process group, not just the process.
-	// Tiny logical race here--we could snipe some other process--but
-	// it is extremely unlikely in practice, because our process just died,
-	// so it almost certainly hasn't had its PID recycled yet.
-	if processGroupHasProcesses(pgid) {
-		_ = syscall.Kill(-pgid, syscall.SIGKILL)
-	}
-
-	// Clean up any zombie processes that may have been left behind.
-	reapZombies(pgid)
-
+	// We used to kill the process group here, but it's not clear that
+	// this is correct in the case of self-daemonizing processes,
+	// and I encountered issues where daemons that I tried to run
+	// as background tasks would mysteriously exit.
 	return err
 }
 
