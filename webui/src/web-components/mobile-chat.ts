@@ -1,6 +1,7 @@
 import { html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { repeat } from "lit/directives/repeat.js";
 import { AgentMessage } from "../types";
 import { createRef, ref } from "lit/directives/ref.js";
 import { marked, MarkedOptions, Renderer } from "marked";
@@ -124,6 +125,16 @@ export class MobileChat extends SketchTailwindElement {
       message.content &&
       message.content.trim().length > 0
     );
+  }
+
+  private getMessageKey(message: AgentMessage, index: number): string {
+    // Create a stable, unique key for each message
+    // Use timestamp if available, otherwise fall back to index + content hash
+    if (message.timestamp) {
+      return `${message.timestamp}-${message.type}`;
+    }
+    // Fallback for messages without timestamps
+    return `${index}-${message.type}-${message.content?.length || 0}`;
   }
 
   private renderMarkdown(markdownContent: string): string {
@@ -316,118 +327,122 @@ export class MobileChat extends SketchTailwindElement {
                   Start a conversation with Sketch...
                 </div>
               `
-            : displayMessages.map((message) => {
-                const role = this.getMessageRole(message);
-                const text = this.getMessageText(message);
-                // const timestamp = message.timestamp; // Unused for mobile layout
+            : repeat(
+                displayMessages,
+                (message, index) => this.getMessageKey(message, index),
+                (message) => {
+                  const role = this.getMessageRole(message);
+                  const text = this.getMessageText(message);
+                  // const timestamp = message.timestamp; // Unused for mobile layout
 
-                return html`
-                  <div
-                    class="message ${role} flex flex-col max-w-[85%] break-words ${role ===
-                    "user"
-                      ? "self-end items-end"
-                      : "self-start items-start"}"
-                  >
+                  return html`
                     <div
-                      class="message-bubble px-3 py-2 rounded-[18px] text-base leading-relaxed ${role ===
+                      class="message ${role} flex flex-col max-w-[85%] break-words ${role ===
                       "user"
-                        ? "bg-blue-500 text-white rounded-br-[6px]"
-                        : role === "error"
-                          ? "bg-red-50 text-red-700"
-                          : "bg-gray-100 dark:bg-neutral-700 text-gray-800 dark:text-gray-100 rounded-bl-[6px]"}"
+                        ? "self-end items-end"
+                        : "self-start items-start"}"
                     >
-                      ${role === "assistant"
-                        ? html`<div class="leading-6 break-words">
-                            <style>
-                              .markdown-content p {
-                                margin: 0.3em 0;
-                              }
-                              .markdown-content p:first-child {
-                                margin-top: 0;
-                              }
-                              .markdown-content p:last-child {
-                                margin-bottom: 0;
-                              }
-                              .markdown-content h1,
-                              .markdown-content h2,
-                              .markdown-content h3,
-                              .markdown-content h4,
-                              .markdown-content h5,
-                              .markdown-content h6 {
-                                margin: 0.5em 0 0.3em 0;
-                                font-weight: bold;
-                              }
-                              .markdown-content h1 {
-                                font-size: 1.2em;
-                              }
-                              .markdown-content h2 {
-                                font-size: 1.15em;
-                              }
-                              .markdown-content h3 {
-                                font-size: 1.1em;
-                              }
-                              .markdown-content h4,
-                              .markdown-content h5,
-                              .markdown-content h6 {
-                                font-size: 1.05em;
-                              }
-                              .markdown-content code {
-                                background-color: rgba(0, 0, 0, 0.08);
-                                padding: 2px 4px;
-                                border-radius: 3px;
-                                font-family:
-                                  Monaco, Menlo, "Ubuntu Mono", monospace;
-                                font-size: 0.9em;
-                              }
-                              .markdown-content pre {
-                                background-color: rgba(0, 0, 0, 0.08);
-                                padding: 8px;
-                                border-radius: 6px;
-                                margin: 0.5em 0;
-                                overflow-x: auto;
-                                font-size: 0.9em;
-                              }
-                              .markdown-content pre code {
-                                background: none;
-                                padding: 0;
-                              }
-                              .markdown-content ul,
-                              .markdown-content ol {
-                                margin: 0.5em 0;
-                                padding-left: 1.2em;
-                              }
-                              .markdown-content li {
-                                margin: 0.2em 0;
-                              }
-                              .markdown-content blockquote {
-                                border-left: 3px solid rgba(0, 0, 0, 0.2);
-                                margin: 0.5em 0;
-                                padding-left: 0.8em;
-                                font-style: italic;
-                              }
-                              .markdown-content a {
-                                color: inherit;
-                                text-decoration: underline;
-                              }
-                              .markdown-content strong,
-                              .markdown-content b {
-                                font-weight: bold;
-                              }
-                              .markdown-content em,
-                              .markdown-content i {
-                                font-style: italic;
-                              }
-                            </style>
-                            <div class="markdown-content">
-                              ${unsafeHTML(this.renderMarkdown(text))}
-                            </div>
-                          </div>`
-                        : text}
-                      ${this.renderToolCalls(message)}
+                      <div
+                        class="message-bubble px-3 py-2 rounded-[18px] text-base leading-relaxed ${role ===
+                        "user"
+                          ? "bg-blue-500 text-white rounded-br-[6px]"
+                          : role === "error"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-gray-100 dark:bg-neutral-700 text-gray-800 dark:text-gray-100 rounded-bl-[6px]"}"
+                      >
+                        ${role === "assistant"
+                          ? html`<div class="leading-6 break-words">
+                              <style>
+                                .markdown-content p {
+                                  margin: 0.3em 0;
+                                }
+                                .markdown-content p:first-child {
+                                  margin-top: 0;
+                                }
+                                .markdown-content p:last-child {
+                                  margin-bottom: 0;
+                                }
+                                .markdown-content h1,
+                                .markdown-content h2,
+                                .markdown-content h3,
+                                .markdown-content h4,
+                                .markdown-content h5,
+                                .markdown-content h6 {
+                                  margin: 0.5em 0 0.3em 0;
+                                  font-weight: bold;
+                                }
+                                .markdown-content h1 {
+                                  font-size: 1.2em;
+                                }
+                                .markdown-content h2 {
+                                  font-size: 1.15em;
+                                }
+                                .markdown-content h3 {
+                                  font-size: 1.1em;
+                                }
+                                .markdown-content h4,
+                                .markdown-content h5,
+                                .markdown-content h6 {
+                                  font-size: 1.05em;
+                                }
+                                .markdown-content code {
+                                  background-color: rgba(0, 0, 0, 0.08);
+                                  padding: 2px 4px;
+                                  border-radius: 3px;
+                                  font-family:
+                                    Monaco, Menlo, "Ubuntu Mono", monospace;
+                                  font-size: 0.9em;
+                                }
+                                .markdown-content pre {
+                                  background-color: rgba(0, 0, 0, 0.08);
+                                  padding: 8px;
+                                  border-radius: 6px;
+                                  margin: 0.5em 0;
+                                  overflow-x: auto;
+                                  font-size: 0.9em;
+                                }
+                                .markdown-content pre code {
+                                  background: none;
+                                  padding: 0;
+                                }
+                                .markdown-content ul,
+                                .markdown-content ol {
+                                  margin: 0.5em 0;
+                                  padding-left: 1.2em;
+                                }
+                                .markdown-content li {
+                                  margin: 0.2em 0;
+                                }
+                                .markdown-content blockquote {
+                                  border-left: 3px solid rgba(0, 0, 0, 0.2);
+                                  margin: 0.5em 0;
+                                  padding-left: 0.8em;
+                                  font-style: italic;
+                                }
+                                .markdown-content a {
+                                  color: inherit;
+                                  text-decoration: underline;
+                                }
+                                .markdown-content strong,
+                                .markdown-content b {
+                                  font-weight: bold;
+                                }
+                                .markdown-content em,
+                                .markdown-content i {
+                                  font-style: italic;
+                                }
+                              </style>
+                              <div class="markdown-content">
+                                ${unsafeHTML(this.renderMarkdown(text))}
+                              </div>
+                            </div>`
+                          : text}
+                        ${this.renderToolCalls(message)}
+                      </div>
                     </div>
-                  </div>
-                `;
-              })}
+                  `;
+                }
+              )}
           ${this.isThinking
             ? html`
                 <div
