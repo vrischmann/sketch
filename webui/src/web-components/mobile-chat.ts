@@ -441,7 +441,7 @@ export class MobileChat extends SketchTailwindElement {
                       </div>
                     </div>
                   `;
-                }
+                },
               )}
           ${this.isThinking
             ? html`
