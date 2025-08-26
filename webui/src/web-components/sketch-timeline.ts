@@ -67,7 +67,7 @@ export class SketchTimeline extends SketchTailwindElement {
   initialMessageCount: number = 30;
 
   @property({ attribute: false })
-  loadChunkSize: number = 20;
+  loadChunkSize: number = 500;
 
   @state()
   private visibleMessageStartIndex: number = 0;
