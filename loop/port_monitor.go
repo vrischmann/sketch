@@ -118,16 +118,22 @@ func (pm *PortMonitor) initialScan() error {
 func (pm *PortMonitor) monitor() {
 	defer pm.wg.Done()
 
-	ticker := time.NewTicker(pm.interval)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-pm.ctx.Done():
 			return
-		case <-ticker.C:
+		default:
+			// Check ports
 			if err := pm.checkPorts(); err != nil {
 				slog.WarnContext(pm.ctx, "port monitoring error", "error", err)
+			}
+
+			// Wait for the interval or until context is cancelled
+			select {
+			case <-pm.ctx.Done():
+				return
+			case <-time.After(pm.interval):
+				// Continue to next iteration
 			}
 		}
 	}
@@ -157,42 +163,70 @@ func (pm *PortMonitor) checkPorts() error {
 	addedPorts := findAddedPorts(previousPorts, currentTCPPorts)
 	removedPorts := findRemovedPorts(previousPorts, currentTCPPorts)
 
-	// Send notifications for changes
-	for _, port := range addedPorts {
-		pm.sendPortNotification("opened", port)
-	}
-
-	for _, port := range removedPorts {
-		pm.sendPortNotification("closed", port)
-	}
+	// Send batch notifications for changes
+	pm.sendBatchPortNotification(addedPorts, removedPorts)
 
 	return nil
 }
 
-// sendPortNotification sends a port event notification to the agent.
-func (pm *PortMonitor) sendPortNotification(event string, port portlist.Port) {
+// sendBatchPortNotification sends a single notification with all port changes to the agent.
+func (pm *PortMonitor) sendBatchPortNotification(addedPorts, removedPorts []portlist.Port) {
 	if pm.agent == nil {
 		return
 	}
 
-	// Skip low ports and sketch's ports
-	if port.Port < 1024 || port.Pid == 1 {
+	// Filter ports to exclude low ports, sketch's ports, and ignored processes
+	filteredAdded := pm.filterPorts(addedPorts)
+	filteredRemoved := pm.filterPorts(removedPorts)
+
+	// If no changes after filtering, don't send a notification
+	if len(filteredAdded) == 0 && len(filteredRemoved) == 0 {
 		return
 	}
 
-	// Skip processes with SKETCH_IGNORE_PORTS environment variable
-	if pm.shouldIgnoreProcess(port.Pid) {
-		return
+	var contentParts []string
+
+	// Add opened ports to the message
+	if len(filteredAdded) > 0 {
+		var openedPorts []string
+		for _, port := range filteredAdded {
+			portDesc := fmt.Sprintf("%s:%d", port.Proto, port.Port)
+			if port.Process != "" {
+				portDesc += fmt.Sprintf(" (%s)", port.Process)
+			}
+			if port.Pid != 0 {
+				portDesc += fmt.Sprintf(" [pid:%d]", port.Pid)
+			}
+			openedPorts = append(openedPorts, portDesc)
+		}
+		if len(openedPorts) == 1 {
+			contentParts = append(contentParts, fmt.Sprintf("Port opened: %s", openedPorts[0]))
+		} else {
+			contentParts = append(contentParts, fmt.Sprintf("Ports opened: %s", strings.Join(openedPorts, ", ")))
+		}
 	}
 
-	// TODO: Structure this so that UI can display it more nicely.
-	content := fmt.Sprintf("Port %s: %s:%d", event, port.Proto, port.Port)
-	if port.Process != "" {
-		content += fmt.Sprintf(" (process: %s)", port.Process)
+	// Add closed ports to the message
+	if len(filteredRemoved) > 0 {
+		var closedPorts []string
+		for _, port := range filteredRemoved {
+			portDesc := fmt.Sprintf("%s:%d", port.Proto, port.Port)
+			if port.Process != "" {
+				portDesc += fmt.Sprintf(" (%s)", port.Process)
+			}
+			if port.Pid != 0 {
+				portDesc += fmt.Sprintf(" [pid:%d]", port.Pid)
+			}
+			closedPorts = append(closedPorts, portDesc)
+		}
+		if len(closedPorts) == 1 {
+			contentParts = append(contentParts, fmt.Sprintf("Port closed: %s", closedPorts[0]))
+		} else {
+			contentParts = append(contentParts, fmt.Sprintf("Ports closed: %s", strings.Join(closedPorts, ", ")))
+		}
 	}
-	if port.Pid != 0 {
-		content += fmt.Sprintf(" (pid: %d)", port.Pid)
-	}
+
+	content := strings.Join(contentParts, "; ")
 
 	msg := AgentMessage{
 		Type:       PortMessageType,
@@ -201,6 +235,25 @@ func (pm *PortMonitor) sendPortNotification(event string, port portlist.Port) {
 	}
 
 	pm.agent.pushToOutbox(pm.ctx, msg)
+}
+
+// filterPorts filters out ports that should be ignored.
+func (pm *PortMonitor) filterPorts(ports []portlist.Port) []portlist.Port {
+	var filtered []portlist.Port
+	for _, port := range ports {
+		// Skip low ports and sketch's ports
+		if port.Port < 1024 || port.Pid == 1 {
+			continue
+		}
+
+		// Skip processes with SKETCH_IGNORE_PORTS environment variable
+		if pm.shouldIgnoreProcess(port.Pid) {
+			continue
+		}
+
+		filtered = append(filtered, port)
+	}
+	return filtered
 }
 
 // filterTCPPorts filters the port list to include only TCP ports.

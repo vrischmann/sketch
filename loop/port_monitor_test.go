@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -239,10 +240,13 @@ func TestPortMonitor_ShouldIgnoreProcess(t *testing.T) {
 	agent := createTestAgent(t)
 	pm := NewPortMonitor(agent, 100*time.Millisecond)
 
-	// Test with current process (should not be ignored)
+	// Test with current process
 	currentPid := os.Getpid()
-	if pm.shouldIgnoreProcess(currentPid) {
-		t.Errorf("current process should not be ignored")
+	// The current process might have SKETCH_IGNORE_PORTS=1 in its environment,
+	// so we check if it should be ignored based on its actual environment
+	sketchIgnore := os.Getenv("SKETCH_IGNORE_PORTS") == "1"
+	if pm.shouldIgnoreProcess(currentPid) != sketchIgnore {
+		t.Errorf("current process ignore status mismatch: expected %v, got %v", sketchIgnore, pm.shouldIgnoreProcess(currentPid))
 	}
 
 	// Test with invalid PID
@@ -270,12 +274,120 @@ func TestPortMonitor_ShouldIgnoreProcess(t *testing.T) {
 	}
 }
 
+// TestPortMonitor_BatchNotification tests that port changes are sent as a single batch notification.
+func TestPortMonitor_BatchNotification(t *testing.T) {
+	agent := createTestAgent(t)
+	pm := NewPortMonitor(agent, 100*time.Millisecond)
+
+	// Test with multiple added and removed ports
+	addedPorts := []portlist.Port{
+		{Proto: "tcp", Port: 8080, Process: "test-server", Pid: 1234},
+		{Proto: "tcp", Port: 9000, Process: "another-server", Pid: 5678},
+	}
+
+	removedPorts := []portlist.Port{
+		{Proto: "tcp", Port: 3000, Process: "old-server", Pid: 9999},
+	}
+
+	// Capture the message count before sending notification
+	initialMessageCount := len(agent.history)
+
+	// Send batch notification
+	pm.sendBatchPortNotification(addedPorts, removedPorts)
+
+	// Should have exactly one new message
+	if len(agent.history) != initialMessageCount+1 {
+		t.Errorf("expected 1 new message, got %d", len(agent.history)-initialMessageCount)
+	}
+
+	// Check the content of the new message
+	if len(agent.history) > 0 {
+		msg := agent.history[len(agent.history)-1]
+		if msg.Type != PortMessageType {
+			t.Errorf("expected PortMessageType, got %v", msg.Type)
+		}
+		if !msg.HideOutput {
+			t.Error("expected HideOutput to be true")
+		}
+		// Check that the message contains information about both opened and closed ports
+		if !strings.Contains(msg.Content, "Ports opened:") {
+			t.Errorf("expected message to contain 'Ports opened:', got: %s", msg.Content)
+		}
+		if !strings.Contains(msg.Content, "Port closed:") {
+			t.Errorf("expected message to contain 'Port closed:', got: %s", msg.Content)
+		}
+		t.Logf("Batch notification content: %s", msg.Content)
+	}
+}
+
+// TestPortMonitor_BatchNotificationFiltering tests that low ports and ignored processes are filtered out.
+func TestPortMonitor_BatchNotificationFiltering(t *testing.T) {
+	agent := createTestAgent(t)
+	pm := NewPortMonitor(agent, 100*time.Millisecond)
+
+	// Test with ports that should be filtered out
+	addedPorts := []portlist.Port{
+		{Proto: "tcp", Port: 80, Process: "system", Pid: 1},           // Should be filtered (pid 1)
+		{Proto: "tcp", Port: 443, Process: "system", Pid: 0},          // Should be filtered (low port)
+		{Proto: "tcp", Port: 8080, Process: "user-server", Pid: 1234}, // Should not be filtered
+	}
+
+	// Capture the message count before sending notification
+	initialMessageCount := len(agent.history)
+
+	// Send batch notification
+	pm.sendBatchPortNotification(addedPorts, []portlist.Port{})
+
+	// Should have exactly one new message with only the unfiltered port
+	if len(agent.history) != initialMessageCount+1 {
+		t.Errorf("expected 1 new message, got %d", len(agent.history)-initialMessageCount)
+	}
+
+	// Check the content of the new message
+	if len(agent.history) > 0 {
+		msg := agent.history[len(agent.history)-1]
+		if !strings.Contains(msg.Content, "8080") {
+			t.Errorf("expected message to contain port 8080, got: %s", msg.Content)
+		}
+		if strings.Contains(msg.Content, "80") && !strings.Contains(msg.Content, "8080") {
+			t.Errorf("message should not contain filtered port 80, got: %s", msg.Content)
+		}
+		if strings.Contains(msg.Content, "443") {
+			t.Errorf("message should not contain filtered port 443, got: %s", msg.Content)
+		}
+	}
+}
+
+// TestPortMonitor_BatchNotificationEmpty tests that no notification is sent when all ports are filtered out.
+func TestPortMonitor_BatchNotificationEmpty(t *testing.T) {
+	agent := createTestAgent(t)
+	pm := NewPortMonitor(agent, 100*time.Millisecond)
+
+	// Test with ports that should all be filtered out
+	addedPorts := []portlist.Port{
+		{Proto: "tcp", Port: 80, Process: "system", Pid: 1},  // Filtered (pid 1)
+		{Proto: "tcp", Port: 443, Process: "system", Pid: 0}, // Filtered (low port)
+	}
+
+	// Capture the message count before sending notification
+	initialMessageCount := len(agent.history)
+
+	// Send batch notification
+	pm.sendBatchPortNotification(addedPorts, []portlist.Port{})
+
+	// Should not have any new messages when all ports are filtered
+	if len(agent.history) != initialMessageCount {
+		t.Errorf("expected no new messages when all ports are filtered, but got %d new messages", len(agent.history)-initialMessageCount)
+	}
+}
+
 // createTestAgent creates a minimal test agent for testing.
 func createTestAgent(t *testing.T) *Agent {
 	// Create a minimal agent for testing
 	// We need to initialize the required fields for the PortMonitor to work
 	agent := &Agent{
 		subscribers: make([]chan *AgentMessage, 0),
+		history:     make([]AgentMessage, 0),
 	}
 	return agent
 }
