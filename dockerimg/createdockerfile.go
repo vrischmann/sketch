@@ -17,7 +17,7 @@ func DefaultImage() (name, dockerfile, tag string) {
 
 const (
 	dockerImgRepo = "boldsoftware/sketch"
-	dockerImgName = "ghcr.io/" + dockerImgRepo
+	dockerImgName = "registry.tail04bc6.ts.net/sketch"
 )
 
 func dockerfileBaseHash() string {
