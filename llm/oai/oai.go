@@ -19,14 +19,15 @@ import (
 const (
 	DefaultMaxTokens = 8192
 
-	OpenAIURL    = "https://api.openai.com/v1"
-	FireworksURL = "https://api.fireworks.ai/inference/v1"
-	CerebrasURL  = "https://api.cerebras.ai/v1"
-	LlamaCPPURL  = "http://host.docker.internal:1234/v1"
-	TogetherURL  = "https://api.together.xyz/v1"
-	GeminiURL    = "https://generativelanguage.googleapis.com/v1beta/openai/"
-	MistralURL   = "https://api.mistral.ai/v1"
-	MoonshotURL  = "https://api.moonshot.ai/v1"
+	OpenAIURL        = "https://api.openai.com/v1"
+	FireworksURL     = "https://api.fireworks.ai/inference/v1"
+	CerebrasURL      = "https://api.cerebras.ai/v1"
+	LlamaCPPURL      = "http://host.docker.internal:1234/v1"
+	TogetherURL      = "https://api.together.xyz/v1"
+	GeminiURL        = "https://generativelanguage.googleapis.com/v1beta/openai/"
+	MistralURL       = "https://api.mistral.ai/v1"
+	MoonshotURL      = "https://api.moonshot.ai/v1"
+	ZaiCodingPaasURL = "https://api.z.ai/api/coding/paas/v4"
 
 	// Environment variable names for API keys
 	OpenAIAPIKeyEnv    = "OPENAI_API_KEY"
@@ -36,6 +37,7 @@ const (
 	GeminiAPIKeyEnv    = "GEMINI_API_KEY"
 	MistralAPIKeyEnv   = "MISTRAL_API_KEY"
 	MoonshotAPIKeyEnv  = "MOONSHOT_API_KEY"
+	ZaiAPIKeyEnv       = "ZAI_API_KEY"
 )
 
 type Model struct {
@@ -243,6 +245,20 @@ var (
 		APIKeyEnv: FireworksAPIKeyEnv,
 	}
 
+	ZaiGLM45CodingPlan = Model{
+		UserName:  "zai-glm4.5-coding-plan",
+		ModelName: "glm-4.5",
+		URL:       ZaiCodingPaasURL,
+		APIKeyEnv: ZaiAPIKeyEnv,
+	}
+
+	ZaiGLM45AirCodingPlan = Model{
+		UserName:  "zai-glm4.5-air-coding-plan",
+		ModelName: "glm-4.5-air",
+		URL:       ZaiCodingPaasURL,
+		APIKeyEnv: ZaiAPIKeyEnv,
+	}
+
 	GPTOSS20B = Model{
 		UserName:  "gpt-oss-20b",
 		ModelName: "accounts/fireworks/models/gpt-oss-20b",
@@ -331,6 +347,8 @@ var ModelsRegistry = []Model{
 	GPTOSS120B,
 	GPTOSS20B,
 	// Skaband-supported models
+	ZaiGLM45CodingPlan,
+	ZaiGLM45AirCodingPlan,
 	Qwen,
 	GLM,
 }
