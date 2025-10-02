@@ -8,7 +8,8 @@ Chrome browser from Go. The tools are built using the
 
 1. `browser_navigate` - Navigate to a URL and wait for the page to load
 2. `browser_eval` - Evaluate JavaScript in the browser context
-3. `browser_screenshot` - Take a screenshot of the page or a specific element
+3. `browser_resize` - Resize the browser window to specific dimensions
+4. `browser_screenshot` - Take a screenshot of the page or a specific element
 
 ## Usage
 

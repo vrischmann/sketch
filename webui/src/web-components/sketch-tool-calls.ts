@@ -8,6 +8,7 @@ import "./sketch-tool-card-take-screenshot";
 import "./sketch-tool-card-about-sketch";
 import "./sketch-tool-card-browser-navigate";
 import "./sketch-tool-card-browser-eval";
+import "./sketch-tool-card-browser-resize";
 import "./sketch-tool-card-read-image";
 import "./sketch-tool-card-browser-recent-console-logs";
 import "./sketch-tool-card-browser-clear-console-logs";
@@ -92,6 +93,11 @@ export class SketchToolCalls extends SketchTailwindElement {
           .open=${open}
           .toolCall=${toolCall}
         ></sketch-tool-card-browser-eval>`;
+      case "browser_resize":
+        return html`<sketch-tool-card-browser-resize
+          .open=${open}
+          .toolCall=${toolCall}
+        ></sketch-tool-card-browser-resize>`;
       case "read_image":
         return html`<sketch-tool-card-read-image
           .open=${open}

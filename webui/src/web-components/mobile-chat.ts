@@ -269,6 +269,9 @@ export class MobileChat extends SketchTailwindElement {
         case "browser_take_screenshot":
           return "Taking screenshot";
 
+        case "browser_resize":
+          return `Resize: ${input.width || ""}x${input.height || ""}`;
+
         case "todo_write":
           const tasks = input.tasks || [];
           return `${tasks.length} task${tasks.length > 1 ? "s" : ""}`;

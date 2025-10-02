@@ -14,6 +14,7 @@ const demo: DemoModule = {
     "../sketch-tool-card-browser-get-text.ts",
     "../sketch-tool-card-browser-navigate.ts",
     "../sketch-tool-card-browser-recent-console-logs.ts",
+    "../sketch-tool-card-browser-resize.ts",
     "../sketch-tool-card-browser-scroll-into-view.ts",
     "../sketch-tool-card-browser-type.ts",
     "../sketch-tool-card-read-image.ts",
@@ -187,6 +188,17 @@ Total reclaimed space: 1.426GB`,
           tool_call_id: "toolu_eval",
         },
       },
+      // Browser resize
+      {
+        name: "browser_resize",
+        input: JSON.stringify({ width: 1024, height: 768 }),
+        tool_call_id: "toolu_resize",
+        result_message: {
+          type: "tool",
+          tool_result: "done",
+          tool_call_id: "toolu_resize",
+        },
+      },
       // Browser clear console logs
       {
         name: "browser_clear_console_logs",
@@ -282,6 +294,9 @@ Total reclaimed space: 1.426GB`,
           break;
         case "browser_eval":
           toolCardEl = document.createElement("sketch-tool-card-browser-eval");
+          break;
+        case "browser_resize":
+          toolCardEl = document.createElement("sketch-tool-card-browser-resize");
           break;
         case "browser_clear_console_logs":
           toolCardEl = document.createElement(

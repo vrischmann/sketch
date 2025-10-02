@@ -55,6 +55,8 @@ var (
  📱 {{.input.expression -}}
 {{else if eq .msg.ToolName "browser_take_screenshot" -}}
  📸 Screenshot
+{{else if eq .msg.ToolName "browser_resize" -}}
+ 🖼️  {{.input.width}}x{{.input.height -}}
 {{else if eq .msg.ToolName "read_image" -}}
  🖼️  {{.input.path -}}
 {{else if eq .msg.ToolName "browser_recent_console_logs" -}}
