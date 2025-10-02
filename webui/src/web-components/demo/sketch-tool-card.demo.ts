@@ -296,7 +296,9 @@ Total reclaimed space: 1.426GB`,
           toolCardEl = document.createElement("sketch-tool-card-browser-eval");
           break;
         case "browser_resize":
-          toolCardEl = document.createElement("sketch-tool-card-browser-resize");
+          toolCardEl = document.createElement(
+            "sketch-tool-card-browser-resize",
+          );
           break;
         case "browser_clear_console_logs":
           toolCardEl = document.createElement(
