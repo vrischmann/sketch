@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	DefaultModel = Claude4Sonnet
+	DefaultModel = Claude45Sonnet
 	// See https://docs.anthropic.com/en/docs/about-claude/models/all-models for
 	// current maximums. There's currently a flag to enable 128k output (output-128k-2025-02-19)
 	DefaultMaxTokens = 8192
@@ -32,6 +32,7 @@ const (
 	Claude35Haiku  = "claude-3-5-haiku-20241022"
 	Claude37Sonnet = "claude-3-7-sonnet-20250219"
 	Claude4Sonnet  = "claude-sonnet-4-20250514"
+	Claude45Sonnet = "claude-sonnet-4-5-20250929"
 	Claude4Opus    = "claude-opus-4-20250514"
 )
 
@@ -46,7 +47,7 @@ func IsClaudeModel(userName string) bool {
 func ClaudeModelName(userName string) string {
 	switch userName {
 	case "claude", "sonnet":
-		return Claude4Sonnet
+		return Claude45Sonnet
 	case "opus":
 		return Claude4Opus
 	default:
@@ -66,7 +67,7 @@ func (s *Service) TokenContextWindow() int {
 		return 200000
 	case Claude35Haiku:
 		return 200000
-	case Claude4Sonnet, Claude4Opus:
+	case Claude4Sonnet, Claude45Sonnet, Claude4Opus:
 		return 200000
 	default:
 		// Default for unknown models
